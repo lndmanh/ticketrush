@@ -1,0 +1,90 @@
+{
+  "common": {
+    "privacy": "Chính sách bảo mật",
+    "terms": "Điều khoản",
+    "required": "bắt buộc",
+    "locale": {
+      "prompt": "Chọn ngôn ngữ của bạn"
+    },
+    "lang": "Ngôn ngữ",
+    "collapse": "Thu gọn",
+    "expand": "Mở rộng",
+    "light": "Sáng",
+    "dark": "Tối",
+    "system": "Hệ thống",
+    "theme": "Chủ đề",
+    "color": "Màu",
+    "copy": {
+      "success": "Đã sao chép vào bảng nhớ tạm"
+    }
+  },
+  "errors": {
+    "adblock": "Làm ơn hãy ủng hộ chúng tôi bằng cách tắt trình chặn quảng cáo (adblock) T.T",
+    "no_result": "Không tìm thấy kết quả.",
+    "empty_page": "Trang trống",
+    "not_found": {
+      "description": "Trang bạn đang tìm kiếm không tồn tại. \nHãy thử tìm kiếm những gì bạn cần dưới đây.",
+      "title": "Không tìm thấy"
+    }
+  },
+  "customizer": {
+    "radius": "Bán kính",
+    "title": "Tùy chỉnh",
+    "prompt": "Chọn giao diện và màu sắc cho trang."
+  },
+  "docs": {
+    "toc": {
+      "title": "Trên trang này"
+    },
+    "editlink": {
+      "title": "Chỉnh sửa trang này"
+    },
+    "issuelink": {
+      "title": "Phản ánh vấn đề"
+    }
+  },
+  "cta": {
+    "primary": "Bắt đầu ngay",
+    "start_writing": "Trang đang trống, hãy bắt đầu viết tại {fileLink}.",
+    "read_more": "Đọc thêm tại",
+    "contact": "Liên hệ hỗ trợ",
+    "need_help": "Cần giúp đỡ?",
+    "search_pages": "Hãy thử tìm kiếm các trang"
+  },
+  "search": {
+    "title": "Tìm kiếm...",
+    "document": "Tìm kiếm tài liệu..."
+  },
+  "footer": {
+    "tagline": "Chúng tôi kiến tạo trải nghiệm số cùng phát triển với bạn.",
+    "navigation": "Điều hướng",
+    "services": "Dịch vụ",
+    "connect": "Kết nối",
+    "about_us": "Về chúng tôi",
+    "our_work": "Dự án",
+    "faq": "Câu hỏi",
+    "contact": "Liên hệ",
+    "web_development": "Phát triển Web",
+    "consulting": "Tư vấn Kỹ thuật",
+    "ui_design": "Thiết kế UI/UX",
+    "maintenance": "Bảo trì & Hỗ trợ",
+    "copyright": "© {year} No Name Studio. Bảo lưu mọi quyền.",
+    "made_in": "Chế tác tại Việt Nam"
+  },
+  "blog": {
+    "badge": "Blog",
+    "title": "Câu Chuyện & Ý Tưởng",
+    "subtitle": "Hướng dẫn, phân tích kỹ thuật chuyên sâu, và tư duy thiết kế từ đội ngũ của chúng tôi.",
+    "search_placeholder": "Tìm kiếm bài viết...",
+    "filter_all": "Tất cả",
+    "featured": "Nổi bật",
+    "read_article": "Đọc bài viết",
+    "min_read": "{time} phút đọc",
+    "articles_count": "{count} bài viết",
+    "no_results_title": "Không tìm thấy bài viết",
+    "no_results_description": "Hãy thử điều chỉnh tìm kiếm hoặc bộ lọc để tìm thấy nội dung bạn cần.",
+    "clear_filters": "Xóa bộ lọc",
+    "seo_title": "Blog — No Name Studio",
+    "seo_description": "Chia sẻ kiến thức, hướng dẫn, và cập nhật từ No Name Studio."
+  }
+}

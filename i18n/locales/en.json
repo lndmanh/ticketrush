@@ -1,0 +1,91 @@
+{
+  "common": {
+    "privacy": "Privacy",
+    "terms": "Terms",
+    "required": "required",
+    "locale": {
+      "prompt": "Choose your language"
+    },
+    "lang": "Language",
+    "collapse": "Collapse",
+    "expand": "Expand",
+    "light": "Light",
+    "dark": "Dark",
+    "system": "System",
+    "theme": "Theme",
+    "color": "Color",
+    "copy": {
+      "success": "Copied to clipboard"
+    }
+  },
+  "errors": {
+    "adblock": "Please support us by disabling your ad blocker.",
+    "no_result": "No results found.",
+    "not_found": {
+      "title": "Not Found",
+      "description": "The page you are looking for does not exist. Try searching for what you need below."
+    },
+    "empty_page": "Empty page"
+  },
+  "customizer": {
+    "radius": "Radius",
+    "title": "Customize",
+    "prompt": "Pick a style and color for the docs."
+  },
+  "docs": {
+    "toc": {
+      "title": "On this page"
+    },
+    "editlink": {
+      "title": "Edit this page"
+    },
+    "issuelink": {
+      "title": "Create an issue"
+    }
+  },
+  "cta": {
+    "primary": "Get Started",
+    "start_writing": "Start writing in {fileLink} to see this page taking shape.",
+    "read_more": "Read more at",
+    "search_pages": "Try searching for pages",
+    "need_help": "Need help?",
+    "contact": "Contact support",
+    "star_on_github": "Star on GitHub"
+  },
+  "search": {
+    "title": "Search...",
+    "document": "Search documentation..."
+  },
+  "footer": {
+    "tagline": "We craft digital experiences that grow with you.",
+    "navigation": "Navigation",
+    "services": "Services",
+    "connect": "Connect",
+    "about_us": "About",
+    "our_work": "Our Work",
+    "faq": "FAQ",
+    "contact": "Contact",
+    "web_development": "Web Development",
+    "consulting": "Technical Consulting",
+    "ui_design": "UI/UX Design",
+    "maintenance": "Maintenance & Support",
+    "copyright": "© {year} No Name Studio. All rights reserved.",
+    "made_in": "Crafted in Vietnam"
+  },
+  "blog": {
+    "badge": "Blog",
+    "title": "Stories & Insights",
+    "subtitle": "Tutorials, engineering deep-dives, and design thinking from our team.",
+    "search_placeholder": "Search articles...",
+    "filter_all": "All",
+    "featured": "Featured",
+    "read_article": "Read article",
+    "min_read": "{time} min read",
+    "articles_count": "{count} article | {count} articles",
+    "no_results_title": "No articles found",
+    "no_results_description": "Try adjusting your search or filter to find what you're looking for.",
+    "clear_filters": "Clear filters",
+    "seo_title": "Blog — No Name Studio",
+    "seo_description": "Insights, tutorials, and updates from No Name Studio."
+  }
+}

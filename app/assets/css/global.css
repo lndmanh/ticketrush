@@ -1,0 +1,122 @@
+html {
+  font-family: Manrope, sans-serif;
+  scroll-behavior: smooth;
+  --header-height: calc(var(--spacing) * 12)
+}
+
+body {
+  font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+}
+
+::-webkit-scrollbar {
+  width: 16px
+}
+
+::-webkit-scrollbar-thumb {
+  height: 56px;
+  border-radius: 8px;
+  border: 4px solid transparent;
+  background-clip: content-box;
+  background-color: var(--color-muted-foreground);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: var(--color-sidebar-foreground);
+}
+
+::-webkit-scrollbar-thumb:active {
+  background-color: var(--color-muted-foreground);
+}
+
+::-webkit-scrollbar-track {
+  background-color: var(--sidebar);
+}
+
+.page-enter-active {
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.page-leave-active {
+  transition: opacity 0.1s ease, transform 0.1s ease;
+}
+
+.page-enter-from {
+  opacity: 0;
+  transform: translateY(8px);
+}
+
+.page-leave-to {
+  opacity: 0;
+  transform: translateY(-4px);
+}
+
+.animateShake {
+  animation: shake 0.6s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+}
+
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.2s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+
+.view-fade-enter-active,
+.view-fade-leave-active {
+  transition: opacity 0.15s ease;
+}
+
+.view-fade-enter-from,
+.view-fade-leave-to {
+  opacity: 0;
+}
+
+.animateShake {
+  animation: shake 0.6s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+}
+
+@keyframes shake {
+
+  10%,
+  90% {
+    transform: translate3d(-1px, 0, 0);
+  }
+
+  20%,
+  80% {
+    transform: translate3d(2px, 0, 0);
+  }
+
+  30%,
+  50%,
+  70% {
+    transform: translate3d(-4px, 0, 0);
+  }
+
+  40%,
+  60% {
+    transform: translate3d(4px, 0, 0);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.skeleton-shimmer {
+  animation: shimmer 2s infinite;
+}
+
+nuxt-studio {
+  z-index: 999999;
+  position: relative;
+}

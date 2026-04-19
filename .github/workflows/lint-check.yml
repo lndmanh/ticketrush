@@ -1,0 +1,73 @@
+name: Lint
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+
+concurrency:
+  group: lint-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Copy .env.example to .env
+        run: cp .env.example .env
+
+      - name: Cache workspace
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            .
+            !.git
+          key: workspace-${{ github.sha }}
+
+  lint:
+    needs: setup
+    runs-on: ubuntu-latest
+    steps:
+      - name: Restore workspace
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            .
+            !.git
+          key: workspace-${{ github.sha }}
+
+      - name: Run ESLint
+        run: npm run lint
+
+  typecheck:
+    needs: setup
+    runs-on: ubuntu-latest
+    steps:
+      - name: Restore workspace
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            .
+            !.git
+          key: workspace-${{ github.sha }}
+
+      - name: Run Type Checking
+        run: npm run typecheck

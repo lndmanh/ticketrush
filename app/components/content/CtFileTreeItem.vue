@@ -1,0 +1,77 @@
+<template>
+  <li>
+    <!-- Folder -->
+    <div v-if="tree.children">
+      <a
+        class="text-foreground/80 flex w-full cursor-pointer items-center gap-2 rounded-md px-2 py-1 text-left text-sm"
+        :class="[
+          tree.highlighted && 'underline underline-offset-4',
+          tree.diff === 'addition' && 'bg-green-100 font-bold text-green-600',
+          tree.diff === 'deletion' && 'bg-red-100 font-bold text-red-600',
+          tree.diff === 'none' && 'hover:bg-muted hover:text-primary font-medium',
+        ]"
+        @click="isOpen = !isOpen"
+      >
+        <ChevronDownIcon
+          v-if="showArrow"
+          class="transition-transform"
+          :class="[!isOpen && '-rotate-90']"
+          :size="16"
+        />
+
+        <CtIcon
+          v-if="showIcon"
+          :name="tree.icon"
+          class="min-w-4 max-w-5.5"
+        />
+
+        <span :class="[tree.highlighted && 'text-primary font-bold']">
+          {{ tree.title }}
+        </span>
+      </a>
+      <div v-show="isOpen">
+        <CtFileTreeRoot
+          :show-icon
+          :show-arrow
+          :tree="tree.children"
+          :level="level + 1"
+        />
+      </div>
+    </div>
+    <!-- File -->
+    <div
+      v-else
+      class="text-foreground/80 flex w-full items-center gap-2 rounded-md px-2 py-1 text-sm"
+      :class="[
+        tree.highlighted && 'underline underline-offset-4',
+        tree.diff === 'addition' && 'bg-green-100 font-bold text-green-600',
+        tree.diff === 'deletion' && 'bg-red-100 font-bold text-red-600',
+        tree.diff === 'none' && 'hover:bg-muted hover:text-primary',
+      ]"
+    >
+      <CtIcon
+        v-if="showIcon"
+        :name="tree.icon"
+        class="min-w-4 max-w-5.5"
+      />
+
+      <span :class="[tree.highlighted && 'text-primary font-bold']">
+        {{ tree.title }}
+      </span>
+    </div>
+  </li>
+</template>
+
+<script setup lang="ts">
+import { ChevronDownIcon } from '@lucide/vue'
+import type { FileTreeItem } from '~~/types'
+import CtIcon from './CtIcon.vue'
+
+defineProps<{
+  showArrow: boolean
+  tree: FileTreeItem
+  showIcon: boolean
+  level: number
+}>()
+const isOpen = ref(true)
+</script>

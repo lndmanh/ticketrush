@@ -1,0 +1,27 @@
+# Auto-generated from .navigation.yml files
+# Do not edit manually - changes will be overwritten on build
+
+/docs /docs/getting-started/introduction 301
+/docs/ /docs/getting-started/introduction 301
+/docs/getting-started /products/nuxt-starter-kit/getting-started/introduction 301
+/docs/getting-started/ /products/nuxt-starter-kit/getting-started/introduction 301
+/docs/getting-started/writing /products/nuxt-starter-kit/getting-started/writing/markdown 301
+/docs/getting-started/writing/ /products/nuxt-starter-kit/getting-started/writing/markdown 301
+/docs/getting-started/upgrade /products/nuxt-starter-kit/getting-started/upgrade/v1 301
+/docs/getting-started/upgrade/ /products/nuxt-starter-kit/getting-started/upgrade/v1 301
+/docs/components /products/nuxt-starter-kit/components/prose/markdown 301
+/docs/components/ /products/nuxt-starter-kit/components/prose/markdown 301
+/docs/components/prose /products/nuxt-starter-kit/components/prose/markdown 301
+/docs/components/prose/ /products/nuxt-starter-kit/components/prose/markdown 301
+/docs/components/docs /products/nuxt-starter-kit/components/docs/alert 301
+/docs/components/docs/ /products/nuxt-starter-kit/components/docs/alert 301
+/docs/components/page /products/nuxt-starter-kit/components/page/accordion 301
+/docs/components/page/ /products/nuxt-starter-kit/components/page/accordion 301
+/docs/api /products/nuxt-starter-kit/api/configuration 301
+/docs/api/ /products/nuxt-starter-kit/api/configuration 301
+/docs/api/configuration /products/nuxt-starter-kit/api/configuration/shadcn-docs 301
+/docs/api/configuration/ /products/nuxt-starter-kit/api/configuration/shadcn-docs 301
+/docs/api/integrations /products/nuxt-starter-kit/api/integrations/carbon-ads 301
+/docs/api/integrations/ /products/nuxt-starter-kit/api/integrations/carbon-ads 301
+/docs/api/advanced /products/nuxt-starter-kit/api/advanced/override 301
+/docs/api/advanced/ /products/nuxt-starter-kit/api/advanced/override 301

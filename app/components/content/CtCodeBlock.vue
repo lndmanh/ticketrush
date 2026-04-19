@@ -1,0 +1,210 @@
+<template>
+  <ClientOnly>
+    <Card
+      class="bg-[#FBFBFB] dark:bg-[#121215] relative overflow-hidden py-0 gap-0 rounded-lg shadow-xs [&:not(:first-child)]:mt-5 [&:not(:last-child)]:mb-5"
+      :class="[
+        (inGroup || inTree) && 'mb-0 rounded-t-none border-none shadow-none',
+        inStack && 'mb-0 rounded-none border-none shadow-none',
+      ]"
+    >
+      <div
+        v-if="!inGroup && filename"
+        class="bg-background flex items-center border-b py-2 pl-3 pr-2 font-mono text-sm"
+      >
+        <CtIcon
+          v-if="icon"
+          :name="icon"
+          class="mr-1.5"
+        />
+        <span>{{ filename }}</span>
+        <CtCodeCopy
+          :code
+          class="ml-auto"
+        />
+      </div>
+
+      <div
+        v-if="!filename"
+        class="absolute right-2 top-2 z-10"
+      >
+        <CtCodeCopy :code />
+      </div>
+
+      <ScrollArea v-if="parsedMeta.has('collapse')">
+        <div
+          :style="[((parsedMeta.has('height') || height) && !expanded) ? `height: ${height || parsedMeta.get('height')}px` : undefined]"
+          class="overflow-x-auto overflow-y-hidden py-3 text-sm"
+          :class="[
+            !inGroup && !inTree && !filename && 'inline-copy',
+            !language && 'pl-3',
+            parsedMeta.has('line-numbers') && 'show-line-number',
+            expanded && 'pb-14',
+          ]"
+        >
+          <slot />
+        </div>
+        <ScrollBar orientation="horizontal" />
+      </ScrollArea>
+      <ScrollArea
+        v-else
+        :style="[(parsedMeta.has('height') || height) && `height: ${height || parsedMeta.get('height')}px`]"
+      >
+        <div
+          class="overflow-x-auto py-3 text-sm"
+          :class="[
+            !inGroup && !inTree && !filename && 'inline-copy',
+            !language && 'pl-3',
+            parsedMeta.has('line-numbers') && 'show-line-number',
+          ]"
+        >
+          <slot />
+        </div>
+        <ScrollBar orientation="horizontal" />
+      </ScrollArea>
+
+      <div
+        v-if="parsedMeta.has('collapse')"
+        class="absolute inset-x-0 bottom-0 flex h-16 items-center justify-center rounded-b"
+        :class="[!expanded && 'from-muted bg-gradient-to-t dark:from-zinc-950']"
+      >
+        <Button
+          size="sm"
+          variant="outline"
+          class="h-9"
+          @click="expanded = !expanded"
+        >
+          <component
+            :is="expanded ? ChevronUpIcon : ChevronDownIcon"
+            :size="18"
+          />
+          {{ expanded ? $t('common.collapse') : $t('common.expand') }}
+        </Button>
+      </div>
+    </Card>
+  </ClientOnly>
+</template>
+
+<script setup lang="ts">
+import type { BuiltinLanguage } from 'shiki'
+import { ChevronUpIcon, ChevronDownIcon } from '@lucide/vue'
+import CtIcon from './CtIcon.vue'
+
+const props = withDefaults(defineProps<{
+  code?: string
+  language?: BuiltinLanguage
+  filename?: string
+  inGroup?: boolean
+  inTree?: boolean
+  inStack?: boolean
+  highlights?: number[]
+  meta?: string
+  height?: number
+}>(), {
+  code: '',
+  inGroup: false,
+  inTree: false,
+  inStack: false,
+})
+
+const parsedMeta = computed(() => {
+  const split = props.meta?.split(' ') ?? []
+  const params = new Map<string, string | undefined>()
+
+  for (const param of split) {
+    const [key, val] = param.split('=')
+    params.set(key, val)
+  }
+
+  return params
+})
+
+const expanded = ref(false)
+const icon = computed(() => {
+  return parsedMeta.value.get('icon') || props.language || props.filename?.toLowerCase()
+})
+</script>
+
+<style>
+.fade-enter-active {
+  transition: opacity 0.5s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+
+.shiki .line.highlight {
+  background-color: hsl(var(--muted));
+}
+
+.shiki .line,
+.language-text {
+  padding-left: 0.75rem;
+  padding-right: 0.75rem;
+}
+
+.inline-copy .line {
+  padding-right: 2.75rem;
+}
+
+.has-diff .line::before,
+.show-line-number .line::before {
+  font-size: var(--text-sm);
+  line-height: var(--tw-leading, var(--text-xs--line-height));
+  width: calc(var(--spacing) * 5);
+  display: inline-block;
+  text-align: right;
+  margin-right: calc(var(--spacing) * 4);
+  color: hsl(var(--muted-foreground));
+}
+
+.show-line-number .line:not(.diff)::before {
+  font-size: var(--text-xs);
+  content: attr(line);
+}
+
+.has-diff:not(.show-line-number>.has-diff) .line:not(.diff)::before {
+  font-size: var(--text-sm);
+  content: '';
+}
+
+.diff.add {
+  background-color: color-mix(in oklab,var(--color-green-500)15%,transparent) !important;
+}
+
+.diff.remove {
+  background-color: color-mix(in oklab,var(--color-red-500)15%,transparent) !important;
+}
+
+.diff.add.line::before {
+  font-size: var(--text-sm);
+  color: var(--color-green-600);
+  content: '+';
+}
+
+.diff.remove.line::before {
+  font-size: var(--text-sm);
+  color: var(--color-red-600);
+  content: '-';
+}
+
+.highlighted.warning {
+  background-color: color-mix(in oklab,var(--color-yellow-500)15%,transparent) !important;
+}
+
+.highlighted.error {
+  background-color: color-mix(in oklab,var(--color-red-500)15%,transparent) !important;
+}
+
+.has-focused .line:not(.focused) {
+  opacity: 0.5;
+  filter: blur(.095rem);
+  transition: filter .35s, opacity .35s;
+}
+
+.has-focused:hover .line:not(.focused) {
+  opacity: 1;
+  filter: blur(0);
+}
+</style>
