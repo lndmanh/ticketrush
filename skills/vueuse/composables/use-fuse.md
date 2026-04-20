@@ -37,7 +37,7 @@ const { results } = useFuse(input, data)
 
 | Name | Type |
 | --- | --- |
-| fuse | `deepRef` |
+| fuse | `shallowRef` |
 | results | `Ref` |
 
 ## Reference
