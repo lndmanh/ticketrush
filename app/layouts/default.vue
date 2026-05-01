@@ -245,12 +245,6 @@
                     @click="isMobileMenuOpen = false"
                   >
                     <div class="flex items-center gap-3">
-                      <CtIcon
-                        v-if="link.icon"
-                        :name="link.icon"
-                        :size="20"
-                        class="shrink-0 text-primary"
-                      />
                       <div>
                         <span class="text-2xl font-semibold tracking-tight text-foreground transition-all duration-300 group-hover:text-primary group-active:scale-95">
                           {{ $t(link.title || '') }}
@@ -465,7 +459,6 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import CtIcon from '@/components/content/CtIcon.vue'
 import { GitHubIcon, XIcon } from 'vue3-simple-icons'
 import { Menu, X, ChevronLeft, ChevronRight, ArrowRight, SunIcon, MoonIcon, MailIcon } from '@lucide/vue'
 import { cn } from '@/lib/utils'

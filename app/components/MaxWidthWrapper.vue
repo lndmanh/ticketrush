@@ -1,5 +1,5 @@
 <template>
-  <div :class="cn('mx-auto w-full max-w-screen-2xl px-6 lg:px-10 pt-3 pb-6', className)">
+  <div :class="cn('mx-auto w-full px-6 lg:px-10 pt-3 pb-6', className)">
     <slot />
   </div>
 </template>

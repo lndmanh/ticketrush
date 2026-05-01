@@ -1,8 +1,5 @@
 import { createDefu } from 'defu'
-import type { ContentNavigationItem } from '@nuxt/content'
 import type { DefaultConfig } from '~~/types'
-import { navPageOverrides } from './useContentHelpers'
-import { usePageData } from '@/composables/usePageData'
 import { APP_MANIFEST } from '#shared/constants/manifest'
 
 const customDefu = createDefu((obj, key, value) => {
@@ -11,9 +8,6 @@ const customDefu = createDefu((obj, key, value) => {
     return true
   }
 })
-
-/** Config sections that support per-page overrides via navigation and frontmatter. */
-const OVERRIDE_SECTIONS = ['header', 'banner', 'main', 'aside', 'toc', 'footer'] as const
 
 const defaultConfig: DefaultConfig = {
   site: {
@@ -129,38 +123,9 @@ const defaultConfig: DefaultConfig = {
 export function useConfig() {
   const appConfig = useRuntimeConfig().public.docs
 
-  const route = useRoute()
-
-  // Safely attempt to get page data — may not be available in all contexts
-  // (e.g., plugins, error pages, non-content pages)
-  let page: Ref<Record<string, unknown> | null | undefined> = shallowRef(undefined)
-  let navigation: Ref<ContentNavigationItem[] | null | undefined> = shallowRef(undefined)
-
-  try {
-    const pageData = usePageData()
-    page = pageData.page as typeof page
-    navigation = pageData.navigation as typeof navigation
-  }
-  catch {
-    // usePageData() not available in this context — config will use defaults only
-  }
-
   return computed(() => {
     const processedConfig = customDefu(appConfig, defaultConfig)
-
-    const navOverrides = navPageOverrides(route.path, OVERRIDE_SECTIONS, navigation.value)
-    const pageData = page.value
-
     const sectionOverrides = {} as Record<string, unknown>
-    for (const key of OVERRIDE_SECTIONS) {
-      const navOverride = navOverrides[key] as Record<string, unknown> | undefined
-      const pageOverride = pageData?.[key] as Record<string, unknown> | undefined
-      sectionOverrides[key] = {
-        ...processedConfig[key],
-        ...navOverride,
-        ...pageOverride,
-      }
-    }
 
     return {
       ...processedConfig,

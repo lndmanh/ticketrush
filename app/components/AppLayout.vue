@@ -249,17 +249,11 @@ const { loggedIn, user } = useUserSession()
             className,
           )"
         >
-          <Transition
-            name="page"
-            mode="out-in"
+          <div
+            class="flex flex-1 flex-col min-h-full"
           >
-            <div
-              :key="routeTransitionKey"
-              class="flex flex-1 flex-col min-h-full"
-            >
-              <slot />
-            </div>
-          </Transition>
+            <slot />
+          </div>
         </MaxWidthWrapper>
       </div>
     </div>
