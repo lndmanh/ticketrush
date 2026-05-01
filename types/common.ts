@@ -1,6 +1,7 @@
+import type { Component } from 'vue'
 import type { User } from '~~/shared/db'
 
-export type SidebarItem = {
+export interface SidebarItem {
   title: string
   url?: string
   icon?: Component
@@ -33,7 +34,7 @@ export interface SidebarContext {
   guard?: (user: SidebarGuardUser) => boolean
 }
 
-export type BreadcrumbItemType = {
+export interface BreadcrumbItemType {
   title: string
   href: string
 }

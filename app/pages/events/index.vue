@@ -10,7 +10,7 @@ definePageMeta({
 </script>
 
 <template>
-  <main class="space-y-8 pb-16 pt-6 md:space-y-12 md:pb-24">
+  <AppLayout :hide-header="true">
     <section class="space-y-4">
       <span class="section-eyebrow">
         Live catalog
@@ -43,5 +43,5 @@ definePageMeta({
         :event="event"
       />
     </section>
-  </main>
+  </AppLayout>
 </template>

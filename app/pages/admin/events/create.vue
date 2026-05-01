@@ -6,6 +6,7 @@ import { toast } from 'vue-sonner'
 import { Check, Circle, Cloud, CloudAlert, Dot, Loader2 } from '@lucide/vue'
 import { eventComposerSchema } from '#shared/schemas/ticketingSchema'
 import type { EventComposerInput } from '#shared/schemas/ticketingSchema'
+import type { VenueDetail } from '~~/types/venues'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -40,22 +41,6 @@ interface VenueOption {
   name: string
 }
 
-interface VenueSectionDetail {
-  id: number
-  code: string
-  name: string
-  color: string
-  rows: Array<{
-    id: number
-    label: string
-    seats: Array<{ id: number, label: string, seatNumber: number }>
-  }>
-}
-
-interface VenueDetailResponse {
-  sections: VenueSectionDetail[]
-}
-
 interface EventCreationStep {
   step: number
   title: string
@@ -87,7 +72,7 @@ const stepSchemas = {
 
 const { data: venuesResponse } = await useFetch('/api/admin/venues')
 const venues = computed<VenueOption[]>(() => venuesResponse.value?.data ?? [])
-const selectedVenueDetail = ref<VenueDetailResponse | null>(null)
+const selectedVenueDetail = ref<VenueDetail | null>(null)
 const currentStep = ref(1)
 const highestReachedStep = ref(1)
 const isSaving = ref(false)
@@ -258,7 +243,7 @@ watch(() => values.venueId, async (venueId) => {
     return
   }
 
-  const detail = await $fetch<{ data: VenueDetailResponse }>(`/api/admin/venues/${venueId}`)
+  const detail = await $fetch<{ data: VenueDetail }>(`/api/admin/venues/${venueId}`)
   selectedVenueDetail.value = detail.data
 
   if (!values.sessions || values.sessions.length === 0) {

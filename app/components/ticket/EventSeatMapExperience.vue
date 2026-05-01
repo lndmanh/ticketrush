@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Check, CircleSlash, LockKeyhole, Search, Ticket, ZoomIn, ZoomOut } from '@lucide/vue'
-import type { SeatMapSeat, SeatMapStatus, SeatMapTicketType } from '@/lib/seatmapLayout'
+import type { SeatMapSeat, SeatMapStatus, SeatMapTicketType } from '~~/types/seatmap'
 import { colorToRgb, formatSeatMapCurrency } from '@/lib/seatmapLayout'
 import { Button } from '@/components/ui/button'
 import {

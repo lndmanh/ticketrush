@@ -148,7 +148,7 @@ export interface DefaultConfig {
 export type Color
   = | 'zinc' | 'slate' | 'stone' | 'gray' | 'neutral' | 'red' | 'rose' | 'orange' | 'green' | 'blue' | 'yellow' | 'violet'
 
-export type Target = '_blank' | '_parent' | '_self' | '_top' | (string & object) | null | undefined
+export type Target = '_blank' | '_parent' | '_self' | '_top' | (string & {}) | null | undefined
 
 export type FileTreeItemDiff = 'addition' | 'deletion' | 'none'
 export interface FileTreeItem {

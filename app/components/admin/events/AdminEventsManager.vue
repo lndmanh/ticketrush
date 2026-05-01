@@ -152,7 +152,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { toast } from 'vue-sonner'
 import type { Event, Venue } from '#shared/db'
-import type { ApiResponse } from '~~/server/utils/apiResponse'
+import type { ApiResponse } from '~~/types/api'
 import { ArchiveIcon, Rocket } from '@lucide/vue'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'

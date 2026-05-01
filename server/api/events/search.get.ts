@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import eventService from '~~/server/utils/database/event'
 import { success } from '~~/server/utils/apiResponse'
+import type { EventSearchApiItem } from '~~/types/events'
 
 const eventSearchQuerySchema = z.object({
   query: z.string().trim().min(1, 'Search query is required.'),
@@ -12,7 +13,7 @@ export default defineEventHandler(async (event) => {
 
   const events = await eventService.searchEventCardList(query.query, query.limit)
 
-  const results = events.map(item => ({
+  const results: EventSearchApiItem[] = events.map(item => ({
     id: `/events/${item.slug}`,
     title: item.title,
     subtitle: item.subtitle,

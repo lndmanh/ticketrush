@@ -2,6 +2,7 @@ import eventSessionService from '~~/server/utils/database/event-session'
 import queueService from '~~/server/utils/ticketing/queue'
 import { success } from '~~/server/utils/apiResponse'
 import { getTicketingSessionKey } from '~~/server/utils/ticketing/session'
+import type { EventSessionGateResponse } from '~~/types/ticketing'
 
 export default defineEventHandler(async (event) => {
   const sessionPublicId = getRouterParam(event, 'sessionId')
@@ -22,9 +23,11 @@ export default defineEventHandler(async (event) => {
   const customerKey = getTicketingSessionKey(event)
   const shouldQueue = await queueService.shouldQueue(session.id, customerKey, typeof passToken === 'string' ? passToken : undefined)
 
-  return success({
+  const response: EventSessionGateResponse = {
     shouldQueue,
     sessionPublicId: session.publicId,
     eventId: session.eventId,
-  })
+  }
+
+  return success(response)
 })

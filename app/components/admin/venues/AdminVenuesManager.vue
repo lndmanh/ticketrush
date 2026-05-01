@@ -318,7 +318,8 @@ import { computed, onMounted, ref } from 'vue'
 import { Field as VeeField, useForm } from 'vee-validate'
 import { toast } from 'vue-sonner'
 import type { Venue } from '#shared/db'
-import type { ApiResponse } from '~~/server/utils/apiResponse'
+import type { ApiResponse } from '~~/types/api'
+import type { VenueDetail } from '~~/types/venues'
 import { venueBuilderSchema } from '#shared/schemas/ticketingSchema'
 import type { VenueBuilderInput } from '#shared/schemas/ticketingSchema'
 import { MapPinned, Rows3, Ruler } from '@lucide/vue'
@@ -345,17 +346,6 @@ import {
 } from '@/components/ui/field'
 import DataTable from '@/components/DataTable.vue'
 import { createColumns } from './columns'
-
-interface VenueDetailResponse {
-  venue: Venue
-  sections: Array<{
-    id: number
-    code: string
-    name: string
-    color: string
-    rows: Array<{ seats: Array<{ id: number }> }>
-  }>
-}
 
 function extractErrorMessage(error: unknown, fallback: string) {
   if (typeof error === 'object' && error !== null && 'data' in error) {
@@ -526,7 +516,7 @@ function openCreateDialog() {
 async function openEditDialog(venue: Venue) {
   try {
     dialogLoading.value = true
-    const detail = await $fetch<ApiResponse<VenueDetailResponse>>(`/api/admin/venues/${venue.id}`)
+    const detail = await $fetch<ApiResponse<VenueDetail>>(`/api/admin/venues/${venue.id}`)
     editingVenueId.value = venue.id
     resetForm({
       values: {

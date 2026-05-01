@@ -4,42 +4,9 @@ import { Field as VeeField, useForm } from 'vee-validate'
 import { toast } from 'vue-sonner'
 import { createVenueSchema } from '#shared/schemas/ticketingSchema'
 import type { VenueSectionDraftInput } from '#shared/schemas/ticketingSchema'
+import type { VenueDetail } from '~~/types/venues'
 import { ArrowLeft, Building2, CalendarRange, LayoutGrid, Map, Rows3, Settings2, Users } from '@lucide/vue'
 import AdminVenuesVenueSeatLayoutEditor from '@/components/admin/venues/VenueSeatLayoutEditor.vue'
-
-interface AdminVenueDetail {
-  venue: {
-    id: number
-    name: string
-    slug: string
-    description: string | null
-    city: string
-    country: string
-    address: string
-    coverImage: string | null
-    capacity: number
-  }
-  sections: Array<{
-    id: number
-    code: string
-    name: string
-    color: string
-    rows: Array<{
-      id: number
-      label: string
-      seats: Array<{
-        id: number
-        label: string
-        seatNumber: number
-        x: number
-        y: number
-        sortOrder: number
-        accessibilityLabel: string | null
-        isAccessible: boolean
-      }>
-    }>
-  }>
-}
 
 interface AdminEventListItem {
   id: number
@@ -87,10 +54,10 @@ interface VenueBlueprintPreset {
 const route = useRoute()
 const venueId = computed(() => Number(route.params.id))
 
-const { data: venueResponse, refresh: refreshVenue } = await useFetch<{ data: AdminVenueDetail }>(() => `/api/admin/venues/${venueId.value}`)
+const { data: venueResponse, refresh: refreshVenue } = await useFetch<{ data: VenueDetail }>(() => `/api/admin/venues/${venueId.value}`)
 const { data: eventsResponse } = await useFetch<{ data: AdminEventListItem[] }>('/api/admin/events')
 
-const venueDetail = computed<AdminVenueDetail | null>(() => venueResponse.value?.data ?? null)
+const venueDetail = computed<VenueDetail | null>(() => venueResponse.value?.data ?? null)
 const linkedEvents = computed<AdminEventListItem[]>(() => {
   const items = eventsResponse.value?.data ?? []
   return items.filter(event => event.venueId === venueId.value)

@@ -284,7 +284,7 @@ import type {
   AdminUserEditFormInput,
 } from '#shared/schemas/userSchema'
 import type { User } from '#shared/db'
-import type { ApiResponse } from '~~/server/utils/apiResponse'
+import type { ApiResponse } from '~~/types/api'
 import { InfoIcon, Trash2Icon, UserPlus } from '@lucide/vue'
 import DataTable from '@/components/DataTable.vue'
 import { createColumns } from './columns'

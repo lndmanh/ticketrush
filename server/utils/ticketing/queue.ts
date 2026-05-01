@@ -1,6 +1,7 @@
 import { and, asc, eq } from 'drizzle-orm'
 import { createQueuePassToken } from '~~/server/utils/ticketing/ids'
 import waitingRoomSettingsService from '~~/server/utils/ticketing/waiting-room-settings'
+import type { QueueState } from '~~/types/ticketing'
 
 function buildQueuePassKey(eventSessionId: number, passToken: string) {
   return `queue-pass:${eventSessionId}:${passToken}`
@@ -78,7 +79,7 @@ class QueueService {
     return this.getStatus(eventSessionId, customerKey)
   }
 
-  async getStatus(eventSessionId: number, customerKey: string) {
+  async getStatus(eventSessionId: number, customerKey: string): Promise<QueueState | null> {
     const session = await this.db
       .select()
       .from(tables.eventSessions)

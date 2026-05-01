@@ -13,7 +13,8 @@ import { AVAILABLE_PROVIDERS } from '#shared/constants/oauthProviders'
 import { apiRoutes } from '#shared/apiRoutes'
 import { Field as VeeField, useForm } from 'vee-validate'
 import { Field, FieldLabel, FieldError } from '@/components/ui/field'
-import type { ApiResponse } from '~~/server/utils/apiResponse'
+import type { ApiResponse } from '~~/types/api'
+import type { OAuthPopupCompleteMessage } from '~~/types/auth'
 
 const route = useRoute()
 const showPassword = ref(false)
@@ -28,11 +29,6 @@ const oauthLoadingProvider = ref<string | null>(null)
 const oauthPopup = ref<Window | null>(null)
 const oauthPopupTimeout = ref<ReturnType<typeof setTimeout> | null>(null)
 const oauthPopupCloseMonitor = ref<ReturnType<typeof setInterval> | null>(null)
-
-type OAuthPopupCompleteMessage = {
-  type: 'oauth:complete'
-  url: string
-}
 
 function getQueryString(value: string | string[] | null | undefined) {
   if (typeof value === 'string') {

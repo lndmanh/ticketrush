@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import type { SeatMapSeat, SeatMapTicketType } from '@/lib/seatmapLayout'
+import type { SeatMapSeat, SeatMapTicketType } from '~~/types/seatmap'
 import { buildSeatMapLayout, getRowStyle, getTintStyle } from '@/lib/seatmapLayout'
 
 const props = withDefaults(defineProps<{

@@ -2,8 +2,9 @@ import eventService from '~~/server/utils/database/event'
 import eventSessionService from '~~/server/utils/database/event-session'
 import venueService from '~~/server/utils/database/venue'
 import { success } from '~~/server/utils/apiResponse'
+import type { EventSessionDetailResponse, PublicEventSessionBase, PublicEventSummary, PublicVenueDetail } from '~~/types/events'
 
-function mapVenue(venueDetail: Awaited<ReturnType<typeof venueService.getDetail>>) {
+function mapVenue(venueDetail: Awaited<ReturnType<typeof venueService.getDetail>>): PublicVenueDetail | null {
   if (!venueDetail) {
     return null
   }
@@ -23,7 +24,7 @@ function mapVenue(venueDetail: Awaited<ReturnType<typeof venueService.getDetail>
   }
 }
 
-function mapEvent(event: Awaited<ReturnType<typeof eventService.getById>>) {
+function mapEvent(event: Awaited<ReturnType<typeof eventService.getById>>): PublicEventSummary | null {
   if (!event) {
     return null
   }
@@ -39,7 +40,7 @@ function mapEvent(event: Awaited<ReturnType<typeof eventService.getById>>) {
   }
 }
 
-function mapSession(session: Awaited<ReturnType<typeof eventSessionService.getByPublicId>>) {
+function mapSession(session: Awaited<ReturnType<typeof eventSessionService.getByPublicId>>): PublicEventSessionBase | null {
   if (!session) {
     return null
   }
@@ -80,7 +81,7 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 404, statusMessage: 'Event not found.' })
   }
 
-  return success({
+  const response: EventSessionDetailResponse = {
     event: mapEvent(parent),
     session: mapSession(session),
     venue: mapVenue(venue),
@@ -96,5 +97,7 @@ export default defineEventHandler(async (event) => {
       isReservedSeating: ticketType.isReservedSeating,
       sortOrder: ticketType.sortOrder,
     })),
-  })
+  }
+
+  return success(response)
 })
