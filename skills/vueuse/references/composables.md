@@ -313,6 +313,7 @@
 
 | Composable | Description | File |
 | --- | --- | --- |
+| createDisposableDirective | Utility for authoring disposable directives. Reactive eff... | [create-disposable-directive.md](../composables/create-disposable-directive.md) |
 | createEventHook | Utility for creating event hooks | [create-event-hook.md](../composables/create-event-hook.md) |
 | createUnrefFn | Make a plain function accepting ref and raw values as arg... | [create-unref-fn.md](../composables/create-unref-fn.md) |
 | get | Shorthand for accessing | [get.md](../composables/get.md) |

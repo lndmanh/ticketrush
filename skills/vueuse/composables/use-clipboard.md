@@ -43,6 +43,7 @@ const { text, copy, copied, isSupported } = useClipboard({ source })
 
 | Name | Type |
 | --- | --- |
+| copyPending | `shallowRef` |
 | isSupported | `computed` |
 | text | `shallowRef` |
 | copied | `shallowRef` |
