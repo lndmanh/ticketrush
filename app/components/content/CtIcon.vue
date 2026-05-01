@@ -33,14 +33,6 @@
     loading="lazy"
   />
 
-  <!-- 5. File-type icon (useFileIcon) -->
-  <component
-    :is="fileIcon"
-    v-else-if="fileIcon"
-    :size="size"
-    :class="cn(props.class)"
-  />
-
   <!-- 6. Lucide icon string -->
   <component
     :is="lucideIcon"
@@ -62,7 +54,6 @@
 import { computed, type Component } from 'vue'
 import * as lucideIcons from '@lucide/vue'
 import { cn } from '~/lib/utils'
-import { useFileIcon } from '~/composables/useFileIcon'
 
 // ─── Props ───────────────────────────────────────────────────
 
@@ -95,13 +86,8 @@ const isImage = computed(() => {
   return IMAGE_RE.test(props.name as string)
 })
 
-const fileIcon = computed<Component | undefined>(() => {
-  if (!isStringName.value || isEmoji.value || isImage.value) return undefined
-  return useFileIcon(props.name as string)
-})
-
 const lucideIcon = computed<Component | null>(() => {
-  if (!isStringName.value || isEmoji.value || isImage.value || fileIcon.value) return null
+  if (!isStringName.value || isEmoji.value || isImage.value) return null
   const key = toPascalCase(props.name as string)
   return (lucideIcons as unknown as Record<string, Component>)[key] ?? null
 })

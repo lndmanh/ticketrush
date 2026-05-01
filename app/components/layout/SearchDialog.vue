@@ -32,15 +32,7 @@
               @click="handleClose"
             >
               <CommandItem :value="child.path">
-                <CtIcon
-                  v-if="!isEmpty(child.icon)"
-                  :name="child.icon as string"
-                  class="mr-2 size-4"
-                />
-                <FileIcon
-                  v-else
-                  class="mr-2 size-4"
-                />
+                <FileIcon class="mr-2 size-4" />
                 <span>{{ child.title }}</span>
               </CommandItem>
             </NuxtLink>
@@ -154,11 +146,31 @@
 
 <script setup lang="ts">
 import { nextTick } from 'vue'
-import MiniSearch, { type SearchResult } from 'minisearch'
-import { useContentHelpers } from '@/composables/useContentHelpers'
-import { isEmpty } from 'es-toolkit/compat'
 import { ChevronRightIcon, FileIcon, SearchXIcon } from '@lucide/vue'
 import CtIcon from '@/components/content/CtIcon.vue'
+import type { ApiResponse } from '~~/server/utils/apiResponse'
+import type { SidebarItem } from '~~/types/common'
+
+type EventSearchApiItem = {
+  id: string
+  title: string
+  subtitle: string | null
+  content: string
+  slug: string
+  venueName: string | null
+  venueCity: string | null
+}
+
+type EventSearchResultItem = {
+  id: string
+  title: string
+  content: string
+  titles: string[]
+}
+
+function hasSidebarUrl(item: SidebarItem): item is SidebarItem & { url: string } {
+  return typeof item.url === 'string' && item.url.length > 0
+}
 
 const store = useSearchDialogStore()
 const open = computed({
@@ -172,7 +184,8 @@ const { placeholderDetailed } = useConfig().value.search
 const input = ref('')
 const activeSelect = ref(0)
 const searchLoading = ref(false)
-const searchResult = ref<SearchResult[] | null>(null)
+const searchResult = ref<EventSearchResultItem[] | null>(null)
+const latestRequestId = ref(0)
 
 const { Meta_K, Ctrl_K } = useMagicKeys({
   passive: false,
@@ -191,35 +204,58 @@ function resetState() {
   searchResult.value = null
 }
 
-// Nuxt Content v3: Load all searchable sections once, then filter with MiniSearch
-const { data: searchSections } = await useAsyncData('search-sections', () => queryCollectionSearchSections('content'), { server: false })
-
-// Initialize MiniSearch instance
-const miniSearch = new MiniSearch({
-  fields: ['title', 'content'],
-  storeFields: ['title', 'content', 'titles', 'id', 'level'],
-  searchOptions: {
-    prefix: true,
-    fuzzy: 0.2,
-  },
-})
-
-// Add data to the MiniSearch instance (guard against null data)
-if (searchSections.value) {
-  miniSearch.addAll(searchSections.value)
+function toSearchTitles(item: EventSearchApiItem) {
+  const titles = ['Events']
+  if (item.venueName) {
+    titles.push(item.venueName)
+  }
+  return titles
 }
 
-// Debounced search: watch + shallowRef instead of computed with side effects
-const debouncedSearch = useDebounceFn(() => {
+// Debounced API search keeps payload small and avoids client-side full indexing.
+const debouncedSearch = useDebounceFn(async () => {
   const term = input.value?.trim()
   if (!term) {
     searchResult.value = null
     searchLoading.value = false
     return
   }
-  searchResult.value = miniSearch.search(term)
-  activeSelect.value = 0
-  searchLoading.value = false
+
+  const requestId = latestRequestId.value + 1
+  latestRequestId.value = requestId
+
+  try {
+    const response = await $fetch<ApiResponse<EventSearchApiItem[]>>('/api/events/search', {
+      query: {
+        query: term,
+        limit: 10,
+      },
+    })
+
+    if (requestId !== latestRequestId.value) {
+      return
+    }
+
+    const items = response.success ? response.data : []
+    searchResult.value = items.map(item => ({
+      id: item.id,
+      title: item.title,
+      titles: toSearchTitles(item),
+      content: item.content,
+    }))
+    activeSelect.value = 0
+  }
+  catch {
+    if (requestId !== latestRequestId.value) {
+      return
+    }
+    searchResult.value = []
+  }
+  finally {
+    if (requestId === latestRequestId.value) {
+      searchLoading.value = false
+    }
+  }
 }, 200)
 
 watch(input, (val) => {
@@ -229,26 +265,38 @@ watch(input, (val) => {
   debouncedSearch()
 })
 
-// Highlight search terms in text - used for breadcrumb, title, and content
 function highlightMatches(text: string) {
   if (!text || !input.value) return text
-  // Escape special regex chars and split search into words for multi-word highlighting
   const searchTerms = input.value.trim().split(/\s+/).filter(t => t.length > 0)
   if (searchTerms.length === 0) return text
 
-  // Create regex that matches any of the search terms
   const escapedTerms = searchTerms.map(t => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
   const regex = new RegExp(`(${escapedTerms.join('|')})`, 'gi')
 
   return text.replace(regex, '<mark class="bg-primary/20 text-primary rounded px-0.5">$1</mark>')
 }
 
-const { navKeyFromPath } = useContentHelpers()
-const { navigation } = usePageData()
+const { primarySections, secondarySections } = useSidebarContext()
+const navigation = computed(() => {
+  const sections = [...primarySections.value, ...secondarySections.value]
 
-function getItemIcon(path: string) {
-  const navKey = navKeyFromPath(path, 'icon', navigation.value)
-  return !isEmpty(navKey) ? navKey : undefined
+  return sections
+    .map(section => ({
+      path: section.title,
+      title: section.title,
+      children: section.items
+        .filter(hasSidebarUrl)
+        .map(item => ({
+          stem: item.url,
+          path: item.url,
+          title: item.title,
+        })),
+    }))
+    .filter(section => section.children.length > 0)
+})
+
+function getItemIcon(_path: string) {
+  return 'lucide:calendar-days'
 }
 
 watch(activeSelect, (value) => {
