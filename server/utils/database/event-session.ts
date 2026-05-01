@@ -51,15 +51,6 @@ class EventSessionService extends IDatabaseService<typeof tables.eventSessions.$
       .all()
   }
 
-  async getDefaultSessionForEvent(eventId: number) {
-    return this.db
-      .select()
-      .from(tables.eventSessions)
-      .where(eq(tables.eventSessions.eventId, eventId))
-      .orderBy(asc(tables.eventSessions.startsAt))
-      .get()
-  }
-
   async getTicketTypes(eventSessionId: number) {
     return this.db
       .select()
@@ -103,9 +94,6 @@ class EventSessionService extends IDatabaseService<typeof tables.eventSessions.$
       salesStartAt: input.salesStartAt,
       salesEndAt: input.salesEndAt,
       queueEnabled: input.queueEnabled,
-      queueActivationThreshold: input.queueActivationThreshold,
-      queueBatchSize: input.queueBatchSize,
-      queueWindowSeconds: input.queueWindowSeconds,
       publishedAt: null,
       createdAt: now,
       updatedAt: now,
@@ -173,9 +161,6 @@ class EventSessionService extends IDatabaseService<typeof tables.eventSessions.$
       salesStartAt: input.salesStartAt,
       salesEndAt: input.salesEndAt,
       queueEnabled: input.queueEnabled,
-      queueActivationThreshold: input.queueActivationThreshold,
-      queueBatchSize: input.queueBatchSize,
-      queueWindowSeconds: input.queueWindowSeconds,
       updatedAt: now,
     }).where(eq(tables.eventSessions.id, input.id)).returning().get()
 

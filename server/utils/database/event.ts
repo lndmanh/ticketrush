@@ -103,9 +103,6 @@ class EventService extends IDatabaseService<Event> {
           endsAt: primarySession.endsAt ?? null,
           salesStartAt: primarySession.salesStartAt,
           salesEndAt: primarySession.salesEndAt,
-          queueEnabled: primarySession.queueEnabled,
-          queueBatchSize: primarySession.queueBatchSize,
-          queueWindowSeconds: primarySession.queueWindowSeconds,
           publishedAt: null,
           createdAt: now,
           updatedAt: now,
@@ -153,9 +150,6 @@ class EventService extends IDatabaseService<Event> {
           endsAt: primarySession.endsAt ?? null,
           salesStartAt: primarySession.salesStartAt,
           salesEndAt: primarySession.salesEndAt,
-          queueEnabled: primarySession.queueEnabled,
-          queueBatchSize: primarySession.queueBatchSize,
-          queueWindowSeconds: primarySession.queueWindowSeconds,
           updatedAt: now,
         })
         .where(eq(tables.events.id, data.id))
@@ -196,9 +190,6 @@ class EventService extends IDatabaseService<Event> {
         endsAt: primarySession.endsAt ?? null,
         salesStartAt: primarySession.salesStartAt,
         salesEndAt: primarySession.salesEndAt,
-        queueEnabled: primarySession.queueEnabled,
-        queueBatchSize: primarySession.queueBatchSize,
-        queueWindowSeconds: primarySession.queueWindowSeconds,
         updatedAt: now,
       })
       .where(eq(tables.events.id, eventId))
@@ -325,23 +316,6 @@ class EventService extends IDatabaseService<Event> {
       .where(eq(tables.events.id, eventId))
       .returning()
       .get()
-  }
-
-  async getSeatMap(eventId: number) {
-    const defaultSession = await eventSessionService.getDefaultSessionForEvent(eventId)
-    if (!defaultSession) {
-      return {
-        seats: [],
-        ticketTypes: [],
-      }
-    }
-
-    const { seats, ticketTypes } = await eventSessionService.getSeatMap(defaultSession.id)
-
-    return {
-      seats,
-      ticketTypes,
-    }
   }
 
   async getEventCardList() {

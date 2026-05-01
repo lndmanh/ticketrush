@@ -14,9 +14,6 @@ interface AdminEventWorkspaceEvent {
   endsAt: string | Date | null
   salesStartAt: string | Date
   salesEndAt: string | Date
-  queueEnabled: boolean
-  queueBatchSize: number
-  queueWindowSeconds: number
 }
 
 export interface AdminEventWorkspaceSession {
@@ -31,9 +28,6 @@ export interface AdminEventWorkspaceSession {
   salesStartAt: string | Date
   salesEndAt: string | Date
   queueEnabled: boolean
-  queueActivationThreshold: number
-  queueBatchSize: number
-  queueWindowSeconds: number
   ticketTypes: AdminEventWorkspaceTicketType[]
   seats: AdminEventWorkspaceSeat[]
 }

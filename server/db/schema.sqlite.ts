@@ -92,9 +92,6 @@ export const events = sqliteTable('events', {
   endsAt: integer('ends_at', { mode: 'timestamp' }),
   salesStartAt: integer('sales_start_at', { mode: 'timestamp' }).notNull(),
   salesEndAt: integer('sales_end_at', { mode: 'timestamp' }).notNull(),
-  queueEnabled: integer('queue_enabled', { mode: 'boolean' }).notNull().default(false),
-  queueBatchSize: integer('queue_batch_size').notNull().default(50),
-  queueWindowSeconds: integer('queue_window_seconds').notNull().default(180),
   publishedAt: integer('published_at', { mode: 'timestamp' }),
   ...timestampColumns,
 }, table => [
@@ -115,9 +112,6 @@ export const eventSessions = sqliteTable('event_sessions', {
   salesStartAt: integer('sales_start_at', { mode: 'timestamp' }).notNull(),
   salesEndAt: integer('sales_end_at', { mode: 'timestamp' }).notNull(),
   queueEnabled: integer('queue_enabled', { mode: 'boolean' }).notNull().default(false),
-  queueActivationThreshold: integer('queue_activation_threshold').notNull().default(250),
-  queueBatchSize: integer('queue_batch_size').notNull().default(50),
-  queueWindowSeconds: integer('queue_window_seconds').notNull().default(180),
   publishedAt: integer('published_at', { mode: 'timestamp' }),
   ...timestampColumns,
 }, table => [

@@ -99,9 +99,6 @@ export const eventSessionDraftSchema = z.object({
   salesStartAt: requiredDateSchema,
   salesEndAt: requiredDateSchema,
   queueEnabled: z.boolean().default(false),
-  queueActivationThreshold: z.coerce.number().int().positive().default(250),
-  queueBatchSize: z.coerce.number().int().positive().default(50),
-  queueWindowSeconds: z.coerce.number().int().positive().default(180),
   ticketTypes: z.array(ticketTypeDraftSchema).min(1),
 })
 
