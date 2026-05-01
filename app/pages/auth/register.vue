@@ -23,6 +23,7 @@ const error = ref('')
 const showPasskeyDialog = ref(false)
 const registeredUsername = ref('')
 const turnstileToken = ref('')
+const registrationFormElement = ref<HTMLFormElement | null>(null)
 const oauthLoadingProvider = ref<string | null>(null)
 const oauthPopup = ref<Window | null>(null)
 const oauthPopupTimeout = ref<ReturnType<typeof setTimeout> | null>(null)
@@ -96,8 +97,7 @@ const form = useForm({
 const { handleSubmit, values, meta, setFieldValue } = form
 
 const onSubmit = handleSubmit(async () => {
-  const formEl = document.querySelector('form[action="/api/auth/register-password"]') as HTMLFormElement
-  if (formEl) formEl.submit()
+  registrationFormElement.value?.submit()
 })
 
 watch(turnstileToken, (val) => {
@@ -268,6 +268,7 @@ definePageMeta({
         </div>
 
         <form
+          ref="registrationFormElement"
           action="/api/auth/register-password"
           method="POST"
           class="space-y-4"
@@ -291,12 +292,13 @@ definePageMeta({
                 <UserIcon class="absolute left-3 top-3 h-4 w-4" />
                 <Input
                   id="username"
-                  v-bind="field"
+                  :model-value="field.value"
                   type="text"
                   placeholder="Enter your username"
                   class="pl-9 h-11"
                   :aria-invalid="!!errors.length"
                   :disabled="isLoading"
+                  @update:model-value="field.onChange"
                 />
               </div>
               <FieldError
@@ -324,12 +326,13 @@ definePageMeta({
                 <UserIcon class="absolute left-3 top-3 h-4 w-4" />
                 <Input
                   id="name"
-                  v-bind="field"
+                  :model-value="field.value"
                   type="text"
                   placeholder="Enter your display name"
                   class="pl-9 h-11"
                   :aria-invalid="!!errors.length"
                   :disabled="isLoading"
+                  @update:model-value="field.onChange"
                 />
               </div>
               <FieldError
@@ -357,12 +360,13 @@ definePageMeta({
                 <Mail class="absolute left-3 top-3 h-4 w-4" />
                 <Input
                   id="email"
-                  v-bind="field"
+                  :model-value="field.value"
                   type="email"
                   placeholder="Enter your email"
                   class="pl-9 h-11"
                   :aria-invalid="!!errors.length"
                   :disabled="isLoading"
+                  @update:model-value="field.onChange"
                 />
               </div>
               <FieldError
@@ -390,12 +394,13 @@ definePageMeta({
                 <Lock class="absolute left-3 top-3 h-4 w-4" />
                 <Input
                   id="password"
-                  v-bind="field"
+                  :model-value="field.value"
                   :type="showPassword ? 'text' : 'password'"
                   placeholder="Enter your password"
                   class="pl-9 pr-9 h-11"
                   :aria-invalid="!!errors.length"
                   :disabled="isLoading"
+                  @update:model-value="field.onChange"
                 />
                 <Button
                   type="button"
@@ -444,12 +449,13 @@ definePageMeta({
                 <Lock class="absolute left-3 top-3 h-4 w-4" />
                 <Input
                   id="confirmPassword"
-                  v-bind="field"
+                  :model-value="field.value"
                   :type="showConfirmPassword ? 'text' : 'password'"
                   placeholder="Confirm your password"
                   class="pl-9 pr-9 h-11"
                   :aria-invalid="!!errors.length"
                   :disabled="isLoading"
+                  @update:model-value="field.onChange"
                 />
                 <Button
                   type="button"
