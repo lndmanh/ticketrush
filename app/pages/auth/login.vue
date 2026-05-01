@@ -12,7 +12,7 @@ import { loginSchema } from '#shared/schemas/userSchema'
 import { Field, FieldLabel, FieldError } from '@/components/ui/field'
 import type { ApiResponse } from '~~/server/utils/apiResponse'
 
-const formSchema = loginSchema.pick({ username: true, password: true })
+const loginFormSchema = loginSchema
 
 const { authenticate } = useWebAuthn()
 const route = useRoute()
@@ -20,6 +20,7 @@ const showPassword = ref(false)
 const isLoading = ref(false)
 const error = ref('')
 const turnstileToken = ref('')
+const loginFormElement = ref<HTMLFormElement | null>(null)
 const oauthLoadingProvider = ref<string | null>(null)
 const oauthPopup = ref<Window | null>(null)
 const oauthPopupTimeout = ref<ReturnType<typeof setTimeout> | null>(null)
@@ -78,21 +79,29 @@ function onOAuthPopupComplete(event: MessageEvent<OAuthPopupCompleteMessage>) {
   window.location.assign(`${target.pathname}${target.search}${target.hash}`)
 }
 
-const { handleSubmit, values } = useForm({
+const { handleSubmit, values, setFieldValue } = useForm({
   initialValues: {
-    username: '',
-    password: '',
+    'username': '',
+    'password': '',
+    'cf-turnstile-response': '',
+    'redirect-to': '',
   },
-  validationSchema: formSchema,
+  validationSchema: loginFormSchema,
 })
 
 const onSubmit = handleSubmit(async () => {
-  // Native form submission for server-side auth
-  const formEl = document.querySelector('form[action="/api/auth/login-password"]') as HTMLFormElement
-  if (formEl) formEl.submit()
+  loginFormElement.value?.submit()
 })
 
 const redirectTo = computed(() => getQueryString(route.query.redirectTo) || '/')
+
+watch(turnstileToken, (value) => {
+  setFieldValue('cf-turnstile-response', value)
+})
+
+watch(redirectTo, (value) => {
+  setFieldValue('redirect-to', value)
+}, { immediate: true })
 
 watch(() => route.query.error, (queryValue) => {
   const errorCode = getQueryString(queryValue)
@@ -236,6 +245,7 @@ definePageMeta({
           <AlertDescription>{{ error }}</AlertDescription>
         </Alert>
         <form
+          ref="loginFormElement"
           action="/api/auth/login-password"
           method="POST"
           class="space-y-4"
@@ -264,13 +274,14 @@ definePageMeta({
                 <User class="absolute left-3 top-3 h-4 w-4" />
                 <Input
                   id="username"
-                  v-bind="field"
                   name="username"
+                  :model-value="field.value"
                   type="text"
                   placeholder="Enter your username"
                   class="pl-9 h-11"
                   :disabled="isLoading"
                   :aria-invalid="!!errors.length"
+                  @update:model-value="field.onChange"
                 />
               </div>
               <FieldError
@@ -298,13 +309,14 @@ definePageMeta({
                 <Lock class="absolute left-3 top-3 h-4 w-4" />
                 <Input
                   id="password"
-                  v-bind="field"
                   name="password"
+                  :model-value="field.value"
                   :type="showPassword ? 'text' : 'password'"
                   placeholder="Enter your password"
                   class="pl-9 pr-9 h-11"
                   :disabled="isLoading"
                   :aria-invalid="!!errors.length"
+                  @update:model-value="field.onChange"
                 />
                 <Button
                   type="button"
