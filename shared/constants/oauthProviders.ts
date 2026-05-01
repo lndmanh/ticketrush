@@ -10,11 +10,6 @@ export const OAUTH_PROVIDERS: Record<string, OAuthProviderConfig> = {
     name: 'Google',
     route: '/api/auth/google',
   },
-  github: {
-    id: 'github',
-    name: 'GitHub',
-    route: '/api/auth/github',
-  },
 }
 
 export const AVAILABLE_PROVIDERS = Object.values(OAUTH_PROVIDERS)

@@ -75,8 +75,26 @@ export const userUpdateSchema = createUpdateSchema(users, {
   email: emailSchema.optional(),
   name: z.string().min(1).optional(),
   password: z.string().min(1).optional(),
-  dodoCustomerId: z.string().max(255).optional(),
   isAdmin: z.boolean().optional(),
+})
+
+export const adminUserCreateFormSchema = createUserSchema.pick({
+  username: true,
+  email: true,
+  name: true,
+  password: true,
+  isAdmin: true,
+})
+
+export const adminUserEditFormSchema = userUpdateSchema.pick({
+  id: true,
+  username: true,
+  email: true,
+  name: true,
+  password: true,
+  isAdmin: true,
+}).extend({
+  password: z.string().optional().default(''),
 })
 
 /**
@@ -108,5 +126,7 @@ export const loginSchema = z.object({
 
 export type RegisterUserInput = z.infer<typeof registerUserSchema>
 export type CreateUserInput = z.infer<typeof createUserSchema>
+export type AdminUserCreateFormInput = z.infer<typeof adminUserCreateFormSchema>
+export type AdminUserEditFormInput = z.infer<typeof adminUserEditFormSchema>
 export type UserUpdateInput = z.infer<typeof userUpdateSchema>
 export type UserSelect = z.infer<typeof userSelectSchema>

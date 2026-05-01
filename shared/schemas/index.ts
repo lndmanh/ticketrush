@@ -7,5 +7,5 @@ export const commonSchemaFragments = {
     updatedAt: z.coerce.date().nullish(),
   },
   positiveId: z.coerce.number().int().positive('ID is required'),
-  nonEmptyString: (fieldName: string) => z.string().min(1, `${fieldName} is required`).trim(),
+  nonEmptyString: (fieldName: string) => z.string().trim().min(1, `${fieldName} is required`),
 }
