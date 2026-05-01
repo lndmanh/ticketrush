@@ -25,8 +25,6 @@ export default defineNuxtConfig({
     '@nuxtjs/turnstile',
     '@sentry/nuxt/module',
     '@vite-pwa/nuxt',
-    'nuxt-component-meta',
-    '@/modules/navigation-redirects', // Auto-generate redirects from .navigation.yml files
   ],
 
   $production: {
@@ -256,13 +254,13 @@ export default defineNuxtConfig({
   fonts: {
     families: [
       {
-        name: 'DM Sans',
+        name: 'Plus Jakarta Sans',
         preload: true,
         provider: 'google',
         global: true,
       },
       {
-        name: 'Inter',
+        name: 'JetBrains Mono',
         preload: true,
         provider: 'google',
         global: true,
