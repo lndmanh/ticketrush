@@ -1,0 +1,228 @@
+export type SeatMapStatus = 'available' | 'locked' | 'sold' | 'unavailable'
+
+export interface SeatMapSeat {
+  id: number
+  venueSectionId?: number | null
+  ticketTypeId?: number | null
+  sectionNameSnapshot: string
+  rowLabelSnapshot: string | null
+  seatLabelSnapshot: string
+  displayX?: number | null
+  displayY?: number | null
+  priceCents: number
+  currency?: string
+  status: SeatMapStatus
+}
+
+export interface SeatMapTicketType {
+  id?: number
+  venueSectionId?: number | null
+  name: string
+  description?: string | null
+  priceCents: number
+  currency: string
+  capacity: number
+  color: string
+}
+
+export interface SeatMapRow {
+  label: string
+  seats: SeatMapSeat[]
+  columnCount: number
+}
+
+export interface SeatMapSection {
+  key: string
+  code: string
+  name: string
+  color: string
+  seats: SeatMapSeat[]
+  rows: SeatMapRow[]
+  metrics: {
+    total: number
+    available: number
+    locked: number
+    sold: number
+    unavailable: number
+  }
+}
+
+export interface SeatMapInventorySummary {
+  total: number
+  available: number
+  locked: number
+  sold: number
+  unavailable: number
+}
+
+export interface SeatMapLayout {
+  sections: SeatMapSection[]
+  inventorySummary: SeatMapInventorySummary
+  ticketTypeById: Map<number, SeatMapTicketType>
+  ticketTypeBySectionId: Map<number, SeatMapTicketType>
+}
+
+const fallbackSectionColors = ['#111827', '#0F766E', '#1D4ED8', '#B45309', '#BE123C']
+
+export function buildSectionCode(sectionName: string, index: number) {
+  const code = sectionName
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 3)
+    .map(part => part[0]?.toUpperCase() ?? '')
+    .join('')
+
+  return code || `S${index + 1}`
+}
+
+export function colorToRgb(color: string) {
+  const normalized = color.trim().replace('#', '')
+
+  if (normalized.length === 3) {
+    const [red, green, blue] = normalized.split('')
+    if (!red || !green || !blue) {
+      return null
+    }
+
+    const expanded = `${red}${red}${green}${green}${blue}${blue}`
+    const parsed = Number.parseInt(expanded, 16)
+
+    if (Number.isNaN(parsed)) {
+      return null
+    }
+
+    return `${(parsed >> 16) & 255}, ${(parsed >> 8) & 255}, ${parsed & 255}`
+  }
+
+  if (normalized.length !== 6) {
+    return null
+  }
+
+  const parsed = Number.parseInt(normalized, 16)
+  if (Number.isNaN(parsed)) {
+    return null
+  }
+
+  return `${(parsed >> 16) & 255}, ${(parsed >> 8) & 255}, ${parsed & 255}`
+}
+
+export function getTintStyle(color: string, borderAlpha: number, backgroundAlpha: number) {
+  const rgb = colorToRgb(color)
+  if (!rgb) {
+    return {}
+  }
+
+  return {
+    borderColor: `rgba(${rgb}, ${borderAlpha})`,
+    backgroundImage: `linear-gradient(180deg, rgba(${rgb}, ${backgroundAlpha}), rgba(${rgb}, 0.04) 58%, rgba(255,255,255,0) 100%)`,
+    boxShadow: `0 28px 60px -52px rgba(${rgb}, 0.42)`,
+  }
+}
+
+export function buildSeatMapLayout(seats: SeatMapSeat[], ticketTypes: SeatMapTicketType[]): SeatMapLayout {
+  const ticketTypeById = new Map(
+    ticketTypes
+      .filter((ticketType): ticketType is SeatMapTicketType & { id: number } => typeof ticketType.id === 'number')
+      .map(ticketType => [ticketType.id, ticketType]),
+  )
+
+  const ticketTypeBySectionId = new Map(
+    ticketTypes
+      .filter((ticketType): ticketType is SeatMapTicketType & { venueSectionId: number } => typeof ticketType.venueSectionId === 'number')
+      .map(ticketType => [ticketType.venueSectionId, ticketType]),
+  )
+
+  const sectionMap = new Map<string, { name: string, seats: SeatMapSeat[] }>()
+
+  for (const seat of seats) {
+    const sectionName = seat.sectionNameSnapshot || 'Floor'
+    const key = typeof seat.venueSectionId === 'number'
+      ? `section-${seat.venueSectionId}`
+      : `name-${sectionName}`
+    const currentSection = sectionMap.get(key) ?? { name: sectionName, seats: [] }
+    currentSection.seats.push(seat)
+    sectionMap.set(key, currentSection)
+  }
+
+  const sections = Array.from(sectionMap.entries()).map(([sectionKey, sectionEntry], sectionIndex) => {
+    const sectionSeats = sectionEntry.seats
+    const rowMap = new Map<string, SeatMapSeat[]>()
+
+    for (const seat of sectionSeats) {
+      const rowKey = seat.rowLabelSnapshot || 'GA'
+      const currentRowSeats = rowMap.get(rowKey) ?? []
+      currentRowSeats.push(seat)
+      rowMap.set(rowKey, currentRowSeats)
+    }
+
+    const rows = Array.from(rowMap.entries())
+      .map(([rowLabel, rowSeats]) => {
+        const sortedSeats = [...rowSeats].sort((left, right) => {
+          if (left.displayX !== right.displayX) {
+            return (left.displayX ?? Number.MAX_SAFE_INTEGER) - (right.displayX ?? Number.MAX_SAFE_INTEGER)
+          }
+
+          return left.seatLabelSnapshot.localeCompare(right.seatLabelSnapshot, undefined, { numeric: true })
+        })
+
+        return {
+          label: rowLabel,
+          seats: sortedSeats,
+          columnCount: Math.max(...sortedSeats.map(seat => (seat.displayX ?? 0) + 1), sortedSeats.length, 1),
+        }
+      })
+      .sort((left, right) => {
+        const leftY = Math.min(...left.seats.map(seat => seat.displayY ?? Number.MAX_SAFE_INTEGER))
+        const rightY = Math.min(...right.seats.map(seat => seat.displayY ?? Number.MAX_SAFE_INTEGER))
+
+        if (leftY !== rightY) {
+          return leftY - rightY
+        }
+
+        return left.label.localeCompare(right.label, undefined, { numeric: true })
+      })
+
+    const sectionTicketType = sectionSeats.find(seat => typeof seat.venueSectionId === 'number')?.venueSectionId
+      ? ticketTypeBySectionId.get(sectionSeats.find(seat => typeof seat.venueSectionId === 'number')?.venueSectionId ?? 0)
+      : undefined
+
+    return {
+      key: sectionKey,
+      code: buildSectionCode(sectionEntry.name, sectionIndex),
+      name: sectionEntry.name,
+      color: sectionTicketType?.color || fallbackSectionColors[sectionIndex % fallbackSectionColors.length] || fallbackSectionColors[0],
+      seats: sectionSeats,
+      rows,
+      metrics: {
+        total: sectionSeats.length,
+        available: sectionSeats.filter(seat => seat.status === 'available').length,
+        locked: sectionSeats.filter(seat => seat.status === 'locked').length,
+        sold: sectionSeats.filter(seat => seat.status === 'sold').length,
+        unavailable: sectionSeats.filter(seat => seat.status === 'unavailable').length,
+      },
+    }
+  })
+
+  return {
+    sections,
+    inventorySummary: {
+      total: seats.length,
+      available: seats.filter(seat => seat.status === 'available').length,
+      locked: seats.filter(seat => seat.status === 'locked').length,
+      sold: seats.filter(seat => seat.status === 'sold').length,
+      unavailable: seats.filter(seat => seat.status === 'unavailable').length,
+    },
+    ticketTypeById,
+    ticketTypeBySectionId,
+  }
+}
+
+export function getRowStyle(row: SeatMapRow) {
+  return {
+    gridTemplateColumns: `repeat(${row.columnCount}, minmax(0, 2.35rem))`,
+  }
+}
+
+export function formatSeatMapCurrency(value: number, currency = 'VND') {
+  return `${Intl.NumberFormat('en-US').format(value / 100)} ${currency}`
+}
