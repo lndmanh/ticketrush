@@ -1,9 +1,14 @@
 import type { SidebarContext, SidebarGuardUser, SidebarItem } from '~~/types/common'
 import {
+  CalendarRange,
   FlagIcon,
   Home,
   LayoutDashboardIcon,
+  ListChecksIcon,
+  MapPin,
   Shield,
+  ShieldCheck,
+  Ticket,
   UserCog2Icon,
   UserIcon,
   UsersIcon,
@@ -36,6 +41,8 @@ export const SIDEBAR_CONTEXTS: SidebarContext[] = [
         title: 'Overview',
         items: [
           { title: 'Dashboard', url: '/admin', icon: LayoutDashboardIcon },
+          { title: 'Events', url: '/admin/events', icon: CalendarRange },
+          { title: 'Venues', url: '/admin/venues', icon: MapPin },
         ],
       },
       {
@@ -47,6 +54,8 @@ export const SIDEBAR_CONTEXTS: SidebarContext[] = [
       {
         title: 'System',
         items: [
+          { title: 'Tasks', url: '/admin/tasks', icon: ListChecksIcon },
+          { title: 'Waiting Room', url: '/admin/waiting-room', icon: ShieldCheck },
           { title: 'Feature Flags', url: '/admin/feature-flags', icon: FlagIcon },
         ],
       },
@@ -60,6 +69,8 @@ export const SIDEBAR_CONTEXTS: SidebarContext[] = [
         title: 'Discover',
         items: [
           { title: 'Home', url: '/', icon: Home },
+          { title: 'Events', url: '/events', icon: CalendarRange },
+          { title: 'My Tickets', url: '/tickets', icon: Ticket },
         ],
       },
       {
