@@ -10,6 +10,7 @@ import type { EventPricingFormInput } from '#shared/schemas/ticketingSchema'
 const route = useRoute()
 const eventId = computed(() => Number(route.params.id))
 const isSaving = ref(false)
+const sessionValidationErrors = ref<Record<string, string>>({})
 
 const { detail, refreshDetail } = await useAdminEventWorkspace(eventId, {
   poll: false,
@@ -55,6 +56,7 @@ watch(detail, (value) => {
           venueSectionId: tt.venueSectionId ?? null,
           priceCents: tt.priceCents,
           currency: tt.currency,
+          color: tt.color,
           isReservedSeating: tt.isReservedSeating,
           capacity: tt.capacity,
           sortOrder: tt.sortOrder,
@@ -66,54 +68,80 @@ watch(detail, (value) => {
 
 const isLockedConfiguration = computed(() => detail.value?.event?.status !== 'draft')
 
-const onSubmit = handleSubmit(async (formValues) => {
-  isSaving.value = true
+function normalizeSessionErrorPath(path: string) {
+  return path.replace(/\[(\d+)\]/g, '.$1')
+}
 
-  try {
-    const eventFields = detail.value?.event
-    if (!eventFields) {
-      throw new Error('Event details not loaded')
+function updateSessions(sessions: EventPricingFormInput['sessions']) {
+  setFieldValue('sessions', sessions)
+  if (Object.keys(sessionValidationErrors.value).length) {
+    sessionValidationErrors.value = {}
+  }
+}
+
+const onSubmit = handleSubmit(
+  async (formValues) => {
+    sessionValidationErrors.value = {}
+    isSaving.value = true
+
+    try {
+      const eventFields = detail.value?.event
+      if (!eventFields) {
+        throw new Error('Event details not loaded')
+      }
+
+      await $fetch(`/api/admin/events/${eventId.value}`, {
+        method: 'PUT',
+        body: {
+          id: eventId.value,
+          slug: eventFields.slug,
+          title: eventFields.title,
+          subtitle: eventFields.subtitle,
+          description: eventFields.description,
+          venueId: eventFields.venueId,
+          coverImage: eventFields.coverImage,
+          status: eventFields.status,
+          startsAt: new Date(eventFields.startsAt),
+          endsAt: eventFields.endsAt ? new Date(eventFields.endsAt) : undefined,
+          salesStartAt: new Date(eventFields.salesStartAt),
+          salesEndAt: new Date(eventFields.salesEndAt),
+          sessions: formValues.sessions.map(s => ({
+            ...s,
+            startsAt: new Date(s.startsAt),
+            endsAt: s.endsAt ? new Date(s.endsAt) : undefined,
+            salesStartAt: new Date(s.salesStartAt),
+            salesEndAt: new Date(s.salesEndAt),
+            ticketTypes: s.ticketTypes.map((tt, index) => ({
+              ...tt,
+              sortOrder: index,
+            })),
+          })),
+        },
+      })
+
+      toast.success('Event pricing updated')
+      await refreshDetail()
+    }
+    catch (err) {
+      toast.error(err && typeof err === 'object' && 'data' in err && err.data && typeof err.data === 'object' && 'message' in err.data ? String(err.data.message) : undefined || 'Failed to update pricing')
+    }
+    finally {
+      isSaving.value = false
+    }
+  },
+  ({ errors }) => {
+    const sessionErrors: Record<string, string> = {}
+    for (const [path, message] of Object.entries(errors)) {
+      if (path.startsWith('sessions') && message) {
+        sessionErrors[normalizeSessionErrorPath(path)] = String(message)
+      }
     }
 
-    await $fetch(`/api/admin/events/${eventId.value}`, {
-      method: 'PUT',
-      body: {
-        id: eventId.value,
-        slug: eventFields.slug,
-        title: eventFields.title,
-        subtitle: eventFields.subtitle,
-        description: eventFields.description,
-        venueId: eventFields.venueId,
-        coverImage: eventFields.coverImage,
-        status: eventFields.status,
-        startsAt: new Date(eventFields.startsAt),
-        endsAt: eventFields.endsAt ? new Date(eventFields.endsAt) : undefined,
-        salesStartAt: new Date(eventFields.salesStartAt),
-        salesEndAt: new Date(eventFields.salesEndAt),
-        sessions: formValues.sessions.map(s => ({
-          ...s,
-          startsAt: new Date(s.startsAt),
-          endsAt: s.endsAt ? new Date(s.endsAt) : undefined,
-          salesStartAt: new Date(s.salesStartAt),
-          salesEndAt: new Date(s.salesEndAt),
-          ticketTypes: s.ticketTypes.map((tt, index) => ({
-            ...tt,
-            sortOrder: index,
-          })),
-        })),
-      },
-    })
-
-    toast.success('Event pricing updated')
-    await refreshDetail()
-  }
-  catch (err: unknown) {
-    toast.error(err && typeof err === 'object' && 'data' in err && err.data && typeof err.data === 'object' && 'message' in err.data ? String(err.data.message) : undefined || 'Failed to update pricing')
-  }
-  finally {
-    isSaving.value = false
-  }
-})
+    sessionValidationErrors.value = sessionErrors
+    const firstError = Object.values(sessionErrors)[0] || Object.values(errors).flat().filter(Boolean)[0] || 'Please fix the highlighted fields'
+    toast.error(String(firstError))
+  },
+)
 
 definePageMeta({
   title: 'Event pricing',
@@ -173,7 +201,8 @@ definePageMeta({
             :venue-sections="detail.venue?.sections ?? []"
             :locked="isLockedConfiguration"
             :default-venue-id="detail.event.venueId"
-            @update:model-value="setFieldValue('sessions', $event)"
+            :validation-errors="sessionValidationErrors"
+            @update:model-value="updateSessions"
           />
 
           <div class="flex flex-col gap-3 border-t pt-5 sm:flex-row sm:items-center sm:justify-between">
