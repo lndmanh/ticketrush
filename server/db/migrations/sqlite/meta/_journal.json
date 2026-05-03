@@ -8,6 +8,13 @@
       "when": 1777630914415,
       "tag": "0000_slim_adam_warlock",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1777798750522,
+      "tag": "0001_narrow_albert_cleary",
+      "breakpoints": true
     }
   ]
 }
