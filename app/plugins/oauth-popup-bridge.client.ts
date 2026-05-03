@@ -1,7 +1,4 @@
-type OAuthPopupCompleteMessage = {
-  type: 'oauth:complete'
-  url: string
-}
+import type { OAuthPopupCompleteMessage } from '~~/types/auth'
 
 export default defineNuxtPlugin(() => {
   if (!window.opener || !window.name.startsWith('oauth-')) {

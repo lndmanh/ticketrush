@@ -2,29 +2,11 @@
 import { CalendarDays, Clock3, Ticket } from '@lucide/vue'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-
-interface EventSessionCardTicketType {
-  id: number
-  name: string
-  description: string | null
-  priceCents: number
-  currency: string
-  color: string
-}
-
-interface EventSessionCardSession {
-  publicId: string
-  label: string
-  status: string
-  startsAt: string | Date
-  endsAt: string | Date | null
-  salesStartAt: string | Date
-  salesEndAt: string | Date
-}
+import type { PublicEventSessionSummary, PublicTicketTypeSummary } from '~~/types/events'
 
 const props = defineProps<{
-  session: EventSessionCardSession
-  ticketTypes: EventSessionCardTicketType[]
+  session: PublicEventSessionSummary
+  ticketTypes: PublicTicketTypeSummary[]
   eventSlug: string
 }>()
 
@@ -81,7 +63,7 @@ const bookingLabel = computed(() => {
 })
 
 const lowestTicket = computed(() => {
-  let lowest: EventSessionCardTicketType | null = null
+  let lowest: PublicTicketTypeSummary | null = null
 
   for (const ticketType of props.ticketTypes) {
     if (!lowest || ticketType.priceCents < lowest.priceCents) {

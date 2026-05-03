@@ -1,23 +1,10 @@
 <script setup lang="ts">
 import { toast } from 'vue-sonner'
+import type { QueueState } from '~~/types/ticketing'
 
 const route = useRoute()
 const sessionPublicId = computed(() => route.params.eventId.toString())
 const slug = computed(() => typeof route.query.slug === 'string' ? route.query.slug : '')
-
-interface QueueState {
-  entry: {
-    passToken: string | null
-    status: string
-    expiresAt?: string | Date | null
-  } | null
-  position: number
-  waitingCount: number
-  admittedCount: number
-  queueBatchSize: number
-  queueWindowSeconds: number
-  estimatedWaitSeconds: number
-}
 
 const queueState = ref<QueueState | null>(null)
 const isJoining = ref(true)
@@ -69,7 +56,7 @@ async function refreshQueueStatus() {
   }
 
   try {
-    const response = await $fetch(`/api/event-sessions/${sessionPublicId.value}/queue/status`)
+    const response = await $fetch<{ data: QueueState | null }>(`/api/event-sessions/${sessionPublicId.value}/queue/status`)
     queueState.value = response.data
     queueError.value = ''
 

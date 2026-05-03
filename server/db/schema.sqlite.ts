@@ -130,11 +130,18 @@ export const systemSettings = sqliteTable('system_settings', {
 export const eventDraftAutosaves = sqliteTable('event_draft_autosaves', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   draftKey: text('draft_key').notNull().unique(),
+  userId: integer('user_id').notNull().default(0),
+  status: text('status').notNull().default('active'),
+  convertedEventId: integer('converted_event_id'),
+  titleSnapshot: text('title_snapshot'),
+  slugSnapshot: text('slug_snapshot'),
+  venueId: integer('venue_id'),
   payload: text('payload').notNull(),
   lastSavedStep: integer('last_saved_step').notNull().default(1),
   ...timestampColumns,
 }, table => [
   index('event_draft_autosaves_draft_key_idx').on(table.draftKey),
+  index('event_draft_autosaves_user_status_idx').on(table.userId, table.status),
 ])
 
 export const ticketTypes = sqliteTable('ticket_types', {

@@ -3,32 +3,7 @@ import type { Venue } from '#shared/db'
 import type { CreateVenueInput, UpdateVenueInput, VenueRowDraftInput, VenueSectionDraftInput } from '#shared/schemas/ticketingSchema'
 import { IDatabaseService } from '~~/types/db/database-service'
 import { createPublicVenueId } from '~~/server/utils/ticketing/ids'
-
-type VenueDetail = {
-  venue: Venue
-  sections: Array<{
-    id: number
-    code: string
-    name: string
-    color: string
-    sortOrder: number
-    rows: Array<{
-      id: number
-      label: string
-      sortOrder: number
-      seats: Array<{
-        id: number
-        label: string
-        seatNumber: number
-        x: number
-        y: number
-        sortOrder: number
-        accessibilityLabel: string | null
-        isAccessible: boolean
-      }>
-    }>
-  }>
-}
+import type { VenueDetail } from '~~/types/venues'
 
 class VenueService extends IDatabaseService<Venue> {
   private static instance: VenueService

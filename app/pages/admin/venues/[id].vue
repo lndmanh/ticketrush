@@ -4,42 +4,9 @@ import { Field as VeeField, useForm } from 'vee-validate'
 import { toast } from 'vue-sonner'
 import { createVenueSchema } from '#shared/schemas/ticketingSchema'
 import type { VenueSectionDraftInput } from '#shared/schemas/ticketingSchema'
-import { ArrowLeft, Building2, CalendarRange, LayoutGrid, Map, Rows3, Settings2, Users } from '@lucide/vue'
+import type { VenueDetail } from '~~/types/venues'
+import { ArrowLeft, Building2, CalendarRange, LayoutGrid, LayoutDashboardIcon, Rows3, Save, Settings2, Users } from '@lucide/vue'
 import AdminVenuesVenueSeatLayoutEditor from '@/components/admin/venues/VenueSeatLayoutEditor.vue'
-
-interface AdminVenueDetail {
-  venue: {
-    id: number
-    name: string
-    slug: string
-    description: string | null
-    city: string
-    country: string
-    address: string
-    coverImage: string | null
-    capacity: number
-  }
-  sections: Array<{
-    id: number
-    code: string
-    name: string
-    color: string
-    rows: Array<{
-      id: number
-      label: string
-      seats: Array<{
-        id: number
-        label: string
-        seatNumber: number
-        x: number
-        y: number
-        sortOrder: number
-        accessibilityLabel: string | null
-        isAccessible: boolean
-      }>
-    }>
-  }>
-}
 
 interface AdminEventListItem {
   id: number
@@ -87,10 +54,10 @@ interface VenueBlueprintPreset {
 const route = useRoute()
 const venueId = computed(() => Number(route.params.id))
 
-const { data: venueResponse, refresh: refreshVenue } = await useFetch<{ data: AdminVenueDetail }>(() => `/api/admin/venues/${venueId.value}`)
+const { data: venueResponse, refresh: refreshVenue } = await useFetch<{ data: VenueDetail }>(() => `/api/admin/venues/${venueId.value}`)
 const { data: eventsResponse } = await useFetch<{ data: AdminEventListItem[] }>('/api/admin/events')
 
-const venueDetail = computed<AdminVenueDetail | null>(() => venueResponse.value?.data ?? null)
+const venueDetail = computed<VenueDetail | null>(() => venueResponse.value?.data ?? null)
 const linkedEvents = computed<AdminEventListItem[]>(() => {
   const items = eventsResponse.value?.data ?? []
   return items.filter(event => event.venueId === venueId.value)
@@ -106,12 +73,14 @@ const defaultIdentityValues: VenueIdentityInput = {
   coverImage: '',
 }
 
-const { handleSubmit, resetForm } = useForm({
+const { handleSubmit, resetForm, values } = useForm<VenueIdentityInput>({
   initialValues: { ...defaultIdentityValues },
   validationSchema: venueIdentitySchema,
+  keepValuesOnUnmount: true,
 })
 
 const sectionLayouts = ref<VenueSectionDraftInput[]>([])
+const savedVenueSnapshot = ref('')
 const isSaving = ref(false)
 const activeConfigTab = ref<ConfigTab>('details')
 const selectedVisualizationSection = ref<'all' | string>('all')
@@ -145,6 +114,39 @@ function createSectionBlueprint(code: string, name: string, color: string, rowCo
     sortOrder: 0,
     rows: Array.from({ length: rowCount }, (_, rowIndex) => createRow(String.fromCharCode(65 + rowIndex), rowIndex, seatsPerRow)),
   }
+}
+
+function createVenueSnapshot(identity: VenueIdentityInput, sections: VenueSectionDraftInput[]) {
+  return JSON.stringify({
+    identity: {
+      slug: identity.slug.trim(),
+      name: identity.name.trim(),
+      description: identity.description?.trim() ?? '',
+      city: identity.city.trim(),
+      country: identity.country.trim(),
+      address: identity.address.trim(),
+      coverImage: identity.coverImage?.trim() ?? '',
+    },
+    sections: sections.map((section, sectionIndex) => ({
+      code: section.code.trim(),
+      name: section.name.trim(),
+      color: section.color.trim(),
+      sortOrder: sectionIndex,
+      rows: section.rows.map((row, rowIndex) => ({
+        label: row.label.trim(),
+        sortOrder: rowIndex,
+        seats: row.seats.map((seat, seatIndex) => ({
+          label: seat.label.trim(),
+          seatNumber: seat.seatNumber,
+          x: seat.x,
+          y: seat.y,
+          sortOrder: seatIndex,
+          accessibilityLabel: seat.accessibilityLabel?.trim() ?? '',
+          isAccessible: seat.isAccessible,
+        })),
+      })),
+    })),
+  })
 }
 
 const blueprintPresets: VenueBlueprintPreset[] = [
@@ -185,19 +187,17 @@ watch(venueDetail, (value) => {
     return
   }
 
-  resetForm({
-    values: {
-      slug: value.venue.slug,
-      name: value.venue.name,
-      description: value.venue.description ?? '',
-      city: value.venue.city,
-      country: value.venue.country,
-      address: value.venue.address,
-      coverImage: value.venue.coverImage ?? '',
-    },
-  })
+  const identityValues: VenueIdentityInput = {
+    slug: value.venue.slug,
+    name: value.venue.name,
+    description: value.venue.description ?? '',
+    city: value.venue.city,
+    country: value.venue.country,
+    address: value.venue.address,
+    coverImage: value.venue.coverImage ?? '',
+  }
 
-  sectionLayouts.value = value.sections.map((section, sectionIndex) => ({
+  const layoutValues = value.sections.map((section, sectionIndex) => ({
     code: section.code,
     name: section.name,
     color: section.color,
@@ -216,6 +216,10 @@ watch(venueDetail, (value) => {
       })),
     })),
   }))
+
+  resetForm({ values: identityValues })
+  sectionLayouts.value = layoutValues
+  savedVenueSnapshot.value = createVenueSnapshot(identityValues, layoutValues)
 }, { immediate: true })
 
 const sectionSummaries = computed(() => {
@@ -243,6 +247,18 @@ const totalCapacity = computed(() => sectionSummaries.value.reduce((total, secti
 const totalAccessibleSeats = computed(() => sectionSummaries.value.reduce((total, section) => total + section.accessibleSeats, 0))
 const totalSections = computed(() => sectionLayouts.value.length)
 const isDesktopViewport = computed(() => viewportWidth.value >= 1024)
+
+const currentVenueSnapshot = computed(() => createVenueSnapshot({
+  slug: values.slug ?? '',
+  name: values.name ?? '',
+  description: values.description ?? '',
+  city: values.city ?? '',
+  country: values.country ?? '',
+  address: values.address ?? '',
+  coverImage: values.coverImage ?? '',
+}, sectionLayouts.value))
+
+const isChanged = computed(() => savedVenueSnapshot.value !== '' && currentVenueSnapshot.value !== savedVenueSnapshot.value)
 
 const visualizationSections = computed<VisualizationSection[]>(() => {
   return sectionLayouts.value.map((section) => {
@@ -484,6 +500,7 @@ const onSubmit = handleSubmit(
       })
 
       toast.success('Venue updated')
+      savedVenueSnapshot.value = currentVenueSnapshot.value
       await refreshVenue()
     }
     catch {
@@ -526,7 +543,7 @@ definePageMeta({
     class="grid h-[100dvh] max-h-[100dvh] grid-rows-[auto_minmax(0,1fr)] overflow-hidden bg-background text-foreground"
   >
     <header class="border-b bg-background px-4 py-2">
-      <div class="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+      <div class="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
         <div class="flex items-start gap-3">
           <Button
             as-child
@@ -551,59 +568,40 @@ definePageMeta({
           </div>
         </div>
 
-        <div class="grid gap-3 grid-cols-2 xl:grid-cols-4">
-          <Card class="py-0">
-            <CardContent class="flex items-center gap-3 px-4">
-              <LayoutGrid class="size-4 text-muted-foreground" />
-              <div>
-                <p class="text-xs text-muted-foreground">
-                  Sections
-                </p>
-                <p class="text-sm font-medium">
-                  {{ totalSections }}
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-          <Card class="py-0">
-            <CardContent class="flex items-center gap-3 px-4">
-              <Rows3 class="size-4 text-muted-foreground" />
-              <div>
-                <p class="text-xs text-muted-foreground">
-                  Rows
-                </p>
-                <p class="text-sm font-medium">
-                  {{ totalRows }}
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-          <Card class="py-0">
-            <CardContent class="flex items-center gap-3 px-4">
-              <Users class="size-4 text-muted-foreground" />
-              <div>
-                <p class="text-xs text-muted-foreground">
-                  Capacity
-                </p>
-                <p class="text-sm font-medium">
-                  {{ totalCapacity }}
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-          <Card class="py-0">
-            <CardContent class="flex items-center gap-3 px-4">
-              <CalendarRange class="size-4 text-muted-foreground" />
-              <div>
-                <p class="text-xs text-muted-foreground">
-                  Events
-                </p>
-                <p class="text-sm font-medium">
-                  {{ linkedEvents.length }}
-                </p>
-              </div>
-            </CardContent>
-          </Card>
+        <div class="flex flex-col gap-3 sm:flex-row sm:items-center xl:justify-end">
+          <div class="flex flex-wrap gap-2 text-xs text-muted-foreground">
+            <div class="inline-flex items-center gap-2 rounded-md border bg-muted/30 px-2.5 py-1.5">
+              <LayoutGrid class="size-3.5" />
+              <span class="font-medium text-foreground">{{ totalSections }}</span>
+              <span>sections</span>
+            </div>
+            <div class="inline-flex items-center gap-2 rounded-md border bg-muted/30 px-2.5 py-1.5">
+              <Rows3 class="size-3.5" />
+              <span class="font-medium text-foreground">{{ totalRows }}</span>
+              <span>rows</span>
+            </div>
+            <div class="inline-flex items-center gap-2 rounded-md border bg-muted/30 px-2.5 py-1.5">
+              <Users class="size-3.5" />
+              <span class="font-medium text-foreground">{{ totalCapacity }}</span>
+              <span>capacity</span>
+            </div>
+            <div class="inline-flex items-center gap-2 rounded-md border bg-muted/30 px-2.5 py-1.5">
+              <CalendarRange class="size-3.5" />
+              <span class="font-medium text-foreground">{{ linkedEvents.length }}</span>
+              <span>events</span>
+            </div>
+          </div>
+
+          <Button
+            form="venue-detail-form"
+            type="submit"
+            class="sm:ml-1"
+            :disabled="!isChanged || isSaving"
+            :is-loading="isSaving"
+          >
+            <Save />
+            Save
+          </Button>
         </div>
       </div>
     </header>
@@ -615,24 +613,16 @@ definePageMeta({
       :class="resizingAxis ? 'select-none' : ''"
     >
       <Card class="h-full min-h-0 overflow-hidden py-0">
-        <CardHeader class="gap-4 border-b pt-4">
-          <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-            <div class="flex items-center gap-3">
-              <div class="flex size-9 items-center justify-center rounded-full border bg-muted/40">
-                <Map class="size-4 text-muted-foreground" />
-              </div>
-              <div>
-                <CardTitle>Visualization</CardTitle>
-              </div>
-            </div>
-
-            <div class="flex flex-wrap gap-2">
+        <div class="border-b px-4 py-3">
+          <div class="overflow-x-auto pb-2">
+            <div class="flex w-max min-w-full flex-nowrap gap-2">
               <Button
                 type="button"
                 size="sm"
                 :variant="selectedVisualizationSection === 'all' ? 'default' : 'outline'"
                 @click="selectedVisualizationSection = 'all'"
               >
+                <LayoutDashboardIcon class="size-4" />
                 All
               </Button>
               <Button
@@ -647,9 +637,9 @@ definePageMeta({
               </Button>
             </div>
           </div>
-        </CardHeader>
+        </div>
 
-        <CardContent class="min-h-0 flex-1 overflow-y-auto py-4 pt-0">
+        <CardContent class="min-h-0 flex-1 overflow-y-auto">
           <div class="space-y-4">
             <Card
               class="gap-3 border-dashed py-4"
@@ -778,50 +768,38 @@ definePageMeta({
 
       <Card class="h-full min-h-0 overflow-hidden py-0">
         <form
+          id="venue-detail-form"
           class="flex h-full min-h-0 flex-col"
           @submit.prevent="onSubmit"
         >
-          <CardHeader class="gap-4 border-b py-4">
-            <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-              <div class="flex items-center gap-3">
-                <div class="flex size-9 items-center justify-center rounded-full border bg-muted/40">
-                  <Settings2 class="size-4 text-muted-foreground" />
-                </div>
-                <div>
-                  <CardTitle>Configuration</CardTitle>
-                </div>
-              </div>
-
-              <div class="flex flex-wrap gap-2">
-                <Button
-                  type="button"
-                  size="sm"
-                  :variant="activeConfigTab === 'details' ? 'default' : 'outline'"
-                  @click="activeConfigTab = 'details'"
-                >
-                  <Building2 />
-                  Details
-                </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  :variant="activeConfigTab === 'layout' ? 'default' : 'outline'"
-                  @click="activeConfigTab = 'layout'"
-                >
-                  <LayoutGrid />
-                  Layout
-                </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  :variant="activeConfigTab === 'events' ? 'default' : 'outline'"
-                  @click="activeConfigTab = 'events'"
-                >
-                  <CalendarRange />
-                  Events
-                </Button>
-              </div>
-            </div>
+          <CardHeader class="flex flex-wrap gap-2 pt-3">
+            <Button
+              type="button"
+              size="sm"
+              :variant="activeConfigTab === 'details' ? 'default' : 'outline'"
+              @click="activeConfigTab = 'details'"
+            >
+              <Building2 />
+              Details
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              :variant="activeConfigTab === 'layout' ? 'default' : 'outline'"
+              @click="activeConfigTab = 'layout'"
+            >
+              <LayoutGrid />
+              Layout
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              :variant="activeConfigTab === 'events' ? 'default' : 'outline'"
+              @click="activeConfigTab = 'events'"
+            >
+              <CalendarRange />
+              Events
+            </Button>
           </CardHeader>
 
           <CardContent class="min-h-0 flex-1 overflow-y-auto py-4">
@@ -1018,29 +996,6 @@ definePageMeta({
                 </Card>
               </div>
 
-              <div class="grid gap-3 md:grid-cols-3">
-                <Card
-                  v-for="section in sectionSummaries"
-                  :key="section.id"
-                  class="gap-2 py-3"
-                >
-                  <CardContent class="flex items-start justify-between gap-3 px-4">
-                    <div>
-                      <p class="text-sm font-medium">
-                        {{ section.name }}
-                      </p>
-                      <p class="text-xs text-muted-foreground">
-                        {{ section.rowCount }} rows · {{ section.capacity }} seats
-                      </p>
-                    </div>
-                    <span
-                      class="mt-1 h-2.5 w-2.5 rounded-full"
-                      :style="{ backgroundColor: section.color }"
-                    />
-                  </CardContent>
-                </Card>
-              </div>
-
               <Separator />
 
               <AdminVenuesVenueSeatLayoutEditor v-model:sections="sectionLayouts" />
@@ -1144,20 +1099,6 @@ definePageMeta({
               </div>
             </div>
           </CardContent>
-
-          <Separator />
-
-          <CardFooter class="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between">
-            <p class="text-sm text-muted-foreground">
-              Save changes when ready.
-            </p>
-            <Button
-              type="submit"
-              :is-loading="isSaving"
-            >
-              Save venue changes
-            </Button>
-          </CardFooter>
         </form>
       </Card>
     </section>

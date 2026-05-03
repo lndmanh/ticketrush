@@ -1,8 +1,21 @@
 import eventSessionService from '~~/server/utils/database/event-session'
 import { success } from '~~/server/utils/apiResponse'
 import { getTicketingSessionKey } from '~~/server/utils/ticketing/session'
+import type { SeatMapStatus, SessionSeatMapResponse } from '~~/types/seatmap'
 
-function mapSeatMap(seatMap: Awaited<ReturnType<typeof eventSessionService.getSeatMap>>) {
+function toSeatMapStatus(status: string): SeatMapStatus {
+  switch (status) {
+    case 'available':
+    case 'locked':
+    case 'sold':
+    case 'unavailable':
+      return status
+    default:
+      return 'unavailable'
+  }
+}
+
+function mapSeatMap(seatMap: Awaited<ReturnType<typeof eventSessionService.getSeatMap>>): SessionSeatMapResponse {
   return {
     seats: seatMap.seats.map(seat => ({
       id: seat.id,
@@ -15,7 +28,7 @@ function mapSeatMap(seatMap: Awaited<ReturnType<typeof eventSessionService.getSe
       displayY: seat.displayY,
       priceCents: seat.priceCents,
       currency: seat.currency,
-      status: seat.status,
+      status: toSeatMapStatus(seat.status),
     })),
     ticketTypes: seatMap.ticketTypes.map(ticketType => ({
       id: ticketType.id,

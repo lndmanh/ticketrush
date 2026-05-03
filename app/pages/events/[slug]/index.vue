@@ -1,61 +1,12 @@
 <script setup lang="ts">
 import { CalendarRange, MapPin, Ticket, UserRound } from '@lucide/vue'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-
-interface EventPageTicketType {
-  id: number
-  venueSectionId: number | null
-  name: string
-  description: string | null
-  priceCents: number
-  currency: string
-  capacity: number
-  color: string
-  isReservedSeating: boolean
-  sortOrder: number
-}
-
-interface EventPageSession {
-  publicId: string
-  label: string
-  status: string
-  startsAt: string | Date
-  endsAt: string | Date
-  salesStartAt: string | Date
-  salesEndAt: string | Date
-  ticketTypes: EventPageTicketType[]
-}
-
-interface EventPageResponse {
-  event: {
-    publicId: string
-    slug: string
-    title: string
-    subtitle: string | null
-    description: string
-    status: string
-    coverImage: string | null
-  } | null
-  sessions: EventPageSession[]
-  venue: {
-    venue: {
-      publicId: string
-      slug: string
-      name: string
-      description: string | null
-      city: string
-      country: string
-      address: string
-      capacity: number
-      coverImage: string | null
-    }
-  } | null
-}
+import type { EventDetailResponse } from '~~/types/events'
 
 const route = useRoute()
 const slug = computed(() => route.params.slug.toString())
 
-const { data: detailResponse } = await useFetch<{ data: EventPageResponse }>(() => `/api/events/${slug.value}`)
+const { data: detailResponse } = await useFetch<{ data: EventDetailResponse }>(() => `/api/events/${slug.value}`)
 
 const detail = computed(() => detailResponse.value?.data ?? null)
 const event = computed(() => detail.value?.event ?? null)

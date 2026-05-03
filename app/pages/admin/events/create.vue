@@ -4,11 +4,22 @@ import { Field as VeeField, useForm } from 'vee-validate'
 import { motion } from 'motion-v'
 import { toast } from 'vue-sonner'
 import { Check, Circle, Cloud, CloudAlert, Dot, Loader2 } from '@lucide/vue'
-import { eventComposerSchema } from '#shared/schemas/ticketingSchema'
-import type { EventComposerInput } from '#shared/schemas/ticketingSchema'
+import { eventComposerSchema, getEventSessionTimingIssues } from '#shared/schemas/ticketingSchema'
+import type { EventAutosaveDraftInput, EventComposerInput } from '#shared/schemas/ticketingSchema'
+import type { VenueDetail } from '~~/types/venues'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import {
   Select,
   SelectContent,
@@ -40,26 +51,18 @@ interface VenueOption {
   name: string
 }
 
-interface VenueSectionDetail {
-  id: number
-  code: string
-  name: string
-  color: string
-  rows: Array<{
-    id: number
-    label: string
-    seats: Array<{ id: number, label: string, seatNumber: number }>
-  }>
-}
-
-interface VenueDetailResponse {
-  sections: VenueSectionDetail[]
-}
-
 interface EventCreationStep {
   step: number
   title: string
   description: string
+}
+
+interface AutosaveDraftDetail {
+  draftKey: string
+  payload: EventAutosaveDraftInput['payload']
+  lastSavedStep: number
+  updatedAt: string | Date | null
+  createdAt: string | Date | null
 }
 
 const steps: EventCreationStep[] = [
@@ -87,15 +90,22 @@ const stepSchemas = {
 
 const { data: venuesResponse } = await useFetch('/api/admin/venues')
 const venues = computed<VenueOption[]>(() => venuesResponse.value?.data ?? [])
-const selectedVenueDetail = ref<VenueDetailResponse | null>(null)
+const selectedVenueDetail = ref<VenueDetail | null>(null)
 const currentStep = ref(1)
 const highestReachedStep = ref(1)
 const isSaving = ref(false)
+const sessionValidationErrors = ref<Record<string, string>>({})
 const autosaveDraftKey = ref('')
 const autosaveStatus = ref<'idle' | 'saving' | 'saved' | 'error'>('idle')
 const lastAutosavedAt = ref<Date | null>(null)
 const lastAutosaveSignature = ref('')
 const autosaveDisabled = ref(false)
+const pendingAutosaveDraft = ref<AutosaveDraftDetail | null>(null)
+const isLoadingAutosaveDraft = ref(false)
+const isCheckingAutosaveDraft = ref(false)
+const isAutosaveRestoreDialogOpen = ref(false)
+const isAutosaveInFlight = ref(false)
+const hasQueuedAutosave = ref(false)
 let autosaveRequestId = 0
 let autosaveTimerId: number | null = null
 
@@ -182,6 +192,7 @@ function buildAutosavePayload() {
         venueSectionId: ticketType.venueSectionId ?? null,
         priceCents: ticketType.priceCents,
         currency: ticketType.currency,
+        color: ticketType.color,
         isReservedSeating: ticketType.isReservedSeating,
         capacity: ticketType.capacity,
         sortOrder: ticketType.sortOrder,
@@ -190,8 +201,135 @@ function buildAutosavePayload() {
   }
 }
 
+function normalizeAutosavePayload(payload: EventAutosaveDraftInput['payload']) {
+  const values: EventComposerInput = {
+    slug: payload.slug ?? '',
+    title: payload.title ?? '',
+    subtitle: payload.subtitle ?? '',
+    description: payload.description ?? '',
+    venueId: payload.venueId ?? 0,
+    coverImage: payload.coverImage ?? '',
+    sessions: (payload.sessions ?? []).map((session, sessionIndex) => ({
+      label: session.label ?? `Session ${sessionIndex + 1}`,
+      venueId: session.venueId ?? payload.venueId ?? 0,
+      status: session.status ?? 'draft',
+      startsAt: session.startsAt ?? '',
+      endsAt: session.endsAt ?? '',
+      salesStartAt: session.salesStartAt ?? '',
+      salesEndAt: session.salesEndAt ?? '',
+      ticketTypes: (session.ticketTypes ?? []).map((ticketType, ticketIndex) => ({
+        name: ticketType.name ?? `Ticket release ${ticketIndex + 1}`,
+        venueSectionId: ticketType.venueSectionId ?? null,
+        priceCents: ticketType.priceCents ?? 0,
+        currency: ticketType.currency ?? 'VND',
+        color: ticketType.color ?? '#3b82f6',
+        isReservedSeating: ticketType.isReservedSeating ?? false,
+        capacity: ticketType.capacity ?? 100,
+        sortOrder: ticketType.sortOrder ?? ticketIndex,
+      })),
+    })),
+  }
+
+  return values
+}
+
+async function loadAutosaveDraft(draftKey: string, restoreImmediately: boolean) {
+  isLoadingAutosaveDraft.value = true
+  try {
+    const response = await $fetch<{ data: AutosaveDraftDetail }>(`/api/admin/events/autosaves/${draftKey}`)
+    pendingAutosaveDraft.value = response.data
+    if (restoreImmediately) {
+      restoreAutosaveDraft()
+      return true
+    }
+
+    isAutosaveRestoreDialogOpen.value = true
+    return true
+  }
+  catch {
+    toast.error('We could not load the autosave draft')
+    return false
+  }
+  finally {
+    isLoadingAutosaveDraft.value = false
+  }
+}
+
+async function loadCurrentAutosaveDraftPrompt() {
+  isCheckingAutosaveDraft.value = true
+  try {
+    const response = await $fetch<{ data: { draftKey: string } | null }>('/api/admin/events/autosaves')
+    if (response.data?.draftKey) {
+      await loadAutosaveDraft(response.data.draftKey, false)
+    }
+  }
+  catch {
+    toast.error('We could not check for autosave drafts')
+  }
+  finally {
+    isCheckingAutosaveDraft.value = false
+  }
+}
+
+function restoreAutosaveDraft() {
+  const draft = pendingAutosaveDraft.value
+  if (!draft) {
+    return
+  }
+
+  resetForm({ values: normalizeAutosavePayload(draft.payload) })
+  autosaveDraftKey.value = draft.draftKey
+  currentStep.value = Math.min(Math.max(draft.lastSavedStep, 1), steps.length)
+  highestReachedStep.value = Math.max(currentStep.value, 1)
+  pendingAutosaveDraft.value = null
+  isAutosaveRestoreDialogOpen.value = false
+  lastAutosaveSignature.value = ''
+  if (import.meta.client) {
+    window.localStorage.setItem('ticketrush:event-create-autosave-key', draft.draftKey)
+  }
+  toast.success('Autosave draft restored')
+}
+
+function startFreshFromAutosaveDraft() {
+  pendingAutosaveDraft.value = null
+  isAutosaveRestoreDialogOpen.value = false
+  autosaveDraftKey.value = ''
+  lastAutosaveSignature.value = ''
+  if (import.meta.client) {
+    window.localStorage.removeItem('ticketrush:event-create-autosave-key')
+  }
+}
+
+async function discardAutosaveDraft() {
+  const draft = pendingAutosaveDraft.value
+  if (!draft) {
+    return
+  }
+
+  try {
+    await $fetch(`/api/admin/events/autosaves/${draft.draftKey}`, { method: 'DELETE' })
+    if (import.meta.client) {
+      window.localStorage.removeItem('ticketrush:event-create-autosave-key')
+    }
+    if (autosaveDraftKey.value === draft.draftKey) {
+      autosaveDraftKey.value = ''
+    }
+    pendingAutosaveDraft.value = null
+    isAutosaveRestoreDialogOpen.value = false
+    toast.success('Autosave draft discarded')
+  }
+  catch {
+    toast.error('Failed to discard autosave draft')
+  }
+}
+
 async function saveAutosaveDraft() {
-  if (autosaveDisabled.value || !hasAutosavableContent.value) {
+  if (autosaveDisabled.value || pendingAutosaveDraft.value || isLoadingAutosaveDraft.value || isCheckingAutosaveDraft.value || !hasAutosavableContent.value) {
+    return
+  }
+
+  if (isAutosaveInFlight.value) {
+    hasQueuedAutosave.value = true
     return
   }
 
@@ -202,6 +340,7 @@ async function saveAutosaveDraft() {
   }
 
   autosaveStatus.value = 'saving'
+  isAutosaveInFlight.value = true
   const requestId = autosaveRequestId + 1
   autosaveRequestId = requestId
 
@@ -235,10 +374,17 @@ async function saveAutosaveDraft() {
 
     autosaveStatus.value = 'error'
   }
+  finally {
+    isAutosaveInFlight.value = false
+    if (hasQueuedAutosave.value && !autosaveDisabled.value) {
+      hasQueuedAutosave.value = false
+      void saveAutosaveDraft()
+    }
+  }
 }
 
 function queueAutosave(delay = 900) {
-  if (!import.meta.client || autosaveDisabled.value || !hasAutosavableContent.value) {
+  if (!import.meta.client || autosaveDisabled.value || pendingAutosaveDraft.value || isLoadingAutosaveDraft.value || isCheckingAutosaveDraft.value || !hasAutosavableContent.value) {
     return
   }
 
@@ -258,7 +404,7 @@ watch(() => values.venueId, async (venueId) => {
     return
   }
 
-  const detail = await $fetch<{ data: VenueDetailResponse }>(`/api/admin/venues/${venueId}`)
+  const detail = await $fetch<{ data: VenueDetail }>(`/api/admin/venues/${venueId}`)
   selectedVenueDetail.value = detail.data
 
   if (!values.sessions || values.sessions.length === 0) {
@@ -301,6 +447,103 @@ const previewSeats = computed(() => {
 const totalRows = computed(() => selectedVenueDetail.value?.sections.reduce((count, section) => count + section.rows.length, 0) ?? 0)
 const totalSeats = computed(() => selectedVenueDetail.value?.sections.reduce((sectionCount, section) => sectionCount + section.rows.reduce((rowCount, row) => rowCount + row.seats.length, 0), 0) ?? 0)
 
+function getSessionFieldPath(sessionIndex: number, fieldName: string) {
+  return `sessions.${sessionIndex}.${fieldName}`
+}
+
+function getTicketFieldPath(sessionIndex: number, ticketIndex: number, fieldName: string) {
+  return `sessions.${sessionIndex}.ticketTypes.${ticketIndex}.${fieldName}`
+}
+
+function addSessionValidationError(errors: Record<string, string>, path: string, message: string) {
+  errors[path] = message
+  setFieldError(path, message)
+}
+
+function buildSessionValidationErrors(sessions = values.sessions ?? []) {
+  const errors: Record<string, string> = {}
+
+  if (!sessions.length) {
+    addSessionValidationError(errors, 'sessions', 'Add at least one session before continuing')
+    return errors
+  }
+
+  sessions.forEach((session, sessionIndex) => {
+    const sessionLabel = session.label?.trim() || `Session ${sessionIndex + 1}`
+
+    if (!session.label?.trim()) {
+      addSessionValidationError(errors, getSessionFieldPath(sessionIndex, 'label'), `${sessionLabel}: Session label is required`)
+    }
+
+    for (const issue of getEventSessionTimingIssues(session, sessionLabel)) {
+      addSessionValidationError(errors, getSessionFieldPath(sessionIndex, issue.field), issue.message)
+    }
+
+    if (!session.ticketTypes.length) {
+      addSessionValidationError(errors, getSessionFieldPath(sessionIndex, 'ticketTypes'), `${sessionLabel}: Add at least one ticket release`)
+    }
+
+    session.ticketTypes.forEach((ticketType, ticketIndex) => {
+      const releaseLabel = `${sessionLabel}, ticket release ${ticketIndex + 1}`
+
+      if (!ticketType.name?.trim()) {
+        addSessionValidationError(errors, getTicketFieldPath(sessionIndex, ticketIndex, 'name'), `${releaseLabel}: Name is required`)
+      }
+
+      if (ticketType.isReservedSeating && !ticketType.venueSectionId) {
+        addSessionValidationError(errors, getTicketFieldPath(sessionIndex, ticketIndex, 'venueSectionId'), `${releaseLabel}: Section is required for reserved seating`)
+      }
+
+      if (ticketType.priceCents < 0) {
+        addSessionValidationError(errors, getTicketFieldPath(sessionIndex, ticketIndex, 'priceCents'), `${releaseLabel}: Price cannot be negative`)
+      }
+
+      if (ticketType.capacity <= 0) {
+        addSessionValidationError(errors, getTicketFieldPath(sessionIndex, ticketIndex, 'capacity'), `${releaseLabel}: Capacity must be at least 1`)
+      }
+    })
+  })
+
+  return errors
+}
+
+function showSessionValidationToast(errors: Record<string, string>) {
+  const messages = Object.values(errors)
+  const firstMessages = messages.slice(0, 4)
+  const remainingCount = Math.max(messages.length - firstMessages.length, 0)
+  const suffix = remainingCount ? ` (${remainingCount} more)` : ''
+  toast.error(`Please fix Sessions: ${firstMessages.join('; ')}${suffix}`)
+}
+
+function clearSessionValidationErrors() {
+  for (const path of Object.keys(sessionValidationErrors.value)) {
+    setFieldError(path, undefined)
+  }
+}
+
+function validateSessionsStep(showToast = true) {
+  clearSessionValidationErrors()
+  const errors = buildSessionValidationErrors()
+  sessionValidationErrors.value = errors
+
+  if (Object.keys(errors).length) {
+    if (showToast) {
+      showSessionValidationToast(errors)
+    }
+    return false
+  }
+
+  return true
+}
+
+function updateSessions(sessions: EventComposerInput['sessions']) {
+  setFieldValue('sessions', sessions)
+  if (Object.keys(sessionValidationErrors.value).length) {
+    clearSessionValidationErrors()
+    sessionValidationErrors.value = buildSessionValidationErrors(sessions)
+  }
+}
+
 function getStepSchema(step: number) {
   switch (step) {
     case 1:
@@ -315,17 +558,28 @@ function getStepSchema(step: number) {
 }
 
 function applyStepErrors(step: number) {
+  if (step === 3) {
+    return validateSessionsStep()
+  }
+
   const schema = getStepSchema(step)
   const result = schema.safeParse(values)
   if (result.success) {
     return true
   }
 
+  const messages: string[] = []
   for (const issue of result.error.issues) {
     const pathPart = issue.path[0]
     if (typeof pathPart === 'string') {
       setFieldError(pathPart, issue.message)
+      messages.push(issue.message)
     }
+  }
+
+  const firstMessage = messages[0]
+  if (firstMessage) {
+    toast.error(firstMessage)
   }
   return false
 }
@@ -391,6 +645,11 @@ function goPrevious() {
 
 const onSubmit = handleSubmit(
   async (formValues) => {
+    if (!validateSessionsStep()) {
+      currentStep.value = 3
+      return
+    }
+
     isSaving.value = true
     autosaveDisabled.value = true
     autosaveRequestId += 1
@@ -423,6 +682,18 @@ const onSubmit = handleSubmit(
         },
       })
 
+      if (autosaveDraftKey.value) {
+        try {
+          await $fetch(`/api/admin/events/autosaves/${autosaveDraftKey.value}/convert`, {
+            method: 'POST',
+            body: { eventId: response.data.id },
+          })
+        }
+        catch {
+          toast.warning('Event saved, but the autosave draft could not be marked as converted')
+        }
+      }
+
       toast.success('Draft event saved')
       if (import.meta.client && autosaveDraftKey.value) {
         window.localStorage.removeItem('ticketrush:event-create-autosave-key')
@@ -444,6 +715,13 @@ const onSubmit = handleSubmit(
     }
   },
   ({ errors }) => {
+    if (Object.keys(errors).some(path => path.startsWith('sessions'))) {
+      currentStep.value = 3
+      if (!validateSessionsStep()) {
+        return
+      }
+    }
+
     const firstError = Object.values(errors).flat().filter(Boolean)[0] || 'Please fix the highlighted fields'
     toast.error(firstError)
   },
@@ -461,7 +739,26 @@ watch(values, () => {
 }, { deep: true })
 
 onMounted(() => {
-  autosaveDraftKey.value = window.localStorage.getItem('ticketrush:event-create-autosave-key') ?? ''
+  void (async () => {
+    const route = useRoute()
+    const draftKeyQuery = typeof route.query.draftKey === 'string' ? route.query.draftKey : ''
+    if (draftKeyQuery) {
+      await loadAutosaveDraft(draftKeyQuery, true)
+      return
+    }
+
+    const localDraftKey = window.localStorage.getItem('ticketrush:event-create-autosave-key') || ''
+    if (localDraftKey) {
+      const loaded = await loadAutosaveDraft(localDraftKey, false)
+      if (loaded) {
+        return
+      }
+
+      window.localStorage.removeItem('ticketrush:event-create-autosave-key')
+    }
+
+    await loadCurrentAutosaveDraftPrompt()
+  })()
 })
 
 onUnmounted(() => {
@@ -473,6 +770,35 @@ onUnmounted(() => {
 
 <template>
   <div class="space-y-6">
+    <AlertDialog v-model:open="isAutosaveRestoreDialogOpen">
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Restore unfinished event draft?</AlertDialogTitle>
+          <AlertDialogDescription>
+            {{ pendingAutosaveDraft?.payload.title || 'Untitled event' }} was autosaved at step {{ pendingAutosaveDraft?.lastSavedStep ?? 1 }}{{ pendingAutosaveDraft?.updatedAt ? ` on ${new Date(pendingAutosaveDraft.updatedAt).toLocaleString()}` : '' }}. Restoring will apply it now. Starting fresh will overwrite this autosave when you type.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel @click="startFreshFromAutosaveDraft">
+            Start fresh
+          </AlertDialogCancel>
+          <AlertDialogAction @click="restoreAutosaveDraft">
+            Restore draft
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+
+    <Card
+      v-if="isLoadingAutosaveDraft"
+      class="shadow-none"
+    >
+      <CardContent class="flex items-center gap-3 py-4 text-sm text-muted-foreground">
+        <Loader2 class="size-4 animate-spin" />
+        Loading autosave draft…
+      </CardContent>
+    </Card>
+
     <Stepper
       :model-value="currentStep"
       class="flex w-full items-start gap-2"
@@ -526,7 +852,7 @@ onUnmounted(() => {
     </Stepper>
 
     <form
-      class="space-y-6"
+      class="space-y-6 pb-44 sm:pb-32 md:pb-28"
       @submit.prevent="onSubmit"
     >
       <motion.div
@@ -781,7 +1107,8 @@ onUnmounted(() => {
           :model-value="values.sessions"
           :venue-sections="selectedVenueDetail?.sections ?? []"
           :default-venue-id="values.venueId"
-          @update:model-value="setFieldValue('sessions', $event)"
+          :validation-errors="sessionValidationErrors"
+          @update:model-value="updateSessions"
         />
 
         <Card
@@ -828,7 +1155,7 @@ onUnmounted(() => {
         </Card>
       </motion.div>
 
-      <div class="sticky bottom-4 z-10 rounded-3xl border bg-background/95 p-3 shadow-lg backdrop-blur supports-[backdrop-filter]:bg-background/80">
+      <div class="fixed inset-x-4 bottom-[calc(1rem+env(safe-area-inset-bottom,0px))] z-30 rounded-3xl border bg-background/95 p-3 shadow-lg backdrop-blur supports-[backdrop-filter]:bg-background/80 md:left-[calc(var(--sidebar-width)+1rem)] md:right-4 md:group-has-data-[collapsible=icon]/sidebar-wrapper:left-[calc(var(--sidebar-width-icon)+2rem)] md:group-has-data-[collapsible=offcanvas]/sidebar-wrapper:left-4">
         <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div class="text-sm text-muted-foreground">
             <span class="font-medium text-foreground">{{ steps[currentStep - 1]?.title }}</span>

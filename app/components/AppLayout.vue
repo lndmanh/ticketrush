@@ -1,33 +1,13 @@
 <script setup lang="ts">
 import type { VueElement } from 'vue'
-
-import {
-  Breadcrumb,
-  BreadcrumbEllipsis,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from '@/components/ui/breadcrumb'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-import { Separator } from '@/components/ui/separator'
-import { SidebarTrigger } from '@/components/ui/sidebar'
 import { cn } from '@/lib/utils'
 
 import MaxWidthWrapper from './MaxWidthWrapper.vue'
-import { ChevronLeft, HomeIcon, LogInIcon, MessageSquare } from '@lucide/vue'
+import { ChevronLeft, HomeIcon, LogInIcon } from '@lucide/vue'
 import type { BreadcrumbItemType } from '~~/types/common'
 
 const router = useRouter()
 const route = useRoute()
-
-const routeTransitionKey = computed(() => route.fullPath || route.path)
 
 function getRouteTitle(meta: { breadcrumb?: unknown, title?: unknown } | undefined) {
   if (!meta) return null
@@ -98,8 +78,10 @@ withDefaults(defineProps<{
   titleControls?: VueElement
   className?: string
   hideSidebarTrigger?: boolean
+  hideHeader?: boolean
 }>(), {
   hideSidebarTrigger: false,
+  hideHeader: false,
 })
 
 const { loggedIn, user } = useUserSession()
@@ -108,6 +90,7 @@ const { loggedIn, user } = useUserSession()
 <template>
   <div>
     <header
+      v-if="!hideHeader"
       class="sticky top-0 z-10 bg-muted/10 backdrop-blur-md border-b border-b-muted/10 md:rounded-t-xl flex h-[calc(var(--header-height,3.5rem)+env(safe-area-inset-top,0px))] pt-[env(safe-area-inset-top,0px)] shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-[calc(var(--header-height,3.5rem)+env(safe-area-inset-top,0px))]"
     >
       <div class="flex w-full items-center gap-1 px-4 lg:gap-2 lg:px-6">

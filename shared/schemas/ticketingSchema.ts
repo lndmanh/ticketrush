@@ -36,6 +36,29 @@ export const sectionBlueprintSchema = z.object({
   seatsPerRow: z.coerce.number().int().positive('Seats per row is required'),
 })
 
+function addDuplicateSectionCodeIssues(sections: { code: string }[], ctx: z.RefinementCtx) {
+  const firstSectionByCode = new Map<string, number>()
+
+  sections.forEach((section, index) => {
+    const normalizedCode = section.code.trim().toLowerCase()
+    if (!normalizedCode) {
+      return
+    }
+
+    const firstSectionIndex = firstSectionByCode.get(normalizedCode)
+    if (firstSectionIndex === undefined) {
+      firstSectionByCode.set(normalizedCode, index)
+      return
+    }
+
+    ctx.addIssue({
+      code: 'custom',
+      message: `Section code must be unique. "${section.code}" is already used by section ${firstSectionIndex + 1}.`,
+      path: [index, 'code'],
+    })
+  })
+}
+
 export const venueRowDraftSchema = z.object({
   label: commonSchemaFragments.nonEmptyString('Row label'),
   sortOrder: z.coerce.number().int().min(0).default(0),
@@ -58,13 +81,15 @@ export const createVenueSchema = z.object({
   country: venueCountrySchema.default('Vietnam'),
   address: commonSchemaFragments.nonEmptyString('Address'),
   coverImage: z.string().url().optional().or(z.literal('')),
-  sections: z.array(venueSectionDraftSchema).min(1),
+  sections: z.array(venueSectionDraftSchema).min(1).superRefine(addDuplicateSectionCodeIssues),
 })
 
 export const venueBuilderSchema = createVenueSchema.omit({
   sections: true,
 }).extend({
-  sections: z.array(sectionBlueprintSchema).min(1, 'At least one section is required'),
+  sections: z.array(sectionBlueprintSchema)
+    .min(1, 'At least one section is required')
+    .superRefine(addDuplicateSectionCodeIssues),
 })
 
 export const updateVenueSchema = createVenueSchema.extend({
@@ -73,20 +98,97 @@ export const updateVenueSchema = createVenueSchema.extend({
 
 export const ticketTypeDraftSchema = z.object({
   id: commonSchemaFragments.positiveId.optional(),
-  venueSectionId: commonSchemaFragments.positiveId.optional(),
-  name: commonSchemaFragments.nonEmptyString('Ticket type name'),
+  venueSectionId: commonSchemaFragments.positiveId.nullable().optional(),
+  name: commonSchemaFragments.nonEmptyString('Ticket release name'),
   description: z.string().trim().optional(),
   priceCents: z.coerce.number().int().nonnegative(),
   currency: z.string().trim().min(3).max(3).default('VND'),
   capacity: z.coerce.number().int().positive(),
-  color: commonSchemaFragments.nonEmptyString('Ticket type color'),
+  color: commonSchemaFragments.nonEmptyString('Ticket release color').default('#3b82f6'),
   isReservedSeating: z.boolean().default(true),
   sortOrder: z.coerce.number().int().min(0).default(0),
 })
 
 export const ticketTypeEditorSchema = ticketTypeDraftSchema.extend({
-  venueSectionId: commonSchemaFragments.positiveId,
+  venueSectionId: commonSchemaFragments.positiveId.nullable(),
+}).superRefine((ticketType, ctx) => {
+  if (ticketType.isReservedSeating && !ticketType.venueSectionId) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['venueSectionId'],
+      message: 'Reserved seating ticket releases require a venue section',
+    })
+  }
 })
+
+interface EventSessionTimingInput {
+  startsAt: string | Date
+  endsAt?: string | Date | null
+  salesStartAt: string | Date
+  salesEndAt: string | Date
+}
+
+interface EventSessionTimingIssue {
+  field: 'startsAt' | 'endsAt' | 'salesStartAt' | 'salesEndAt'
+  message: string
+}
+
+function parseEventSessionDate(value: string | Date | null | undefined) {
+  if (!value) {
+    return null
+  }
+
+  const date = value instanceof Date ? value : new Date(value)
+  if (Number.isNaN(date.getTime())) {
+    return null
+  }
+
+  return date
+}
+
+export function getEventSessionTimingIssues(input: EventSessionTimingInput, sessionLabel: string, now = new Date()) {
+  const issues: EventSessionTimingIssue[] = []
+  const startsAt = parseEventSessionDate(input.startsAt)
+  const endsAt = parseEventSessionDate(input.endsAt)
+  const salesStartAt = parseEventSessionDate(input.salesStartAt)
+  const salesEndAt = parseEventSessionDate(input.salesEndAt)
+
+  if (!startsAt) {
+    issues.push({ field: 'startsAt', message: `${sessionLabel}: Session start is required` })
+  }
+  else if (startsAt <= now) {
+    issues.push({ field: 'startsAt', message: `${sessionLabel}: Session start must be in the future` })
+  }
+
+  if (input.endsAt && !endsAt) {
+    issues.push({ field: 'endsAt', message: `${sessionLabel}: Session end must be a valid date and time` })
+  }
+  else if (startsAt && endsAt && endsAt <= startsAt) {
+    issues.push({ field: 'endsAt', message: `${sessionLabel}: Session end must be after the session start` })
+  }
+
+  if (!salesStartAt) {
+    issues.push({ field: 'salesStartAt', message: `${sessionLabel}: Sales start is required` })
+  }
+
+  if (!salesEndAt) {
+    issues.push({ field: 'salesEndAt', message: `${sessionLabel}: Sales end is required` })
+  }
+
+  if (salesStartAt && salesEndAt && salesEndAt <= salesStartAt) {
+    issues.push({ field: 'salesEndAt', message: `${sessionLabel}: Sales end must be after sales start` })
+  }
+
+  if (startsAt && salesStartAt && salesStartAt >= startsAt) {
+    issues.push({ field: 'salesStartAt', message: `${sessionLabel}: Sales start must be before the session starts` })
+  }
+
+  if (startsAt && salesEndAt && salesEndAt >= startsAt) {
+    issues.push({ field: 'salesEndAt', message: `${sessionLabel}: Sales must end before the session starts` })
+  }
+
+  return issues
+}
 
 export const eventSessionDraftSchema = z.object({
   id: commonSchemaFragments.positiveId.optional(),
@@ -99,7 +201,7 @@ export const eventSessionDraftSchema = z.object({
   salesStartAt: requiredDateSchema,
   salesEndAt: requiredDateSchema,
   queueEnabled: z.boolean().default(false),
-  ticketTypes: z.array(ticketTypeDraftSchema).min(1),
+  ticketTypes: z.array(ticketTypeDraftSchema).min(1, 'Add at least one ticket release'),
 })
 
 export const waitingRoomSettingsSchema = z.object({
@@ -113,7 +215,7 @@ export const eventSessionEditorSchema = eventSessionDraftSchema.extend({
   endsAt: z.string().optional(),
   salesStartAt: z.string().min(1, 'Sales start is required'),
   salesEndAt: z.string().min(1, 'Sales end is required'),
-  ticketTypes: z.array(ticketTypeEditorSchema).min(1, 'At least one ticket type is required'),
+  ticketTypes: z.array(ticketTypeEditorSchema).min(1, 'Add at least one ticket release'),
 })
 
 export const createEventSchema = z.object({
@@ -136,6 +238,7 @@ const eventAutosaveTicketTypeSchema = z.object({
   venueSectionId: z.coerce.number().int().positive().nullable().optional(),
   priceCents: z.coerce.number().int().nonnegative().optional(),
   currency: z.string().trim().min(3).max(3).optional(),
+  color: z.string().trim().max(40).optional(),
   isReservedSeating: z.boolean().optional(),
   capacity: z.coerce.number().int().nonnegative().optional(),
   sortOrder: z.coerce.number().int().min(0).optional(),

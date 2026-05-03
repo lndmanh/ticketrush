@@ -116,45 +116,45 @@ class HoldService {
           .returning()
           .get()
 
-      if (!hold) {
-        throw createError({ statusCode: 500, statusMessage: 'Failed to create seat hold.' })
-      }
+        if (!hold) {
+          throw createError({ statusCode: 500, statusMessage: 'Failed to create seat hold.' })
+        }
 
-      const availableSeats = await tx
-        .select()
-        .from(tables.eventSeats)
-        .where(and(
-          eq(tables.eventSeats.eventSessionId, session.id),
-          inArray(tables.eventSeats.id, input.eventSeatIds),
-        ))
-        .all()
-
-      const sellableSeats = availableSeats.filter(seat => seat.status === 'available')
-      if (sellableSeats.length !== input.eventSeatIds.length) {
-        throw createError({ statusCode: 409, statusMessage: 'One or more selected seats are no longer available.' })
-      }
-
-      for (const seat of sellableSeats) {
-        const lockedSeat = await tx
-          .update(tables.eventSeats)
-          .set({
-            status: 'locked',
-            holdId: hold.id,
-            lockedAt: now,
-            updatedAt: now,
-          })
+        const availableSeats = await tx
+          .select()
+          .from(tables.eventSeats)
           .where(and(
-            eq(tables.eventSeats.id, seat.id),
-            eq(tables.eventSeats.status, 'available'),
-            isNull(tables.eventSeats.holdId),
+            eq(tables.eventSeats.eventSessionId, session.id),
+            inArray(tables.eventSeats.id, input.eventSeatIds),
           ))
-          .returning()
-          .get()
+          .all()
 
-        if (!lockedSeat) {
+        const sellableSeats = availableSeats.filter(seat => seat.status === 'available')
+        if (sellableSeats.length !== input.eventSeatIds.length) {
           throw createError({ statusCode: 409, statusMessage: 'One or more selected seats are no longer available.' })
         }
-      }
+
+        for (const seat of sellableSeats) {
+          const lockedSeat = await tx
+            .update(tables.eventSeats)
+            .set({
+              status: 'locked',
+              holdId: hold.id,
+              lockedAt: now,
+              updatedAt: now,
+            })
+            .where(and(
+              eq(tables.eventSeats.id, seat.id),
+              eq(tables.eventSeats.status, 'available'),
+              isNull(tables.eventSeats.holdId),
+            ))
+            .returning()
+            .get()
+
+          if (!lockedSeat) {
+            throw createError({ statusCode: 409, statusMessage: 'One or more selected seats are no longer available.' })
+          }
+        }
 
         return hold
       })

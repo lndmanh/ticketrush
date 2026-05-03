@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, useAttrs } from 'vue'
 import type { PrimitiveProps } from 'reka-ui'
 import type { HTMLAttributes } from 'vue'
 import type { ButtonVariants } from '.'
@@ -19,11 +19,17 @@ interface Props extends PrimitiveProps {
   title?: HTMLAttributes['title']
 }
 
+defineOptions({
+  inheritAttrs: false,
+})
+
 const props = withDefaults(defineProps<Props>(), {
   as: 'button',
   isLoading: false,
   disabled: false,
 })
+
+const attrs = useAttrs()
 
 const tooltipTitle = computed(() => {
   return isEmpty(props.title) ? '' : String(props.title)
@@ -33,6 +39,7 @@ const hasTooltipTitle = computed(() => tooltipTitle.value.length > 0)
 
 // Consolidate shared attributes to eliminate template duplication
 const primitiveProps = computed(() => ({
+  ...attrs,
   as: props.as,
   'as-child': props.asChild,
   class: cn(buttonVariants({ variant: props.variant, size: props.size }), props.class),

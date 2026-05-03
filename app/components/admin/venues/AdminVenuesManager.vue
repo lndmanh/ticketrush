@@ -31,10 +31,10 @@
       <DialogScrollContent class="max-w-3xl">
         <DialogHeader>
           <DialogTitle>
-            {{ isEditing ? 'Edit venue' : 'Create venue' }}
+            Create venue
           </DialogTitle>
           <DialogDescription>
-            Venue details and section matrix.
+            Add the venue details first. Configure sections, rows, and seats in Venue Studio after creation.
           </DialogDescription>
         </DialogHeader>
 
@@ -199,98 +199,6 @@
             </VeeField>
           </FieldGroup>
 
-          <FieldSet class="space-y-4">
-            <div class="flex items-center justify-between gap-4">
-              <div>
-                <FieldLegend>Section matrix</FieldLegend>
-                <FieldDescription>Rows and seats per section.</FieldDescription>
-              </div>
-              <Button
-                type="button"
-                variant="outline"
-                @click="addSection"
-              >
-                Add section
-              </Button>
-            </div>
-
-            <div class="space-y-4">
-              <div
-                v-for="(section, index) in values.sections"
-                :key="`${section.code}-${index}`"
-                class="rounded-md border p-4"
-              >
-                <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
-                  <Field>
-                    <FieldLabel :for="`venue-dialog-section-code-${index}`">
-                      Code
-                    </FieldLabel>
-                    <Input
-                      :id="`venue-dialog-section-code-${index}`"
-                      :model-value="section.code"
-                      @update:model-value="updateSection(index, 'code', $event)"
-                    />
-                  </Field>
-                  <Field>
-                    <FieldLabel :for="`venue-dialog-section-name-${index}`">
-                      Name
-                    </FieldLabel>
-                    <Input
-                      :id="`venue-dialog-section-name-${index}`"
-                      :model-value="section.name"
-                      @update:model-value="updateSection(index, 'name', $event)"
-                    />
-                  </Field>
-                  <Field>
-                    <FieldLabel :for="`venue-dialog-section-color-${index}`">
-                      Color
-                    </FieldLabel>
-                    <Input
-                      :id="`venue-dialog-section-color-${index}`"
-                      :model-value="section.color"
-                      @update:model-value="updateSection(index, 'color', $event)"
-                    />
-                  </Field>
-                  <Field>
-                    <FieldLabel :for="`venue-dialog-section-rows-${index}`">
-                      Rows
-                    </FieldLabel>
-                    <Input
-                      :id="`venue-dialog-section-rows-${index}`"
-                      :model-value="String(section.rowCount)"
-                      type="number"
-                      min="1"
-                      @update:model-value="updateSection(index, 'rowCount', Number($event))"
-                    />
-                  </Field>
-                  <Field>
-                    <FieldLabel :for="`venue-dialog-section-seats-${index}`">
-                      Seats per row
-                    </FieldLabel>
-                    <Input
-                      :id="`venue-dialog-section-seats-${index}`"
-                      :model-value="String(section.seatsPerRow)"
-                      type="number"
-                      min="1"
-                      @update:model-value="updateSection(index, 'seatsPerRow', Number($event))"
-                    />
-                  </Field>
-                </div>
-
-                <div class="mt-4 flex items-center justify-between gap-3 rounded-md border bg-muted/30 px-4 py-3 text-sm text-muted-foreground">
-                  <span>{{ section.rowCount * section.seatsPerRow }} seats staged for {{ section.name }}.</span>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    @click="removeSection(index)"
-                  >
-                    Remove
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </FieldSet>
-
           <DialogFooter>
             <Button
               variant="outline"
@@ -304,7 +212,7 @@
               type="submit"
               :is-loading="dialogLoading"
             >
-              {{ isEditing ? 'Save changes' : 'Create venue' }}
+              Create venue
             </Button>
           </DialogFooter>
         </form>
@@ -318,44 +226,12 @@ import { computed, onMounted, ref } from 'vue'
 import { Field as VeeField, useForm } from 'vee-validate'
 import { toast } from 'vue-sonner'
 import type { Venue } from '#shared/db'
-import type { ApiResponse } from '~~/server/utils/apiResponse'
+import type { ApiResponse } from '~~/types/api'
 import { venueBuilderSchema } from '#shared/schemas/ticketingSchema'
 import type { VenueBuilderInput } from '#shared/schemas/ticketingSchema'
-import { MapPinned, Rows3, Ruler } from '@lucide/vue'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
-import {
-  Dialog,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogScrollContent,
-  DialogTitle,
-} from '@/components/ui/dialog'
-import {
-  Field,
-  FieldDescription,
-  FieldError,
-  FieldGroup,
-  FieldLabel,
-  FieldLegend,
-  FieldSet,
-} from '@/components/ui/field'
+import { Rows3 } from '@lucide/vue'
 import DataTable from '@/components/DataTable.vue'
 import { createColumns } from './columns'
-
-interface VenueDetailResponse {
-  venue: Venue
-  sections: Array<{
-    id: number
-    code: string
-    name: string
-    color: string
-    rows: Array<{ seats: Array<{ id: number }> }>
-  }>
-}
 
 function extractErrorMessage(error: unknown, fallback: string) {
   if (typeof error === 'object' && error !== null && 'data' in error) {
@@ -382,7 +258,6 @@ const venues = ref<Venue[]>([])
 const tableLoading = ref(false)
 const dialogLoading = ref(false)
 const showDialog = ref(false)
-const editingVenueId = ref<number | null>(null)
 
 const defaultValues: VenueBuilderInput = {
   slug: '',
@@ -398,15 +273,9 @@ const defaultValues: VenueBuilderInput = {
   ],
 }
 
-const isEditing = computed(() => editingVenueId.value !== null)
-const cityCoverage = computed(() => new Set(venues.value.map(venue => venue.city)).size)
-const largestVenue = computed(() => [...venues.value].sort((left, right) => right.capacity - left.capacity)[0] ?? null)
-
 const {
   handleSubmit,
   resetForm,
-  setFieldValue,
-  values,
 } = useForm({
   initialValues: { ...defaultValues },
   validationSchema: venueBuilderSchema,
@@ -437,53 +306,16 @@ function buildVenuePayload(formValues: VenueBuilderInput) {
   }
 }
 
-function updateSection(index: number, key: keyof VenueBuilderInput['sections'][number], value: string | number) {
-  setFieldValue('sections', values.sections.map((section, sectionIndex) => {
-    if (sectionIndex !== index) {
-      return section
-    }
-
-    return {
-      ...section,
-      [key]: value,
-    }
-  }))
-}
-
-function addSection() {
-  setFieldValue('sections', [
-    ...values.sections,
-    { code: 'NEW', name: 'New section', color: '#0F766E', rowCount: 4, seatsPerRow: 8 },
-  ])
-}
-
-function removeSection(index: number) {
-  if (values.sections.length === 1) {
-    return
-  }
-
-  setFieldValue('sections', values.sections.filter((_, sectionIndex) => sectionIndex !== index))
-}
-
 const onSubmit = handleSubmit(
   async (formValues) => {
     try {
       dialogLoading.value = true
+      await $fetch('/api/admin/venues', {
+        method: 'POST',
+        body: buildVenuePayload(formValues),
+      })
 
-      if (isEditing.value && editingVenueId.value !== null) {
-        await $fetch(`/api/admin/venues/${editingVenueId.value}`, {
-          method: 'PUT',
-          body: buildVenuePayload(formValues),
-        })
-      }
-      else {
-        await $fetch('/api/admin/venues', {
-          method: 'POST',
-          body: buildVenuePayload(formValues),
-        })
-      }
-
-      toast.success(isEditing.value ? 'Venue updated successfully' : 'Venue created successfully')
+      toast.success('Venue created successfully')
       closeDialog()
       await fetchVenues()
     }
@@ -518,42 +350,8 @@ async function fetchVenues() {
 }
 
 function openCreateDialog() {
-  editingVenueId.value = null
   resetForm({ values: { ...defaultValues } })
   showDialog.value = true
-}
-
-async function openEditDialog(venue: Venue) {
-  try {
-    dialogLoading.value = true
-    const detail = await $fetch<ApiResponse<VenueDetailResponse>>(`/api/admin/venues/${venue.id}`)
-    editingVenueId.value = venue.id
-    resetForm({
-      values: {
-        slug: detail.data.venue.slug,
-        name: detail.data.venue.name,
-        description: detail.data.venue.description ?? '',
-        city: detail.data.venue.city,
-        country: detail.data.venue.country,
-        address: detail.data.venue.address,
-        coverImage: detail.data.venue.coverImage ?? '',
-        sections: detail.data.sections.map(section => ({
-          code: section.code,
-          name: section.name,
-          color: section.color,
-          rowCount: section.rows.length,
-          seatsPerRow: section.rows[0]?.seats.length ?? 0,
-        })),
-      },
-    })
-    showDialog.value = true
-  }
-  catch (error) {
-    toast.error(extractErrorMessage(error, 'Failed to load the venue blueprint'))
-  }
-  finally {
-    dialogLoading.value = false
-  }
 }
 
 function openStudio(venueId: number) {
@@ -562,11 +360,10 @@ function openStudio(venueId: number) {
 
 function closeDialog() {
   showDialog.value = false
-  editingVenueId.value = null
   resetForm({ values: { ...defaultValues } })
 }
 
-const columns = computed(() => createColumns(openEditDialog, openStudio))
+const columns = computed(() => createColumns(openStudio))
 
 onMounted(() => {
   fetchVenues()

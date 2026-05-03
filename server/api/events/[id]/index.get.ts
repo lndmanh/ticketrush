@@ -1,8 +1,9 @@
 import eventService from '~~/server/utils/database/event'
 import venueService from '~~/server/utils/database/venue'
 import { success } from '~~/server/utils/apiResponse'
+import type { EventDetailResponse, PublicEventSessionSummary, PublicEventSummary, PublicVenueDetail } from '~~/types/events'
 
-function mapVenue(venueDetail: Awaited<ReturnType<typeof venueService.getDetail>>) {
+function mapVenue(venueDetail: Awaited<ReturnType<typeof venueService.getDetail>>): PublicVenueDetail | null {
   if (!venueDetail) {
     return null
   }
@@ -22,7 +23,7 @@ function mapVenue(venueDetail: Awaited<ReturnType<typeof venueService.getDetail>
   }
 }
 
-function mapEvent(event: Awaited<ReturnType<typeof eventService.getById>>) {
+function mapEvent(event: Awaited<ReturnType<typeof eventService.getById>>): PublicEventSummary | null {
   if (!event) {
     return null
   }
@@ -38,7 +39,7 @@ function mapEvent(event: Awaited<ReturnType<typeof eventService.getById>>) {
   }
 }
 
-function mapSession(session: NonNullable<Awaited<ReturnType<typeof eventService.getDetailBySlug>>>['sessions'][number]) {
+function mapSession(session: NonNullable<Awaited<ReturnType<typeof eventService.getDetailBySlug>>>['sessions'][number]): PublicEventSessionSummary {
   return {
     publicId: session.publicId,
     label: session.label,
@@ -89,9 +90,11 @@ export default defineEventHandler(async (event) => {
     Promise.resolve(publicSessions.map(mapSession)),
   ])
 
-  return success({
+  const response: EventDetailResponse = {
     event: eventDto,
     sessions,
     venue: mapVenue(venue),
-  })
+  }
+
+  return success(response)
 })

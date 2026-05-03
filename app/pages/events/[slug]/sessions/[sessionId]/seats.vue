@@ -4,88 +4,9 @@ import { Clock3, MapPin, RefreshCw, ShoppingBag, Ticket, TimerReset, Users } fro
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
-
-interface SessionSeatMapSeat {
-  id: number
-  venueSectionId: number | null
-  ticketTypeId: number | null
-  sectionNameSnapshot: string
-  rowLabelSnapshot: string | null
-  seatLabelSnapshot: string
-  displayX: number
-  displayY: number
-  priceCents: number
-  currency: string
-  status: 'available' | 'locked' | 'sold' | 'unavailable'
-}
-
-interface SessionSeatMapTicketType {
-  id: number
-  venueSectionId: number | null
-  name: string
-  description: string | null
-  priceCents: number
-  currency: string
-  capacity: number
-  color: string
-  isReservedSeating: boolean
-  sortOrder: number
-}
-
-interface SessionSeatMapResponse {
-  seats: SessionSeatMapSeat[]
-  ticketTypes: SessionSeatMapTicketType[]
-}
-
-interface EventSessionDetailResponse {
-  event: {
-    publicId: string
-    slug: string
-    title: string
-    subtitle: string | null
-    description: string
-    status: string
-    coverImage: string | null
-  } | null
-  session: {
-    publicId: string
-    label: string
-    status: string
-    startsAt: string | Date
-    endsAt: string | Date | null
-    salesStartAt: string | Date
-    salesEndAt: string | Date
-  } | null
-  venue: {
-    venue: {
-      name: string
-      city: string
-      address: string
-      country: string
-    }
-  } | null
-  ticketTypes: SessionSeatMapTicketType[]
-}
-
-interface GateResponse {
-  shouldQueue: boolean
-  sessionPublicId: string
-  eventId: number
-}
-
-interface HoldResponse {
-  data: {
-    hold: {
-      publicId: string
-    }
-  }
-}
-
-interface CheckoutStartResponse {
-  data: {
-    publicId: string
-  }
-}
+import type { EventSessionDetailResponse } from '~~/types/events'
+import type { SessionSeatMapResponse } from '~~/types/seatmap'
+import type { CheckoutStartResponse, EventSessionGateResponse, HoldResponse } from '~~/types/ticketing'
 
 const route = useRoute()
 const slug = computed(() => route.params.slug.toString())
@@ -97,7 +18,7 @@ const detail = computed(() => detailResponse.value?.data ?? null)
 const event = computed(() => detail.value?.event ?? null)
 const session = computed(() => detail.value?.session ?? null)
 
-const { data: gateResponse } = await useFetch<{ data: GateResponse }>(() => `/api/event-sessions/${sessionPublicId.value}/gate`, {
+const { data: gateResponse } = await useFetch<{ data: EventSessionGateResponse }>(() => `/api/event-sessions/${sessionPublicId.value}/gate`, {
   query: computed(() => passToken.value ? { pass: passToken.value } : {}),
 })
 

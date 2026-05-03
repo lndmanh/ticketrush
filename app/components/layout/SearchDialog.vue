@@ -148,18 +148,9 @@
 import { nextTick } from 'vue'
 import { ChevronRightIcon, FileIcon, SearchXIcon } from '@lucide/vue'
 import CtIcon from '@/components/content/CtIcon.vue'
-import type { ApiResponse } from '~~/server/utils/apiResponse'
+import type { ApiResponse } from '~~/types/api'
+import type { EventSearchApiItem } from '~~/types/events'
 import type { SidebarItem } from '~~/types/common'
-
-type EventSearchApiItem = {
-  id: string
-  title: string
-  subtitle: string | null
-  content: string
-  slug: string
-  venueName: string | null
-  venueCity: string | null
-}
 
 type EventSearchResultItem = {
   id: string
