@@ -1,6 +1,6 @@
 import { h } from 'vue'
 import type { ColumnDef } from '@tanstack/vue-table'
-import { ArrowUpDown, Pencil, Rows3, MoreHorizontal } from '@lucide/vue'
+import { ArrowUpDown, Rows3, MoreHorizontal } from '@lucide/vue'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -12,7 +12,6 @@ import type { Venue } from '#shared/db'
 import { formatRelativeTime } from '@/lib/utils'
 
 export function createColumns(
-  onEdit: (venue: Venue) => void,
   onOpenStudio: (venueId: number) => void,
 ): ColumnDef<Venue>[] {
   return [
@@ -69,12 +68,6 @@ export function createColumns(
           }),
           h(DropdownMenuContent, { align: 'end' }, {
             default: () => [
-              h(DropdownMenuItem, { onClick: () => onEdit(row.original) }, {
-                default: () => h('div', { class: 'flex items-center gap-2' }, [
-                  h(Pencil, { class: 'h-4 w-4' }),
-                  h('span', {}, 'Edit'),
-                ]),
-              }),
               h(DropdownMenuItem, { onClick: () => onOpenStudio(row.original.id) }, {
                 default: () => h('div', { class: 'flex items-center gap-2' }, [
                   h(Rows3, { class: 'h-4 w-4' }),
