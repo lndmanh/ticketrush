@@ -14,6 +14,12 @@ CREATE INDEX `credentials_user_idx` ON `credentials` (`user_id`);--> statement-b
 CREATE TABLE `event_draft_autosaves` (
 	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
 	`draft_key` text NOT NULL,
+	`user_id` integer DEFAULT 0 NOT NULL,
+	`status` text DEFAULT 'active' NOT NULL,
+	`converted_event_id` integer,
+	`title_snapshot` text,
+	`slug_snapshot` text,
+	`venue_id` integer,
 	`payload` text NOT NULL,
 	`last_saved_step` integer DEFAULT 1 NOT NULL,
 	`created_at` integer,
@@ -22,6 +28,7 @@ CREATE TABLE `event_draft_autosaves` (
 --> statement-breakpoint
 CREATE UNIQUE INDEX `event_draft_autosaves_draft_key_unique` ON `event_draft_autosaves` (`draft_key`);--> statement-breakpoint
 CREATE INDEX `event_draft_autosaves_draft_key_idx` ON `event_draft_autosaves` (`draft_key`);--> statement-breakpoint
+CREATE INDEX `event_draft_autosaves_user_status_idx` ON `event_draft_autosaves` (`user_id`,`status`);--> statement-breakpoint
 CREATE TABLE `event_metric_buckets` (
 	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
 	`event_id` integer NOT NULL,

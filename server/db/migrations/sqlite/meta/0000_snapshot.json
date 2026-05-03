@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "a9f90b4d-3d84-42f6-bd17-56fb40ae8dde",
+  "id": "1301a4a0-7437-4423-94ae-d388b14c0854",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
     "credentials": {
@@ -109,6 +109,50 @@
           "notNull": true,
           "autoincrement": false
         },
+        "user_id": {
+          "name": "user_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'active'"
+        },
+        "converted_event_id": {
+          "name": "converted_event_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "title_snapshot": {
+          "name": "title_snapshot",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "slug_snapshot": {
+          "name": "slug_snapshot",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "venue_id": {
+          "name": "venue_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
         "payload": {
           "name": "payload",
           "type": "text",
@@ -151,6 +195,14 @@
           "name": "event_draft_autosaves_draft_key_idx",
           "columns": [
             "draft_key"
+          ],
+          "isUnique": false
+        },
+        "event_draft_autosaves_user_status_idx": {
+          "name": "event_draft_autosaves_user_status_idx",
+          "columns": [
+            "user_id",
+            "status"
           ],
           "isUnique": false
         }
