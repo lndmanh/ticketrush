@@ -115,8 +115,3 @@ body {
 .skeleton-shimmer {
   animation: shimmer 2s infinite;
 }
-
-nuxt-studio {
-  z-index: 999999;
-  position: relative;
-}

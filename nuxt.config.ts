@@ -10,7 +10,6 @@ export default defineNuxtConfig({
     '@vueuse/nuxt',
     '@nuxtjs/seo',
     '@nuxtjs/i18n',
-    'nuxt-studio',
     '@nuxt/content',
     'nuxt-content-git', // this adds createdAt and updatedAt dates based on the git history.
     '@nuxt/eslint',
@@ -164,14 +163,8 @@ export default defineNuxtConfig({
         '/blogs/**',
         '/pwa',
         '/__og-image__/static/pwa',
-        '/_studio',
-        '/_studio/**',
-        '/__nuxt_studio',
-        '/__nuxt_studio/**',
         '/api/**', // Ignore ALL API routes (not just /api/studio/**)
         '/auth/**', // Auth0 routes should be SSR (optional, not required for Studio)
-        '/admin/studio/login', // Login page should also be SSR
-        '/admin/studio/login/**', // Login page with any sub-paths
       ],
     },
     typescript: {
@@ -356,16 +349,6 @@ export default defineNuxtConfig({
   sitemap: {
     zeroRuntime: true,
     exclude: ['/admin/**', '/settings/**'],
-  },
-
-  studio: {
-    route: '/admin/studio',
-    repository: {
-      provider: 'github',
-      owner: 'No-Name-Studio-VN',
-      repo: 'Nuxt-Starter-Kit',
-      branch: 'main',
-    },
   },
 
   turnstile: {
