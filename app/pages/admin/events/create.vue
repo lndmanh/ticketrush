@@ -7,44 +7,6 @@ import { Check, Circle, Cloud, CloudAlert, Dot, Loader2 } from '@lucide/vue'
 import { eventComposerSchema, getEventSessionTimingIssues } from '#shared/schemas/ticketingSchema'
 import type { EventAutosaveDraftInput, EventComposerInput } from '#shared/schemas/ticketingSchema'
 import type { VenueDetail } from '~~/types/venues'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import {
-  Stepper,
-  StepperDescription,
-  StepperIndicator,
-  StepperItem,
-  StepperSeparator,
-  StepperTitle,
-  StepperTrigger,
-} from '@/components/ui/stepper'
-import {
-  Field,
-  FieldDescription,
-  FieldError,
-  FieldGroup,
-  FieldLabel,
-  FieldSet,
-  FieldLegend,
-} from '@/components/ui/field'
 
 interface VenueOption {
   id: number
