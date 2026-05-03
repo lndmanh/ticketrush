@@ -16,7 +16,8 @@ export default defineEventHandler(async (event) => {
   const published = await eventService.publish(eventId)
   try {
     await analyticsService.recomputeDailyBucket(eventId)
-  } catch (error) {
+  }
+  catch (error) {
     console.error('Failed to recompute analytics bucket after publish', error)
   }
   return success(published)
