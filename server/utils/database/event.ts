@@ -1,9 +1,17 @@
 import { and, asc, eq, inArray, like, or } from 'drizzle-orm'
-import type { Event, EventSession } from '#shared/db'
+import type { Event, EventSession, Venue } from '#shared/db'
 import type { CreateEventInput, EventSessionDraftInput, UpdateEventInput } from '#shared/schemas/ticketingSchema'
 import { IDatabaseService } from '~~/types/db/database-service'
 import { createPublicEventId } from '~~/server/utils/ticketing/ids'
 import eventSessionService from '~~/server/utils/database/event-session'
+import type {
+  EventCatalogDateFilter,
+  EventCatalogItem,
+  EventCatalogPublicStatus,
+  EventCatalogQueryOptions,
+  EventCatalogResult,
+  EventCatalogSort,
+} from '~~/types/events'
 
 type EventDetail = {
   event: Event
@@ -15,6 +23,46 @@ type EventDetail = {
 
 type Database = ReturnType<typeof useDB>
 type Transaction = Parameters<Parameters<Database['transaction']>[0]>[0]
+
+const publicEventStatuses: EventCatalogPublicStatus[] = ['published', 'on_sale', 'sold_out', 'ended']
+
+function getDateWindowBounds(dateFilter: EventCatalogDateFilter) {
+  const now = new Date()
+  const startOfToday = new Date(now)
+  startOfToday.setHours(0, 0, 0, 0)
+
+  if (dateFilter === 'today') {
+    const endOfToday = new Date(startOfToday)
+    endOfToday.setDate(endOfToday.getDate() + 1)
+
+    return {
+      start: startOfToday.getTime(),
+      end: endOfToday.getTime(),
+    }
+  }
+
+  if (dateFilter === 'week') {
+    const endOfWeek = new Date(now)
+    endOfWeek.setDate(endOfWeek.getDate() + 7)
+
+    return {
+      start: startOfToday.getTime(),
+      end: endOfWeek.getTime(),
+    }
+  }
+
+  if (dateFilter === 'month') {
+    const endOfMonth = new Date(now)
+    endOfMonth.setMonth(endOfMonth.getMonth() + 1)
+
+    return {
+      start: startOfToday.getTime(),
+      end: endOfMonth.getTime(),
+    }
+  }
+
+  return null
+}
 
 class EventService extends IDatabaseService<Event> {
   private static instance: EventService
@@ -69,7 +117,7 @@ class EventService extends IDatabaseService<Event> {
     }
 
     const sessions = await eventSessionService.listByEventId(event.id)
-    const sessionsWithDetails = await Promise.all(sessions.map(async (session) => ({
+    const sessionsWithDetails = await Promise.all(sessions.map(async session => ({
       ...session,
       ...(await eventSessionService.getSeatMap(session.id)),
     })))
@@ -168,6 +216,173 @@ class EventService extends IDatabaseService<Event> {
     })
 
     return event
+  }
+
+  private toEventCatalogItem(event: Event, venue: Venue | null, sessions: EventSession[]): EventCatalogItem {
+    return {
+      id: event.id,
+      publicId: event.publicId,
+      slug: event.slug,
+      title: event.title,
+      subtitle: event.subtitle,
+      description: event.description,
+      status: event.status,
+      venueId: event.venueId,
+      coverImage: event.coverImage,
+      startsAt: event.startsAt,
+      endsAt: event.endsAt,
+      salesStartAt: event.salesStartAt,
+      salesEndAt: event.salesEndAt,
+      publishedAt: event.publishedAt,
+      createdAt: event.createdAt,
+      venue: venue
+        ? {
+            id: venue.id,
+            publicId: venue.publicId,
+            slug: venue.slug,
+            name: venue.name,
+            description: venue.description,
+            city: venue.city,
+            country: venue.country,
+            address: venue.address,
+            capacity: venue.capacity,
+            coverImage: venue.coverImage,
+          }
+        : null,
+      sessions: sessions
+        .map(session => ({
+          publicId: session.publicId,
+          label: session.label,
+          status: session.status,
+          startsAt: session.startsAt,
+          endsAt: session.endsAt,
+          salesStartAt: session.salesStartAt,
+          salesEndAt: session.salesEndAt,
+        }))
+        .sort((first, second) => new Date(first.startsAt).getTime() - new Date(second.startsAt).getTime()),
+    }
+  }
+
+  private matchesCatalogSearch(item: EventCatalogItem, normalizedSearchTerm: string) {
+    if (!normalizedSearchTerm) {
+      return true
+    }
+
+    const values = [
+      item.title,
+      item.subtitle,
+      item.description,
+      item.slug,
+      item.venue?.name,
+      item.venue?.city,
+    ].filter((value): value is string => typeof value === 'string' && value.length > 0)
+
+    return values.some(value => value.toLowerCase().includes(normalizedSearchTerm))
+  }
+
+  private matchesCatalogDate(item: EventCatalogItem, dateFilter: EventCatalogDateFilter) {
+    const bounds = getDateWindowBounds(dateFilter)
+    if (!bounds) {
+      return true
+    }
+
+    const startsAt = new Date(item.startsAt).getTime()
+    return startsAt >= bounds.start && startsAt < bounds.end
+  }
+
+  private sortCatalogItems(items: EventCatalogItem[], sort: EventCatalogSort) {
+    return items.slice().sort((first, second) => {
+      if (sort === 'newest') {
+        const firstTime = new Date(first.publishedAt ?? first.createdAt ?? first.startsAt).getTime()
+        const secondTime = new Date(second.publishedAt ?? second.createdAt ?? second.startsAt).getTime()
+
+        return secondTime - firstTime
+      }
+
+      if (sort === 'ending_soon') {
+        return new Date(first.salesEndAt).getTime() - new Date(second.salesEndAt).getTime()
+      }
+
+      return new Date(first.startsAt).getTime() - new Date(second.startsAt).getTime()
+    })
+  }
+
+  private async getPublicEventCatalogItems() {
+    const events = await this.db
+      .select()
+      .from(tables.events)
+      .where(inArray(tables.events.status, publicEventStatuses))
+      .all()
+
+    const venueIds = Array.from(new Set(events.map(event => event.venueId)))
+    const venues = venueIds.length > 0
+      ? await this.db
+          .select()
+          .from(tables.venues)
+          .where(inArray(tables.venues.id, venueIds))
+          .all()
+      : []
+
+    const venueById = new Map(venues.map(venue => [venue.id, venue]))
+    const eventIds = events.map(event => event.id)
+    const sessions = eventIds.length > 0
+      ? await this.db
+          .select()
+          .from(tables.eventSessions)
+          .where(inArray(tables.eventSessions.eventId, eventIds))
+          .all()
+      : []
+    const sessionsByEventId = new Map<number, EventSession[]>()
+
+    for (const session of sessions) {
+      const currentSessions = sessionsByEventId.get(session.eventId) ?? []
+      currentSessions.push(session)
+      sessionsByEventId.set(session.eventId, currentSessions)
+    }
+
+    return events.map(event => this.toEventCatalogItem(
+      event,
+      venueById.get(event.venueId) ?? null,
+      sessionsByEventId.get(event.id) ?? [],
+    ))
+  }
+
+  async getEventCatalog(options: EventCatalogQueryOptions): Promise<EventCatalogResult> {
+    const normalizedSearchTerm = options.q.trim().toLowerCase()
+    const normalizedCity = options.city.trim().toLowerCase()
+    const items = await this.getPublicEventCatalogItems()
+
+    const filteredItems = items.filter((item) => {
+      const statusMatches = options.status === 'all' || item.status === options.status
+      const cityMatches = normalizedCity === 'all' || item.venue?.city.toLowerCase() === normalizedCity
+
+      return statusMatches
+        && cityMatches
+        && this.matchesCatalogDate(item, options.date)
+        && this.matchesCatalogSearch(item, normalizedSearchTerm)
+    })
+
+    const sortedItems = this.sortCatalogItems(filteredItems, options.sort)
+    const start = (options.page - 1) * options.pageSize
+    const end = start + options.pageSize
+
+    return {
+      items: sortedItems.slice(start, end),
+      totalItems: filteredItems.length,
+    }
+  }
+
+  async getEventCatalogCities() {
+    const items = await this.getPublicEventCatalogItems()
+    const cities = new Set<string>()
+
+    for (const item of items) {
+      if (item.venue?.city) {
+        cities.add(item.venue.city)
+      }
+    }
+
+    return Array.from(cities).sort((left, right) => left.localeCompare(right))
   }
 
   private async updateParentSummaryFieldsInTransaction(tx: Transaction, eventId: number, now: Date) {
