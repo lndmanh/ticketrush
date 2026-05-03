@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { computed } from 'vue'
 import type { VenueRowDraftInput, VenueSeatDraftInput, VenueSectionDraftInput } from '#shared/schemas/ticketingSchema'
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
 import { Button } from '@/components/ui/button'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
-import { CopyPlus, Trash2 } from '@lucide/vue'
+import { Accessibility, ChevronDown, CopyPlus, Plus, Trash2 } from '@lucide/vue'
 
 const props = defineProps<{
   sections: VenueSectionDraftInput[]
@@ -13,30 +14,6 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: 'update:sections', value: VenueSectionDraftInput[]): void
 }>()
-
-const layoutTicketTypes = computed(() => props.sections.map((section, sectionIndex) => ({
-  venueSectionId: sectionIndex + 1,
-  name: section.name,
-  description: `${section.rows.length} row${section.rows.length === 1 ? '' : 's'} configured for ${section.name}`,
-  priceCents: 0,
-  currency: 'VND',
-  capacity: section.rows.reduce((count, row) => count + row.seats.length, 0),
-  color: section.color,
-})))
-
-const layoutSeats = computed(() => props.sections.flatMap((section, sectionIndex) => section.rows.flatMap((row, rowIndex) => row.seats.map((seat, seatIndex) => ({
-  id: ((sectionIndex + 1) * 100000) + ((rowIndex + 1) * 1000) + seatIndex,
-  venueSectionId: sectionIndex + 1,
-  ticketTypeId: null,
-  sectionNameSnapshot: section.name,
-  rowLabelSnapshot: row.label,
-  seatLabelSnapshot: seat.label,
-  displayX: seat.x,
-  displayY: seat.y,
-  priceCents: 0,
-  currency: 'VND',
-  status: 'available',
-})))))
 
 function nextRowLabel(index: number) {
   return String.fromCharCode(65 + index)
@@ -74,6 +51,44 @@ function createSection(index: number): VenueSectionDraftInput {
     color: '#111111',
     sortOrder: index,
     rows: [createRow(0)],
+  }
+}
+
+function createUniqueSectionCode(code: string) {
+  const existingCodes = new Set(props.sections.map(section => section.code.trim().toLowerCase()))
+  const baseCode = code.trim() || `SEC-${props.sections.length + 1}`
+  let nextCode = `${baseCode}-COPY`
+  let copyIndex = 2
+
+  while (existingCodes.has(nextCode.toLowerCase())) {
+    nextCode = `${baseCode}-COPY-${copyIndex}`
+    copyIndex += 1
+  }
+
+  return nextCode
+}
+
+function createSectionCopy(section: VenueSectionDraftInput, index: number): VenueSectionDraftInput {
+  const nextSection = createSection(index)
+
+  return {
+    ...nextSection,
+    code: createUniqueSectionCode(section.code),
+    name: `${section.name} Copy`,
+    color: section.color,
+    rows: section.rows.map((row, rowIndex) => ({
+      label: row.label,
+      sortOrder: rowIndex,
+      seats: row.seats.map((seat, seatIndex) => ({
+        label: seat.label,
+        seatNumber: seat.seatNumber,
+        x: seat.x,
+        y: seat.y,
+        sortOrder: seatIndex,
+        accessibilityLabel: seat.accessibilityLabel ?? '',
+        isAccessible: seat.isAccessible,
+      })),
+    })),
   }
 }
 
@@ -118,20 +133,7 @@ function duplicateSection(sectionIndex: number) {
 
   updateSections([
     ...props.sections.slice(0, sectionIndex + 1),
-    {
-      ...section,
-      code: `${section.code}-COPY`,
-      name: `${section.name} Copy`,
-      rows: section.rows.map((row, rowIndex) => ({
-        ...row,
-        label: row.label,
-        sortOrder: rowIndex,
-        seats: row.seats.map((seat, seatIndex) => ({
-          ...seat,
-          sortOrder: seatIndex,
-        })),
-      })),
-    },
+    createSectionCopy(section, props.sections.length),
     ...props.sections.slice(sectionIndex + 1),
   ])
 }
@@ -250,9 +252,6 @@ function removeSeat(sectionIndex: number, rowIndex: number, seatIndex: number) {
         <p class="text-base font-medium tracking-[-0.03em] text-foreground">
           Seat layout editor
         </p>
-        <p class="mt-1 text-sm leading-6 text-muted-foreground">
-          Edit sections, rows, seat coordinates, and accessibility markers directly.
-        </p>
       </div>
       <Button
         type="button"
@@ -263,118 +262,14 @@ function removeSeat(sectionIndex: number, rowIndex: number, seatIndex: number) {
       </Button>
     </div>
 
-    <TicketSeatMapLayoutProvider
-      v-slot="{ sections: previewSections, inventorySummary, visibleSections, stageStyle, zoomStyle, getRowStyle, getTintStyle }"
-      :seats="layoutSeats"
-      :ticket-types="layoutTicketTypes"
+    <Accordion
+      type="multiple"
+      class="space-y-4"
     >
-      <div class="rounded-[1.75rem] border border-border bg-secondary/35 p-4">
-        <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-          <div>
-            <p class="text-sm font-medium text-foreground">
-              Shared seat map preview
-            </p>
-            <p class="mt-1 text-sm text-muted-foreground">
-              This preview uses the same normalized layout provider as the public and admin event maps.
-            </p>
-          </div>
-          <div class="grid grid-cols-3 gap-2 text-center">
-            <div class="rounded-2xl border border-border bg-background px-3 py-2">
-              <p class="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-                Sections
-              </p>
-              <p class="mt-1 text-sm font-semibold tabular-nums text-foreground">
-                {{ previewSections.length }}
-              </p>
-            </div>
-            <div class="rounded-2xl border border-border bg-background px-3 py-2">
-              <p class="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-                Seats
-              </p>
-              <p class="mt-1 text-sm font-semibold tabular-nums text-foreground">
-                {{ inventorySummary.total }}
-              </p>
-            </div>
-            <div class="rounded-2xl border border-border bg-background px-3 py-2">
-              <p class="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-                Rows
-              </p>
-              <p class="mt-1 text-sm font-semibold tabular-nums text-foreground">
-                {{ previewSections.reduce((count, section) => count + section.rows.length, 0) }}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div
-          class="mt-4 rounded-[1.5rem] border px-4 py-5 text-center"
-          :style="stageStyle"
-        >
-          <p class="text-sm font-medium text-foreground">
-            Stage / focal line
-          </p>
-          <p class="mt-1 text-xs uppercase tracking-[0.2em] text-muted-foreground">
-            Venue blueprint preview
-          </p>
-        </div>
-
-        <div
-          class="mt-4 overflow-x-auto rounded-[1.5rem] border border-border bg-background/80 p-4"
-          :style="zoomStyle"
-        >
-          <div class="grid min-w-max gap-4 xl:grid-cols-2">
-            <article
-              v-for="section in visibleSections"
-              :key="section.key"
-              class="rounded-[1.5rem] border p-4"
-              :style="getTintStyle(section.color, 0.18, 0.14)"
-            >
-              <div class="mb-4 flex items-center justify-between gap-3">
-                <div class="flex items-center gap-3">
-                  <span
-                    class="size-2.5 rounded-full"
-                    :style="{ backgroundColor: section.color }"
-                  />
-                  <p class="text-sm font-medium text-foreground">
-                    {{ section.name }}
-                  </p>
-                </div>
-                <p class="text-xs tabular-nums text-muted-foreground">
-                  {{ section.metrics.total }} seats
-                </p>
-              </div>
-
-              <div class="space-y-3">
-                <div
-                  v-for="row in section.rows"
-                  :key="`${section.code}-${row.label}`"
-                  class="grid grid-cols-[2.75rem_minmax(0,1fr)] items-start gap-3"
-                >
-                  <div class="flex h-10 items-center justify-center rounded-xl border border-border bg-background/88 text-xs font-medium text-foreground">
-                    {{ row.label }}
-                  </div>
-                  <div class="grid min-w-max gap-1.5" :style="getRowStyle(row)">
-                    <div
-                      v-for="seat in row.seats"
-                      :key="seat.id"
-                      class="flex h-10 w-10 items-center justify-center rounded-[0.9rem] border text-[10px] font-semibold text-white"
-                      :style="{ gridColumn: `${(seat.displayX ?? 0) + 1}`, backgroundColor: section.color, borderColor: section.color }"
-                    >
-                      {{ seat.seatLabelSnapshot }}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </article>
-          </div>
-        </div>
-      </div>
-    </TicketSeatMapLayoutProvider>
-
-    <div class="space-y-4">
-      <div
+      <AccordionItem
         v-for="(section, sectionIndex) in sections"
-        :key="`${section.code}-${sectionIndex}`"
+        :key="sectionIndex"
+        :value="`section-${sectionIndex}`"
         class="dashboard-list-item space-y-4"
       >
         <div class="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
@@ -421,128 +316,154 @@ function removeSeat(sectionIndex: number, rowIndex: number, seatIndex: number) {
             >
               <Trash2 class="size-4" />
             </Button>
+            <AccordionTrigger />
           </div>
         </div>
 
-        <div class="space-y-3">
-          <div
+        <AccordionContent class="space-y-3 pb-0">
+          <Collapsible
             v-for="(row, rowIndex) in section.rows"
             :key="`${section.code}-${row.label}-${rowIndex}`"
+            v-slot="{ open }"
             class="rounded-[1.2rem] border border-border bg-secondary p-4"
           >
-            <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-              <div class="grid flex-1 gap-3 md:grid-cols-[minmax(0,12rem)_auto]">
-                <div class="space-y-2">
-                  <label class="text-xs uppercase tracking-[0.18em] text-muted-foreground">Row label</label>
-                  <Input
-                    :model-value="row.label"
-                    @update:model-value="updateRow(sectionIndex, rowIndex, 'label', $event)"
-                  />
-                </div>
-                <div class="flex flex-wrap items-end gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    @click="addSeat(sectionIndex, rowIndex)"
-                  >
-                    Add seat
-                  </Button>
+            <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+              <div class="flex w-full flex-col gap-2 sm:flex-row sm:items-center lg:max-w-64">
+                <label class="shrink-0 text-xs uppercase tracking-[0.18em] text-muted-foreground">Row label</label>
+                <Input
+                  :model-value="row.label"
+                  class="sm:flex-1"
+                  @update:model-value="updateRow(sectionIndex, rowIndex, 'label', $event)"
+                />
+              </div>
+
+              <div class="flex flex-wrap items-center gap-2 lg:justify-end">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  @click="addSeat(sectionIndex, rowIndex)"
+                >
+                  <Plus class="size-4" />
+                  Add seat
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  @click="duplicateRow(sectionIndex, rowIndex)"
+                >
+                  <CopyPlus class="size-4" />
+                  Duplicate row
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  @click="removeRow(sectionIndex, rowIndex)"
+                >
+                  <Trash2 class="size-4" />
+                  Remove row
+                </Button>
+                <CollapsibleTrigger as-child>
                   <Button
                     type="button"
                     variant="ghost"
                     size="sm"
-                    @click="duplicateRow(sectionIndex, rowIndex)"
+                    title="Toggle row seats"
                   >
-                    Duplicate row
+                    <span class="sr-only">Toggle row seats</span>
+                    <ChevronDown
+                      class="size-4 transition-transform duration-200"
+                      :class="open ? 'rotate-180' : ''"
+                    />
                   </Button>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    @click="removeRow(sectionIndex, rowIndex)"
-                  >
-                    Remove row
-                  </Button>
-                </div>
+                </CollapsibleTrigger>
               </div>
             </div>
 
-            <div class="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-              <div
-                v-for="(seat, seatIndex) in row.seats"
-                :key="`${section.code}-${row.label}-${seat.label}-${seatIndex}`"
-                class="rounded-[1rem] border border-border bg-background p-3"
-              >
-                <div class="grid gap-3">
-                  <div class="grid gap-3 sm:grid-cols-2">
-                    <div class="space-y-2">
-                      <label class="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Label</label>
-                      <Input
-                        :model-value="seat.label"
-                        @update:model-value="updateSeat(sectionIndex, rowIndex, seatIndex, 'label', $event)"
-                      />
+            <CollapsibleContent>
+              <div class="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                <div
+                  v-for="(seat, seatIndex) in row.seats"
+                  :key="`${section.code}-${row.label}-${seat.label}-${seatIndex}`"
+                  class="rounded-[1rem] border border-border bg-background p-3"
+                >
+                  <div class="grid gap-3">
+                    <div class="grid gap-3 sm:grid-cols-2">
+                      <div class="space-y-2">
+                        <label class="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Label</label>
+                        <Input
+                          :model-value="seat.label"
+                          @update:model-value="updateSeat(sectionIndex, rowIndex, seatIndex, 'label', $event)"
+                        />
+                      </div>
+                      <div class="space-y-2">
+                        <label class="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Seat no.</label>
+                        <Input
+                          :model-value="String(seat.seatNumber)"
+                          type="number"
+                          min="1"
+                          @update:model-value="updateSeat(sectionIndex, rowIndex, seatIndex, 'seatNumber', Number($event))"
+                        />
+                      </div>
                     </div>
-                    <div class="space-y-2">
-                      <label class="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Seat no.</label>
-                      <Input
-                        :model-value="String(seat.seatNumber)"
-                        type="number"
-                        min="1"
-                        @update:model-value="updateSeat(sectionIndex, rowIndex, seatIndex, 'seatNumber', Number($event))"
-                      />
+
+                    <div class="grid gap-3 sm:grid-cols-2">
+                      <div class="space-y-2">
+                        <label class="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">X</label>
+                        <Input
+                          :model-value="String(seat.x)"
+                          type="number"
+                          min="0"
+                          @update:model-value="updateSeat(sectionIndex, rowIndex, seatIndex, 'x', Number($event))"
+                        />
+                      </div>
+                      <div class="space-y-2">
+                        <label class="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Y</label>
+                        <Input
+                          :model-value="String(seat.y)"
+                          type="number"
+                          min="0"
+                          @update:model-value="updateSeat(sectionIndex, rowIndex, seatIndex, 'y', Number($event))"
+                        />
+                      </div>
                     </div>
-                  </div>
 
-                  <div class="grid gap-3 sm:grid-cols-2">
-                    <div class="space-y-2">
-                      <label class="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">X</label>
-                      <Input
-                        :model-value="String(seat.x)"
-                        type="number"
-                        min="0"
-                        @update:model-value="updateSeat(sectionIndex, rowIndex, seatIndex, 'x', Number($event))"
-                      />
+                    <div class="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
+                      <div class="space-y-2">
+                        <label class="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Accessibility label</label>
+                        <Input
+                          :model-value="seat.accessibilityLabel || ''"
+                          @update:model-value="updateSeat(sectionIndex, rowIndex, seatIndex, 'accessibilityLabel', $event)"
+                        />
+                      </div>
+
+                      <div
+                        class="flex min-h-10 items-center justify-between rounded-[0.9rem] border border-border bg-secondary px-3 py-2 sm:min-w-24"
+                        title="Accessible seat"
+                      >
+                        <Accessibility class="size-4 text-muted-foreground" />
+                        <Switch
+                          :model-value="seat.isAccessible"
+                          @update:model-value="updateSeat(sectionIndex, rowIndex, seatIndex, 'isAccessible', $event)"
+                        />
+                      </div>
                     </div>
-                    <div class="space-y-2">
-                      <label class="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Y</label>
-                      <Input
-                        :model-value="String(seat.y)"
-                        type="number"
-                        min="0"
-                        @update:model-value="updateSeat(sectionIndex, rowIndex, seatIndex, 'y', Number($event))"
-                      />
-                    </div>
-                  </div>
 
-                  <div class="space-y-2">
-                    <label class="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Accessibility label</label>
-                    <Input
-                      :model-value="seat.accessibilityLabel || ''"
-                      @update:model-value="updateSeat(sectionIndex, rowIndex, seatIndex, 'accessibilityLabel', $event)"
-                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      @click="removeSeat(sectionIndex, rowIndex, seatIndex)"
+                    >
+                      Remove seat
+                    </Button>
                   </div>
-
-                  <div class="flex items-center justify-between gap-3 rounded-[0.9rem] border border-border bg-secondary px-3 py-2">
-                    <span class="text-sm text-foreground">Accessible seat</span>
-                    <Switch
-                      :model-value="seat.isAccessible"
-                      @update:model-value="updateSeat(sectionIndex, rowIndex, seatIndex, 'isAccessible', $event)"
-                    />
-                  </div>
-
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    @click="removeSeat(sectionIndex, rowIndex, seatIndex)"
-                  >
-                    Remove seat
-                  </Button>
                 </div>
               </div>
-            </div>
-          </div>
+            </CollapsibleContent>
+          </Collapsible>
 
           <Button
             type="button"
@@ -552,8 +473,8 @@ function removeSeat(sectionIndex: number, rowIndex: number, seatIndex: number) {
           >
             Add row
           </Button>
-        </div>
-      </div>
-    </div>
+        </AccordionContent>
+      </AccordionItem>
+    </Accordion>
   </div>
 </template>
