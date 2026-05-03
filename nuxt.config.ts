@@ -23,28 +23,12 @@ export default defineNuxtConfig({
     '@nuxtjs/color-mode',
     '@nuxtjs/turnstile',
     '@sentry/nuxt/module',
-    '@vite-pwa/nuxt',
   ],
 
   $production: {
     image: {
       provider: 'cloudflare',
       cloudflare: { baseURL: '/' },
-    },
-    pwa: {
-      // Use injectManifest for full control over the service worker.
-      // This is required for SSR apps to properly handle offline fallbacks
-      // (generateSW cannot add a setCatchHandler for navigation requests).
-      strategies: 'injectManifest',
-      registerType: 'autoUpdate',
-      minify: true,
-      manifest: APP_MANIFEST,
-      srcDir: 'service-worker',
-      filename: 'sw.ts',
-      injectManifest: {
-        maximumFileSizeToCacheInBytes: 4000000,
-        globPatterns: ['**/*.{js,css,html,svg,ico,woff2}'],
-      },
     },
   },
 
@@ -161,7 +145,6 @@ export default defineNuxtConfig({
         '/docs/**',
         '/blogs',
         '/blogs/**',
-        '/pwa',
         '/__og-image__/static/pwa',
         '/api/**', // Ignore ALL API routes (not just /api/studio/**)
         '/auth/**', // Auth0 routes should be SSR (optional, not required for Studio)
@@ -187,7 +170,7 @@ export default defineNuxtConfig({
 
   vite: {
     optimizeDeps: {
-      include: ['disable-devtool'],
+      include: ['vue'],
     },
     build: {
       rollupOptions: {

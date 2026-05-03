@@ -43,7 +43,6 @@
     "@tanstack/vue-virtual": "^3.13.24",
     "@unhead/vue": "^2.1.13",
     "@vee-validate/nuxt": "^5.0.0-beta.1",
-    "@vite-pwa/nuxt": "^1.1.1",
     "@vueuse/core": "^14.3.0",
     "@vueuse/nuxt": "^14.3.0",
     "bcryptjs": "^3.0.3",
