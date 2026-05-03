@@ -171,7 +171,7 @@
                   <!-- Parent item with children -->
                   <button
                     v-if="item.links"
-                    class="group relative w-full cursor-pointer py-2 touch-manipulation text-left"
+                    class="group relative w-full py-2 touch-manipulation text-left"
                     :style="{ transitionDelay: `${index * 60}ms` }"
                     @click="openSubmenu(index)"
                   >
@@ -212,7 +212,7 @@
               <div class="mt-8 pt-6 border-t border-border/20">
                 <Button
                   size="lg"
-                  class="w-full rounded-full px-8 text-base font-medium cursor-pointer group relative overflow-hidden shadow-sm shadow-primary/20"
+                  class="w-full rounded-full px-8 text-base font-medium group relative overflow-hidden shadow-sm shadow-primary/20"
                   @click="handleMobileNavClick('contact')"
                 >
                   {{ $t('cta.primary') }}
@@ -226,7 +226,7 @@
               <template v-if="activeSubmenu !== null && headerNav[activeSubmenu]">
                 <!-- Back button -->
                 <button
-                  class="group flex items-center gap-2 py-2 cursor-pointer touch-manipulation text-muted-foreground transition-colors duration-300 hover:text-foreground"
+                  class="group flex items-center gap-2 py-2 touch-manipulation text-muted-foreground transition-colors duration-300 hover:text-foreground"
                   @click="closeSubmenu()"
                 >
                   <ChevronLeft class="h-5 w-5 transition-transform duration-300 group-hover:-translate-x-1" />
