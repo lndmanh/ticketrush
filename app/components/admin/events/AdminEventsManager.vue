@@ -134,6 +134,55 @@
       </p>
     </section>
 
+    <section
+      v-if="unfinishedDraft"
+      class="space-y-3"
+    >
+      <div class="flex flex-col gap-1">
+        <h3 class="text-lg font-semibold tracking-[-0.03em] text-foreground">
+          Unfinished autosave draft
+        </h3>
+        <p class="text-sm text-muted-foreground">
+          This incomplete event form has not been saved as a real draft event yet.
+        </p>
+      </div>
+
+      <Card class="shadow-none">
+        <CardContent class="flex flex-col gap-4 py-4 sm:flex-row sm:items-center sm:justify-between">
+          <div class="min-w-0 space-y-1">
+            <div class="flex flex-wrap items-center gap-2">
+              <p class="truncate text-sm font-medium text-foreground">
+                {{ unfinishedDraft.titleSnapshot || 'Untitled event' }}
+              </p>
+              <Badge variant="outline">
+                Step {{ unfinishedDraft.lastSavedStep }}
+              </Badge>
+            </div>
+            <p class="text-sm text-muted-foreground">
+              {{ getAutosaveVenueName(unfinishedDraft.venueId) }} · saved {{ new Date(unfinishedDraft.updatedAt).toLocaleString() }}
+            </p>
+          </div>
+          <div class="flex shrink-0 gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              @click="discardAutosaveDraft(unfinishedDraft.draftKey)"
+            >
+              Discard
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              @click="resumeAutosaveDraft(unfinishedDraft.draftKey)"
+            >
+              Resume
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    </section>
+
     <DataTable
       :columns="columns"
       :data="rows"
@@ -161,8 +210,18 @@ import AdminFeaturedEventCard from './AdminFeaturedEventCard.vue'
 import type { EventTableRow } from './columns'
 import { createColumns } from './columns'
 
-function extractErrorMessage(error: unknown, fallback: string) {
-  if (typeof error === 'object' && error !== null && 'data' in error) {
+interface AutosaveDraftSummary {
+  draftKey: string
+  titleSnapshot: string
+  slugSnapshot: string
+  venueId: number | null
+  lastSavedStep: number
+  updatedAt: string | Date
+  createdAt: string | Date
+}
+
+function extractErrorMessage(error: object, fallback: string) {
+  if ('data' in error) {
     const data = error.data
     if (typeof data === 'object' && data !== null) {
       if ('statusMessage' in data && typeof data.statusMessage === 'string') {
@@ -181,8 +240,17 @@ function extractErrorMessage(error: unknown, fallback: string) {
   return fallback
 }
 
+function getCaughtErrorMessage(error: object | null, fallback: string) {
+  if (!error) {
+    return fallback
+  }
+
+  return extractErrorMessage(error, fallback)
+}
+
 const events = ref<Event[]>([])
 const venues = ref<Venue[]>([])
+const unfinishedDraft = ref<AutosaveDraftSummary | null>(null)
 const loading = ref(false)
 
 const rows = computed<EventTableRow[]>(() => {
@@ -227,20 +295,22 @@ const firstDraftEventId = computed(() => draftRows.value[0]?.id ?? null)
 async function fetchEvents() {
   try {
     loading.value = true
-    const [eventsResponse, venuesResponse] = await Promise.all([
+    const [eventsResponse, venuesResponse, autosavesResponse] = await Promise.all([
       $fetch<ApiResponse<Event[]>>('/api/admin/events'),
       $fetch<ApiResponse<Venue[]>>('/api/admin/venues'),
+      $fetch<ApiResponse<AutosaveDraftSummary | null>>('/api/admin/events/autosaves'),
     ])
 
-    if (!eventsResponse.success || !venuesResponse.success) {
+    if (!eventsResponse.success || !venuesResponse.success || !autosavesResponse.success) {
       throw new Error('Unsuccessful response')
     }
 
     events.value = eventsResponse.data
     venues.value = venuesResponse.data
+    unfinishedDraft.value = autosavesResponse.data
   }
   catch (error) {
-    toast.error(extractErrorMessage(error, 'Failed to load events'))
+    toast.error(getCaughtErrorMessage(error && typeof error === 'object' ? error : null, 'Failed to load events'))
   }
   finally {
     loading.value = false
@@ -251,6 +321,38 @@ function openEvent(eventId: number) {
   navigateTo(`/admin/events/${eventId}`)
 }
 
+function getAutosaveVenueName(venueId: number | null) {
+  if (!venueId) {
+    return 'No venue selected'
+  }
+
+  return venues.value.find(venue => venue.id === venueId)?.name ?? 'Unknown venue'
+}
+
+function resumeAutosaveDraft(draftKey: string) {
+  navigateTo({ path: '/admin/events/create', query: { draftKey } })
+}
+
+async function discardAutosaveDraft(draftKey: string) {
+  try {
+    loading.value = true
+    await $fetch(`/api/admin/events/autosaves/${draftKey}`, { method: 'DELETE' })
+    if (import.meta.client && window.localStorage.getItem('ticketrush:event-create-autosave-key') === draftKey) {
+      window.localStorage.removeItem('ticketrush:event-create-autosave-key')
+    }
+    if (unfinishedDraft.value?.draftKey === draftKey) {
+      unfinishedDraft.value = null
+    }
+    toast.success('Autosave draft discarded')
+  }
+  catch (error) {
+    toast.error(getCaughtErrorMessage(error && typeof error === 'object' ? error : null, 'Failed to discard autosave draft'))
+  }
+  finally {
+    loading.value = false
+  }
+}
+
 async function publishEvent(eventId: number) {
   try {
     loading.value = true
@@ -259,7 +361,7 @@ async function publishEvent(eventId: number) {
     await fetchEvents()
   }
   catch (error) {
-    toast.error(extractErrorMessage(error, 'Failed to publish event'))
+    toast.error(getCaughtErrorMessage(error && typeof error === 'object' ? error : null, 'Failed to publish event'))
   }
   finally {
     loading.value = false
@@ -274,7 +376,7 @@ async function unpublishEvent(eventId: number) {
     await fetchEvents()
   }
   catch (error) {
-    toast.error(extractErrorMessage(error, 'Failed to unpublish event'))
+    toast.error(getCaughtErrorMessage(error && typeof error === 'object' ? error : null, 'Failed to unpublish event'))
   }
   finally {
     loading.value = false
