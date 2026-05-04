@@ -27,9 +27,6 @@ export const routeRules = {
     ssr: false,
     prerender: false,
   },
-  '/pwa': {
-    ssr: false,
-  },
   '/docs/**': {
     swr: 3600,
   },

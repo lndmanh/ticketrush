@@ -3,21 +3,11 @@ import {
   ArrowRight,
   CalendarCheck2,
   CircleAlert,
-  Clock3,
   Search,
   ShieldCheck,
   Sparkles,
-  Ticket,
-  UsersRound,
 } from '@lucide/vue'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
-import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import type { PaginatedApiResponse } from '~~/types/api'
-import type { EventCatalogItem, EventCatalogQueryOptions } from '~~/types/events'
+import type { EventCatalogQueryOptions } from '~~/types/events'
 
 const FEATURED_EVENT_LIMIT = 3
 
@@ -32,7 +22,7 @@ const {
   data: featuredEventsResponse,
   pending: featuredEventsPending,
   error: featuredEventsFetchError,
-} = await useFetch<PaginatedApiResponse<EventCatalogItem[]>>('/api/events', {
+} = await useFetch('/api/events', {
   query: featuredEventsQuery,
 })
 
@@ -297,36 +287,5 @@ async function searchEvents() {
         </Button>
       </Empty>
     </section>
-
-    <Card class="overflow-hidden border-muted/70 bg-card/60 shadow-none backdrop-blur">
-      <CardContent class="grid gap-6 p-6 md:grid-cols-[minmax(0,1fr)_auto] md:items-center md:p-8">
-        <div class="flex gap-4">
-          <div class="hidden size-12 items-center justify-center rounded-full border bg-secondary text-muted-foreground sm:flex">
-            <ShieldCheck class="size-5" />
-          </div>
-          <div class="space-y-2">
-            <p class="text-xs font-medium uppercase tracking-[0.22em] text-muted-foreground">
-              For organizers
-            </p>
-            <h2 class="text-2xl font-semibold tracking-[-0.05em] md:text-3xl">
-              Manage drops without pulling buyers out of flow.
-            </h2>
-            <p class="max-w-[42rem] text-sm leading-6 text-muted-foreground md:text-base md:leading-7">
-              The console stays one step away for teams managing events, sessions, seat maps, and live sales.
-            </p>
-          </div>
-        </div>
-
-        <Button
-          as-child
-          variant="outline"
-          class="rounded-full"
-        >
-          <NuxtLink to="/admin">
-            Open console
-          </NuxtLink>
-        </Button>
-      </CardContent>
-    </Card>
   </AppLayout>
 </template>
