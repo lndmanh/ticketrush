@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { toast } from 'vue-sonner'
+import type { ApiResponse } from '~~/types/api'
 import type { QueueState } from '~~/types/ticketing'
 
 const route = useRoute()
@@ -56,7 +57,11 @@ async function refreshQueueStatus() {
   }
 
   try {
-    const response = await $fetch<{ data: QueueState | null }>(`/api/event-sessions/${sessionPublicId.value}/queue/status`)
+    const response = await $fetch<ApiResponse<QueueState | null>>(`/api/event-sessions/${sessionPublicId.value}/queue/status`)
+    if (!response.success) {
+      throw new Error(response.error.message)
+    }
+
     queueState.value = response.data
     queueError.value = ''
 

@@ -284,7 +284,6 @@ import type {
   AdminUserEditFormInput,
 } from '#shared/schemas/userSchema'
 import type { User } from '#shared/db'
-import type { ApiResponse } from '~~/types/api'
 import { InfoIcon, Trash2Icon, UserPlus } from '@lucide/vue'
 import DataTable from '@/components/DataTable.vue'
 import { createColumns } from './columns'
@@ -416,7 +415,7 @@ const columns = computed(() => createColumns(handleEdit, handleDeleteConfirm))
 async function fetchUsers() {
   try {
     loading.value = true
-    const res = await $fetch<ApiResponse<User[]>>('/api/admin/users')
+    const res = await $fetch('/api/admin/users')
     if (!res.success) {
       throw new Error('Unsuccessful response')
     }

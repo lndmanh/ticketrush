@@ -1,14 +1,15 @@
 <script setup lang="ts">
 import { CalendarRange, MapPin, Ticket, UserRound } from '@lucide/vue'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import type { ApiResponse } from '~~/types/api'
 import type { EventDetailResponse } from '~~/types/events'
 
 const route = useRoute()
 const slug = computed(() => route.params.slug.toString())
 
-const { data: detailResponse } = await useFetch<{ data: EventDetailResponse }>(() => `/api/events/${slug.value}`)
+const { data: detailResponse } = await useFetch<ApiResponse<EventDetailResponse>>(() => `/api/events/${slug.value}`)
 
-const detail = computed(() => detailResponse.value?.data ?? null)
+const detail = computed(() => detailResponse.value?.success ? detailResponse.value.data : null)
 const event = computed(() => detail.value?.event ?? null)
 const venue = computed(() => detail.value?.venue?.venue ?? null)
 

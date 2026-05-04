@@ -1,17 +1,12 @@
 <script setup lang="ts">
 import { Field as VeeField, useForm } from 'vee-validate'
 import { toast } from 'vue-sonner'
-import { Clock3, ShieldCheck, TimerReset, UsersRound } from '@lucide/vue'
 import { waitingRoomSettingsSchema } from '#shared/schemas/ticketingSchema'
 import type { WaitingRoomSettingsInput } from '#shared/schemas/ticketingSchema'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field'
-import { Input } from '@/components/ui/input'
 
 const isSaving = ref(false)
 
-const { data: settingsResponse, refresh } = await useFetch<{ data: WaitingRoomSettingsInput }>('/api/admin/waiting-room-settings')
+const { data: settingsResponse, refresh } = await useFetch('/api/admin/waiting-room-settings')
 
 const defaultValues: WaitingRoomSettingsInput = {
   queueActivationThreshold: 250,
@@ -25,7 +20,7 @@ const { handleSubmit, resetForm, values } = useForm({
 })
 
 watch(settingsResponse, (response) => {
-  if (!response?.data) {
+  if (!response?.success) {
     return
   }
 

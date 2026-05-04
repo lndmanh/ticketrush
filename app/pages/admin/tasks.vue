@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { toast } from 'vue-sonner'
 import { Clock, Database, Loader2, Play, Users } from '@lucide/vue'
+import type { ApiResponse } from '~~/types/api'
+import type { AdminTaskData, AdminTaskResult } from '~~/types/admin-tasks'
 
 interface TaskDefinition {
   id: string
@@ -39,14 +41,38 @@ const tasks: TaskDefinition[] = [
 ]
 
 const runningTasks = ref<Set<string>>(new Set())
-const taskResults = ref<Record<string, { success: boolean, data?: any, error?: string, ranAt: string }>>({})
+const taskResults = ref<Record<string, AdminTaskResult>>({})
+
+function getTaskErrorMessage(error: unknown) {
+  if (typeof error === 'object' && error !== null) {
+    if ('data' in error && typeof error.data === 'object' && error.data !== null) {
+      if ('message' in error.data && typeof error.data.message === 'string') {
+        return error.data.message
+      }
+    }
+
+    if ('statusMessage' in error && typeof error.statusMessage === 'string') {
+      return error.statusMessage
+    }
+  }
+
+  if (error instanceof Error && error.message) {
+    return error.message
+  }
+
+  return 'Task failed'
+}
 
 async function runTask(task: TaskDefinition) {
   if (runningTasks.value.has(task.id)) return
 
   runningTasks.value.add(task.id)
   try {
-    const response = await $fetch<{ success: boolean, data: any }>(task.endpoint, { method: 'POST' })
+    const response = await $fetch<ApiResponse<AdminTaskData>>(task.endpoint, { method: 'POST' })
+    if (!response.success) {
+      throw new Error(response.error.message)
+    }
+
     taskResults.value[task.id] = {
       success: true,
       data: response.data,
@@ -54,8 +80,8 @@ async function runTask(task: TaskDefinition) {
     }
     toast.success(`${task.title} completed`)
   }
-  catch (err: any) {
-    const message = err?.data?.message || err?.statusMessage || 'Task failed'
+  catch (err) {
+    const message = getTaskErrorMessage(err)
     taskResults.value[task.id] = {
       success: false,
       error: message,
@@ -116,18 +142,18 @@ definePageMeta({
           <div
             v-if="taskResults[task.id]"
             class="rounded-md border px-3 py-2 text-xs"
-            :class="taskResults[task.id]!.success ? 'border-emerald-500/20 bg-emerald-500/5 text-emerald-700 dark:text-emerald-400' : 'border-destructive/20 bg-destructive/5 text-destructive'"
+            :class="taskResults[task.id]?.success ? 'border-emerald-500/20 bg-emerald-500/5 text-emerald-700 dark:text-emerald-400' : 'border-destructive/20 bg-destructive/5 text-destructive'"
           >
             <p class="font-medium">
-              {{ taskResults[task.id]!.success ? 'Success' : 'Failed' }}
-              <span class="ml-1 font-normal text-muted-foreground">at {{ taskResults[task.id]!.ranAt }}</span>
+              {{ taskResults[task.id]?.success ? 'Success' : 'Failed' }}
+              <span class="ml-1 font-normal text-muted-foreground">at {{ taskResults[task.id]?.ranAt }}</span>
             </p>
             <pre
-              v-if="taskResults[task.id]!.data"
+              v-if="taskResults[task.id]?.data"
               class="mt-1 whitespace-pre-wrap break-all font-mono"
-            >{{ JSON.stringify(taskResults[task.id]!.data, null, 2) }}</pre>
-            <p v-if="taskResults[task.id]!.error">
-              {{ taskResults[task.id]!.error }}
+            >{{ JSON.stringify(taskResults[task.id]?.data, null, 2) }}</pre>
+            <p v-if="taskResults[task.id]?.error">
+              {{ taskResults[task.id]?.error }}
             </p>
           </div>
 

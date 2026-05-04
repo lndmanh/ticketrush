@@ -6,6 +6,8 @@ import { toast } from 'vue-sonner'
 import { Check, Circle, Cloud, CloudAlert, Dot, Loader2 } from '@lucide/vue'
 import { eventComposerSchema, getEventSessionTimingIssues } from '#shared/schemas/ticketingSchema'
 import type { EventAutosaveDraftInput, EventComposerInput } from '#shared/schemas/ticketingSchema'
+import type { ApiResponse } from '~~/types/api'
+import type { AutosaveDraftDetail } from '~~/types/admin-events'
 import type { VenueDetail } from '~~/types/venues'
 
 interface VenueOption {
@@ -17,14 +19,6 @@ interface EventCreationStep {
   step: number
   title: string
   description: string
-}
-
-interface AutosaveDraftDetail {
-  draftKey: string
-  payload: EventAutosaveDraftInput['payload']
-  lastSavedStep: number
-  updatedAt: string | Date | null
-  createdAt: string | Date | null
 }
 
 const steps: EventCreationStep[] = [
@@ -198,7 +192,11 @@ function normalizeAutosavePayload(payload: EventAutosaveDraftInput['payload']) {
 async function loadAutosaveDraft(draftKey: string, restoreImmediately: boolean) {
   isLoadingAutosaveDraft.value = true
   try {
-    const response = await $fetch<{ data: AutosaveDraftDetail }>(`/api/admin/events/autosaves/${draftKey}`)
+    const response = await $fetch<ApiResponse<AutosaveDraftDetail>>(`/api/admin/events/autosaves/${draftKey}`)
+    if (!response.success) {
+      throw new Error(response.error.message)
+    }
+
     pendingAutosaveDraft.value = response.data
     if (restoreImmediately) {
       restoreAutosaveDraft()
@@ -220,7 +218,11 @@ async function loadAutosaveDraft(draftKey: string, restoreImmediately: boolean) 
 async function loadCurrentAutosaveDraftPrompt() {
   isCheckingAutosaveDraft.value = true
   try {
-    const response = await $fetch<{ data: { draftKey: string } | null }>('/api/admin/events/autosaves')
+    const response = await $fetch('/api/admin/events/autosaves')
+    if (!response.success) {
+      throw new Error(response.error.message)
+    }
+
     if (response.data?.draftKey) {
       await loadAutosaveDraft(response.data.draftKey, false)
     }
@@ -307,7 +309,7 @@ async function saveAutosaveDraft() {
   autosaveRequestId = requestId
 
   try {
-    const response = await $fetch<{ data: { draftKey: string, updatedAt: string | Date | null } }>('/api/admin/events/autosave', {
+    const response = await $fetch('/api/admin/events/autosave', {
       method: 'POST',
       body: {
         draftKey: autosaveDraftKey.value || undefined,
@@ -315,6 +317,9 @@ async function saveAutosaveDraft() {
         payload,
       },
     })
+    if (!response.success) {
+      throw new Error(response.error.message)
+    }
 
     if (autosaveDisabled.value || requestId !== autosaveRequestId) {
       return
@@ -366,7 +371,13 @@ watch(() => values.venueId, async (venueId) => {
     return
   }
 
-  const detail = await $fetch<{ data: VenueDetail }>(`/api/admin/venues/${venueId}`)
+  const detail = await $fetch<ApiResponse<VenueDetail>>(`/api/admin/venues/${venueId}`)
+  if (!detail.success) {
+    toast.error(detail.error.message)
+    selectedVenueDetail.value = null
+    return
+  }
+
   selectedVenueDetail.value = detail.data
 
   if (!values.sessions || values.sessions.length === 0) {

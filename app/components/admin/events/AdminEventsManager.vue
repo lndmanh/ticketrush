@@ -201,7 +201,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { toast } from 'vue-sonner'
 import type { Event, Venue } from '#shared/db'
-import type { ApiResponse } from '~~/types/api'
+import type { AutosaveDraftSummary } from '~~/types/admin-events'
 import { ArchiveIcon, Rocket } from '@lucide/vue'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -209,16 +209,6 @@ import DataTable from '@/components/DataTable.vue'
 import AdminFeaturedEventCard from './AdminFeaturedEventCard.vue'
 import type { EventTableRow } from './columns'
 import { createColumns } from './columns'
-
-interface AutosaveDraftSummary {
-  draftKey: string
-  titleSnapshot: string
-  slugSnapshot: string
-  venueId: number | null
-  lastSavedStep: number
-  updatedAt: string | Date
-  createdAt: string | Date
-}
 
 function extractErrorMessage(error: object, fallback: string) {
   if ('data' in error) {
@@ -296,9 +286,9 @@ async function fetchEvents() {
   try {
     loading.value = true
     const [eventsResponse, venuesResponse, autosavesResponse] = await Promise.all([
-      $fetch<ApiResponse<Event[]>>('/api/admin/events'),
-      $fetch<ApiResponse<Venue[]>>('/api/admin/venues'),
-      $fetch<ApiResponse<AutosaveDraftSummary | null>>('/api/admin/events/autosaves'),
+      $fetch('/api/admin/events'),
+      $fetch('/api/admin/venues'),
+      $fetch('/api/admin/events/autosaves'),
     ])
 
     if (!eventsResponse.success || !venuesResponse.success || !autosavesResponse.success) {

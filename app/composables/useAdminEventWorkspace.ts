@@ -1,5 +1,6 @@
 import { computed, onMounted, onUnmounted, toValue } from 'vue'
 import type { MaybeRefOrGetter } from 'vue'
+import type { ApiResponse } from '~~/types/api'
 import type {
   AdminEventWorkspaceDashboard,
   AdminEventWorkspaceDetail,
@@ -14,16 +15,24 @@ export async function useAdminEventWorkspace(eventId: MaybeRefOrGetter<number>, 
   const includeOps = options.includeOps ?? true
   let refreshIntervalId: number | null = null
 
+  function extractResponseData<T>(response: ApiResponse<T>) {
+    if (!response.success) {
+      throw new Error(response.error.message)
+    }
+
+    return response.data
+  }
+
   const eventResponse = await useAsyncData(
     () => `admin-event-${resolvedEventId.value}-detail`,
-    () => $fetch<{ data: AdminEventWorkspaceDetail }>(`/api/admin/events/${resolvedEventId.value}`).then(response => response.data),
+    () => $fetch<ApiResponse<AdminEventWorkspaceDetail>>(`/api/admin/events/${resolvedEventId.value}`).then(extractResponseData),
     {
       watch: [resolvedEventId],
     },
   )
   const dashboardResponse = await useAsyncData(
     () => `admin-event-${resolvedEventId.value}-dashboard`,
-    () => $fetch<{ data: AdminEventWorkspaceDashboard }>(`/api/admin/events/${resolvedEventId.value}/dashboard`).then(response => response.data),
+    () => $fetch<ApiResponse<AdminEventWorkspaceDashboard>>(`/api/admin/events/${resolvedEventId.value}/dashboard`).then(extractResponseData),
     {
       watch: [resolvedEventId],
     },
@@ -31,7 +40,7 @@ export async function useAdminEventWorkspace(eventId: MaybeRefOrGetter<number>, 
   const opsResponse = await useAsyncData(
     () => `admin-event-${resolvedEventId.value}-ops`,
     () => includeOps
-      ? $fetch<{ data: AdminEventWorkspaceOps }>(`/api/admin/events/${resolvedEventId.value}/ops`).then(response => response.data)
+      ? $fetch<ApiResponse<AdminEventWorkspaceOps>>(`/api/admin/events/${resolvedEventId.value}/ops`).then(extractResponseData)
       : Promise.resolve(null),
     {
       watch: [resolvedEventId],

@@ -1,22 +1,7 @@
 <script setup lang="ts">
 import { CalendarDays, ChevronLeft, ChevronRight, Search, SlidersHorizontal, X } from '@lucide/vue'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
-import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import type { ApiResponse, PaginatedApiResponse } from '~~/types/api'
 import type {
   EventCatalogDateFilter,
-  EventCatalogItem,
   EventCatalogSort,
   EventCatalogStatusFilter,
 } from '~~/types/events'
@@ -181,11 +166,11 @@ const catalogQuery = computed(() => ({
   pageSize: EVENTS_PAGE_SIZE,
 }))
 
-const { data: catalogResponse, pending, error: catalogFetchError } = await useFetch<PaginatedApiResponse<EventCatalogItem[]>>('/api/events', {
+const { data: catalogResponse, pending, error: catalogFetchError } = await useFetch('/api/events', {
   query: catalogQuery,
 })
 
-const { data: cityResponse } = await useFetch<ApiResponse<string[]>>('/api/events/cities')
+const { data: cityResponse } = await useFetch('/api/events/cities')
 
 const catalog = computed(() => {
   const response = catalogResponse.value

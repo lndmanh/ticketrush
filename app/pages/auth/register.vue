@@ -14,7 +14,7 @@ import { apiRoutes } from '#shared/apiRoutes'
 import { Field as VeeField, useForm } from 'vee-validate'
 import { Field, FieldLabel, FieldError } from '@/components/ui/field'
 import type { ApiResponse } from '~~/types/api'
-import type { OAuthPopupCompleteMessage } from '~~/types/auth'
+import type { OAuthPopupCompleteMessage, OAuthUrlData } from '~~/types/auth'
 
 const route = useRoute()
 const showPassword = ref(false)
@@ -133,7 +133,7 @@ async function signUpWithProvider(provider: string) {
   error.value = ''
 
   try {
-    const response = await $fetch<ApiResponse<{ url: string }>>(apiRoutes.AUTH_OAUTH_URL, {
+    const response = await $fetch<ApiResponse<OAuthUrlData>>(apiRoutes.AUTH_OAUTH_URL, {
       method: 'POST',
       body: { provider, action: 'login' },
     })

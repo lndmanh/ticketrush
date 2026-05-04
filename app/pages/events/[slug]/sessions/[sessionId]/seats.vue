@@ -4,33 +4,34 @@ import { Clock3, MapPin, RefreshCw, ShoppingBag, Ticket, TimerReset, Users } fro
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
+import type { ApiResponse } from '~~/types/api'
 import type { EventSessionDetailResponse } from '~~/types/events'
 import type { SessionSeatMapResponse } from '~~/types/seatmap'
-import type { CheckoutStartResponse, EventSessionGateResponse, HoldResponse } from '~~/types/ticketing'
+import type { EventSessionGateResponse, HoldData } from '~~/types/ticketing'
 
 const route = useRoute()
 const slug = computed(() => route.params.slug.toString())
 const sessionPublicId = computed(() => route.params.sessionId.toString())
 const passToken = computed(() => typeof route.query.pass === 'string' ? route.query.pass : undefined)
 
-const { data: detailResponse } = await useFetch<{ data: EventSessionDetailResponse }>(() => `/api/event-sessions/${sessionPublicId.value}`)
-const detail = computed(() => detailResponse.value?.data ?? null)
+const { data: detailResponse } = await useFetch<ApiResponse<EventSessionDetailResponse>>(() => `/api/event-sessions/${sessionPublicId.value}`)
+const detail = computed(() => detailResponse.value?.success ? detailResponse.value.data : null)
 const event = computed(() => detail.value?.event ?? null)
 const session = computed(() => detail.value?.session ?? null)
 
-const { data: gateResponse } = await useFetch<{ data: EventSessionGateResponse }>(() => `/api/event-sessions/${sessionPublicId.value}/gate`, {
+const { data: gateResponse } = await useFetch<ApiResponse<EventSessionGateResponse>>(() => `/api/event-sessions/${sessionPublicId.value}/gate`, {
   query: computed(() => passToken.value ? { pass: passToken.value } : {}),
 })
 
-if (gateResponse.value?.data.shouldQueue) {
+if (gateResponse.value?.success && gateResponse.value.data.shouldQueue) {
   await navigateTo({
     path: `/waiting-room/${sessionPublicId.value}`,
     query: { slug: slug.value },
   })
 }
 
-const { data: seatMapResponse, refresh: refreshSeatMap } = await useFetch<{ data: SessionSeatMapResponse }>(() => `/api/event-sessions/${sessionPublicId.value}/seatmap`)
-const seatMap = computed(() => seatMapResponse.value?.data ?? null)
+const { data: seatMapResponse, refresh: refreshSeatMap } = await useFetch<ApiResponse<SessionSeatMapResponse>>(() => `/api/event-sessions/${sessionPublicId.value}/seatmap`)
+const seatMap = computed(() => seatMapResponse.value?.success ? seatMapResponse.value.data : null)
 const selectedSeatIds = ref<number[]>([])
 const isSubmitting = ref(false)
 const lastSyncedAt = ref(new Date())
@@ -131,7 +132,7 @@ async function reserveSeats() {
   isSubmitting.value = true
 
   try {
-    const holdResponse = await $fetch<HoldResponse>(`/api/event-sessions/${sessionPublicId.value}/holds`, {
+    const holdResponse = await $fetch<ApiResponse<HoldData>>(`/api/event-sessions/${sessionPublicId.value}/holds`, {
       method: 'POST',
       body: {
         eventSeatIds: selectedSeatIds.value,
@@ -139,14 +140,20 @@ async function reserveSeats() {
         passToken: passToken.value,
       },
     })
+    if (!holdResponse.success) {
+      throw new Error(holdResponse.error.message)
+    }
 
     const holdPublicId = holdResponse.data.hold.publicId
-    const checkoutResponse = await $fetch<CheckoutStartResponse>('/api/checkout/start', {
+    const checkoutResponse = await $fetch('/api/checkout/start', {
       method: 'POST',
       body: {
         holdPublicId,
       },
     })
+    if (!checkoutResponse.success) {
+      throw new Error(checkoutResponse.error.message)
+    }
 
     await navigateTo(`/checkout/${checkoutResponse.data.publicId}?hold=${holdPublicId}`)
   }

@@ -226,7 +226,6 @@ import { computed, onMounted, ref } from 'vue'
 import { Field as VeeField, useForm } from 'vee-validate'
 import { toast } from 'vue-sonner'
 import type { Venue } from '#shared/db'
-import type { ApiResponse } from '~~/types/api'
 import { venueBuilderSchema } from '#shared/schemas/ticketingSchema'
 import type { VenueBuilderInput } from '#shared/schemas/ticketingSchema'
 import { Rows3 } from '@lucide/vue'
@@ -335,7 +334,7 @@ const onSubmit = handleSubmit(
 async function fetchVenues() {
   try {
     tableLoading.value = true
-    const response = await $fetch<ApiResponse<Venue[]>>('/api/admin/venues')
+    const response = await $fetch('/api/admin/venues')
     if (!response.success) {
       throw new Error('Unsuccessful response')
     }
