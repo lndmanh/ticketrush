@@ -4,7 +4,6 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty'
-import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import {
   Select,
@@ -98,6 +97,18 @@ const activeCity = ref(getQueryString(route.query.city) || 'all')
 const activeDate = ref<EventCatalogDateFilter>(getDateFilterFromRoute())
 const activeSort = ref<EventCatalogSort>(getSortFromRoute())
 const activePage = ref(getPositiveQueryNumber(route.query.page, 1))
+const filterDialogOpen = ref(false)
+const draftStatus = ref<EventCatalogStatusFilter>(activeStatus.value)
+const draftCity = ref(activeCity.value)
+const draftDate = ref<EventCatalogDateFilter>(activeDate.value)
+const draftSort = ref<EventCatalogSort>(activeSort.value)
+
+function syncDraftFiltersFromActive() {
+  draftStatus.value = activeStatus.value
+  draftCity.value = activeCity.value
+  draftDate.value = activeDate.value
+  draftSort.value = activeSort.value
+}
 
 function syncStateFromRoute() {
   const routeSearch = getQueryString(route.query.q)
@@ -108,6 +119,7 @@ function syncStateFromRoute() {
   activeDate.value = getDateFilterFromRoute()
   activeSort.value = getSortFromRoute()
   activePage.value = getPositiveQueryNumber(route.query.page, 1)
+  syncDraftFiltersFromActive()
 }
 
 function buildCatalogQuery(page: number) {
@@ -152,12 +164,44 @@ async function applySearch() {
   await replaceCatalogQuery(1)
 }
 
+async function applyFilters() {
+  activeStatus.value = draftStatus.value
+  activeCity.value = draftCity.value
+  activeDate.value = draftDate.value
+  activeSort.value = draftSort.value
+  filterDialogOpen.value = false
+  await replaceCatalogQuery(1)
+}
+
+async function resetDialogFilters() {
+  activeStatus.value = 'all'
+  activeCity.value = 'all'
+  activeDate.value = 'all'
+  activeSort.value = 'soonest'
+  draftStatus.value = 'all'
+  draftCity.value = 'all'
+  draftDate.value = 'all'
+  draftSort.value = 'soonest'
+  filterDialogOpen.value = false
+  await replaceCatalogQuery(1)
+}
+
+async function clearSearch() {
+  searchInput.value = ''
+  await replaceCatalogQuery(1)
+}
+
 async function resetFilters() {
   searchInput.value = ''
   activeStatus.value = 'all'
   activeCity.value = 'all'
   activeDate.value = 'all'
   activeSort.value = 'soonest'
+  draftStatus.value = 'all'
+  draftCity.value = 'all'
+  draftDate.value = 'all'
+  draftSort.value = 'soonest'
+  filterDialogOpen.value = false
   await replaceCatalogQuery(1)
 }
 
@@ -170,6 +214,12 @@ async function goToPage(page: number) {
 }
 
 watch(() => route.query, syncStateFromRoute, { deep: true })
+
+watch(filterDialogOpen, (open) => {
+  if (open) {
+    syncDraftFiltersFromActive()
+  }
+})
 
 const catalogQuery = computed(() => ({
   q: activeSearch.value || undefined,
@@ -232,6 +282,22 @@ const activeFilterCount = computed(() => {
   if (activeStatus.value !== 'all') count += 1
   if (activeCity.value !== 'all') count += 1
   if (activeDate.value !== 'all') count += 1
+  return count
+})
+const activeDialogFilterCount = computed(() => {
+  let count = 0
+  if (activeStatus.value !== 'all') count += 1
+  if (activeCity.value !== 'all') count += 1
+  if (activeDate.value !== 'all') count += 1
+  if (activeSort.value !== 'soonest') count += 1
+  return count
+})
+const draftDialogFilterCount = computed(() => {
+  let count = 0
+  if (draftStatus.value !== 'all') count += 1
+  if (draftCity.value !== 'all') count += 1
+  if (draftDate.value !== 'all') count += 1
+  if (draftSort.value !== 'soonest') count += 1
   return count
 })
 const resultSummary = computed(() => {
@@ -304,147 +370,196 @@ definePageMeta({
       </Card>
     </section>
 
-    <Card class="border-muted/70 bg-card/70 shadow-none backdrop-blur">
-      <CardContent class="space-y-5 p-4 md:p-5">
-        <form
-          class="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end"
-          @submit.prevent="applySearch"
-        >
-          <div class="space-y-2">
-            <Label for="event-search">Search events</Label>
-            <div class="relative">
-              <Search class="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                id="event-search"
-                v-model="searchInput"
-                class="h-11 rounded-full pl-10"
-                placeholder="Search by event, venue, or city"
-              />
+    <form
+      class="w-full"
+      @submit.prevent="applySearch"
+    >
+      <ButtonGroup class="w-full overflow-visible rounded-full border bg-card/70 p-1 shadow-none backdrop-blur">
+        <ButtonGroup class="overflow-visible">
+          <ResponsiveDialog
+            v-model:open="filterDialogOpen"
+            content-class="sm:max-w-2xl"
+          >
+            <template #trigger>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                class="relative overflow-visible rounded-full"
+                aria-label="Open event filters"
+              >
+                <SlidersHorizontal class="size-4" />
+                <span
+                  v-if="activeDialogFilterCount > 0"
+                  class="absolute -right-1.5 -top-1.5 flex size-4 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground"
+                >
+                  {{ activeDialogFilterCount }}
+                </span>
+              </Button>
+            </template>
+
+            <div class="space-y-6 py-4 md:py-0">
+              <DialogHeader>
+                <DialogTitle>Filter events</DialogTitle>
+                <DialogDescription>
+                  Narrow the catalog by status, city, date, and sort order.
+                </DialogDescription>
+              </DialogHeader>
+
+              <div class="grid gap-4 sm:grid-cols-2">
+                <div class="space-y-2">
+                  <Label for="event-status-filter">Status</Label>
+                  <Select v-model="draftStatus">
+                    <SelectTrigger
+                      id="event-status-filter"
+                      class="h-11 rounded-full"
+                    >
+                      <SelectValue placeholder="All statuses" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem
+                        v-for="option in statusOptions"
+                        :key="option.value"
+                        :value="option.value"
+                      >
+                        {{ option.label }}
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div class="space-y-2">
+                  <Label for="event-city-filter">City</Label>
+                  <Select v-model="draftCity">
+                    <SelectTrigger
+                      id="event-city-filter"
+                      class="h-11 rounded-full"
+                    >
+                      <SelectValue placeholder="All cities" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">
+                        All cities
+                      </SelectItem>
+                      <SelectItem
+                        v-for="city in cityOptions"
+                        :key="city"
+                        :value="city"
+                      >
+                        {{ city }}
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div class="space-y-2">
+                  <Label for="event-date-filter">Date</Label>
+                  <Select v-model="draftDate">
+                    <SelectTrigger
+                      id="event-date-filter"
+                      class="h-11 rounded-full"
+                    >
+                      <SelectValue placeholder="Any date" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem
+                        v-for="option in dateOptions"
+                        :key="option.value"
+                        :value="option.value"
+                      >
+                        {{ option.label }}
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div class="space-y-2">
+                  <Label for="event-sort-filter">Sort</Label>
+                  <Select v-model="draftSort">
+                    <SelectTrigger
+                      id="event-sort-filter"
+                      class="h-11 rounded-full"
+                    >
+                      <SelectValue placeholder="Soonest first" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem
+                        v-for="option in sortOptions"
+                        :key="option.value"
+                        :value="option.value"
+                      >
+                        {{ option.label }}
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div class="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                <Button
+                  type="button"
+                  variant="outline"
+                  class="rounded-full"
+                  :disabled="activeDialogFilterCount === 0 && draftDialogFilterCount === 0"
+                  @click="resetDialogFilters"
+                >
+                  Reset filters
+                </Button>
+                <Button
+                  type="button"
+                  class="rounded-full"
+                  @click="applyFilters"
+                >
+                  Apply filters
+                </Button>
+              </div>
             </div>
-          </div>
+          </ResponsiveDialog>
+        </ButtonGroup>
 
-          <div class="flex flex-col gap-2 sm:flex-row lg:justify-end">
-            <Button
-              type="submit"
-              class="h-11 rounded-full px-5"
-            >
-              Search
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              class="h-11 rounded-full px-5"
-              :disabled="activeFilterCount === 0"
-              @click="resetFilters"
-            >
-              <X class="size-4" />
-              Reset
-            </Button>
-          </div>
-        </form>
+        <ButtonGroup class="min-w-0 flex-1">
+          <InputGroup>
+            <InputGroupInput
+              id="main-search"
+              v-model="searchInput"
+              aria-label="Search events"
+              placeholder="Search by event, venue, or city"
+              :disabled="pending"
+            />
+            <InputGroupAddon align="inline-end">
+              <Tooltip>
+                <TooltipTrigger as-child>
+                  <InputGroupButton
+                    type="button"
+                    class="hover:bg-orange-100 hover:text-orange-700 dark:hover:bg-orange-800 dark:hover:text-orange-100"
+                    size="icon-xs"
+                    aria-label="Clear search"
+                    :disabled="pending || !searchInput"
+                    @click="clearSearch"
+                  >
+                    <X class="size-4" />
+                  </InputGroupButton>
+                </TooltipTrigger>
+                <TooltipContent>Clear</TooltipContent>
+              </Tooltip>
+            </InputGroupAddon>
+          </InputGroup>
+        </ButtonGroup>
 
-        <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-          <div class="space-y-2">
-            <Label for="event-status-filter">Status</Label>
-            <Select
-              v-model="activeStatus"
-              @update:model-value="replaceCatalogQuery(1)"
-            >
-              <SelectTrigger
-                id="event-status-filter"
-                class="h-11 rounded-full"
-              >
-                <SelectValue placeholder="All statuses" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem
-                  v-for="option in statusOptions"
-                  :key="option.value"
-                  :value="option.value"
-                >
-                  {{ option.label }}
-                </SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div class="space-y-2">
-            <Label for="event-city-filter">City</Label>
-            <Select
-              v-model="activeCity"
-              @update:model-value="replaceCatalogQuery(1)"
-            >
-              <SelectTrigger
-                id="event-city-filter"
-                class="h-11 rounded-full"
-              >
-                <SelectValue placeholder="All cities" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">
-                  All cities
-                </SelectItem>
-                <SelectItem
-                  v-for="city in cityOptions"
-                  :key="city"
-                  :value="city"
-                >
-                  {{ city }}
-                </SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div class="space-y-2">
-            <Label for="event-date-filter">Date</Label>
-            <Select
-              v-model="activeDate"
-              @update:model-value="replaceCatalogQuery(1)"
-            >
-              <SelectTrigger
-                id="event-date-filter"
-                class="h-11 rounded-full"
-              >
-                <SelectValue placeholder="Any date" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem
-                  v-for="option in dateOptions"
-                  :key="option.value"
-                  :value="option.value"
-                >
-                  {{ option.label }}
-                </SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div class="space-y-2">
-            <Label for="event-sort-filter">Sort</Label>
-            <Select
-              v-model="activeSort"
-              @update:model-value="replaceCatalogQuery(1)"
-            >
-              <SelectTrigger
-                id="event-sort-filter"
-                class="h-11 rounded-full"
-              >
-                <SelectValue placeholder="Soonest first" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem
-                  v-for="option in sortOptions"
-                  :key="option.value"
-                  :value="option.value"
-                >
-                  {{ option.label }}
-                </SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
+        <ButtonGroup>
+          <Button
+            type="submit"
+            variant="ghost"
+            size="icon"
+            class="rounded-full"
+            aria-label="Search events"
+            :disabled="pending"
+          >
+            <Search class="size-4" />
+          </Button>
+        </ButtonGroup>
+      </ButtonGroup>
+    </form>
 
     <section class="space-y-5">
       <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
