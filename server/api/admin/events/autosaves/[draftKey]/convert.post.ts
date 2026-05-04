@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import type { AutosaveDraftConvertData } from '~~/types/admin-events'
 import eventDraftAutosaveService from '~~/server/utils/database/event-draft-autosave'
 import { success } from '~~/server/utils/apiResponse'
 
@@ -23,5 +24,6 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 404, statusMessage: 'Active autosave draft not found.' })
   }
 
-  return success({ draftKey, eventId: result.data.eventId })
+  const response: AutosaveDraftConvertData = { draftKey, eventId: result.data.eventId }
+  return success(response)
 })

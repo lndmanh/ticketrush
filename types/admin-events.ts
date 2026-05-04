@@ -1,5 +1,39 @@
+import type { EventAutosaveDraftInput } from '#shared/schemas/ticketingSchema'
 import type { DateLike } from '~~/types/events'
 import type { VenueDetail } from '~~/types/venues'
+
+export interface AutosaveDraftDetail {
+  draftKey: string
+  payload: EventAutosaveDraftInput['payload']
+  lastSavedStep: number
+  updatedAt: string | Date | null
+  createdAt: string | Date | null
+}
+
+export interface AutosaveDraftSummary {
+  draftKey: string
+  titleSnapshot: string
+  slugSnapshot: string
+  venueId: number | null
+  lastSavedStep: number
+  updatedAt: string | Date
+  createdAt: string | Date
+}
+
+export interface AutosaveDraftSaveData {
+  draftKey: string
+  lastSavedStep: number
+  updatedAt: string | Date | null
+}
+
+export interface AutosaveDraftConvertData {
+  draftKey: string
+  eventId: number
+}
+
+export interface AutosaveDraftDeleteData {
+  draftKey: string
+}
 
 export interface AdminEventWorkspaceEvent {
   id: number

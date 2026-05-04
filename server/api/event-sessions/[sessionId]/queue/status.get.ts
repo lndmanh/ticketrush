@@ -1,3 +1,4 @@
+import type { QueueState } from '~~/types/ticketing'
 import eventSessionService from '~~/server/utils/database/event-session'
 import queueService from '~~/server/utils/ticketing/queue'
 import { success } from '~~/server/utils/apiResponse'
@@ -17,6 +18,6 @@ export default defineEventHandler(async (event) => {
   await queueService.expireAdmittedEntries()
   await queueService.admitNextBatch(session.id)
 
-  const status = await queueService.getStatus(session.id, getTicketingSessionKey(event))
-  return success(status)
+  const response: QueueState | null = await queueService.getStatus(session.id, getTicketingSessionKey(event))
+  return success(response)
 })

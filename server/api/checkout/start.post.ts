@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import type { CheckoutStartData } from '~~/types/ticketing'
 import checkoutService from '~~/server/utils/ticketing/checkout'
 import { success } from '~~/server/utils/apiResponse'
 import { getTicketingSessionKey } from '~~/server/utils/ticketing/session'
@@ -16,5 +17,9 @@ export default defineEventHandler(async (event) => {
   }
 
   const checkout = await checkoutService.startCheckout(result.data.holdPublicId, getTicketingSessionKey(event))
-  return success(checkout)
+  const response: CheckoutStartData = {
+    publicId: checkout.publicId,
+  }
+
+  return success(response)
 })

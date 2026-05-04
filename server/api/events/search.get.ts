@@ -13,7 +13,7 @@ export default defineEventHandler(async (event) => {
 
   const events = await eventService.searchEventCardList(query.query, query.limit)
 
-  const results: EventSearchApiItem[] = events.map(item => ({
+  const response: EventSearchApiItem[] = events.map(item => ({
     id: `/events/${item.slug}`,
     title: item.title,
     subtitle: item.subtitle,
@@ -27,5 +27,5 @@ export default defineEventHandler(async (event) => {
     })),
   }))
 
-  return success(results)
+  return success(response)
 })

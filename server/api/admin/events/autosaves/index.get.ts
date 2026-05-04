@@ -1,4 +1,5 @@
 import { eventAutosavePayloadSchema } from '#shared/schemas/ticketingSchema'
+import type { AutosaveDraftSummary } from '~~/types/admin-events'
 import eventDraftAutosaveService from '~~/server/utils/database/event-draft-autosave'
 import { success } from '~~/server/utils/apiResponse'
 
@@ -7,7 +8,8 @@ export default defineEventHandler(async (event) => {
   const draft = await eventDraftAutosaveService.getActiveByUserId(session.user.id)
 
   if (!draft) {
-    return success(null)
+    const response: AutosaveDraftSummary | null = null
+    return success(response)
   }
 
   let payloadResult = eventAutosavePayloadSchema.safeParse({})
@@ -19,7 +21,7 @@ export default defineEventHandler(async (event) => {
   }
   const payload = payloadResult.success ? payloadResult.data : {}
 
-  return success({
+  const response: AutosaveDraftSummary = {
     draftKey: draft.draftKey,
     titleSnapshot: draft.titleSnapshot || payload.title || '',
     slugSnapshot: draft.slugSnapshot || payload.slug || '',
@@ -27,5 +29,7 @@ export default defineEventHandler(async (event) => {
     lastSavedStep: draft.lastSavedStep,
     updatedAt: draft.updatedAt,
     createdAt: draft.createdAt,
-  })
+  }
+
+  return success(response)
 })
