@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { toast } from 'vue-sonner'
-import { Clock3, MapPin, RefreshCw, ShoppingBag, Ticket, TimerReset, Users } from '@lucide/vue'
+import { Clock3, RefreshCw, ShoppingBag, Users } from '@lucide/vue'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
@@ -34,7 +34,6 @@ const { data: seatMapResponse, refresh: refreshSeatMap } = await useFetch<ApiRes
 const seatMap = computed(() => seatMapResponse.value?.success ? seatMapResponse.value.data : null)
 const selectedSeatIds = ref<number[]>([])
 const isSubmitting = ref(false)
-const lastSyncedAt = ref(new Date())
 let seatRefreshIntervalId: number | null = null
 
 const inventorySummary = computed(() => {
@@ -185,7 +184,6 @@ async function reserveSeats() {
   finally {
     isSubmitting.value = false
     await refreshSeatMap()
-    lastSyncedAt.value = new Date()
   }
 }
 
@@ -206,7 +204,6 @@ watch(seatMap, (value) => {
 onMounted(() => {
   seatRefreshIntervalId = window.setInterval(async () => {
     await refreshSeatMap()
-    lastSyncedAt.value = new Date()
   }, 5000)
 })
 
@@ -219,6 +216,7 @@ onUnmounted(() => {
 definePageMeta({
   title: 'Choose seats',
   breadcrumb: 'Seat selection',
+  layout: 'dashboard',
   middleware: ['auth'],
 })
 </script>
@@ -226,99 +224,36 @@ definePageMeta({
 <template>
   <main
     v-if="detail && event && session && seatMap"
-    class="space-y-6 pb-16 pt-6 md:space-y-8 md:pb-24"
+    class="space-y-6 pb-8 pt-6"
   >
-    <section class="grid gap-4 xl:grid-cols-[1.08fr_0.92fr] xl:items-start">
+    <section class="grid gap-6 lg:grid-cols-[2fr_1fr] lg:items-start">
       <div class="space-y-4">
-        <Card class="overflow-hidden py-0">
-          <CardContent class="grid gap-0 p-0 lg:grid-cols-[1.02fr_0.98fr]">
-            <div class="flex min-h-[18rem] flex-col justify-between bg-muted/40 p-6 md:p-8">
-              <div class="space-y-4">
-                <div class="inline-flex w-fit rounded-full border bg-background px-3 py-1 text-xs font-medium text-muted-foreground">
-                  Seat selection · {{ session.label }}
-                </div>
-                <div class="space-y-2">
-                  <h1 class="text-balance text-3xl font-semibold tracking-tight text-foreground md:text-5xl">
-                    {{ event.title }}
-                  </h1>
-                  <p class="max-w-[60ch] text-sm leading-7 text-muted-foreground md:text-base">
-                    Seats are held for 10 minutes. Choose seats for this session before continuing to checkout.
-                  </p>
-                </div>
-              </div>
-
-              <div class="grid gap-3 sm:grid-cols-2">
-                <Card class="py-3">
-                  <CardContent class="flex items-start gap-3 px-4">
-                    <MapPin class="mt-0.5 size-4 text-muted-foreground" />
-                    <div>
-                      <p class="text-xs text-muted-foreground">
-                        Venue
-                      </p>
-                      <p class="text-sm font-medium text-foreground">
-                        {{ venueName }}
-                      </p>
-                      <p class="text-xs text-muted-foreground">
-                        {{ venueCity }}
-                      </p>
-                    </div>
-                  </CardContent>
-                </Card>
-                <Card class="py-3">
-                  <CardContent class="flex items-start gap-3 px-4">
-                    <TimerReset class="mt-0.5 size-4 text-muted-foreground" />
-                    <div>
-                      <p class="text-xs text-muted-foreground">
-                        Session time
-                      </p>
-                      <p class="text-sm font-medium text-foreground">
-                        {{ sessionTimeLabel }}
-                      </p>
-                      <p class="text-xs text-muted-foreground">
-                        Map refreshes every 5 seconds
-                      </p>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
+        <div class="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+          <div>
+            <h1 class="text-2xl font-semibold tracking-tight">
+              {{ event.title }}
+            </h1>
+            <p class="mt-1 text-sm text-muted-foreground">
+              {{ session.label }} &middot; {{ venueName }}, {{ venueCity }} &middot; {{ sessionTimeLabel }}
+            </p>
+          </div>
+          <div class="flex gap-4 rounded-lg border bg-muted/40 p-3 text-sm">
+            <div class="flex flex-col">
+              <span class="text-xs text-muted-foreground">Available</span>
+              <span class="font-medium">{{ inventorySummary.available }}</span>
             </div>
-
-            <CardContent class="space-y-4 p-6 md:p-8">
-              <div class="grid gap-3 md:grid-cols-3 lg:grid-cols-1 xl:grid-cols-3">
-                <Card class="py-3">
-                  <CardContent class="px-4">
-                    <p class="text-xs text-muted-foreground">
-                      Available
-                    </p>
-                    <p class="text-sm font-medium text-foreground">
-                      {{ inventorySummary.available }}
-                    </p>
-                  </CardContent>
-                </Card>
-                <Card class="py-3">
-                  <CardContent class="px-4">
-                    <p class="text-xs text-muted-foreground">
-                      Held
-                    </p>
-                    <p class="text-sm font-medium text-foreground">
-                      {{ inventorySummary.locked }}
-                    </p>
-                  </CardContent>
-                </Card>
-                <Card class="py-3">
-                  <CardContent class="px-4">
-                    <p class="text-xs text-muted-foreground">
-                      Sold
-                    </p>
-                    <p class="text-sm font-medium text-foreground">
-                      {{ inventorySummary.sold }}
-                    </p>
-                  </CardContent>
-                </Card>
-              </div>
-            </CardContent>
-          </CardContent>
-        </Card>
+            <div class="w-px bg-border" />
+            <div class="flex flex-col">
+              <span class="text-xs text-muted-foreground">Held</span>
+              <span class="font-medium">{{ inventorySummary.locked }}</span>
+            </div>
+            <div class="w-px bg-border" />
+            <div class="flex flex-col">
+              <span class="text-xs text-muted-foreground">Sold</span>
+              <span class="font-medium">{{ inventorySummary.sold }}</span>
+            </div>
+          </div>
+        </div>
 
         <Card>
           <CardHeader>
