@@ -4,7 +4,7 @@ import { useForm } from 'vee-validate'
 import { toast } from 'vue-sonner'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { eventPricingFormSchema } from '#shared/schemas/ticketingSchema'
+import { eventPricingFormSchema, getEventSessionTimingIssues } from '#shared/schemas/ticketingSchema'
 import type { EventPricingFormInput } from '#shared/schemas/ticketingSchema'
 
 const route = useRoute()
@@ -47,11 +47,14 @@ watch(detail, (value) => {
         label: s.label,
         venueId: s.venueId,
         status: s.status,
+        queueEnabled: s.queueEnabled,
         startsAt: toDateTimeLocal(s.startsAt),
         endsAt: toDateTimeLocal(s.endsAt),
         salesStartAt: toDateTimeLocal(s.salesStartAt),
         salesEndAt: toDateTimeLocal(s.salesEndAt),
         ticketTypes: s.ticketTypes.map(tt => ({
+          id: tt.id,
+          description: tt.description ?? '',
           name: tt.name,
           venueSectionId: tt.venueSectionId ?? null,
           priceCents: tt.priceCents,
@@ -72,16 +75,168 @@ function normalizeSessionErrorPath(path: string) {
   return path.replace(/\[(\d+)\]/g, '.$1')
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null
+}
+
+function getErrorMessage(errorValue: unknown, fallback: string) {
+  if (!isRecord(errorValue)) {
+    return fallback
+  }
+
+  const data = errorValue.data
+
+  if (isRecord(data)) {
+    if (isRecord(data.error) && typeof data.error.message === 'string' && data.error.message) {
+      return data.error.message
+    }
+
+    if (typeof data.message === 'string' && data.message) {
+      return data.message
+    }
+
+    if (typeof data.statusMessage === 'string' && data.statusMessage) {
+      return data.statusMessage
+    }
+  }
+
+  if (typeof errorValue.message === 'string' && errorValue.message) {
+    return errorValue.message
+  }
+
+  return fallback
+}
+
+interface ExistingPricingTicket {
+  id?: number
+  name: string
+  venueSectionId?: number | null
+  currency: string
+  isReservedSeating: boolean
+  description?: string | null
+}
+
+interface ExistingPricingSession {
+  id?: number
+  publicId?: string
+  queueEnabled?: boolean
+  ticketTypes: ExistingPricingTicket[]
+}
+
+function buildSessionValidationErrors(sessions: EventPricingFormInput['sessions']) {
+  const result = eventPricingFormSchema.safeParse({ sessions })
+  const errors: Record<string, string> = {}
+  if (!result.success) {
+    for (const issue of result.error.issues) {
+      const normalizedPath = normalizeSessionErrorPath(issue.path.join('.'))
+      if (normalizedPath.startsWith('sessions')) {
+        errors[normalizedPath] = issue.message
+      }
+    }
+  }
+
+  sessions.forEach((session, sessionIndex) => {
+    const sessionLabel = session.label?.trim() || `Session ${sessionIndex + 1}`
+    for (const issue of getEventSessionTimingIssues(session, sessionLabel)) {
+      errors[`sessions.${sessionIndex}.${issue.field}`] = issue.message
+    }
+  })
+
+  return errors
+}
+
+function getFirstValidationError(errors: Record<string, string>) {
+  return Object.values(errors)[0] || 'Please fix the highlighted fields'
+}
+
+function validateSessions(sessions: EventPricingFormInput['sessions']) {
+  const errors = buildSessionValidationErrors(sessions)
+  if (Object.keys(errors).length) {
+    sessionValidationErrors.value = errors
+    toast.error(getFirstValidationError(errors))
+    return false
+  }
+
+  return true
+}
+
 function updateSessions(sessions: EventPricingFormInput['sessions']) {
   setFieldValue('sessions', sessions)
   if (Object.keys(sessionValidationErrors.value).length) {
-    sessionValidationErrors.value = {}
+    sessionValidationErrors.value = buildSessionValidationErrors(sessions)
   }
+}
+
+function findExistingSession(existingSessions: ExistingPricingSession[], session: EventPricingFormInput['sessions'][number], index: number) {
+  const byId = session.id ? existingSessions.find(existing => existing.id === session.id) : undefined
+  if (byId) {
+    return byId
+  }
+
+  const byPublicId = session.publicId ? existingSessions.find(existing => existing.publicId === session.publicId) : undefined
+  if (byPublicId) {
+    return byPublicId
+  }
+
+  return existingSessions[index]
+}
+
+function findExistingTicket(
+  tickets: ExistingPricingTicket[],
+  ticket: EventPricingFormInput['sessions'][number]['ticketTypes'][number],
+  index: number,
+) {
+  const byId = ticket.id ? tickets.find(existing => existing.id === ticket.id) : undefined
+  if (byId) {
+    return byId
+  }
+
+  const byStableFields = tickets.find(existing =>
+    existing.name === ticket.name
+    && (existing.venueSectionId ?? null) === ticket.venueSectionId
+    && existing.currency === ticket.currency
+    && existing.isReservedSeating === ticket.isReservedSeating,
+  )
+  if (byStableFields) {
+    return byStableFields
+  }
+
+  return tickets[index]
+}
+
+function buildSessionPayload(sessions: EventPricingFormInput['sessions']) {
+  const existingSessions: ExistingPricingSession[] = detail.value?.sessions ?? []
+
+  return sessions.map((session, sessionIndex) => {
+    const existingSession = findExistingSession(existingSessions, session, sessionIndex)
+
+    return {
+      ...session,
+      queueEnabled: session.queueEnabled,
+      startsAt: new Date(session.startsAt),
+      endsAt: session.endsAt ? new Date(session.endsAt) : undefined,
+      salesStartAt: new Date(session.salesStartAt),
+      salesEndAt: new Date(session.salesEndAt),
+      ticketTypes: session.ticketTypes.map((ticketType, ticketIndex) => {
+        const existingTicket = existingSession?.ticketTypes ? findExistingTicket(existingSession.ticketTypes, ticketType, ticketIndex) : undefined
+
+        return {
+          ...ticketType,
+          description: existingTicket?.description ?? ticketType.description,
+          sortOrder: ticketIndex,
+        }
+      }),
+    }
+  })
 }
 
 const onSubmit = handleSubmit(
   async (formValues) => {
     sessionValidationErrors.value = {}
+    if (!validateSessions(formValues.sessions)) {
+      return
+    }
+
     isSaving.value = true
 
     try {
@@ -105,17 +260,7 @@ const onSubmit = handleSubmit(
           endsAt: eventFields.endsAt ? new Date(eventFields.endsAt) : undefined,
           salesStartAt: new Date(eventFields.salesStartAt),
           salesEndAt: new Date(eventFields.salesEndAt),
-          sessions: formValues.sessions.map(s => ({
-            ...s,
-            startsAt: new Date(s.startsAt),
-            endsAt: s.endsAt ? new Date(s.endsAt) : undefined,
-            salesStartAt: new Date(s.salesStartAt),
-            salesEndAt: new Date(s.salesEndAt),
-            ticketTypes: s.ticketTypes.map((tt, index) => ({
-              ...tt,
-              sortOrder: index,
-            })),
-          })),
+          sessions: buildSessionPayload(formValues.sessions),
         },
       })
 
@@ -123,7 +268,7 @@ const onSubmit = handleSubmit(
       await refreshDetail()
     }
     catch (err) {
-      toast.error(err && typeof err === 'object' && 'data' in err && err.data && typeof err.data === 'object' && 'message' in err.data ? String(err.data.message) : undefined || 'Failed to update pricing')
+      toast.error(getErrorMessage(err, 'Failed to update pricing'))
     }
     finally {
       isSaving.value = false
