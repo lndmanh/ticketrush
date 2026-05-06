@@ -2,7 +2,7 @@ import userService from '~~/server/utils/database/user'
 
 export default defineEventHandler(async (event) => {
   const { path } = event
-  if (path.startsWith('/api/admin')) {
+  if (path.startsWith('/api/admin') && !path.startsWith('/api/admin/tasks/seed-admin')) {
     const session = await requireUserSession(event)
     const user = await userService.getById(session.user.id)
     if (!user) {

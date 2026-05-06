@@ -41,15 +41,18 @@ function getErrorMessage(error: object, fallback: string) {
   return fallback
 }
 
-const estimatedFirstBatchLabel = computed(() => {
-  const minutes = Math.floor(values.queueWindowSeconds / 60)
-  const seconds = values.queueWindowSeconds % 60
-  if (minutes <= 0) {
-    return `${seconds}s`
+function updatePositiveNumber(onChange: (value: number | '') => void, value: string | number) {
+  const nextValue = String(value)
+  if (!nextValue) {
+    onChange('')
+    return
   }
 
-  return `${minutes}m ${seconds}s`
-})
+  const numericValue = Number(nextValue)
+  if (Number.isFinite(numericValue)) {
+    onChange(numericValue)
+  }
+}
 
 const onSubmit = handleSubmit(
   async (formValues) => {
@@ -123,7 +126,7 @@ definePageMeta({
                   min="1"
                   :model-value="String(field.value ?? '')"
                   :aria-invalid="!!errors.length"
-                  @update:model-value="field.onChange(Number($event))"
+                  @update:model-value="updatePositiveNumber(field.onChange, $event)"
                 />
                 <FieldDescription>Active queue passes plus active holds before buyers are paced.</FieldDescription>
                 <FieldError
@@ -147,7 +150,7 @@ definePageMeta({
                   min="1"
                   :model-value="String(field.value ?? '')"
                   :aria-invalid="!!errors.length"
-                  @update:model-value="field.onChange(Number($event))"
+                  @update:model-value="updatePositiveNumber(field.onChange, $event)"
                 />
                 <FieldDescription>Number of buyers admitted on each queue cycle.</FieldDescription>
                 <FieldError
@@ -171,7 +174,7 @@ definePageMeta({
                   min="1"
                   :model-value="String(field.value ?? '')"
                   :aria-invalid="!!errors.length"
-                  @update:model-value="field.onChange(Number($event))"
+                  @update:model-value="updatePositiveNumber(field.onChange, $event)"
                 />
                 <FieldDescription>How long an admitted pass remains valid.</FieldDescription>
                 <FieldError
