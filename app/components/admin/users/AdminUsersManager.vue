@@ -21,8 +21,6 @@
       :columns="columns"
       :data="users"
       :loading="loading"
-      toolbar-label="User registry"
-      toolbar-description="Search accounts and manage roles."
       search-placeholder="Search users, emails, or roles"
       empty-title="No users match the current view."
       empty-description="Adjust the search or add a new account."
@@ -294,16 +292,94 @@ interface TableRowWithOriginal {
   original: User
 }
 
+type UserFieldName = 'username' | 'email' | 'name' | 'password' | 'isAdmin'
+const userFieldNames: UserFieldName[] = ['username', 'email', 'name', 'password', 'isAdmin']
+
+function isUserFieldName(value: string): value is UserFieldName {
+  return userFieldNames.some(field => field === value)
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null
+}
+
+function isIssueRecord(value: unknown): value is Record<string, unknown> {
+  return isRecord(value) && ('message' in value || 'path' in value)
+}
+
+function getFieldFromPath(path: unknown): string | null {
+  if (typeof path === 'string') {
+    return path.split('.').filter(Boolean)[0] ?? null
+  }
+
+  if (Array.isArray(path)) {
+    const first = path[0]
+    return typeof first === 'string' ? first : null
+  }
+
+  return null
+}
+
+function getIssueList(error: unknown): unknown[] | null {
+  if (!isRecord(error) || !isRecord(error.data)) {
+    return null
+  }
+
+  const directIssues = error.data.issues
+  if (Array.isArray(directIssues)) {
+    return directIssues
+  }
+
+  if (isRecord(error.data.data) && Array.isArray(error.data.data.issues)) {
+    return error.data.data.issues
+  }
+
+  return null
+}
+
+function getIssueFieldAndMessage(error: unknown): { field: UserFieldName, message: string } | null {
+  const issues = getIssueList(error)
+  if (!issues) {
+    return null
+  }
+
+  for (const issue of issues) {
+    if (!isIssueRecord(issue)) {
+      continue
+    }
+
+    const field = getFieldFromPath(issue.path)
+    const message = typeof issue.message === 'string' && issue.message.trim() ? issue.message : null
+    if (field && isUserFieldName(field)) {
+      return message ? { field, message } : { field, message: 'Invalid value' }
+    }
+  }
+
+  return null
+}
+
+function mapUserErrorToField(message: string): UserFieldName | null {
+  const lowerMessage = message.toLowerCase()
+  if (lowerMessage.includes('username')) {
+    return 'username'
+  }
+  if (lowerMessage.includes('password')) {
+    return 'password'
+  }
+  if (lowerMessage.includes('email')) {
+    return 'email'
+  }
+
+  return null
+}
+
 function extractErrorMessage(error: unknown, fallback: string) {
-  if (typeof error === 'object' && error !== null && 'data' in error) {
-    const data = error.data
-    if (typeof data === 'object' && data !== null) {
-      if ('statusMessage' in data && typeof data.statusMessage === 'string') {
-        return data.statusMessage
-      }
-      if ('message' in data && typeof data.message === 'string') {
-        return data.message
-      }
+  if (isRecord(error) && isRecord(error.data)) {
+    if (typeof error.data.statusMessage === 'string') {
+      return error.data.statusMessage
+    }
+    if (typeof error.data.message === 'string') {
+      return error.data.message
     }
   }
 
@@ -385,11 +461,27 @@ const onSubmit = handleSubmit(
     }
     catch (error) {
       const message = extractErrorMessage(error, 'Failed to save the user record')
-      setFieldError('email', message)
+      const structuredIssue = getIssueFieldAndMessage(error)
+      if (structuredIssue) {
+        setFieldError(structuredIssue.field, structuredIssue.message)
+      }
+      else {
+        const mappedField = mapUserErrorToField(message)
+        if (mappedField) {
+          setFieldError(mappedField, message)
+        }
+        else {
+          toast.error(message)
+        }
+      }
     }
     finally {
       loading.value = false
     }
+  },
+  ({ errors }) => {
+    const firstError = Object.values(errors).flat().filter(Boolean)[0] || 'Please fix the highlighted fields'
+    toast.error(firstError)
   },
 )
 

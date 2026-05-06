@@ -233,15 +233,12 @@ import DataTable from '@/components/DataTable.vue'
 import { createColumns } from './columns'
 
 function extractErrorMessage(error: unknown, fallback: string) {
-  if (typeof error === 'object' && error !== null && 'data' in error) {
-    const data = error.data
-    if (typeof data === 'object' && data !== null) {
-      if ('statusMessage' in data && typeof data.statusMessage === 'string') {
-        return data.statusMessage
-      }
-      if ('message' in data && typeof data.message === 'string') {
-        return data.message
-      }
+  if (isRecord(error) && isRecord(error.data)) {
+    if (typeof error.data.statusMessage === 'string') {
+      return error.data.statusMessage
+    }
+    if (typeof error.data.message === 'string') {
+      return error.data.message
     }
   }
 
@@ -252,7 +249,85 @@ function extractErrorMessage(error: unknown, fallback: string) {
   return fallback
 }
 
-const dataTableRef = ref()
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null
+}
+
+function isIssueRecord(value: unknown): value is Record<string, unknown> {
+  return isRecord(value) && ('message' in value || 'path' in value)
+}
+
+type VenueFieldName = 'slug' | 'name' | 'description' | 'city' | 'country' | 'address' | 'coverImage'
+const venueFieldNames: VenueFieldName[] = ['slug', 'name', 'description', 'city', 'country', 'address', 'coverImage']
+
+function isVenueFieldName(value: string): value is VenueFieldName {
+  return venueFieldNames.some(field => field === value)
+}
+
+function getFieldFromPath(path: unknown): string | null {
+  if (typeof path === 'string') {
+    return path.split('.').filter(Boolean)[0] ?? null
+  }
+
+  if (Array.isArray(path)) {
+    const first = path[0]
+    return typeof first === 'string' ? first : null
+  }
+
+  return null
+}
+
+function getIssueList(error: unknown): unknown[] | null {
+  if (!isRecord(error) || !isRecord(error.data)) {
+    return null
+  }
+
+  const directIssues = error.data.issues
+  if (Array.isArray(directIssues)) {
+    return directIssues
+  }
+
+  if (isRecord(error.data.data) && Array.isArray(error.data.data.issues)) {
+    return error.data.data.issues
+  }
+
+  return null
+}
+
+function getIssueFieldAndMessage(error: unknown): { field: VenueFieldName, message: string } | null {
+  const issues = getIssueList(error)
+  if (!issues) {
+    return null
+  }
+
+  for (const issue of issues) {
+    if (!isIssueRecord(issue)) {
+      continue
+    }
+
+    const field = getFieldFromPath(issue.path)
+    const message = typeof issue.message === 'string' && issue.message.trim() ? issue.message : null
+    if (field && isVenueFieldName(field) && message) {
+      return { field, message }
+    }
+  }
+
+  return null
+}
+
+function mapVenueErrorToField(message: string): VenueFieldName | null {
+  const lowerMessage = message.toLowerCase()
+  if (lowerMessage.includes('slug')) {
+    return 'slug'
+  }
+  if (lowerMessage.includes('name')) {
+    return 'name'
+  }
+
+  return null
+}
+
+const dataTableRef = ref<InstanceType<typeof DataTable> | null>(null)
 const venues = ref<Venue[]>([])
 const tableLoading = ref(false)
 const dialogLoading = ref(false)
@@ -275,6 +350,7 @@ const defaultValues: VenueBuilderInput = {
 const {
   handleSubmit,
   resetForm,
+  setFieldError,
 } = useForm({
   initialValues: { ...defaultValues },
   validationSchema: venueBuilderSchema,
@@ -319,7 +395,20 @@ const onSubmit = handleSubmit(
       await fetchVenues()
     }
     catch (error) {
-      toast.error(extractErrorMessage(error, 'Failed to save the venue blueprint'))
+      const message = extractErrorMessage(error, 'Failed to save the venue blueprint')
+      const structuredIssue = getIssueFieldAndMessage(error)
+      if (structuredIssue) {
+        setFieldError(structuredIssue.field, structuredIssue.message)
+      }
+      else {
+        const mappedField = mapVenueErrorToField(message)
+        if (mappedField) {
+          setFieldError(mappedField, message)
+        }
+        else {
+          toast.error(message)
+        }
+      }
     }
     finally {
       dialogLoading.value = false
