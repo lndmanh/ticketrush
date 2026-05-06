@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import CenteredAppLayout from '@/components/CenteredAppLayout.vue'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { UserIcon, Lock, Eye, EyeOff, Mail } from '@lucide/vue'
+import { ChevronLeftIcon, Eye, EyeOff, Grid2x2PlusIcon, Lock, Mail, UserIcon } from '@lucide/vue'
+import { motion } from 'motion-v'
 import PasskeyRegistrationDialog from '@/components/PasskeyRegistrationDialog.vue'
 import PasswordStrengthIndicator from '@/components/PasswordStrengthIndicator.vue'
 import { registerUserSchema } from '#shared/schemas/userSchema'
@@ -14,21 +14,57 @@ import { apiRoutes } from '#shared/apiRoutes'
 import { Field as VeeField, useForm } from 'vee-validate'
 import { Field, FieldLabel, FieldError } from '@/components/ui/field'
 import type { ApiResponse } from '~~/types/api'
-import type { OAuthPopupCompleteMessage, OAuthUrlData } from '~~/types/auth'
 
 const route = useRoute()
+const redirectTo = computed(() => getQueryString(route.query.redirectTo) || '/')
 const showPassword = ref(false)
 const showConfirmPassword = ref(false)
 const isLoading = ref(false)
 const error = ref('')
 const showPasskeyDialog = ref(false)
 const registeredUsername = ref('')
+const postRegistrationRedirectTo = ref('/')
+const hasNavigatedPostRegistration = ref(false)
 const turnstileToken = ref('')
-const registrationFormElement = ref<HTMLFormElement | null>(null)
+const turnstileRenderKey = ref(0)
 const oauthLoadingProvider = ref<string | null>(null)
 const oauthPopup = ref<Window | null>(null)
 const oauthPopupTimeout = ref<ReturnType<typeof setTimeout> | null>(null)
 const oauthPopupCloseMonitor = ref<ReturnType<typeof setInterval> | null>(null)
+
+type OAuthPopupCompleteMessage = {
+  type: 'oauth:complete'
+  url: string
+}
+
+type FloatingPath = {
+  id: number
+  d: string
+  width: number
+  opacity: number
+  duration: number
+}
+
+function createFloatingPaths(position: number): FloatingPath[] {
+  return Array.from({ length: 36 }, (_, index) => ({
+    id: index,
+    d: `M-${380 - index * 5 * position} -${189 + index * 6}C-${
+      380 - index * 5 * position
+    } -${189 + index * 6} -${312 - index * 5 * position} ${216 - index * 6} ${
+      152 - index * 5 * position
+    } ${343 - index * 6}C${616 - index * 5 * position} ${470 - index * 6} ${
+      684 - index * 5 * position
+    } ${875 - index * 6} ${684 - index * 5 * position} ${875 - index * 6}`,
+    width: 0.5 + index * 0.03,
+    opacity: 0.1 + index * 0.03,
+    duration: 20 + (index % 10),
+  }))
+}
+
+const floatingPaths = [
+  ...createFloatingPaths(1),
+  ...createFloatingPaths(-1),
+]
 
 function getQueryString(value: string | string[] | null | undefined) {
   if (typeof value === 'string') {
@@ -40,6 +76,24 @@ function getQueryString(value: string | string[] | null | undefined) {
   }
 
   return ''
+}
+
+function getErrorMessage(errorValue: object, fallback: string) {
+  if ('data' in errorValue && errorValue.data && typeof errorValue.data === 'object' && 'statusMessage' in errorValue.data && typeof errorValue.data.statusMessage === 'string') {
+    return errorValue.data.statusMessage
+  }
+
+  if ('message' in errorValue && typeof errorValue.message === 'string') {
+    return errorValue.message
+  }
+
+  return fallback
+}
+
+async function navigateToPostRegistrationRedirect() {
+  hasNavigatedPostRegistration.value = true
+  const target = postRegistrationRedirectTo.value || '/'
+  await navigateTo(target, { external: target.startsWith('http') })
 }
 
 function stopOAuthPopupTimeout() {
@@ -86,18 +140,62 @@ const form = useForm({
     'password': '',
     'confirm-password': '',
     'cf-turnstile-response': '',
+    'redirect-to': redirectTo.value,
   },
   validationSchema: registerUserSchema,
 })
 
-const { handleSubmit, values, meta, setFieldValue } = form
+const { handleSubmit, values, meta, setFieldError, setFieldValue } = form
 
-const onSubmit = handleSubmit(async () => {
-  registrationFormElement.value?.submit()
+const onSubmit = handleSubmit(async (formValues) => {
+  isLoading.value = true
+  error.value = ''
+
+  try {
+    const response = await $fetch<{ redirectTo: string }>('/api/auth/register-password', {
+      method: 'POST',
+      body: formValues,
+    })
+
+    registeredUsername.value = formValues.username
+    postRegistrationRedirectTo.value = response.redirectTo || '/'
+    hasNavigatedPostRegistration.value = false
+    showPasskeyDialog.value = true
+  }
+  catch (submitError) {
+    const message = submitError && typeof submitError === 'object'
+      ? getErrorMessage(submitError, 'Unable to create your account. Please try again')
+      : 'Unable to create your account. Please try again'
+
+    error.value = message
+    if (message.toLowerCase().includes('email')) {
+      setFieldError('email', message)
+    }
+    else {
+      setFieldError('username', message)
+    }
+
+    turnstileToken.value = ''
+    setFieldValue('cf-turnstile-response', '')
+    turnstileRenderKey.value += 1
+  }
+  finally {
+    isLoading.value = false
+  }
 })
 
 watch(turnstileToken, (val) => {
   setFieldValue('cf-turnstile-response', val)
+})
+
+watch(redirectTo, (value) => {
+  setFieldValue('redirect-to', value)
+})
+
+watch(showPasskeyDialog, (isOpen) => {
+  if (!isOpen && !hasNavigatedPostRegistration.value && registeredUsername.value) {
+    navigateToPostRegistrationRedirect()
+  }
 })
 
 const passwordStrength = computed(() => calculatePasswordStrength(values.password || ''))
@@ -119,11 +217,11 @@ onMounted(() => {
 })
 
 function onPasskeyCreated() {
-  window.location.href = '/'
+  navigateToPostRegistrationRedirect()
 }
 
 function onPasskeySkipped() {
-  window.location.href = '/'
+  navigateToPostRegistrationRedirect()
 }
 
 async function signUpWithProvider(provider: string) {
@@ -133,7 +231,7 @@ async function signUpWithProvider(provider: string) {
   error.value = ''
 
   try {
-    const response = await $fetch<ApiResponse<OAuthUrlData>>(apiRoutes.AUTH_OAUTH_URL, {
+    const response = await $fetch<ApiResponse<{ url: string }>>(apiRoutes.AUTH_OAUTH_URL, {
       method: 'POST',
       body: { provider, action: 'login' },
     })
@@ -215,25 +313,94 @@ definePageMeta({
 </script>
 
 <template>
-  <CenteredAppLayout title="Register">
-    <Card class="w-full max-w-md mx-4">
-      <CardHeader class="text-center relative">
-        <CardTitle>
-          Create Account
-        </CardTitle>
-      </CardHeader>
+  <main class="relative h-[100dvh] overflow-hidden bg-background lg:grid lg:grid-cols-2">
+    <section class="relative hidden h-full flex-col overflow-hidden border-r bg-muted/60 p-10 lg:flex">
+      <div class="absolute inset-0 bg-gradient-to-t from-background to-transparent" />
+      <div class="relative flex items-center gap-2">
+        <Grid2x2PlusIcon class="size-6" />
+        <p class="text-xl font-semibold">
+          Ticket Rush
+        </p>
+      </div>
 
-      <CardContent>
+      <div
+        class="pointer-events-none absolute inset-0 text-slate-950 dark:text-white"
+        aria-hidden="true"
+      >
+        <svg
+          class="h-full w-full"
+          viewBox="0 0 696 316"
+          fill="none"
+        >
+          <motion.path
+            v-for="path in floatingPaths"
+            :key="`${path.id}-${path.d}`"
+            :d="path.d"
+            stroke="currentColor"
+            :stroke-width="path.width"
+            :stroke-opacity="path.opacity"
+            :initial="{ pathLength: 0.3, opacity: 0.6 }"
+            :animate="{ pathLength: 1, opacity: [0.3, 0.6, 0.3], pathOffset: [0, 1, 0] }"
+            :transition="{ duration: path.duration, repeat: Number.POSITIVE_INFINITY, ease: 'linear' }"
+          />
+        </svg>
+      </div>
+
+      <div class="relative mt-auto max-w-xl">
+        <blockquote class="space-y-2">
+          <p class="text-xl leading-relaxed">
+            &ldquo;Ticket Rush makes buying and selling tickets so easy, I can focus on what matters most - enjoying the event.&rdquo;
+          </p>
+          <footer class="font-mono text-sm font-semibold">
+            ~ Ticket Rush
+          </footer>
+        </blockquote>
+      </div>
+    </section>
+
+    <section class="relative flex h-full min-h-0 flex-col overflow-x-hidden overflow-y-auto px-4 py-20 sm:px-6 lg:px-10">
+      <div
+        aria-hidden="true"
+        class="absolute inset-0 -z-10 isolate opacity-60"
+      >
+        <div class="absolute right-0 top-0 h-80 w-80 -translate-y-1/2 translate-x-1/4 rounded-full bg-foreground/[0.04] blur-3xl" />
+        <div class="absolute bottom-0 left-0 h-72 w-72 translate-y-1/3 rounded-full bg-muted blur-3xl" />
+      </div>
+
+      <Button
+        variant="ghost"
+        class="absolute left-5 top-7"
+        @click="navigateTo('/')"
+      >
+        <ChevronLeftIcon class="me-2 size-4" />
+        Home
+      </Button>
+
+      <div class="mx-auto my-auto w-full max-w-sm space-y-5">
+        <div class="flex items-center gap-2 lg:hidden">
+          <Grid2x2PlusIcon class="size-6" />
+          <p class="text-xl font-semibold">
+            Ticket Rush
+          </p>
+        </div>
+
+        <div class="space-y-1">
+          <h1 class="text-2xl font-bold tracking-tight">
+            Create account
+          </h1>
+          <p class="text-base text-muted-foreground">
+            Join Ticket Rush and start your ticketing journey.
+          </p>
+        </div>
         <Alert
           v-if="error"
           variant="destructive"
-          class="mb-4"
         >
           <AlertDescription>{{ error }}</AlertDescription>
         </Alert>
 
         <!-- OAuth Sign Up -->
-        <div class="space-y-3 mb-6">
+        <div class="space-y-3">
           <template
             v-for="provider in AVAILABLE_PROVIDERS"
             :key="provider.id"
@@ -241,35 +408,41 @@ definePageMeta({
             <Button
               type="button"
               variant="outline"
-              class="w-full"
+              class="w-full active:scale-[0.98]"
               :is-loading="oauthLoadingProvider === provider.id"
               :disabled="isLoading || oauthLoadingProvider !== null"
               @click="signUpWithProvider(provider.id)"
             >
-              <div class="h-4 w-4 flex items-center justify-center">
+              <div class="flex h-4 w-4 items-center justify-center">
                 <OAuthIcon :provider="provider.id" />
               </div>
               Sign up with {{ provider.name }}
             </Button>
           </template>
 
-          <div class="relative">
-            <div class="absolute inset-0 flex items-center">
-              <span class="w-full border-t border-gray-200 dark:border-gray-700" />
-            </div>
-            <div class="relative flex justify-center text-xs uppercase">
-              <span class="bg-card/60 px-2 text-gray-500 dark:text-gray-400 rounded-xl">Or sign up with email</span>
-            </div>
+          <div class="flex items-center gap-2 py-1">
+            <div class="h-px flex-1 bg-border" />
+            <span class="text-xs uppercase text-muted-foreground">Or sign up with email</span>
+            <div class="h-px flex-1 bg-border" />
           </div>
         </div>
 
         <form
-          ref="registrationFormElement"
           action="/api/auth/register-password"
           method="POST"
           class="space-y-4"
           @submit.prevent="onSubmit"
         >
+          <input
+            type="hidden"
+            name="cf-turnstile-response"
+            :value="turnstileToken"
+          >
+          <input
+            type="hidden"
+            name="redirect-to"
+            :value="redirectTo"
+          >
           <VeeField
             v-slot="{ field, errors }"
             name="username"
@@ -285,13 +458,15 @@ definePageMeta({
                 Username
               </FieldLabel>
               <div class="relative">
-                <UserIcon class="absolute left-3 top-3 h-4 w-4" />
+                <UserIcon class="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                 <Input
                   id="username"
+                  name="username"
                   :model-value="field.value"
                   type="text"
+                  autocomplete="username"
                   placeholder="Enter your username"
-                  class="pl-9 h-11"
+                  class="h-11 pl-9"
                   :aria-invalid="!!errors.length"
                   :disabled="isLoading"
                   @update:model-value="field.onChange"
@@ -319,13 +494,15 @@ definePageMeta({
                 Display Name
               </FieldLabel>
               <div class="relative">
-                <UserIcon class="absolute left-3 top-3 h-4 w-4" />
+                <UserIcon class="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                 <Input
                   id="name"
+                  name="name"
                   :model-value="field.value"
                   type="text"
+                  autocomplete="name"
                   placeholder="Enter your display name"
-                  class="pl-9 h-11"
+                  class="h-11 pl-9"
                   :aria-invalid="!!errors.length"
                   :disabled="isLoading"
                   @update:model-value="field.onChange"
@@ -353,13 +530,15 @@ definePageMeta({
                 Email
               </FieldLabel>
               <div class="relative">
-                <Mail class="absolute left-3 top-3 h-4 w-4" />
+                <Mail class="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                 <Input
                   id="email"
+                  name="email"
                   :model-value="field.value"
                   type="email"
+                  autocomplete="email"
                   placeholder="Enter your email"
-                  class="pl-9 h-11"
+                  class="h-11 pl-9"
                   :aria-invalid="!!errors.length"
                   :disabled="isLoading"
                   @update:model-value="field.onChange"
@@ -387,13 +566,15 @@ definePageMeta({
                 Password
               </FieldLabel>
               <div class="relative">
-                <Lock class="absolute left-3 top-3 h-4 w-4" />
+                <Lock class="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                 <Input
                   id="password"
+                  name="password"
                   :model-value="field.value"
                   :type="showPassword ? 'text' : 'password'"
+                  autocomplete="new-password"
                   placeholder="Enter your password"
-                  class="pl-9 pr-9 h-11"
+                  class="h-11 pl-9 pr-9"
                   :aria-invalid="!!errors.length"
                   :disabled="isLoading"
                   @update:model-value="field.onChange"
@@ -403,6 +584,8 @@ definePageMeta({
                   variant="ghost"
                   size="sm"
                   class="absolute right-1 top-1 h-9 w-9 p-0 hover:bg-transparent"
+                  :aria-label="showPassword ? 'Hide password' : 'Show password'"
+                  :aria-pressed="showPassword"
                   @click="showPassword = !showPassword"
                 >
                   <Eye
@@ -415,14 +598,14 @@ definePageMeta({
                   />
                 </Button>
               </div>
-              <FieldError
-                v-if="errors.length"
-                :errors="errors"
-              />
               <!-- Password Strength Indicator -->
               <PasswordStrengthIndicator
                 :password="values.password || ''"
                 :strength="passwordStrength"
+              />
+              <FieldError
+                v-if="errors.length"
+                :errors="errors"
               />
             </Field>
           </VeeField>
@@ -442,13 +625,15 @@ definePageMeta({
                 Confirm Password
               </FieldLabel>
               <div class="relative">
-                <Lock class="absolute left-3 top-3 h-4 w-4" />
+                <Lock class="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                 <Input
                   id="confirmPassword"
+                  name="confirm-password"
                   :model-value="field.value"
                   :type="showConfirmPassword ? 'text' : 'password'"
+                  autocomplete="new-password"
                   placeholder="Confirm your password"
-                  class="pl-9 pr-9 h-11"
+                  class="h-11 pl-9 pr-9"
                   :aria-invalid="!!errors.length"
                   :disabled="isLoading"
                   @update:model-value="field.onChange"
@@ -458,6 +643,8 @@ definePageMeta({
                   variant="ghost"
                   size="sm"
                   class="absolute right-1 top-1 h-9 w-9 p-0 hover:bg-transparent"
+                  :aria-label="showConfirmPassword ? 'Hide password confirmation' : 'Show password confirmation'"
+                  :aria-pressed="showConfirmPassword"
                   @click="showConfirmPassword = !showConfirmPassword"
                 >
                   <Eye
@@ -477,10 +664,13 @@ definePageMeta({
             </Field>
           </VeeField>
 
-          <NuxtTurnstile v-model="turnstileToken" />
+          <NuxtTurnstile
+            :key="turnstileRenderKey"
+            v-model="turnstileToken"
+          />
           <Button
             type="submit"
-            class="w-full h-11"
+            class="h-11 w-full active:scale-[0.98]"
             :disabled="!isFormValid"
             :is-loading="isLoading"
           >
@@ -491,18 +681,18 @@ definePageMeta({
           </Button>
           <p
             v-if="values.password && passwordStrength.score < 80"
-            class="text-xs text-center"
+            class="text-center text-xs text-muted-foreground"
           >
             Password must be strong to create an account
           </p>
         </form>
 
-        <div class="text-center mt-6 space-y-3">
-          <div class="text-xs text-gray-500 dark:text-gray-400">
+        <div class="space-y-3 text-center">
+          <p class="text-xs text-muted-foreground">
             By creating an account, you agree to our
             <NuxtLink
               to="https://nnsvn.me/terms"
-              class="underline"
+              class="underline underline-offset-4 hover:text-primary"
               target="_blank"
               rel="noopener noreferrer"
             >
@@ -511,26 +701,27 @@ definePageMeta({
             and
             <NuxtLink
               to="https://nnsvn.me/privacy"
-              class="underline"
+              class="underline underline-offset-4 hover:text-primary"
               target="_blank"
               rel="noopener noreferrer"
             >
               Privacy Policy
             </NuxtLink>
-          </div>
+            .
+          </p>
 
-          <div class="text-sm text-gray-600 dark:text-gray-300">
+          <p class="text-sm text-muted-foreground">
             Already have an account?
             <NuxtLink
               to="/auth/login"
-              class="text-primary hover:underline font-medium"
+              class="font-medium text-primary hover:underline"
             >
               Sign In
             </NuxtLink>
-          </div>
+          </p>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </section>
 
     <!-- Passkey Registration Dialog -->
     <PasskeyRegistrationDialog
@@ -539,5 +730,5 @@ definePageMeta({
       @passkey-created="onPasskeyCreated"
       @skip-passkey="onPasskeySkipped"
     />
-  </CenteredAppLayout>
+  </main>
 </template>
