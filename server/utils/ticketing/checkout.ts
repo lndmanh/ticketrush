@@ -1,7 +1,38 @@
 import { and, eq } from 'drizzle-orm'
+import type { CheckoutTicketHolderInput } from '#shared/schemas/ticketingSchema'
+import type { SavedAttendeeGender } from '#shared/schemas/savedAttendeeSchema'
 import { createPublicOrderId, createPublicTicketId, createQrToken } from '~~/server/utils/ticketing/ids'
 import holdService from '~~/server/utils/ticketing/holds'
 import analyticsService from '~~/server/utils/ticketing/analytics'
+import savedAttendeeService from '~~/server/utils/database/savedAttendee'
+
+interface TicketHolderSnapshot {
+  eventSeatId: number
+  savedAttendeeId: number | null
+  attendeeName: string
+  attendeeEmail: string
+  attendeePhone: string | null
+  attendeeBirthDate: Date | null
+  attendeeGender: SavedAttendeeGender | null
+  attendeeGuardianName: string | null
+  attendeeGuardianEmail: string | null
+  attendeeGuardianPhone: string | null
+  attendeeNotes: string | null
+  attendeeAccessibilityNeeds: string | null
+}
+
+function cleanText(value: string | null | undefined) {
+  if (value === undefined || value === null) {
+    return null
+  }
+
+  const text = value.trim()
+  return text ? text : null
+}
+
+function cleanOrFallback(value: string | null | undefined, fallback: string) {
+  return cleanText(value) ?? fallback
+}
 
 class CheckoutService {
   private get db() {
@@ -86,12 +117,22 @@ class CheckoutService {
 
   async startCheckout(holdPublicId: string, sessionKey: string) {
     return this.db.transaction(async (tx) => {
-      const holdBundle = await holdService.getHoldWithSeats(holdPublicId)
-      if (!holdBundle) {
+      const hold = await tx
+        .select()
+        .from(tables.seatHolds)
+        .where(eq(tables.seatHolds.publicId, holdPublicId))
+        .get()
+
+      if (!hold) {
         throw createError({ statusCode: 404, statusMessage: 'Seat hold not found.' })
       }
 
-      const { hold, seats } = holdBundle
+      const seats = await tx
+        .select()
+        .from(tables.eventSeats)
+        .where(eq(tables.eventSeats.holdId, hold.id))
+        .all()
+
       if (hold.sessionKey !== sessionKey) {
         throw createError({ statusCode: 403, statusMessage: 'Seat hold does not belong to the current session.' })
       }
@@ -167,7 +208,13 @@ class CheckoutService {
         throw createError({ statusCode: 500, statusMessage: 'Failed to start checkout.' })
       }
 
-      await holdService.markCheckoutStarted(hold.id)
+      await tx
+        .update(tables.seatHolds)
+        .set({
+          checkoutStartedAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .where(eq(tables.seatHolds.id, hold.id))
 
       return order
     })
@@ -178,11 +225,13 @@ class CheckoutService {
     holdPublicId: string,
     sessionKey: string,
     payload: {
+      userId: number
       customerName: string
       customerEmail: string
       customerPhone?: string
       customerAgeBracket?: string
       customerGender?: string
+      ticketHolders: CheckoutTicketHolderInput[]
     },
   ) {
     const holdBundle = await holdService.getHoldWithSeats(holdPublicId)
@@ -209,12 +258,79 @@ class CheckoutService {
       throw createError({ statusCode: 403, statusMessage: 'Checkout session does not match this seat hold.' })
     }
 
+    if (existingOrder.userId !== payload.userId) {
+      throw createError({ statusCode: 403, statusMessage: 'Checkout session does not belong to this user.' })
+    }
+
     if (existingOrder.status === 'confirmed') {
       return this.getCheckoutByPublicId(existingOrder.publicId)
     }
 
     if (hold.status !== 'active' || hold.expiresAt.getTime() <= Date.now()) {
       throw createError({ statusCode: 409, statusMessage: 'Seat hold has expired.' })
+    }
+
+    const seatIds = new Set(seats.map(seat => seat.id))
+    const holderSnapshots = new Map<number, TicketHolderSnapshot>()
+
+    for (const assignment of payload.ticketHolders) {
+      if (!seatIds.has(assignment.eventSeatId)) {
+        throw createError({ statusCode: 400, statusMessage: 'Ticket holder assignments must match held seats.' })
+      }
+
+      if (holderSnapshots.has(assignment.eventSeatId)) {
+        throw createError({ statusCode: 400, statusMessage: 'Duplicate ticket holder assignment.' })
+      }
+
+      if (assignment.source === 'saved-attendee') {
+        if (!assignment.savedAttendeeId) {
+          throw createError({ statusCode: 400, statusMessage: 'Choose a Saved Attendee' })
+        }
+
+        const savedAttendee = await savedAttendeeService.getForUser(assignment.savedAttendeeId, payload.userId)
+        if (!savedAttendee) {
+          throw createError({ statusCode: 404, statusMessage: 'Saved attendee not found.' })
+        }
+
+        holderSnapshots.set(assignment.eventSeatId, {
+          eventSeatId: assignment.eventSeatId,
+          savedAttendeeId: savedAttendee.id,
+          attendeeName: cleanOrFallback(savedAttendee.preferredName, savedAttendee.legalName),
+          attendeeEmail: cleanOrFallback(savedAttendee.email, payload.customerEmail),
+          attendeePhone: cleanText(savedAttendee.phone),
+          attendeeBirthDate: savedAttendee.birthDate ?? null,
+          attendeeGender: savedAttendee.gender ?? null,
+          attendeeGuardianName: cleanText(savedAttendee.guardianName),
+          attendeeGuardianEmail: cleanText(savedAttendee.guardianEmail),
+          attendeeGuardianPhone: cleanText(savedAttendee.guardianPhone),
+          attendeeNotes: cleanText(savedAttendee.notes),
+          attendeeAccessibilityNeeds: cleanText(savedAttendee.accessibilityNeeds),
+        })
+        continue
+      }
+
+      if (!assignment.holder) {
+        throw createError({ statusCode: 400, statusMessage: 'Ticket holder information is required.' })
+      }
+
+      holderSnapshots.set(assignment.eventSeatId, {
+        eventSeatId: assignment.eventSeatId,
+        savedAttendeeId: null,
+        attendeeName: cleanOrFallback(assignment.holder.preferredName, assignment.holder.legalName),
+        attendeeEmail: cleanOrFallback(assignment.holder.email, payload.customerEmail),
+        attendeePhone: cleanText(assignment.holder.phone),
+        attendeeBirthDate: assignment.holder.birthDate ?? null,
+        attendeeGender: assignment.holder.gender ?? null,
+        attendeeGuardianName: cleanText(assignment.holder.guardianName),
+        attendeeGuardianEmail: cleanText(assignment.holder.guardianEmail),
+        attendeeGuardianPhone: cleanText(assignment.holder.guardianPhone),
+        attendeeNotes: cleanText(assignment.holder.notes),
+        attendeeAccessibilityNeeds: cleanText(assignment.holder.accessibilityNeeds),
+      })
+    }
+
+    if (holderSnapshots.size !== seats.length) {
+      throw createError({ statusCode: 400, statusMessage: 'Assign a ticket holder to each ticket.' })
     }
 
     const now = new Date()
@@ -249,6 +365,23 @@ class CheckoutService {
         throw createError({ statusCode: 409, statusMessage: 'Checkout session does not match this seat hold.' })
       }
 
+      for (const assignment of payload.ticketHolders) {
+        if (!assignment.saveAsAttendee || !assignment.holder) {
+          continue
+        }
+
+        const savedAttendee = await savedAttendeeService.createInTransaction(tx, payload.userId, assignment.holder)
+        const snapshot = holderSnapshots.get(assignment.eventSeatId)
+        if (!snapshot) {
+          throw createError({ statusCode: 400, statusMessage: 'Assign a ticket holder to each ticket.' })
+        }
+
+        holderSnapshots.set(assignment.eventSeatId, {
+          ...snapshot,
+          savedAttendeeId: savedAttendee.id,
+        })
+      }
+
       await tx
         .update(tables.seatHolds)
         .set({
@@ -258,6 +391,11 @@ class CheckoutService {
         .where(eq(tables.seatHolds.id, hold.id))
 
       for (const seat of seats) {
+        const holder = holderSnapshots.get(seat.id)
+        if (!holder) {
+          throw createError({ statusCode: 400, statusMessage: 'Assign a ticket holder to each ticket.' })
+        }
+
         const soldSeat = await tx
           .update(tables.eventSeats)
           .set({
@@ -310,8 +448,17 @@ class CheckoutService {
             eventSessionId: updatedOrder.eventSessionId,
             eventSeatId: seat.id,
             userId: updatedOrder.userId,
-            attendeeName: payload.customerName,
-            attendeeEmail: payload.customerEmail,
+            savedAttendeeId: holder.savedAttendeeId,
+            attendeeName: holder.attendeeName,
+            attendeeEmail: holder.attendeeEmail,
+            attendeePhone: holder.attendeePhone,
+            attendeeBirthDate: holder.attendeeBirthDate,
+            attendeeGender: holder.attendeeGender,
+            attendeeGuardianName: holder.attendeeGuardianName,
+            attendeeGuardianEmail: holder.attendeeGuardianEmail,
+            attendeeGuardianPhone: holder.attendeeGuardianPhone,
+            attendeeNotes: holder.attendeeNotes,
+            attendeeAccessibilityNeeds: holder.attendeeAccessibilityNeeds,
             qrToken: createQrToken(orderItem.id.toString()),
             status: 'issued',
             issuedAt: now,
