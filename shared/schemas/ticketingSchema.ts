@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { commonSchemaFragments } from './index'
+import { savedAttendeeFormSchema } from './savedAttendeeSchema'
 
 export const venueCountrySchema = z.string().min(2).max(80)
 export const eventStatusSchema = z.enum(['draft', 'published', 'on_sale', 'sold_out', 'ended', 'cancelled'])
@@ -190,7 +191,7 @@ export function getEventSessionTimingIssues(input: EventSessionTimingInput, sess
   return issues
 }
 
-export const eventSessionDraftSchema = z.object({
+const eventSessionDraftBaseSchema = z.object({
   id: commonSchemaFragments.positiveId.optional(),
   publicId: z.string().trim().optional(),
   label: commonSchemaFragments.nonEmptyString('Session label'),
@@ -204,18 +205,38 @@ export const eventSessionDraftSchema = z.object({
   ticketTypes: z.array(ticketTypeDraftSchema).min(1, 'Add at least one ticket release'),
 })
 
+function addEventSessionTimingIssues(input: EventSessionTimingInput, sessionLabel: string, ctx: z.RefinementCtx) {
+  for (const issue of getEventSessionTimingIssues(input, sessionLabel)) {
+    ctx.addIssue({
+      code: 'custom',
+      path: [issue.field],
+      message: issue.message,
+    })
+  }
+}
+
+export const eventSessionDraftSchema = eventSessionDraftBaseSchema.superRefine((session, ctx) => {
+  const sessionLabel = session.label?.trim() || 'Session'
+  addEventSessionTimingIssues(session, sessionLabel, ctx)
+})
+
 export const waitingRoomSettingsSchema = z.object({
   queueActivationThreshold: z.coerce.number().int().positive('Activation threshold must be at least 1').default(250),
   queueBatchSize: z.coerce.number().int().positive('Batch size must be at least 1').default(50),
   queueWindowSeconds: z.coerce.number().int().positive('Admission window must be at least 1 second').default(180),
 })
 
-export const eventSessionEditorSchema = eventSessionDraftSchema.extend({
+const eventSessionEditorBaseSchema = eventSessionDraftBaseSchema.extend({
   startsAt: z.string().min(1, 'Session start is required'),
   endsAt: z.string().optional(),
   salesStartAt: z.string().min(1, 'Sales start is required'),
   salesEndAt: z.string().min(1, 'Sales end is required'),
   ticketTypes: z.array(ticketTypeEditorSchema).min(1, 'Add at least one ticket release'),
+})
+
+export const eventSessionEditorSchema = eventSessionEditorBaseSchema.superRefine((session, ctx) => {
+  const sessionLabel = session.label?.trim() || 'Session'
+  addEventSessionTimingIssues(session, sessionLabel, ctx)
 })
 
 export const createEventSchema = z.object({
@@ -248,6 +269,7 @@ const eventAutosaveSessionSchema = z.object({
   label: z.string().trim().max(120).optional(),
   venueId: z.coerce.number().int().nonnegative().optional(),
   status: eventStatusSchema.optional(),
+  queueEnabled: z.boolean().optional(),
   startsAt: z.string().max(40).optional(),
   endsAt: z.string().max(40).optional(),
   salesStartAt: z.string().max(40).optional(),
@@ -271,17 +293,21 @@ export const eventAutosaveDraftSchema = z.object({
   payload: eventAutosavePayloadSchema,
 }).strict()
 
-export const eventSessionPricingFormSchema = eventSessionEditorSchema.pick({
+export const eventSessionPricingFormSchema = eventSessionEditorBaseSchema.pick({
   id: true,
   publicId: true,
   label: true,
   venueId: true,
   status: true,
+  queueEnabled: true,
   startsAt: true,
   endsAt: true,
   salesStartAt: true,
   salesEndAt: true,
   ticketTypes: true,
+}).superRefine((session, ctx) => {
+  const sessionLabel = session.label?.trim() || 'Session'
+  addEventSessionTimingIssues(session, sessionLabel, ctx)
 })
 
 export const eventPricingFormSchema = z.object({
@@ -312,6 +338,23 @@ export const joinQueueSchema = z.object({
   eventSessionId: commonSchemaFragments.positiveId,
 })
 
+export const ticketHolderSourceSchema = z.enum(['account', 'saved-attendee', 'manual'])
+
+export const checkoutTicketHolderSchema = z.object({
+  eventSeatId: commonSchemaFragments.positiveId,
+  source: ticketHolderSourceSchema,
+  savedAttendeeId: commonSchemaFragments.positiveId.optional(),
+  holder: savedAttendeeFormSchema.optional(),
+  saveAsAttendee: z.boolean().default(false),
+}).superRefine((assignment, ctx) => {
+  if (assignment.source === 'saved-attendee' && !assignment.savedAttendeeId) {
+    ctx.addIssue({ code: 'custom', path: ['savedAttendeeId'], message: 'Choose a Saved Attendee' })
+  }
+  if ((assignment.source === 'account' || assignment.source === 'manual') && !assignment.holder) {
+    ctx.addIssue({ code: 'custom', path: ['holder'], message: 'Ticket holder information is required' })
+  }
+})
+
 export const confirmCheckoutSchema = z.object({
   checkoutSessionId: commonSchemaFragments.nonEmptyString('Checkout session ID'),
   holdPublicId: commonSchemaFragments.nonEmptyString('Hold ID'),
@@ -320,6 +363,7 @@ export const confirmCheckoutSchema = z.object({
   customerPhone: z.string().trim().optional(),
   customerAgeBracket: ageBracketSchema.optional(),
   customerGender: genderSchema.optional(),
+  ticketHolders: z.array(checkoutTicketHolderSchema).min(1, 'Assign a ticket holder to each ticket'),
 })
 
 export const checkoutCustomerSchema = confirmCheckoutSchema.pick({
@@ -351,5 +395,7 @@ export type PublishEventInput = z.infer<typeof publishEventSchema>
 export type CreateSeatHoldInput = z.infer<typeof createSeatHoldSchema>
 export type ReleaseSeatHoldInput = z.infer<typeof releaseSeatHoldSchema>
 export type JoinQueueInput = z.infer<typeof joinQueueSchema>
+export type TicketHolderSourceInput = z.infer<typeof ticketHolderSourceSchema>
+export type CheckoutTicketHolderInput = z.infer<typeof checkoutTicketHolderSchema>
 export type ConfirmCheckoutInput = z.infer<typeof confirmCheckoutSchema>
 export type CheckoutCustomerInput = z.infer<typeof checkoutCustomerSchema>
