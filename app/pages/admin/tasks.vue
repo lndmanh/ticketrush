@@ -2,10 +2,12 @@
 import { toast } from 'vue-sonner'
 import { Clock, Database, Loader2, Play, Users } from '@lucide/vue'
 
+const { t } = useI18n()
+
 interface TaskDefinition {
   id: string
-  title: string
-  description: string
+  titleKey: string
+  descKey: string
   endpoint: string
   icon: typeof Play
   variant: 'default' | 'secondary' | 'outline'
@@ -14,24 +16,24 @@ interface TaskDefinition {
 const tasks: TaskDefinition[] = [
   {
     id: 'release-holds',
-    title: 'Release expired holds',
-    description: 'Free seats from expired hold timers and recompute analytics for all events.',
+    titleKey: 'admin.tasks.release_holds_title',
+    descKey: 'admin.tasks.release_holds_desc',
     endpoint: '/api/admin/tasks/release-holds',
     icon: Clock,
     variant: 'default',
   },
   {
     id: 'admit-queue',
-    title: 'Admit queue batch',
-    description: 'Process the next admission batch for all queue-enabled events and expire stale entries.',
+    titleKey: 'admin.tasks.admit_queue_title',
+    descKey: 'admin.tasks.admit_queue_desc',
     endpoint: '/api/admin/tasks/admit-queue',
     icon: Users,
     variant: 'default',
   },
   {
     id: 'seed-admin',
-    title: 'Seed admin account',
-    description: 'Create the default administrator account if it does not already exist.',
+    titleKey: 'admin.tasks.seed_admin_title',
+    descKey: 'admin.tasks.seed_admin_desc',
     endpoint: '/api/admin/tasks/seed-admin',
     icon: Database,
     variant: 'secondary',
@@ -44,6 +46,7 @@ const taskResults = ref<Record<string, { success: boolean, data?: any, error?: s
 async function runTask(task: TaskDefinition) {
   if (runningTasks.value.has(task.id)) return
 
+  const taskTitle = t(task.titleKey)
   runningTasks.value.add(task.id)
   try {
     const response = await $fetch<{ success: boolean, data: any }>(task.endpoint, { method: 'POST' })
@@ -52,16 +55,16 @@ async function runTask(task: TaskDefinition) {
       data: response.data,
       ranAt: new Date().toLocaleTimeString(),
     }
-    toast.success(`${task.title} completed`)
+    toast.success(t('admin.tasks.completed', { title: taskTitle }))
   }
   catch (err: any) {
-    const message = err?.data?.message || err?.statusMessage || 'Task failed'
+    const message = err?.data?.message || err?.statusMessage || t('admin.tasks.failed')
     taskResults.value[task.id] = {
       success: false,
       error: message,
       ranAt: new Date().toLocaleTimeString(),
     }
-    toast.error(`${task.title} failed: ${message}`)
+    toast.error(t('admin.tasks.task_failed', { title: taskTitle, message }))
   }
   finally {
     runningTasks.value.delete(task.id)
@@ -80,10 +83,10 @@ definePageMeta({
   <div class="space-y-6">
     <div class="space-y-1">
       <h1 class="text-2xl font-semibold text-foreground">
-        Background tasks
+        {{ $t('admin.tasks.title') }}
       </h1>
       <p class="text-sm text-muted-foreground">
-        Manually trigger system tasks that cannot run on a schedule in production.
+        {{ $t('admin.tasks.desc') }}
       </p>
     </div>
 
@@ -103,12 +106,12 @@ definePageMeta({
             </div>
             <div class="min-w-0 flex-1">
               <CardTitle class="text-sm">
-                {{ task.title }}
+                {{ $t(task.titleKey) }}
               </CardTitle>
             </div>
           </div>
           <CardDescription class="text-xs">
-            {{ task.description }}
+            {{ $t(task.descKey) }}
           </CardDescription>
         </CardHeader>
 
@@ -119,8 +122,8 @@ definePageMeta({
             :class="taskResults[task.id]!.success ? 'border-emerald-500/20 bg-emerald-500/5 text-emerald-700 dark:text-emerald-400' : 'border-destructive/20 bg-destructive/5 text-destructive'"
           >
             <p class="font-medium">
-              {{ taskResults[task.id]!.success ? 'Success' : 'Failed' }}
-              <span class="ml-1 font-normal text-muted-foreground">at {{ taskResults[task.id]!.ranAt }}</span>
+              {{ taskResults[task.id]!.success ? $t('admin.tasks.success') : $t('admin.tasks.failed') }}
+              <span class="ml-1 font-normal text-muted-foreground">{{ $t('admin.tasks.at') }} {{ taskResults[task.id]!.ranAt }}</span>
             </p>
             <pre
               v-if="taskResults[task.id]!.data"
@@ -145,7 +148,7 @@ definePageMeta({
               v-else
               class="size-4"
             />
-            {{ runningTasks.has(task.id) ? 'Running...' : 'Run task' }}
+            {{ runningTasks.has(task.id) ? $t('admin.tasks.running') : $t('admin.tasks.run') }}
           </Button>
         </CardContent>
       </Card>

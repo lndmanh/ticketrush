@@ -15,6 +15,7 @@ import type { OAuthPopupCompleteMessage } from '~~/types/auth'
 
 const loginFormSchema = loginSchema
 
+const { t } = useI18n()
 const { authenticate } = useWebAuthn()
 const route = useRoute()
 const showPassword = ref(false)
@@ -68,7 +69,7 @@ function onOAuthPopupComplete(event: MessageEvent<OAuthPopupCompleteMessage>) {
     target = new URL(event.data.url)
   }
   catch {
-    error.value = 'Authentication completed but response URL was invalid. Please try again.'
+    error.value = t('auth.oauth_url_invalid')
     return
   }
 
@@ -102,7 +103,7 @@ watch(redirectTo, (value) => {
 watch(() => route.query.error, (queryValue) => {
   const errorCode = getQueryString(queryValue)
   if (errorCode) {
-    error.value = getAuthErrorMessage(errorCode) || 'An error occurred during login'
+    error.value = getAuthErrorMessage(errorCode) || t('auth.login_error_generic')
   }
 }, { immediate: true })
 
@@ -112,7 +113,7 @@ onMounted(() => {
 
 async function signInWithPasskey() {
   if (!values.username?.trim()) {
-    error.value = 'Username is required'
+    error.value = t('auth.passkey_username_required')
     return
   }
 
@@ -125,7 +126,7 @@ async function signInWithPasskey() {
   }
   catch (err) {
     createError({ statusCode: 401, statusMessage: 'Unauthorized. Passkey authentication failed. Please ensure your passkey is set up correctly.', data: err })
-    error.value = 'Authentication failed. Please ensure your passkey is set up correctly, or sign in with your password.'
+    error.value = t('auth.passkey_auth_failed')
     isLoading.value = false
   }
 }
@@ -193,14 +194,14 @@ async function signInWithProvider(provider: string) {
       stopOAuthPopupTimeout()
       oauthPopup.value = null
       oauthLoadingProvider.value = null
-      error.value = 'OAuth session timed out or popup was closed. Please try again.'
+      error.value = t('auth.oauth_timeout')
     }, 120000)
   }
   catch {
     stopOAuthPopupCloseMonitor()
     stopOAuthPopupTimeout()
     oauthPopup.value = null
-    error.value = 'Unable to continue with provider right now. Please try again.'
+    error.value = t('auth.oauth_failed')
     oauthLoadingProvider.value = null
   }
 }
@@ -223,12 +224,12 @@ definePageMeta({
     <Card class="w-full max-w-md mx-4">
       <CardHeader class="text-center relative">
         <template v-if="route.query.step === '2fa'">
-          <CardTitle>Two-Factor Authentication</CardTitle>
-          <CardDescription>Enter the code from your authenticator app</CardDescription>
+          <CardTitle>{{ $t('auth.2fa_heading') }}</CardTitle>
+          <CardDescription>{{ $t('auth.2fa_desc') }}</CardDescription>
         </template>
         <template v-else>
-          <CardTitle>Welcome Back</CardTitle>
-          <CardDescription>Sign in to your account to continue</CardDescription>
+          <CardTitle>{{ $t('auth.login_heading') }}</CardTitle>
+          <CardDescription>{{ $t('auth.login_desc') }}</CardDescription>
         </template>
       </CardHeader>
 
@@ -264,7 +265,7 @@ definePageMeta({
                 for="username"
                 class="text-sm font-medium"
               >
-                Username
+                {{ $t('auth.username_label') }}
               </FieldLabel>
               <div class="relative">
                 <User class="absolute left-3 top-3 h-4 w-4" />
@@ -273,7 +274,7 @@ definePageMeta({
                   name="username"
                   :model-value="field.value"
                   type="text"
-                  placeholder="Enter your username"
+                  :placeholder="$t('auth.username_placeholder')"
                   class="pl-9 h-11"
                   :disabled="isLoading"
                   :aria-invalid="!!errors.length"
@@ -299,7 +300,7 @@ definePageMeta({
                 for="password"
                 class="text-sm font-medium"
               >
-                Password
+                {{ $t('auth.password_label') }}
               </FieldLabel>
               <div class="relative">
                 <Lock class="absolute left-3 top-3 h-4 w-4" />
@@ -308,7 +309,7 @@ definePageMeta({
                   name="password"
                   :model-value="field.value"
                   :type="showPassword ? 'text' : 'password'"
-                  placeholder="Enter your password"
+                  :placeholder="$t('auth.password_placeholder')"
                   class="pl-9 pr-9 h-11"
                   :disabled="isLoading"
                   :aria-invalid="!!errors.length"
@@ -348,7 +349,7 @@ definePageMeta({
               <Lock
                 class="h-4 w-4"
               />
-              Sign In with Password
+              {{ $t('auth.sign_in_password') }}
             </Button>
 
             <div class="relative">
@@ -356,7 +357,7 @@ definePageMeta({
                 <span class="w-full border-t border-gray-200 dark:border-gray-700" />
               </div>
               <div class="relative flex justify-center text-xs uppercase">
-                <span class="bg-card/60 px-2 text-gray-500 dark:text-gray-400 rounded-xl">Or</span>
+                <span class="bg-card/60 px-2 text-gray-500 dark:text-gray-400 rounded-xl">{{ $t('auth.or') }}</span>
               </div>
             </div>
 
@@ -371,7 +372,7 @@ definePageMeta({
               <Fingerprint
                 class="h-4 w-4"
               />
-              Sign In with a Passkey
+              {{ $t('auth.sign_in_passkey') }}
             </Button>
 
             <div class="relative">
@@ -379,7 +380,7 @@ definePageMeta({
                 <span class="w-full border-t border-gray-200 dark:border-gray-700" />
               </div>
               <div class="relative flex justify-center text-xs uppercase">
-                <span class="bg-card/60 px-2 text-gray-500 dark:text-gray-400 rounded-xl">Or</span>
+                <span class="bg-card/60 px-2 text-gray-500 dark:text-gray-400 rounded-xl">{{ $t('auth.or') }}</span>
               </div>
             </div>
 
@@ -398,7 +399,7 @@ definePageMeta({
                 <div class="h-4 w-4 flex items-center justify-center">
                   <OAuthIcon :provider="provider.id" />
                 </div>
-                Continue with {{ provider.name }}
+                {{ $t('auth.continue_with', { provider: provider.name }) }}
               </Button>
             </template>
           </div>
@@ -409,33 +410,33 @@ definePageMeta({
           class="text-center mt-6 space-y-3"
         >
           <div class="text-xs text-gray-500 dark:text-gray-400">
-            By signing in, you agree to our
+            {{ $t('auth.agree_terms') }}
             <NuxtLink
               to="https://nnsvn.me/terms"
               class="underline"
               target="_blank"
               rel="noopener noreferrer"
             >
-              Terms of Service
+              {{ $t('auth.terms_link') }}
             </NuxtLink>
-            and
+            {{ $t('auth.and') }}
             <NuxtLink
               to="https://nnsvn.me/privacy"
               class="underline"
               target="_blank"
               rel="noopener noreferrer"
             >
-              Privacy Policy
+              {{ $t('auth.privacy_link') }}
             </NuxtLink>
           </div>
 
           <div class="text-sm text-gray-600 dark:text-gray-300">
-            Don't have an account?
+            {{ $t('auth.no_account') }}
             <NuxtLink
               to="/auth/register"
               class="text-primary hover:underline font-medium"
             >
-              Sign Up
+              {{ $t('auth.sign_up') }}
             </NuxtLink>
           </div>
         </div>

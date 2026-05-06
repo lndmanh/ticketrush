@@ -19,6 +19,8 @@ import { Label } from '@/components/ui/label'
 import type { PaginatedApiResponse } from '~~/types/api'
 import type { EventCatalogItem, EventCatalogQueryOptions } from '~~/types/events'
 
+const { t } = useI18n()
+
 const FEATURED_EVENT_LIMIT = 3
 
 const featuredEventsQuery: Pick<EventCatalogQueryOptions, 'page' | 'pageSize' | 'sort'> = {
@@ -47,7 +49,7 @@ const featuredEvents = computed(() => {
 
 const featuredEventsError = computed(() => {
   if (featuredEventsFetchError.value) {
-    return 'Featured events are temporarily unavailable. Browse the full catalog to keep exploring.'
+    return t('home.featured_error')
   }
 
   const response = featuredEventsResponse.value
@@ -55,15 +57,15 @@ const featuredEventsError = computed(() => {
     return ''
   }
 
-  return 'Featured events are temporarily unavailable. Browse the full catalog to keep exploring.'
+  return t('home.featured_error')
 })
 
 const featuredEventsEmptyMessage = computed(() => {
   if (featuredEventsPending.value) {
-    return 'Curating the next drops for you.'
+    return t('home.featured_curating')
   }
 
-  return 'New events are being prepared. Browse the full catalog for the latest releases.'
+  return t('home.featured_empty')
 })
 
 const heroPreviewEvent = computed(() => featuredEvents.value[0] ?? null)
@@ -95,15 +97,15 @@ async function searchEvents() {
             class="w-fit rounded-full px-3 py-1 text-[11px] uppercase tracking-[0.22em]"
           >
             <Sparkles class="size-3.5" />
-            Live events, ready to book
+            {{ $t('home.badge') }}
           </Badge>
 
           <div class="space-y-5">
             <h1 class="display-title max-w-5xl text-balance">
-              Find the show, choose the session, keep your seat.
+              {{ $t('home.title') }}
             </h1>
             <p class="max-w-[44rem] text-base leading-8 text-muted-foreground md:text-lg">
-              Browse upcoming drops, compare dates, and move into checkout with protected seat holds and mobile tickets built for busy nights.
+              {{ $t('home.subtitle') }}
             </p>
           </div>
         </div>
@@ -117,7 +119,7 @@ async function searchEvents() {
               for="homepage-event-search"
               class="sr-only"
             >
-              Search events
+              {{ $t('home.search_label') }}
             </Label>
             <div class="relative">
               <Search class="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -125,7 +127,7 @@ async function searchEvents() {
                 id="homepage-event-search"
                 v-model="searchInput"
                 class="h-12 rounded-full pl-10"
-                placeholder="Search by event, venue, or city"
+                :placeholder="$t('home.search_placeholder')"
               />
             </div>
           </div>
@@ -135,7 +137,7 @@ async function searchEvents() {
             size="lg"
             class="h-12 rounded-full px-5"
           >
-            Search events
+            {{ $t('home.search_button') }}
             <ArrowRight class="size-4" />
           </Button>
         </form>
@@ -147,7 +149,7 @@ async function searchEvents() {
             class="rounded-full px-6"
           >
             <NuxtLink to="/events">
-              Browse all events
+              {{ $t('home.browse_all') }}
               <ArrowRight class="size-4" />
             </NuxtLink>
           </Button>
@@ -158,7 +160,7 @@ async function searchEvents() {
             class="rounded-full px-6 text-muted-foreground"
           >
             <NuxtLink to="/admin">
-              Organizer console
+              {{ $t('home.organizer_cta') }}
             </NuxtLink>
           </Button>
         </div>
@@ -168,7 +170,7 @@ async function searchEvents() {
         <div class="surface-core relative min-h-[32rem] overflow-hidden p-0">
           <img
             :src="heroImage"
-            :alt="heroPreviewEvent?.title || 'Audience waiting for a live event'"
+            :alt="heroPreviewEvent?.title || $t('home.hero_img_alt')"
             class="absolute inset-0 h-full w-full object-cover grayscale"
           >
           <div class="absolute inset-0 bg-[linear-gradient(to_top,rgba(0,0,0,0.9),rgba(0,0,0,0.5),rgba(0,0,0,0.14))]" />
@@ -176,23 +178,23 @@ async function searchEvents() {
           <div class="relative z-10 flex min-h-[32rem] flex-col justify-between gap-8 p-5 text-white md:p-6">
             <div class="flex items-start justify-between gap-4">
               <span class="section-eyebrow border-white/10 bg-white/8 text-white">
-                Upcoming drop
+                {{ $t('home.upcoming_drop') }}
               </span>
               <span class="rounded-full border border-white/10 bg-black/35 px-3 py-1.5 font-mono text-[11px] uppercase tracking-[0.18em] text-white/76 backdrop-blur-sm">
-                Buyer preview
+                {{ $t('home.buyer_preview') }}
               </span>
             </div>
 
             <div class="space-y-5">
               <div class="max-w-2xl space-y-3">
                 <p class="text-sm font-medium uppercase tracking-[0.24em] text-white/64">
-                  {{ heroPreviewEvent?.venue?.city || 'Live soon' }}
+                  {{ heroPreviewEvent?.venue?.city || $t('home.live_soon') }}
                 </p>
                 <h2 class="text-balance text-4xl font-semibold leading-[1.02] tracking-[-0.07em] md:text-5xl">
-                  {{ heroPreviewEvent?.title || 'Your next night out starts here.' }}
+                  {{ heroPreviewEvent?.title || $t('home.hero_fallback_title') }}
                 </h2>
                 <p class="max-w-[34rem] text-sm leading-6 text-white/76 md:text-base md:leading-7">
-                  {{ heroPreviewEvent?.subtitle || 'Search the catalog, pick a session, and keep your seats protected while you check out.' }}
+                  {{ heroPreviewEvent?.subtitle || $t('home.hero_fallback_subtitle') }}
                 </p>
               </div>
 
@@ -200,10 +202,10 @@ async function searchEvents() {
                 <div class="grid gap-4 md:grid-cols-[1fr_auto] md:items-center">
                   <div class="space-y-1">
                     <p class="text-[11px] uppercase tracking-[0.18em] text-white/64">
-                      Venue
+                      {{ $t('common.venue') }}
                     </p>
                     <p class="text-sm leading-6 text-white/86 md:text-base">
-                      {{ heroPreviewEvent?.venue?.name || 'Browse the catalog for live venues' }}
+                      {{ heroPreviewEvent?.venue?.name || $t('home.browse_catalog_venues') }}
                     </p>
                   </div>
 
@@ -213,7 +215,7 @@ async function searchEvents() {
                     class="rounded-full"
                   >
                     <NuxtLink :to="heroPreviewEvent ? `/events/${heroPreviewEvent.slug}` : '/events'">
-                      {{ heroPreviewEvent ? 'View event' : 'Browse events' }}
+                      {{ heroPreviewEvent ? $t('home.view_event') : $t('home.browse_events_btn') }}
                     </NuxtLink>
                   </Button>
                 </div>
@@ -228,14 +230,14 @@ async function searchEvents() {
       <div class="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div class="space-y-3">
           <span class="section-eyebrow">
-            Featured releases
+            {{ $t('home.featured_eyebrow') }}
           </span>
           <div class="space-y-3">
             <h2 class="text-3xl font-semibold tracking-[-0.05em] md:text-4xl">
-              Upcoming events worth checking first.
+              {{ $t('home.featured_title') }}
             </h2>
             <p class="max-w-[42rem] text-sm leading-6 text-muted-foreground md:text-base md:leading-7">
-              A small preview of the soonest live events. Use the catalog when you want filters, sorting, cities, and pagination.
+              {{ $t('home.featured_subtitle') }}
             </p>
           </div>
         </div>
@@ -246,7 +248,7 @@ async function searchEvents() {
           class="rounded-full"
         >
           <NuxtLink to="/events">
-            View all events
+            {{ $t('home.view_all_events') }}
             <ArrowRight class="size-4" />
           </NuxtLink>
         </Button>
@@ -281,7 +283,7 @@ async function searchEvents() {
           <div class="mx-auto mb-4 flex size-12 items-center justify-center rounded-full border bg-muted/40">
             <CalendarCheck2 class="size-5 text-muted-foreground" />
           </div>
-          <EmptyTitle>Featured events are warming up</EmptyTitle>
+          <EmptyTitle>{{ $t('home.featured_warming_up') }}</EmptyTitle>
           <EmptyDescription>
             {{ featuredEventsEmptyMessage }}
           </EmptyDescription>
@@ -292,7 +294,7 @@ async function searchEvents() {
           class="mt-5 rounded-full"
         >
           <NuxtLink to="/events">
-            Browse the full catalog
+            {{ $t('home.browse_full_catalog') }}
           </NuxtLink>
         </Button>
       </Empty>
@@ -306,13 +308,13 @@ async function searchEvents() {
           </div>
           <div class="space-y-2">
             <p class="text-xs font-medium uppercase tracking-[0.22em] text-muted-foreground">
-              For organizers
+              {{ $t('home.organizer_eyebrow') }}
             </p>
             <h2 class="text-2xl font-semibold tracking-[-0.05em] md:text-3xl">
-              Manage drops without pulling buyers out of flow.
+              {{ $t('home.organizer_title') }}
             </h2>
             <p class="max-w-[42rem] text-sm leading-6 text-muted-foreground md:text-base md:leading-7">
-              The console stays one step away for teams managing events, sessions, seat maps, and live sales.
+              {{ $t('home.organizer_subtitle') }}
             </p>
           </div>
         </div>
@@ -323,7 +325,7 @@ async function searchEvents() {
           class="rounded-full"
         >
           <NuxtLink to="/admin">
-            Open console
+            {{ $t('home.organizer_open_console') }}
           </NuxtLink>
         </Button>
       </CardContent>

@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 
+const { t } = useI18n()
 const isSaving = ref(false)
 
 const { data: settingsResponse, refresh } = await useFetch<{ data: WaitingRoomSettingsInput }>('/api/admin/waiting-room-settings')
@@ -66,22 +67,22 @@ const onSubmit = handleSubmit(
         body: formValues,
       })
       await refresh()
-      toast.success('Waiting room settings updated')
+      toast.success(t('admin.waiting_room_settings.updated'))
     }
     catch (error) {
       if (error && typeof error === 'object') {
-        toast.error(getErrorMessage(error, 'Failed to update waiting room settings'))
+        toast.error(getErrorMessage(error, t('admin.waiting_room_settings.update_failed')))
         return
       }
 
-      toast.error('Failed to update waiting room settings')
+      toast.error(t('admin.waiting_room_settings.update_failed'))
     }
     finally {
       isSaving.value = false
     }
   },
   ({ errors }) => {
-    const firstError = Object.values(errors).flat().filter(Boolean)[0] || 'Please fix the highlighted settings'
+    const firstError = Object.values(errors).flat().filter(Boolean)[0] || t('admin.waiting_room_settings.fix_settings')
     toast.error(firstError)
   },
 )
@@ -99,10 +100,10 @@ definePageMeta({
     <section class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
       <div class="space-y-1">
         <h2 class="text-2xl font-semibold text-foreground">
-          Waiting room
+          {{ $t('admin.waiting_room_settings.title') }}
         </h2>
         <p class="text-sm text-muted-foreground">
-          Activates automatically for any session once live demand reaches the global threshold.
+          {{ $t('admin.waiting_room_settings.desc') }}
         </p>
       </div>
     </section>
@@ -120,7 +121,7 @@ definePageMeta({
             >
               <Field :data-invalid="!!errors.length">
                 <FieldLabel for="waiting-room-threshold">
-                  Activation threshold
+                  {{ $t('admin.waiting_room_settings.threshold_label') }}
                 </FieldLabel>
                 <Input
                   id="waiting-room-threshold"
@@ -130,7 +131,7 @@ definePageMeta({
                   :aria-invalid="!!errors.length"
                   @update:model-value="field.onChange(Number($event))"
                 />
-                <FieldDescription>Active queue passes plus active holds before buyers are paced.</FieldDescription>
+                <FieldDescription>{{ $t('admin.waiting_room_settings.threshold_desc') }}</FieldDescription>
                 <FieldError
                   v-if="errors.length"
                   :errors="errors"
@@ -144,7 +145,7 @@ definePageMeta({
             >
               <Field :data-invalid="!!errors.length">
                 <FieldLabel for="waiting-room-batch-size">
-                  Batch size
+                  {{ $t('admin.waiting_room_settings.batch_size_label') }}
                 </FieldLabel>
                 <Input
                   id="waiting-room-batch-size"
@@ -154,7 +155,7 @@ definePageMeta({
                   :aria-invalid="!!errors.length"
                   @update:model-value="field.onChange(Number($event))"
                 />
-                <FieldDescription>Number of buyers admitted on each queue cycle.</FieldDescription>
+                <FieldDescription>{{ $t('admin.waiting_room_settings.batch_size_desc') }}</FieldDescription>
                 <FieldError
                   v-if="errors.length"
                   :errors="errors"
@@ -168,7 +169,7 @@ definePageMeta({
             >
               <Field :data-invalid="!!errors.length">
                 <FieldLabel for="waiting-room-window">
-                  Window seconds
+                  {{ $t('admin.waiting_room_settings.window_seconds_label') }}
                 </FieldLabel>
                 <Input
                   id="waiting-room-window"
@@ -178,7 +179,7 @@ definePageMeta({
                   :aria-invalid="!!errors.length"
                   @update:model-value="field.onChange(Number($event))"
                 />
-                <FieldDescription>How long an admitted pass remains valid.</FieldDescription>
+                <FieldDescription>{{ $t('admin.waiting_room_settings.window_seconds_desc') }}</FieldDescription>
                 <FieldError
                   v-if="errors.length"
                   :errors="errors"
@@ -189,13 +190,13 @@ definePageMeta({
 
           <div class="flex flex-col gap-3 border-t pt-5 sm:flex-row sm:items-center sm:justify-between">
             <p class="text-sm text-muted-foreground">
-              Existing sessions use these settings immediately after save.
+              {{ $t('admin.waiting_room_settings.session_note') }}
             </p>
             <Button
               type="submit"
               :is-loading="isSaving"
             >
-              Save settings
+              {{ $t('admin.waiting_room_settings.save_button') }}
             </Button>
           </div>
         </form>

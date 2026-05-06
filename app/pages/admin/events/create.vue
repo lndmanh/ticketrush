@@ -27,12 +27,14 @@ interface AutosaveDraftDetail {
   createdAt: string | Date | null
 }
 
-const steps: EventCreationStep[] = [
-  { step: 1, title: 'Basics', description: 'Event identity' },
-  { step: 2, title: 'Venue', description: 'Select venue' },
-  { step: 3, title: 'Sessions', description: 'Schedule and pricing' },
-  { step: 4, title: 'Review', description: 'Confirm and save' },
-]
+const { t } = useI18n()
+
+const steps = computed<EventCreationStep[]>(() => [
+  { step: 1, title: t('admin.event_create.step_basics'), description: t('admin.event_create.step_basics_desc') },
+  { step: 2, title: t('admin.event_create.step_venue'), description: t('admin.event_create.step_venue_desc') },
+  { step: 3, title: t('admin.event_create.step_sessions'), description: t('admin.event_create.step_sessions_desc') },
+  { step: 4, title: t('admin.event_create.step_review'), description: t('admin.event_create.step_review_desc') },
+])
 
 const stepSchemas = {
   1: eventComposerSchema.pick({
@@ -107,18 +109,18 @@ const hasAutosavableContent = computed(() => {
 
 const autosaveLabel = computed(() => {
   if (autosaveStatus.value === 'saving') {
-    return 'Saving draft…'
+    return t('admin.event_create.saving_draft')
   }
 
   if (autosaveStatus.value === 'saved') {
-    return lastAutosavedAt.value ? `Saved ${lastAutosavedAt.value.toLocaleTimeString()}` : 'Draft saved'
+    return lastAutosavedAt.value ? t('admin.event_create.draft_saved_at', { time: lastAutosavedAt.value.toLocaleTimeString() }) : t('admin.event_create.draft_saved_generic')
   }
 
   if (autosaveStatus.value === 'error') {
-    return 'Autosave failed'
+    return t('admin.event_create.autosave_failed')
   }
 
-  return 'Autosave starts after you type'
+  return t('admin.event_create.autosave_idle')
 })
 
 const autosaveIcon = computed(() => {
@@ -209,7 +211,7 @@ async function loadAutosaveDraft(draftKey: string, restoreImmediately: boolean) 
     return true
   }
   catch {
-    toast.error('We could not load the autosave draft')
+    toast.error(t('admin.event_create.autosave_load_error'))
     return false
   }
   finally {
@@ -226,7 +228,7 @@ async function loadCurrentAutosaveDraftPrompt() {
     }
   }
   catch {
-    toast.error('We could not check for autosave drafts')
+    toast.error(t('admin.event_create.autosave_check_error'))
   }
   finally {
     isCheckingAutosaveDraft.value = false
@@ -249,7 +251,7 @@ function restoreAutosaveDraft() {
   if (import.meta.client) {
     window.localStorage.setItem('ticketrush:event-create-autosave-key', draft.draftKey)
   }
-  toast.success('Autosave draft restored')
+  toast.success(t('admin.event_create.autosave_restored'))
 }
 
 function startFreshFromAutosaveDraft() {
@@ -278,10 +280,10 @@ async function discardAutosaveDraft() {
     }
     pendingAutosaveDraft.value = null
     isAutosaveRestoreDialogOpen.value = false
-    toast.success('Autosave draft discarded')
+    toast.success(t('admin.events.autosave_discarded'))
   }
   catch {
-    toast.error('Failed to discard autosave draft')
+    toast.error(t('admin.events.discard_failed'))
   }
 }
 
@@ -578,7 +580,7 @@ function goToStep(step: number) {
   }
 
   if (!canReachStep(step)) {
-    toast.error('Complete the current step before jumping ahead')
+    toast.error(t('admin.event_create.jump_error'))
     return
   }
 
@@ -652,11 +654,11 @@ const onSubmit = handleSubmit(
           })
         }
         catch {
-          toast.warning('Event saved, but the autosave draft could not be marked as converted')
+          toast.warning(t('admin.event_create.autosave_convert_warning'))
         }
       }
 
-      toast.success('Draft event saved')
+      toast.success(t('admin.events.draft_saved'))
       if (import.meta.client && autosaveDraftKey.value) {
         window.localStorage.removeItem('ticketrush:event-create-autosave-key')
       }
@@ -670,7 +672,7 @@ const onSubmit = handleSubmit(
     }
     catch {
       autosaveDisabled.value = false
-      toast.error('We could not save the event draft')
+      toast.error(t('admin.event_create.save_error'))
     }
     finally {
       isSaving.value = false
@@ -684,7 +686,7 @@ const onSubmit = handleSubmit(
       }
     }
 
-    const firstError = Object.values(errors).flat().filter(Boolean)[0] || 'Please fix the highlighted fields'
+    const firstError = Object.values(errors).flat().filter(Boolean)[0] || t('admin.event_create.fix_fields')
     toast.error(firstError)
   },
 )
@@ -735,17 +737,17 @@ onUnmounted(() => {
     <AlertDialog v-model:open="isAutosaveRestoreDialogOpen">
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Restore unfinished event draft?</AlertDialogTitle>
+          <AlertDialogTitle>{{ $t('admin.event_create.restore_dialog_title') }}</AlertDialogTitle>
           <AlertDialogDescription>
-            {{ pendingAutosaveDraft?.payload.title || 'Untitled event' }} was autosaved at step {{ pendingAutosaveDraft?.lastSavedStep ?? 1 }}{{ pendingAutosaveDraft?.updatedAt ? ` on ${new Date(pendingAutosaveDraft.updatedAt).toLocaleString()}` : '' }}. Restoring will apply it now. Starting fresh will overwrite this autosave when you type.
+            {{ pendingAutosaveDraft?.payload.title || $t('admin.events.untitled_event') }} was autosaved at step {{ pendingAutosaveDraft?.lastSavedStep ?? 1 }}{{ pendingAutosaveDraft?.updatedAt ? ` on ${new Date(pendingAutosaveDraft.updatedAt).toLocaleString()}` : '' }}. Restoring will apply it now. Starting fresh will overwrite this autosave when you type.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel @click="startFreshFromAutosaveDraft">
-            Start fresh
+            {{ $t('admin.event_create.start_fresh') }}
           </AlertDialogCancel>
           <AlertDialogAction @click="restoreAutosaveDraft">
-            Restore draft
+            {{ $t('admin.event_create.restore_draft') }}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
@@ -757,7 +759,7 @@ onUnmounted(() => {
     >
       <CardContent class="flex items-center gap-3 py-4 text-sm text-muted-foreground">
         <Loader2 class="size-4 animate-spin" />
-        Loading autosave draft…
+        {{ $t('admin.event_create.loading_draft') }}
       </CardContent>
     </Card>
 
@@ -829,12 +831,12 @@ onUnmounted(() => {
         >
           <CardHeader>
             <CardTitle class="text-base">
-              Identity
+              {{ $t('admin.event_create.identity') }}
             </CardTitle>
           </CardHeader>
           <CardContent>
             <FieldSet>
-              <FieldLegend>Event basics</FieldLegend>
+              <FieldLegend>{{ $t('admin.event_create.event_basics') }}</FieldLegend>
               <FieldGroup>
                 <VeeField
                   v-slot="{ field, errors }"
@@ -842,7 +844,7 @@ onUnmounted(() => {
                 >
                   <Field :data-invalid="!!errors.length">
                     <FieldLabel for="event-create-title">
-                      Title
+                      {{ $t('admin.event_create.title_label') }}
                     </FieldLabel>
                     <Input
                       id="event-create-title"
@@ -864,7 +866,7 @@ onUnmounted(() => {
                 >
                   <Field :data-invalid="!!errors.length">
                     <FieldLabel for="event-create-slug">
-                      Slug
+                      {{ $t('admin.event_create.slug_label') }}
                     </FieldLabel>
                     <Input
                       id="event-create-slug"
@@ -886,7 +888,7 @@ onUnmounted(() => {
                 >
                   <Field :data-invalid="!!errors.length">
                     <FieldLabel for="event-create-subtitle">
-                      Subtitle
+                      {{ $t('admin.event_create.subtitle_label') }}
                     </FieldLabel>
                     <Input
                       id="event-create-subtitle"
@@ -908,12 +910,12 @@ onUnmounted(() => {
                 >
                   <Field :data-invalid="!!errors.length">
                     <FieldLabel for="event-create-description">
-                      Description
+                      {{ $t('admin.event_create.description_label') }}
                     </FieldLabel>
                     <Textarea
                       id="event-create-description"
                       :model-value="field.value"
-                      placeholder="Describe the event."
+                      :placeholder="$t('admin.event_create.description_placeholder')"
                       :aria-invalid="!!errors.length"
                       @update:model-value="field.onChange"
                     />
@@ -930,7 +932,7 @@ onUnmounted(() => {
                 >
                   <Field :data-invalid="!!errors.length">
                     <FieldLabel for="event-create-cover-image">
-                      Cover image URL
+                      {{ $t('admin.event_create.cover_image_label') }}
                     </FieldLabel>
                     <Input
                       id="event-create-cover-image"
@@ -939,7 +941,7 @@ onUnmounted(() => {
                       :aria-invalid="!!errors.length"
                       @update:model-value="field.onChange"
                     />
-                    <FieldDescription>Optional</FieldDescription>
+                    <FieldDescription>{{ $t('common.optional') }}</FieldDescription>
                     <FieldError
                       v-if="errors.length"
                       :errors="errors"
@@ -957,7 +959,7 @@ onUnmounted(() => {
         >
           <CardHeader>
             <CardTitle class="text-base">
-              Venue
+              {{ $t('admin.event_create.step_venue') }}
             </CardTitle>
           </CardHeader>
           <CardContent class="space-y-6">
@@ -967,14 +969,14 @@ onUnmounted(() => {
             >
               <Field :data-invalid="!!errors.length">
                 <FieldLabel for="event-create-venue">
-                  Venue
+                  {{ $t('admin.event_create.venue_label') }}
                 </FieldLabel>
                 <Select
                   :model-value="field.value ? String(field.value) : undefined"
                   @update:model-value="field.onChange(Number($event))"
                 >
                   <SelectTrigger id="event-create-venue">
-                    <SelectValue :placeholder="field.value ? undefined : 'Choose venue blueprint'" />
+                    <SelectValue :placeholder="field.value ? undefined : $t('admin.event_create.choose_venue')" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem
@@ -1000,7 +1002,7 @@ onUnmounted(() => {
               <div class="grid gap-3 sm:grid-cols-3">
                 <div class="rounded-2xl bg-muted/50 px-4 py-3">
                   <p class="text-xs text-muted-foreground">
-                    Sections
+                    {{ $t('common.sections') }}
                   </p>
                   <p class="text-lg font-semibold tabular-nums text-foreground">
                     {{ selectedVenueDetail.sections.length }}
@@ -1008,7 +1010,7 @@ onUnmounted(() => {
                 </div>
                 <div class="rounded-2xl bg-muted/50 px-4 py-3">
                   <p class="text-xs text-muted-foreground">
-                    Rows
+                    {{ $t('common.rows') }}
                   </p>
                   <p class="text-lg font-semibold tabular-nums text-foreground">
                     {{ totalRows }}
@@ -1016,7 +1018,7 @@ onUnmounted(() => {
                 </div>
                 <div class="rounded-2xl bg-muted/50 px-4 py-3">
                   <p class="text-xs text-muted-foreground">
-                    Seats
+                    {{ $t('common.seats') }}
                   </p>
                   <p class="text-lg font-semibold tabular-nums text-foreground">
                     {{ totalSeats }}
@@ -1040,7 +1042,7 @@ onUnmounted(() => {
                     </p>
                   </div>
                   <p class="shrink-0 text-sm tabular-nums text-muted-foreground">
-                    {{ section.rows.reduce((count, row) => count + row.seats.length, 0) }} seats
+                    {{ section.rows.reduce((count, row) => count + row.seats.length, 0) }} {{ $t('common.seats') }}
                   </p>
                 </div>
               </div>
@@ -1059,7 +1061,7 @@ onUnmounted(() => {
               v-else
               class="rounded-3xl border border-dashed px-5 py-10 text-center text-sm text-muted-foreground"
             >
-              Choose a venue to generate ticket releases and preview the layout.
+              {{ $t('admin.event_create.choose_venue_prompt') }}
             </div>
           </CardContent>
         </Card>
@@ -1079,7 +1081,7 @@ onUnmounted(() => {
         >
           <CardHeader>
             <CardTitle class="text-base">
-              Review and submit
+              {{ $t('admin.event_create.review_title') }}
             </CardTitle>
           </CardHeader>
           <CardContent class="space-y-4">
@@ -1087,7 +1089,7 @@ onUnmounted(() => {
               <Card class="rounded-2xl bg-muted/20 shadow-none">
                 <CardHeader class="flex flex-row items-center justify-between gap-3 pb-3">
                   <CardTitle class="text-sm">
-                    Sessions
+                    {{ $t('admin.event_create.step_sessions') }}
                   </CardTitle>
                   <Button
                     type="button"
@@ -1096,14 +1098,14 @@ onUnmounted(() => {
                     class="h-8 px-2"
                     @click="currentStep = 3"
                   >
-                    Edit
+                    {{ $t('common.edit') }}
                   </Button>
                 </CardHeader>
                 <CardContent>
                   <dl class="space-y-4 text-sm">
                     <div class="space-y-1">
                       <dt class="text-muted-foreground">
-                        Number of sessions
+                        {{ $t('admin.event_create.number_of_sessions') }}
                       </dt>
                       <dd class="font-medium">
                         {{ values.sessions.length }}
@@ -1139,7 +1141,7 @@ onUnmounted(() => {
               class="active:scale-[0.96]"
               @click="goPrevious"
             >
-              Back
+              {{ $t('admin.event_create.back') }}
             </Button>
             <Button
               v-if="currentStep < steps.length"
@@ -1147,7 +1149,7 @@ onUnmounted(() => {
               class="active:scale-[0.96]"
               @click="goNext"
             >
-              Continue
+              {{ $t('common.continue') }}
             </Button>
             <Button
               v-else
@@ -1155,7 +1157,7 @@ onUnmounted(() => {
               :is-loading="isSaving"
               class="active:scale-[0.96]"
             >
-              Save draft
+              {{ $t('admin.event_create.save_draft') }}
             </Button>
           </div>
         </div>
