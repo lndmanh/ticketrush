@@ -262,14 +262,6 @@ const cityOptions = computed(() => {
 
   return response.data
 })
-const activeFilterCount = computed(() => {
-  let count = 0
-  if (activeSearch.value) count += 1
-  if (activeStatus.value !== 'all') count += 1
-  if (activeCity.value !== 'all') count += 1
-  if (activeDate.value !== 'all') count += 1
-  return count
-})
 const activeDialogFilterCount = computed(() => {
   let count = 0
   if (activeStatus.value !== 'all') count += 1
@@ -306,270 +298,204 @@ definePageMeta({
 <template>
   <AppLayout
     :hide-header="true"
-    class-name="gap-8 py-6 md:gap-10 md:py-10"
+    class-name="gap-8 py-6 md:gap-10 md:py-10 mt-20"
   >
-    <section class="grid gap-6 lg:grid-cols-[minmax(0,0.95fr)_minmax(20rem,0.55fr)] lg:items-end">
-      <div class="space-y-5">
-        <Badge
-          variant="outline"
-          class="w-fit rounded-full px-3 py-1 text-[11px] uppercase tracking-[0.22em]"
-        >
-          Event catalog
-        </Badge>
-        <div class="space-y-4">
-          <h1 class="display-title max-w-4xl text-balance">
-            Find your next event.
-          </h1>
-          <p class="max-w-[42rem] text-base leading-8 text-muted-foreground md:text-lg">
-            Search live shows, compare cities and dates, then choose the session that fits your plans.
-          </p>
-        </div>
-      </div>
-
-      <Card class="overflow-hidden border-muted/70 bg-card/60 shadow-none backdrop-blur">
-        <CardContent class="grid gap-4 p-5 sm:grid-cols-3">
-          <div>
-            <p class="text-2xl font-semibold tracking-[-0.05em] text-foreground">
-              {{ pagination.totalItems }}
-            </p>
-            <p class="text-xs uppercase tracking-[0.18em] text-muted-foreground">
-              Events
-            </p>
-          </div>
-          <div>
-            <p class="text-2xl font-semibold tracking-[-0.05em] text-foreground">
-              {{ cityOptions.length }}
-            </p>
-            <p class="text-xs uppercase tracking-[0.18em] text-muted-foreground">
-              Cities
-            </p>
-          </div>
-          <div>
-            <p class="text-2xl font-semibold tracking-[-0.05em] text-foreground">
-              {{ activeFilterCount }}
-            </p>
-            <p class="text-xs uppercase tracking-[0.18em] text-muted-foreground">
-              Active filters
-            </p>
-          </div>
-        </CardContent>
-      </Card>
-    </section>
-
-    <form
-      class="w-full"
-      @submit.prevent="applySearch"
-    >
-      <ButtonGroup class="w-full overflow-visible rounded-full border bg-card/70 p-1 shadow-none backdrop-blur">
-        <ButtonGroup class="overflow-visible">
-          <ResponsiveDialog
-            v-model:open="filterDialogOpen"
-            content-class="sm:max-w-2xl"
-          >
-            <template #trigger>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                class="relative overflow-visible rounded-full"
-                aria-label="Open event filters"
-              >
-                <SlidersHorizontal class="size-4" />
-                <span
-                  v-if="activeDialogFilterCount > 0"
-                  class="absolute -right-1.5 -top-1.5 flex size-4 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground"
-                >
-                  {{ activeDialogFilterCount }}
-                </span>
-              </Button>
-            </template>
-
-            <div class="space-y-6 py-4 md:py-0">
-              <DialogHeader>
-                <DialogTitle>Filter events</DialogTitle>
-                <DialogDescription>
-                  Narrow the catalog by status, city, date, and sort order.
-                </DialogDescription>
-              </DialogHeader>
-
-              <div class="grid gap-4 sm:grid-cols-2">
-                <div class="space-y-2">
-                  <Label for="event-status-filter">Status</Label>
-                  <Select v-model="draftStatus">
-                    <SelectTrigger
-                      id="event-status-filter"
-                      class="h-11 rounded-full"
-                    >
-                      <SelectValue placeholder="All statuses" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem
-                        v-for="option in statusOptions"
-                        :key="option.value"
-                        :value="option.value"
-                      >
-                        {{ option.label }}
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div class="space-y-2">
-                  <Label for="event-city-filter">City</Label>
-                  <Select v-model="draftCity">
-                    <SelectTrigger
-                      id="event-city-filter"
-                      class="h-11 rounded-full"
-                    >
-                      <SelectValue placeholder="All cities" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">
-                        All cities
-                      </SelectItem>
-                      <SelectItem
-                        v-for="city in cityOptions"
-                        :key="city"
-                        :value="city"
-                      >
-                        {{ city }}
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div class="space-y-2">
-                  <Label for="event-date-filter">Date</Label>
-                  <Select v-model="draftDate">
-                    <SelectTrigger
-                      id="event-date-filter"
-                      class="h-11 rounded-full"
-                    >
-                      <SelectValue placeholder="Any date" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem
-                        v-for="option in dateOptions"
-                        :key="option.value"
-                        :value="option.value"
-                      >
-                        {{ option.label }}
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div class="space-y-2">
-                  <Label for="event-sort-filter">Sort</Label>
-                  <Select v-model="draftSort">
-                    <SelectTrigger
-                      id="event-sort-filter"
-                      class="h-11 rounded-full"
-                    >
-                      <SelectValue placeholder="Soonest first" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem
-                        v-for="option in sortOptions"
-                        :key="option.value"
-                        :value="option.value"
-                      >
-                        {{ option.label }}
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <div class="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+    <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <h1 class="text-3xl font-bold tracking-tight">
+        Browse Events
+      </h1>
+      <form
+        class="w-full sm:w-auto sm:max-w-md"
+        @submit.prevent="applySearch"
+      >
+        <ButtonGroup class="w-full">
+          <ButtonGroup class="overflow-visible">
+            <ResponsiveDialog
+              v-model:open="filterDialogOpen"
+              content-class="sm:max-w-2xl"
+            >
+              <template #trigger>
                 <Button
                   type="button"
-                  variant="outline"
-                  class="rounded-full"
-                  :disabled="activeDialogFilterCount === 0 && draftDialogFilterCount === 0"
-                  @click="resetDialogFilters"
+                  size="icon"
+                  class="relative overflow-visible"
+                  aria-label="Open event filters"
                 >
-                  Reset filters
-                </Button>
-                <Button
-                  type="button"
-                  class="rounded-full"
-                  @click="applyFilters"
-                >
-                  Apply filters
-                </Button>
-              </div>
-            </div>
-          </ResponsiveDialog>
-        </ButtonGroup>
-
-        <ButtonGroup class="min-w-0 flex-1">
-          <InputGroup>
-            <InputGroupInput
-              id="main-search"
-              v-model="searchInput"
-              aria-label="Search events"
-              placeholder="Search by event, venue, or city"
-              :disabled="pending"
-            />
-            <InputGroupAddon align="inline-end">
-              <Tooltip>
-                <TooltipTrigger as-child>
-                  <InputGroupButton
-                    type="button"
-                    class="hover:bg-orange-100 hover:text-orange-700 dark:hover:bg-orange-800 dark:hover:text-orange-100"
-                    size="icon-xs"
-                    aria-label="Clear search"
-                    :disabled="pending || !searchInput"
-                    @click="clearSearch"
+                  <SlidersHorizontal class="size-4" />
+                  <span
+                    v-if="activeDialogFilterCount > 0"
+                    class="absolute -right-1.5 -top-1.5 flex size-4 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground"
                   >
-                    <X class="size-4" />
-                  </InputGroupButton>
-                </TooltipTrigger>
-                <TooltipContent>Clear</TooltipContent>
-              </Tooltip>
-            </InputGroupAddon>
-          </InputGroup>
+                    {{ activeDialogFilterCount }}
+                  </span>
+                </Button>
+              </template>
+
+              <div class="space-y-6 py-4 md:py-0">
+                <DialogHeader>
+                  <DialogTitle>Filter events</DialogTitle>
+                  <DialogDescription>
+                    Narrow the catalog by status, city, date, and sort order.
+                  </DialogDescription>
+                </DialogHeader>
+
+                <div class="grid gap-4 sm:grid-cols-2">
+                  <div class="space-y-2">
+                    <Label for="event-status-filter">Status</Label>
+                    <Select v-model="draftStatus">
+                      <SelectTrigger
+                        id="event-status-filter"
+                        class="h-11 rounded-full"
+                      >
+                        <SelectValue placeholder="All statuses" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem
+                          v-for="option in statusOptions"
+                          :key="option.value"
+                          :value="option.value"
+                        >
+                          {{ option.label }}
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div class="space-y-2">
+                    <Label for="event-city-filter">City</Label>
+                    <Select v-model="draftCity">
+                      <SelectTrigger
+                        id="event-city-filter"
+                        class="h-11 rounded-full"
+                      >
+                        <SelectValue placeholder="All cities" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">
+                          All cities
+                        </SelectItem>
+                        <SelectItem
+                          v-for="city in cityOptions"
+                          :key="city"
+                          :value="city"
+                        >
+                          {{ city }}
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div class="space-y-2">
+                    <Label for="event-date-filter">Date</Label>
+                    <Select v-model="draftDate">
+                      <SelectTrigger
+                        id="event-date-filter"
+                        class="h-11 rounded-full"
+                      >
+                        <SelectValue placeholder="Any date" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem
+                          v-for="option in dateOptions"
+                          :key="option.value"
+                          :value="option.value"
+                        >
+                          {{ option.label }}
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div class="space-y-2">
+                    <Label for="event-sort-filter">Sort</Label>
+                    <Select v-model="draftSort">
+                      <SelectTrigger
+                        id="event-sort-filter"
+                        class="h-11 rounded-full"
+                      >
+                        <SelectValue placeholder="Soonest first" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem
+                          v-for="option in sortOptions"
+                          :key="option.value"
+                          :value="option.value"
+                        >
+                          {{ option.label }}
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div class="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    class="rounded-full"
+                    :disabled="activeDialogFilterCount === 0 && draftDialogFilterCount === 0"
+                    @click="resetDialogFilters"
+                  >
+                    Reset filters
+                  </Button>
+                  <Button
+                    type="button"
+                    class="rounded-full"
+                    @click="applyFilters"
+                  >
+                    Apply filters
+                  </Button>
+                </div>
+              </div>
+            </ResponsiveDialog>
+          </ButtonGroup>
+
+          <ButtonGroup class="min-w-0 flex-1">
+            <InputGroup>
+              <InputGroupInput
+                id="main-search"
+                v-model="searchInput"
+                aria-label="Search events"
+                placeholder="Search by event, venue, or city"
+                :disabled="pending"
+              />
+              <InputGroupAddon align="inline-end">
+                <Tooltip>
+                  <TooltipTrigger as-child>
+                    <InputGroupButton
+                      type="button"
+                      class="hover:bg-orange-100 hover:text-orange-700 dark:hover:bg-orange-800 dark:hover:text-orange-100"
+                      size="icon-xs"
+                      aria-label="Clear search"
+                      :disabled="pending || !searchInput"
+                      @click="clearSearch"
+                    >
+                      <X class="size-4" />
+                    </InputGroupButton>
+                  </TooltipTrigger>
+                  <TooltipContent>Clear</TooltipContent>
+                </Tooltip>
+              </InputGroupAddon>
+            </InputGroup>
+          </ButtonGroup>
+
+          <ButtonGroup>
+            <Button
+              type="submit"
+              variant="ghost"
+              size="icon"
+              class="rounded-full"
+              aria-label="Search events"
+              :disabled="pending"
+            >
+              <Search class="size-4" />
+            </Button>
+          </ButtonGroup>
         </ButtonGroup>
+      </form>
+    </div>
 
-        <ButtonGroup>
-          <Button
-            type="submit"
-            variant="ghost"
-            size="icon"
-            class="rounded-full"
-            aria-label="Search events"
-            :disabled="pending"
-          >
-            <Search class="size-4" />
-          </Button>
-        </ButtonGroup>
-      </ButtonGroup>
-    </form>
-
-    <section class="space-y-5">
-      <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <div class="flex flex-wrap items-center gap-2">
-          <Badge
-            variant="secondary"
-            class="rounded-full"
-          >
-            <SlidersHorizontal class="size-3.5" />
-            {{ resultSummary }}
-          </Badge>
-          <Badge
-            v-if="pending"
-            variant="outline"
-            class="rounded-full"
-          >
-            Loading
-          </Badge>
-        </div>
-        <p class="text-sm text-muted-foreground">
-          Page {{ pagination.page }}{{ pagination.totalPages > 0 ? ` of ${pagination.totalPages}` : '' }}
-        </p>
-      </div>
-
+    <section class="space-y-6">
       <Card
         v-if="catalogError"
         class="border-destructive/30 bg-destructive/5 shadow-none"
@@ -581,7 +507,7 @@ definePageMeta({
 
       <section
         v-if="events.length > 0"
-        class="soft-grid lg:grid-cols-2 xl:grid-cols-3"
+        class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3"
       >
         <TicketEventCard
           v-for="event in events"
