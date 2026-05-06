@@ -3,7 +3,9 @@ import { computed, ref, watch } from 'vue'
 import { AlertCircle, CalendarClock, ChevronDown, CircleDollarSign, PlusIcon, Ticket, TrashIcon } from '@lucide/vue'
 
 interface EventSessionTicketTypeInput {
+  id?: number
   name: string
+  description?: string
   venueSectionId: number | null
   priceCents: number
   currency: string
@@ -14,8 +16,12 @@ interface EventSessionTicketTypeInput {
 }
 
 interface EventSessionEditorInput {
+  id?: number
+  publicId?: string
   label: string
   venueId: number
+  status?: string
+  queueEnabled: boolean
   startsAt: string
   endsAt: string
   salesStartAt: string
@@ -110,8 +116,12 @@ function getSessionErrorMessages(sessionIndex: number) {
 
 function addSession() {
   const newSession: EventSessionEditorInput = {
+    id: undefined,
+    publicId: undefined,
     label: `Session ${props.modelValue.length + 1}`,
     venueId: props.defaultVenueId && props.defaultVenueId > 0 ? props.defaultVenueId : (props.modelValue.find(session => session.venueId > 0)?.venueId ?? 0),
+    status: undefined,
+    queueEnabled: false,
     startsAt: '',
     endsAt: '',
     salesStartAt: '',
@@ -146,7 +156,9 @@ function addTicketType(sessionIndex: number) {
   }
 
   const newTicketType: EventSessionTicketTypeInput = {
+    id: undefined,
     name: 'General Admission',
+    description: undefined,
     venueSectionId: null,
     priceCents: 0,
     currency: 'VND',

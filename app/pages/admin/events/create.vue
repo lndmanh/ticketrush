@@ -139,6 +139,7 @@ function buildAutosavePayload() {
       label: session.label,
       venueId: session.venueId,
       status: session.status,
+      queueEnabled: session.queueEnabled,
       startsAt: session.startsAt,
       endsAt: session.endsAt,
       salesStartAt: session.salesStartAt,
@@ -169,6 +170,7 @@ function normalizeAutosavePayload(payload: EventAutosaveDraftInput['payload']) {
       label: session.label ?? `Session ${sessionIndex + 1}`,
       venueId: session.venueId ?? payload.venueId ?? 0,
       status: session.status ?? 'draft',
+      queueEnabled: session.queueEnabled ?? false,
       startsAt: session.startsAt ?? '',
       endsAt: session.endsAt ?? '',
       salesStartAt: session.salesStartAt ?? '',
@@ -385,6 +387,7 @@ watch(() => values.venueId, async (venueId) => {
       label: 'Default session',
       venueId: venueId,
       status: 'draft',
+      queueEnabled: false,
       startsAt: '',
       endsAt: '',
       salesStartAt: '',
@@ -490,7 +493,7 @@ function showSessionValidationToast(errors: Record<string, string>) {
 
 function clearSessionValidationErrors() {
   for (const path of Object.keys(sessionValidationErrors.value)) {
-    setFieldError(path, undefined)
+    setFieldError(path, '')
   }
 }
 
@@ -984,7 +987,10 @@ onUnmounted(() => {
                   :model-value="field.value ? String(field.value) : undefined"
                   @update:model-value="field.onChange(Number($event))"
                 >
-                  <SelectTrigger id="event-create-venue">
+                  <SelectTrigger
+                    id="event-create-venue"
+                    :aria-invalid="!!errors.length"
+                  >
                     <SelectValue :placeholder="field.value ? undefined : 'Choose venue blueprint'" />
                   </SelectTrigger>
                   <SelectContent>
