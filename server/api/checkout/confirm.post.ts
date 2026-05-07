@@ -4,7 +4,7 @@ import { success } from '~~/server/utils/apiResponse'
 import { getTicketingSessionKey } from '~~/server/utils/ticketing/session'
 
 export default defineEventHandler(async (event) => {
-  await requireUserSession(event)
+  const session = await requireUserSession(event)
 
   const result = await readValidatedBody(event, body => confirmCheckoutSchema.safeParse(body))
   if (!result.success) {
@@ -16,11 +16,13 @@ export default defineEventHandler(async (event) => {
     result.data.holdPublicId,
     getTicketingSessionKey(event),
     {
+      userId: session.user.id,
       customerName: result.data.customerName,
       customerEmail: result.data.customerEmail,
       customerPhone: result.data.customerPhone,
       customerAgeBracket: result.data.customerAgeBracket,
       customerGender: result.data.customerGender,
+      ticketHolders: result.data.ticketHolders,
     },
   )
 

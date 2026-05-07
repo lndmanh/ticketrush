@@ -1,4 +1,5 @@
 import { eventAutosavePayloadSchema } from '#shared/schemas/ticketingSchema'
+import type { AutosaveDraftDetail } from '~~/types/admin-events'
 import eventDraftAutosaveService from '~~/server/utils/database/event-draft-autosave'
 import { success } from '~~/server/utils/apiResponse'
 
@@ -26,11 +27,13 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 422, statusMessage: 'Autosave draft payload is invalid.' })
   }
 
-  return success({
+  const response: AutosaveDraftDetail = {
     draftKey: draft.draftKey,
     payload: payloadResult.data,
     lastSavedStep: draft.lastSavedStep,
     updatedAt: draft.updatedAt,
     createdAt: draft.createdAt,
-  })
+  }
+
+  return success(response)
 })

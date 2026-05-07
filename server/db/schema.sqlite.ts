@@ -1,6 +1,7 @@
 import { sqliteTable, text, integer, unique, index, foreignKey } from 'drizzle-orm/sqlite-core'
 import { relations } from 'drizzle-orm'
 import type { WebAuthnCredential } from '#auth-utils'
+import type { SavedAttendeeGender } from '#shared/schemas/savedAttendeeSchema'
 
 const timestampColumns = {
   createdAt: integer('created_at', { mode: 'timestamp' })
@@ -19,9 +20,30 @@ export const users = sqliteTable('users', {
   lastLoginAt: integer('last_login_at', { mode: 'timestamp' }), // Can be null if never logged in
   phone: text('phone'),
   birthDate: integer('birth_date', { mode: 'timestamp' }),
-  gender: text('gender'),
+  gender: text('gender').$type<SavedAttendeeGender>(),
   ...timestampColumns,
 })
+
+export const savedAttendees = sqliteTable('saved_attendees', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  userId: integer('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  legalName: text('legal_name').notNull(),
+  preferredName: text('preferred_name'),
+  email: text('email'),
+  phone: text('phone'),
+  birthDate: integer('birth_date', { mode: 'timestamp' }),
+  gender: text('gender').$type<SavedAttendeeGender>(),
+  guardianName: text('guardian_name'),
+  guardianEmail: text('guardian_email'),
+  guardianPhone: text('guardian_phone'),
+  notes: text('notes'),
+  accessibilityNeeds: text('accessibility_needs'),
+  isSelf: integer('is_self', { mode: 'boolean' }).notNull().default(false),
+  ...timestampColumns,
+}, table => [
+  index('saved_attendees_user_idx').on(table.userId),
+  index('saved_attendees_user_self_idx').on(table.userId, table.isSelf),
+])
 
 export const venues = sqliteTable('venues', {
   id: integer('id').primaryKey({ autoIncrement: true }),
@@ -287,8 +309,17 @@ export const tickets = sqliteTable('tickets', {
   eventSessionId: integer('event_session_id'),
   eventSeatId: integer('event_seat_id').references(() => eventSeats.id, { onDelete: 'set null' }),
   userId: integer('user_id').references(() => users.id, { onDelete: 'set null' }),
+  savedAttendeeId: integer('saved_attendee_id'),
   attendeeName: text('attendee_name').notNull(),
   attendeeEmail: text('attendee_email').notNull(),
+  attendeePhone: text('attendee_phone'),
+  attendeeBirthDate: integer('attendee_birth_date', { mode: 'timestamp' }),
+  attendeeGender: text('attendee_gender').$type<SavedAttendeeGender>(),
+  attendeeGuardianName: text('attendee_guardian_name'),
+  attendeeGuardianEmail: text('attendee_guardian_email'),
+  attendeeGuardianPhone: text('attendee_guardian_phone'),
+  attendeeNotes: text('attendee_notes'),
+  attendeeAccessibilityNeeds: text('attendee_accessibility_needs'),
   qrToken: text('qr_token').notNull().unique(),
   status: text('status').notNull().default('issued'),
   issuedAt: integer('issued_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
@@ -299,11 +330,16 @@ export const tickets = sqliteTable('tickets', {
   index('tickets_event_idx').on(table.eventId),
   index('tickets_session_idx').on(table.eventSessionId),
   index('tickets_user_idx').on(table.userId),
+  index('tickets_saved_attendee_idx').on(table.savedAttendeeId),
   index('tickets_status_idx').on(table.status),
   foreignKey({
     columns: [table.eventSessionId],
     foreignColumns: [eventSessions.id],
   }).onDelete('cascade'),
+  foreignKey({
+    columns: [table.savedAttendeeId],
+    foreignColumns: [savedAttendees.id],
+  }).onDelete('set null'),
 ])
 
 export const queueEntries = sqliteTable('queue_entries', {
@@ -393,6 +429,14 @@ export const oauthAccountsRelations = relations(oauthAccounts, ({ one }) => ({
     fields: [oauthAccounts.userId],
     references: [users.id],
   }),
+}))
+
+export const savedAttendeesRelations = relations(savedAttendees, ({ one, many }) => ({
+  user: one(users, {
+    fields: [savedAttendees.userId],
+    references: [users.id],
+  }),
+  tickets: many(tickets),
 }))
 
 export const venuesRelations = relations(venues, ({ many }) => ({
@@ -589,6 +633,10 @@ export const ticketsRelations = relations(tickets, ({ one }) => ({
     fields: [tickets.userId],
     references: [users.id],
   }),
+  savedAttendee: one(savedAttendees, {
+    fields: [tickets.savedAttendeeId],
+    references: [savedAttendees.id],
+  }),
 }))
 
 export const queueEntriesRelations = relations(queueEntries, ({ one }) => ({
@@ -620,6 +668,7 @@ export const eventMetricBucketsRelations = relations(eventMetricBuckets, ({ one 
 export const usersRelations = relations(users, ({ many }) => ({
   credentials: many(credentials),
   oauthAccounts: many(oauthAccounts),
+  savedAttendees: many(savedAttendees),
   holds: many(seatHolds),
   orders: many(orders),
   tickets: many(tickets),

@@ -21,15 +21,15 @@ interface AdminDashboardVenue {
   id: number
   name: string
   city: string
-  capacity: number
+  capacity?: number
   updatedAt?: string | Date | null
 }
 
-const { data: eventsResponse } = await useFetch<{ data: AdminDashboardEvent[] }>('/api/admin/events')
-const { data: venuesResponse } = await useFetch<{ data: AdminDashboardVenue[] }>('/api/admin/venues')
+const { data: eventsResponse } = await useFetch('/api/admin/events')
+const { data: venuesResponse } = await useFetch('/api/admin/venues')
 
-const events = computed(() => eventsResponse.value?.data ?? [])
-const venues = computed(() => venuesResponse.value?.data ?? [])
+const events = computed<AdminDashboardEvent[]>(() => eventsResponse.value?.success ? eventsResponse.value.data : [])
+const venues = computed<AdminDashboardVenue[]>(() => venuesResponse.value?.success ? venuesResponse.value.data : [])
 
 const draftEvents = computed(() => events.value.filter(event => event.status === 'draft'))
 const publishedEvents = computed(() => events.value.filter(event => event.status !== 'draft'))
@@ -61,7 +61,7 @@ const recentEvents = computed(() => {
 const cityCoverage = computed(() => new Set(venues.value.map(venue => venue.city)).size)
 
 const largestVenue = computed(() => {
-  return [...venues.value].sort((left, right) => right.capacity - left.capacity)[0] ?? null
+  return [...venues.value].sort((left, right) => (right.capacity ?? 0) - (left.capacity ?? 0))[0] ?? null
 })
 
 const cockpitSignals = computed(() => {

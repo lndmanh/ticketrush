@@ -1,4 +1,5 @@
 import { eventAutosaveDraftSchema } from '#shared/schemas/ticketingSchema'
+import type { AutosaveDraftSaveData } from '~~/types/admin-events'
 import eventDraftAutosaveService from '~~/server/utils/database/event-draft-autosave'
 import { success } from '~~/server/utils/apiResponse'
 
@@ -10,9 +11,11 @@ export default defineEventHandler(async (event) => {
   }
 
   const draft = await eventDraftAutosaveService.save(result.data, session.user.id)
-  return success({
+  const response: AutosaveDraftSaveData = {
     draftKey: draft.draftKey,
     lastSavedStep: draft.lastSavedStep,
     updatedAt: draft.updatedAt,
-  })
+  }
+
+  return success(response)
 })

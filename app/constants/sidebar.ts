@@ -1,6 +1,7 @@
 import type { SidebarContext, SidebarGuardUser, SidebarItem } from '~~/types/common'
 import {
   CalendarRange,
+  ContactRound,
   FlagIcon,
   Home,
   LayoutDashboardIcon,
@@ -26,6 +27,7 @@ export const SIDEBAR_CONTEXTS: SidebarContext[] = [
         items: [
           { title: 'Profile', url: '/settings/profile', icon: UserIcon },
           { title: 'Security', url: '/settings/security', icon: Shield },
+          { title: 'Saved Attendees', url: '/settings/saved-attendees', icon: ContactRound },
         ],
       },
     ],
@@ -71,6 +73,7 @@ export const SIDEBAR_CONTEXTS: SidebarContext[] = [
           { title: 'Home', url: '/', icon: Home },
           { title: 'Events', url: '/events', icon: CalendarRange },
           { title: 'My Tickets', url: '/tickets', icon: Ticket },
+          { title: 'Saved Attendees', url: '/tickets/saved-attendees', icon: ContactRound },
         ],
       },
       {

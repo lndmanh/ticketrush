@@ -1,18 +1,13 @@
 <script setup lang="ts">
 import { Field as VeeField, useForm } from 'vee-validate'
 import { toast } from 'vue-sonner'
-import { Clock3, ShieldCheck, TimerReset, UsersRound } from '@lucide/vue'
 import { waitingRoomSettingsSchema } from '#shared/schemas/ticketingSchema'
 import type { WaitingRoomSettingsInput } from '#shared/schemas/ticketingSchema'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field'
-import { Input } from '@/components/ui/input'
 
 const { t } = useI18n()
 const isSaving = ref(false)
 
-const { data: settingsResponse, refresh } = await useFetch<{ data: WaitingRoomSettingsInput }>('/api/admin/waiting-room-settings')
+const { data: settingsResponse, refresh } = await useFetch('/api/admin/waiting-room-settings')
 
 const defaultValues: WaitingRoomSettingsInput = {
   queueActivationThreshold: 250,
@@ -26,7 +21,7 @@ const { handleSubmit, resetForm, values } = useForm({
 })
 
 watch(settingsResponse, (response) => {
-  if (!response?.data) {
+  if (!response?.success) {
     return
   }
 
@@ -47,15 +42,18 @@ function getErrorMessage(error: object, fallback: string) {
   return fallback
 }
 
-const estimatedFirstBatchLabel = computed(() => {
-  const minutes = Math.floor(values.queueWindowSeconds / 60)
-  const seconds = values.queueWindowSeconds % 60
-  if (minutes <= 0) {
-    return `${seconds}s`
+function updatePositiveNumber(onChange: (value: number | '') => void, value: string | number) {
+  const nextValue = String(value)
+  if (!nextValue) {
+    onChange('')
+    return
   }
 
-  return `${minutes}m ${seconds}s`
-})
+  const numericValue = Number(nextValue)
+  if (Number.isFinite(numericValue)) {
+    onChange(numericValue)
+  }
+}
 
 const onSubmit = handleSubmit(
   async (formValues) => {
@@ -129,7 +127,7 @@ definePageMeta({
                   min="1"
                   :model-value="String(field.value ?? '')"
                   :aria-invalid="!!errors.length"
-                  @update:model-value="field.onChange(Number($event))"
+                  @update:model-value="updatePositiveNumber(field.onChange, $event)"
                 />
                 <FieldDescription>{{ $t('admin.waiting_room_settings.threshold_desc') }}</FieldDescription>
                 <FieldError
@@ -153,7 +151,7 @@ definePageMeta({
                   min="1"
                   :model-value="String(field.value ?? '')"
                   :aria-invalid="!!errors.length"
-                  @update:model-value="field.onChange(Number($event))"
+                  @update:model-value="updatePositiveNumber(field.onChange, $event)"
                 />
                 <FieldDescription>{{ $t('admin.waiting_room_settings.batch_size_desc') }}</FieldDescription>
                 <FieldError
@@ -177,7 +175,7 @@ definePageMeta({
                   min="1"
                   :model-value="String(field.value ?? '')"
                   :aria-invalid="!!errors.length"
-                  @update:model-value="field.onChange(Number($event))"
+                  @update:model-value="updatePositiveNumber(field.onChange, $event)"
                 />
                 <FieldDescription>{{ $t('admin.waiting_room_settings.window_seconds_desc') }}</FieldDescription>
                 <FieldError

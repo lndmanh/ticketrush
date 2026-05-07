@@ -1,3 +1,4 @@
+import type { VenueDetail } from '~~/types/venues'
 import venueService from '~~/server/utils/database/venue'
 import { success } from '~~/server/utils/apiResponse'
 
@@ -12,5 +13,6 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 404, statusMessage: 'Venue not found.' })
   }
 
-  return success(venue)
+  const response: VenueDetail = venue
+  return success(response)
 })

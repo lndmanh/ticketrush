@@ -236,6 +236,28 @@ CREATE INDEX `queue_entries_session_idx` ON `queue_entries` (`event_session_id`)
 CREATE INDEX `queue_entries_status_idx` ON `queue_entries` (`event_id`,`status`);--> statement-breakpoint
 CREATE INDEX `queue_entries_session_status_idx` ON `queue_entries` (`event_session_id`,`status`);--> statement-breakpoint
 CREATE UNIQUE INDEX `queue_entries_event_session_id_customer_key_unique` ON `queue_entries` (`event_session_id`,`customer_key`);--> statement-breakpoint
+CREATE TABLE `saved_attendees` (
+	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
+	`user_id` integer NOT NULL,
+	`legal_name` text NOT NULL,
+	`preferred_name` text,
+	`email` text,
+	`phone` text,
+	`birth_date` integer,
+	`gender` text,
+	`guardian_name` text,
+	`guardian_email` text,
+	`guardian_phone` text,
+	`notes` text,
+	`accessibility_needs` text,
+	`is_self` integer DEFAULT false NOT NULL,
+	`created_at` integer,
+	`updated_at` integer,
+	FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON UPDATE no action ON DELETE cascade
+);
+--> statement-breakpoint
+CREATE INDEX `saved_attendees_user_idx` ON `saved_attendees` (`user_id`);--> statement-breakpoint
+CREATE INDEX `saved_attendees_user_self_idx` ON `saved_attendees` (`user_id`,`is_self`);--> statement-breakpoint
 CREATE TABLE `seat_holds` (
 	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
 	`public_id` text NOT NULL,
@@ -301,8 +323,17 @@ CREATE TABLE `tickets` (
 	`event_session_id` integer,
 	`event_seat_id` integer,
 	`user_id` integer,
+	`saved_attendee_id` integer,
 	`attendee_name` text NOT NULL,
 	`attendee_email` text NOT NULL,
+	`attendee_phone` text,
+	`attendee_birth_date` integer,
+	`attendee_gender` text,
+	`attendee_guardian_name` text,
+	`attendee_guardian_email` text,
+	`attendee_guardian_phone` text,
+	`attendee_notes` text,
+	`attendee_accessibility_needs` text,
 	`qr_token` text NOT NULL,
 	`status` text DEFAULT 'issued' NOT NULL,
 	`issued_at` integer NOT NULL,
@@ -314,7 +345,8 @@ CREATE TABLE `tickets` (
 	FOREIGN KEY (`event_id`) REFERENCES `events`(`id`) ON UPDATE no action ON DELETE cascade,
 	FOREIGN KEY (`event_seat_id`) REFERENCES `event_seats`(`id`) ON UPDATE no action ON DELETE set null,
 	FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON UPDATE no action ON DELETE set null,
-	FOREIGN KEY (`event_session_id`) REFERENCES `event_sessions`(`id`) ON UPDATE no action ON DELETE cascade
+	FOREIGN KEY (`event_session_id`) REFERENCES `event_sessions`(`id`) ON UPDATE no action ON DELETE cascade,
+	FOREIGN KEY (`saved_attendee_id`) REFERENCES `saved_attendees`(`id`) ON UPDATE no action ON DELETE set null
 );
 --> statement-breakpoint
 CREATE UNIQUE INDEX `tickets_public_id_unique` ON `tickets` (`public_id`);--> statement-breakpoint
@@ -323,6 +355,7 @@ CREATE INDEX `tickets_order_idx` ON `tickets` (`order_id`);--> statement-breakpo
 CREATE INDEX `tickets_event_idx` ON `tickets` (`event_id`);--> statement-breakpoint
 CREATE INDEX `tickets_session_idx` ON `tickets` (`event_session_id`);--> statement-breakpoint
 CREATE INDEX `tickets_user_idx` ON `tickets` (`user_id`);--> statement-breakpoint
+CREATE INDEX `tickets_saved_attendee_idx` ON `tickets` (`saved_attendee_id`);--> statement-breakpoint
 CREATE INDEX `tickets_status_idx` ON `tickets` (`status`);--> statement-breakpoint
 CREATE TABLE `users` (
 	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,

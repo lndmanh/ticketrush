@@ -78,7 +78,7 @@
             >
               <Button
                 size="sm"
-                @click="navigateTo(locale == defaultLocale ? '#contact' : `/${locale}#contact`)"
+                @click="navigateTo('/admin')"
               >
                 {{ $t('cta.primary') }}
                 <ArrowRight class="ml-1.5 h-3.5 w-3.5 transition-transform duration-300 group-hover:translate-x-0.5" />

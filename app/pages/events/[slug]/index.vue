@@ -1,14 +1,16 @@
 <script setup lang="ts">
-import { CalendarRange, MapPin, Ticket, UserRound } from '@lucide/vue'
+import { CalendarRange, MapPin, Ticket } from '@lucide/vue'
+import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import type { ApiResponse } from '~~/types/api'
 import type { EventDetailResponse } from '~~/types/events'
 
 const route = useRoute()
 const slug = computed(() => route.params.slug.toString())
 
-const { data: detailResponse } = await useFetch<{ data: EventDetailResponse }>(() => `/api/events/${slug.value}`)
+const { data: detailResponse } = await useFetch<ApiResponse<EventDetailResponse>>(() => `/api/events/${slug.value}`)
 
-const detail = computed(() => detailResponse.value?.data ?? null)
+const detail = computed(() => detailResponse.value?.success ? detailResponse.value.data : null)
 const event = computed(() => detail.value?.event ?? null)
 const venue = computed(() => detail.value?.venue?.venue ?? null)
 
@@ -62,111 +64,91 @@ definePageMeta({
     v-if="detail && event"
     class="space-y-12 pb-16 pt-6 md:space-y-16 md:pb-24"
   >
-    <section class="grid gap-5 xl:grid-cols-[minmax(0,1fr)_24rem] xl:items-stretch">
-      <div class="surface-shell overflow-hidden">
-        <div class="surface-core min-h-[34rem] overflow-hidden p-0">
-          <div class="relative flex min-h-[34rem] flex-col justify-between overflow-hidden rounded-[calc(2rem-0.375rem)] bg-secondary p-5 md:p-8">
-            <img
-              :src="event.coverImage || `https://picsum.photos/seed/${event.slug}/1600/1100`"
-              :alt="event.title"
-              class="absolute inset-0 h-full w-full object-cover grayscale"
-            >
-            <div class="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.22),transparent_28%),linear-gradient(to_top,rgba(0,0,0,0.9),rgba(0,0,0,0.48),rgba(0,0,0,0.12))]" />
-
-            <div class="relative z-10 flex flex-wrap items-start justify-between gap-3">
-              <span class="section-eyebrow border-white/10 bg-white/10 text-white">
+    <section class="grid gap-6 lg:grid-cols-[1fr_24rem] lg:items-start">
+      <Card class="overflow-hidden py-0">
+        <div class="relative min-h-[20rem] overflow-hidden bg-secondary">
+          <img
+            :src="event.coverImage || `https://picsum.photos/seed/${event.slug}/1600/1100`"
+            :alt="event.title"
+            class="absolute inset-0 h-full w-full object-cover"
+          >
+          <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
+          <div class="absolute bottom-0 left-0 right-0 p-6 md:p-8">
+            <div class="mb-4 flex flex-wrap items-center gap-2">
+              <Badge
+                variant="secondary"
+                class="bg-white/20 text-white hover:bg-white/30 border-none backdrop-blur-md"
+              >
                 {{ event.status.replaceAll('_', ' ') }}
-              </span>
-              <span class="rounded-full border border-white/10 bg-black/35 px-3 py-1.5 font-mono text-[11px] text-white/76 backdrop-blur-sm">
-                {{ dateRangeLabel }}
-              </span>
-            </div>
-
-            <div class="relative z-10 max-w-4xl space-y-5">
-              <p class="text-sm uppercase tracking-[0.22em] text-white/58">
+              </Badge>
+              <Badge
+                variant="outline"
+                class="border-white/30 bg-black/40 text-white backdrop-blur-md"
+              >
                 {{ venueLabel }}
-              </p>
-              <h1 class="text-balance text-4xl font-semibold leading-[0.98] tracking-[-0.08em] text-white md:text-7xl">
-                {{ event.title }}
-              </h1>
-              <p class="max-w-[48rem] text-sm leading-7 text-white/76 md:text-base">
-                {{ event.subtitle || event.description }}
-              </p>
+              </Badge>
             </div>
+            <h1 class="text-3xl font-bold tracking-tight text-white md:text-5xl">
+              {{ event.title }}
+            </h1>
+            <p class="mt-3 max-w-2xl text-sm leading-relaxed text-white/80 md:text-base">
+              {{ event.subtitle || event.description }}
+            </p>
           </div>
         </div>
-      </div>
+      </Card>
 
-      <aside class="grid gap-4 sm:grid-cols-3 xl:grid-cols-1">
-        <TicketSummaryMetric
-          label="Sessions"
-          :value="sortedSessions.length"
-          hint="Bookable dates"
-        />
-        <TicketSummaryMetric
-          label="Releases"
-          :value="releaseCount"
-          hint="Ticket options"
-        />
-        <TicketSummaryMetric
-          label="Venue"
-          :value="venue?.city || 'TBA'"
-          hint="Host city"
-        />
-      </aside>
-    </section>
-
-    <section class="grid gap-6 xl:grid-cols-[0.9fr_1.1fr] xl:items-start">
-      <div class="space-y-4 xl:sticky xl:top-8">
-        <span class="section-eyebrow">
-          About
-        </span>
-        <h2 class="text-3xl font-semibold tracking-[-0.05em] md:text-5xl">
-          Choose the date that fits your plans.
-        </h2>
-      </div>
-
-      <div class="surface-shell">
-        <div class="surface-core space-y-5">
-          <p class="text-base leading-8 text-muted-foreground">
-            {{ event.description }}
-          </p>
-          <div class="grid gap-3 md:grid-cols-2">
-            <div class="rounded-[1.5rem] bg-accent p-5">
-              <CalendarRange class="size-5 text-muted-foreground" />
-              <p class="mt-4 text-sm text-muted-foreground">
-                Event dates
-              </p>
-              <p class="mt-1 font-medium text-foreground">
-                {{ dateRangeLabel }}
-              </p>
+      <div class="space-y-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Event Details</CardTitle>
+          </CardHeader>
+          <CardContent class="grid gap-4">
+            <div class="flex items-start gap-4">
+              <CalendarRange class="mt-0.5 size-4 text-muted-foreground" />
+              <div>
+                <p class="text-sm font-medium leading-none">
+                  Date Range
+                </p>
+                <p class="mt-1 text-sm text-muted-foreground">
+                  {{ dateRangeLabel }}
+                </p>
+              </div>
             </div>
-            <div class="rounded-[1.5rem] bg-accent p-5">
-              <Ticket class="size-5 text-muted-foreground" />
-              <p class="mt-4 text-sm text-muted-foreground">
-                Ticket releases
-              </p>
-              <p class="mt-1 font-medium text-foreground">
-                {{ releaseCount }} across {{ sortedSessions.length }} session{{ sortedSessions.length === 1 ? '' : 's' }}
-              </p>
+            <div class="flex items-start gap-4">
+              <MapPin class="mt-0.5 size-4 text-muted-foreground" />
+              <div>
+                <p class="text-sm font-medium leading-none">
+                  Location
+                </p>
+                <p class="mt-1 text-sm text-muted-foreground">
+                  {{ venue?.name || 'TBA' }}
+                </p>
+              </div>
             </div>
-          </div>
-        </div>
+            <div class="flex items-start gap-4">
+              <Ticket class="mt-0.5 size-4 text-muted-foreground" />
+              <div>
+                <p class="text-sm font-medium leading-none">
+                  Ticket Releases
+                </p>
+                <p class="mt-1 text-sm text-muted-foreground">
+                  {{ releaseCount }} across {{ sortedSessions.length }} session{{ sortedSessions.length === 1 ? '' : 's' }}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </section>
 
     <section class="space-y-6">
-      <div class="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-        <div class="space-y-3">
-          <span class="section-eyebrow">
-            Sessions
-          </span>
-          <h2 class="text-3xl font-semibold tracking-[-0.05em] md:text-5xl">
-            Select a session to book.
-          </h2>
-        </div>
-        <p class="max-w-[30rem] text-sm leading-7 text-muted-foreground">
-          Each session has its own start time, ticket releases, and seat map access.
+      <div class="flex flex-col gap-2">
+        <h2 class="text-2xl font-semibold tracking-tight">
+          Select a Session
+        </h2>
+        <p class="text-sm text-muted-foreground">
+          Choose a date and time to view available seats and book tickets.
         </p>
       </div>
 
@@ -181,56 +163,8 @@ definePageMeta({
       </div>
 
       <Card v-if="sortedSessions.length === 0">
-        <CardContent class="p-6 text-sm text-muted-foreground">
+        <CardContent class="p-8 text-center text-sm text-muted-foreground">
           Sessions will appear here once the organizer publishes the schedule.
-        </CardContent>
-      </Card>
-    </section>
-
-    <section class="grid gap-5 lg:grid-cols-[1.05fr_0.95fr]">
-      <Card>
-        <CardHeader>
-          <div class="flex items-start gap-3">
-            <div class="flex size-10 items-center justify-center rounded-full border bg-muted/40">
-              <MapPin class="size-4 text-muted-foreground" />
-            </div>
-            <div>
-              <CardTitle>Venue</CardTitle>
-              <p class="text-sm text-muted-foreground">
-                Where the event takes place.
-              </p>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent class="space-y-3 text-sm leading-7 text-muted-foreground">
-          <p class="font-medium text-foreground">
-            {{ venue?.name || 'Venue to be announced' }}
-          </p>
-          <p v-if="venue">
-            {{ venue.address }}, {{ venue.city }}, {{ venue.country }}
-          </p>
-          <p v-if="venue?.description">
-            {{ venue.description }}
-          </p>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <div class="flex items-start gap-3">
-            <div class="flex size-10 items-center justify-center rounded-full border bg-muted/40">
-              <UserRound class="size-4 text-muted-foreground" />
-            </div>
-            <div>
-              <CardTitle>Organizer note</CardTitle>
-              <p class="text-sm text-muted-foreground">
-                Review session details before choosing seats.
-              </p>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent class="text-sm leading-7 text-muted-foreground">
-          Ticket availability and seating are managed per session. Select a date above to continue with the correct schedule.
         </CardContent>
       </Card>
     </section>

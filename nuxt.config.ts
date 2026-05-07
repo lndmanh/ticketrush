@@ -134,8 +134,6 @@ export default defineNuxtConfig({
       nodeCompat: true,
     },
     prerender: {
-      // Pre-render the homepage
-      routes: ['/'],
       ignore: [
         '/admin',
         '/admin/**',

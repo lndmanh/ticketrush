@@ -4,6 +4,7 @@ import { Field as VeeField, useForm } from 'vee-validate'
 import { toast } from 'vue-sonner'
 import { createVenueSchema } from '#shared/schemas/ticketingSchema'
 import type { VenueSectionDraftInput } from '#shared/schemas/ticketingSchema'
+import type { ApiResponse } from '~~/types/api'
 import type { VenueDetail } from '~~/types/venues'
 import { ArrowLeft, Building2, CalendarRange, LayoutGrid, LayoutDashboardIcon, Rows3, Save, Settings2, Users } from '@lucide/vue'
 import AdminVenuesVenueSeatLayoutEditor from '@/components/admin/venues/VenueSeatLayoutEditor.vue'
@@ -54,12 +55,12 @@ interface VenueBlueprintPreset {
 const route = useRoute()
 const venueId = computed(() => Number(route.params.id))
 
-const { data: venueResponse, refresh: refreshVenue } = await useFetch<{ data: VenueDetail }>(() => `/api/admin/venues/${venueId.value}`)
-const { data: eventsResponse } = await useFetch<{ data: AdminEventListItem[] }>('/api/admin/events')
+const { data: venueResponse, refresh: refreshVenue } = await useFetch<ApiResponse<VenueDetail>>(() => `/api/admin/venues/${venueId.value}`)
+const { data: eventsResponse } = await useFetch('/api/admin/events')
 
-const venueDetail = computed<VenueDetail | null>(() => venueResponse.value?.data ?? null)
+const venueDetail = computed<VenueDetail | null>(() => venueResponse.value?.success ? venueResponse.value.data : null)
 const linkedEvents = computed<AdminEventListItem[]>(() => {
-  const items = eventsResponse.value?.data ?? []
+  const items = eventsResponse.value?.success ? eventsResponse.value.data : []
   return items.filter(event => event.venueId === venueId.value)
 })
 

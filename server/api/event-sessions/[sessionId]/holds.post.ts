@@ -1,4 +1,5 @@
 import { createSeatHoldSchema } from '#shared/schemas/ticketingSchema'
+import type { HoldData } from '~~/types/ticketing'
 import eventSessionService from '~~/server/utils/database/event-session'
 import holdService from '~~/server/utils/ticketing/holds'
 import { success } from '~~/server/utils/apiResponse'
@@ -22,10 +23,19 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, statusMessage: 'Bad Request. Hold request is invalid.', data: result.error })
   }
 
-  const hold = await holdService.createHold({
+  const holdBundle = await holdService.createHold({
     ...result.data,
     sessionKey,
   }, userSession.user?.id)
+  if (!holdBundle) {
+    throw createError({ statusCode: 500, statusMessage: 'Failed to create seat hold.' })
+  }
 
-  return success(hold)
+  const response: HoldData = {
+    hold: {
+      publicId: holdBundle.hold.publicId,
+    },
+  }
+
+  return success(response)
 })

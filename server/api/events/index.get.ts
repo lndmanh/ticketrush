@@ -6,10 +6,10 @@ import type { PaginationMeta } from '~~/types/models/pagination'
 
 const eventCatalogQuerySchema = z.object({
   q: z.string().trim().default('').catch(''),
-  status: z.enum(['all', 'published', 'on_sale', 'sold_out', 'ended']).catch('all'),
+  status: z.enum(['all', 'published', 'on_sale', 'sold_out', 'ended']).default('all').catch('all'),
   city: z.string().trim().default('all').catch('all'),
-  date: z.enum(['all', 'today', 'week', 'month']).catch('all'),
-  sort: z.enum(['soonest', 'newest', 'ending_soon']).catch('soonest'),
+  date: z.enum(['all', 'today', 'week', 'month']).default('all').catch('all'),
+  sort: z.enum(['soonest', 'newest', 'ending_soon']).default('soonest').catch('soonest'),
   page: z.coerce.number().int().min(1).catch(1),
   pageSize: z.coerce.number().int().min(1).max(24).catch(9),
 })

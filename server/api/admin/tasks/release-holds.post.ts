@@ -1,3 +1,4 @@
+import type { ReleaseHoldsTaskData } from '~~/types/admin-tasks'
 import holdService from '~~/server/utils/ticketing/holds'
 import analyticsService from '~~/server/utils/ticketing/analytics'
 import { success } from '~~/server/utils/apiResponse'
@@ -10,9 +11,11 @@ export default defineEventHandler(async () => {
     await analyticsService.recomputeDailyBucket(event.id)
   }
 
-  return success({
+  const response: ReleaseHoldsTaskData = {
     result: 'Expired holds released',
     releasedCount,
     eventsRecomputed: events.length,
-  })
+  }
+
+  return success(response)
 })

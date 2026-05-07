@@ -1,4 +1,3 @@
-import type { ApiResponseSuccess } from '~~/types/api'
 import type { DateLike } from '~~/types/events'
 
 export interface EventSessionGateResponse {
@@ -23,12 +22,12 @@ export interface QueueState {
   estimatedWaitSeconds: number
 }
 
-export type HoldResponse = ApiResponseSuccess<{
+export interface HoldData {
   hold: {
     publicId: string
   }
-}>
+}
 
-export type CheckoutStartResponse = ApiResponseSuccess<{
+export interface CheckoutStartData {
   publicId: string
-}>
+}

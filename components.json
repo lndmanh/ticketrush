@@ -1,11 +1,11 @@
 {
   "$schema": "https://shadcn-vue.com/schema.json",
-  "style": "new-york",
+  "style": "reka-luma",
   "typescript": true,
   "tailwind": {
     "config": "",
-    "css": "app/assets/css/main.css",
-    "baseColor": "neutral",
+    "css": "app/assets/css/tailwind.css",
+    "baseColor": "olive",
     "cssVariables": true,
     "prefix": ""
   },
@@ -16,5 +16,10 @@
     "ui": "@/components/ui",
     "lib": "@/lib"
   },
-  "iconLibrary": "lucide"
+  "iconLibrary": "lucide",
+  "font": "inter",
+  "rtl": false,
+  "menuColor": "inverted-translucent",
+  "menuAccent": "subtle",
+  "registries": {}
 }

@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import type { OAuthUrlData } from '~~/types/auth'
 import { success } from '~~/server/utils/apiResponse'
 import { OAUTH_PROVIDERS } from '#shared/constants/oauthProviders'
 
@@ -19,6 +20,7 @@ export default defineEventHandler(async (event) => {
 
   const providerConfig = OAUTH_PROVIDERS[provider]
   const url = action === 'link' ? `${providerConfig.route}?action=link` : providerConfig.route
+  const response: OAuthUrlData = { url }
 
-  return success({ url })
+  return success(response)
 })

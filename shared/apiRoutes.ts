@@ -4,6 +4,7 @@ export const apiRoutes = {
   AUTH_LOGIN: '/auth/login',
   AUTH_REGISTER: '/auth/register',
 
+  SAVED_ATTENDEES: '/api/saved-attendees',
   MY_PROFILE: '/api/users/me',
   AUTH_GOOGLE: '/api/auth/google',
   AUTH_OAUTH_URL: '/api/auth/oauth/url',
@@ -26,9 +27,6 @@ export const routeRules = {
   '/admin/**': {
     ssr: false,
     prerender: false,
-  },
-  '/pwa': {
-    ssr: false,
   },
   '/docs/**': {
     swr: 3600,

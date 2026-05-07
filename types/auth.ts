@@ -3,6 +3,10 @@ export interface OAuthPopupCompleteMessage {
   url: string
 }
 
+export interface OAuthUrlData {
+  url: string
+}
+
 export interface OAuthProfile {
   id: string
   email: string

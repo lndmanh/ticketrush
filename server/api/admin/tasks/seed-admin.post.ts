@@ -1,4 +1,5 @@
 import { eq } from 'drizzle-orm'
+import type { SeedAdminTaskData } from '~~/types/admin-tasks'
 import { success } from '~~/server/utils/apiResponse'
 
 export default defineEventHandler(async () => {
@@ -12,7 +13,7 @@ export default defineEventHandler(async () => {
     .get()
 
   if (existingAdmin) {
-    return success({
+    const response: SeedAdminTaskData = {
       result: 'Admin account already exists',
       admin: {
         id: existingAdmin.id,
@@ -20,10 +21,17 @@ export default defineEventHandler(async () => {
         name: existingAdmin.name,
         isAdmin: existingAdmin.isAdmin,
       },
-    })
+    }
+
+    return success(response)
   }
 
-  const adminPassword = useRuntimeConfig().defaultAdminPassword!.toString()
+  const defaultAdminPassword = useRuntimeConfig().defaultAdminPassword
+  if (!defaultAdminPassword) {
+    throw createError({ statusCode: 500, statusMessage: 'Default admin password is not configured' })
+  }
+
+  const adminPassword = defaultAdminPassword.toString()
   const hashedPassword = await hashPassword(adminPassword)
   const now = new Date()
 
@@ -45,7 +53,7 @@ export default defineEventHandler(async () => {
     throw createError({ statusCode: 500, statusMessage: 'Failed to create admin account' })
   }
 
-  return success({
+  const response: SeedAdminTaskData = {
     result: 'Admin account created successfully',
     admin: {
       id: newAdmin.id,
@@ -53,5 +61,7 @@ export default defineEventHandler(async () => {
       name: newAdmin.name,
       isAdmin: newAdmin.isAdmin,
     },
-  })
+  }
+
+  return success(response)
 })

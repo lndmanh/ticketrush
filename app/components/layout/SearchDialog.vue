@@ -148,7 +148,6 @@
 import { nextTick } from 'vue'
 import { ChevronRightIcon, FileIcon, SearchXIcon } from '@lucide/vue'
 import CtIcon from '@/components/content/CtIcon.vue'
-import type { ApiResponse } from '~~/types/api'
 import type { EventSearchApiItem } from '~~/types/events'
 import type { SidebarItem } from '~~/types/common'
 
@@ -216,7 +215,7 @@ const debouncedSearch = useDebounceFn(async () => {
   latestRequestId.value = requestId
 
   try {
-    const response = await $fetch<ApiResponse<EventSearchApiItem[]>>('/api/events/search', {
+    const response = await $fetch('/api/events/search', {
       query: {
         query: term,
         limit: 10,
