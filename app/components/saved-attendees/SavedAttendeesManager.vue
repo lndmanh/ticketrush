@@ -5,6 +5,7 @@ import { toast } from 'vue-sonner'
 import { savedAttendeeFormSchema } from '#shared/schemas/savedAttendeeSchema'
 import { PlusIcon, UserIcon, Trash2Icon, Edit2Icon, ShieldIcon } from '@lucide/vue'
 
+const { t } = useI18n()
 const { data: attendeesResponse, refresh, status, error: fetchError } = useFetch('/api/saved-attendees')
 const attendees = computed(() => attendeesResponse.value?.data || [])
 const loading = computed(() => status.value === 'pending')
@@ -121,20 +122,20 @@ const onSubmit = handleSubmit(async (values) => {
         method: 'PATCH',
         body: values,
       })
-      toast.success('Attendee updated successfully')
+      toast.success(t('saved_attendees.updated'))
     }
     else {
       await $fetch('/api/saved-attendees', {
         method: 'POST',
         body: values,
       })
-      toast.success('Attendee saved successfully')
+      toast.success(t('saved_attendees.saved'))
     }
     isDialogOpen.value = false
     await refresh()
   }
   catch (error) {
-    toast.error('Failed to save attendee. Please try again.')
+    toast.error(t('saved_attendees.save_failed'))
   }
   finally {
     isSubmitting.value = false
@@ -142,7 +143,7 @@ const onSubmit = handleSubmit(async (values) => {
 })
 
 async function deleteAttendee(id: number) {
-  if (!window.confirm('Are you sure you want to delete this attendee? This action cannot be undone.')) {
+  if (!window.confirm(t('saved_attendees.delete_confirm'))) {
     return
   }
 
@@ -150,11 +151,11 @@ async function deleteAttendee(id: number) {
     await $fetch(`/api/saved-attendees/${id}`, {
       method: 'DELETE',
     })
-    toast.success('Attendee deleted successfully')
+    toast.success(t('saved_attendees.deleted'))
     await refresh()
   }
   catch (error) {
-    toast.error('Failed to delete attendee. Please try again.')
+    toast.error(t('saved_attendees.delete_failed'))
   }
 }
 
@@ -182,10 +183,10 @@ function isMinor(birthDate?: Date | string | null) {
     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
       <div>
         <h1 class="text-3xl font-bold tracking-tight">
-          Saved Attendees
+          {{ $t('saved_attendees.title') }}
         </h1>
         <p class="text-muted-foreground mt-1">
-          Manage profiles for quicker checkout when buying tickets for yourself and others.
+          {{ $t('saved_attendees.subtitle') }}
         </p>
       </div>
       <div class="flex gap-2">
@@ -195,14 +196,14 @@ function isMinor(birthDate?: Date | string | null) {
           @click="createFromProfile"
         >
           <UserIcon class="w-4 h-4 mr-2" />
-          Add Myself
+          {{ $t('saved_attendees.add_myself') }}
         </Button>
         <Button
           :disabled="loading"
           @click="openCreateDialog"
         >
           <PlusIcon class="w-4 h-4 mr-2" />
-          Add Attendee
+          {{ $t('saved_attendees.add_attendee') }}
         </Button>
       </div>
     </div>
@@ -239,17 +240,17 @@ function isMinor(birthDate?: Date | string | null) {
       class="text-center py-12 px-4 border rounded-xl bg-destructive/10 border-destructive/20 border-dashed"
     >
       <h3 class="text-lg font-semibold text-destructive mb-1">
-        Failed to load attendees
+        {{ $t('saved_attendees.loading_failed') }}
       </h3>
       <p class="text-muted-foreground mb-6 max-w-sm mx-auto">
-        There was a problem communicating with the server. Please try again.
+        {{ $t('saved_attendees.loading_failed_desc') }}
       </p>
       <div class="flex justify-center">
         <Button
           variant="outline"
           @click="refresh()"
         >
-          Retry
+          {{ $t('saved_attendees.retry') }}
         </Button>
       </div>
     </div>
@@ -263,20 +264,20 @@ function isMinor(birthDate?: Date | string | null) {
         <UserIcon class="w-8 h-8 text-muted-foreground" />
       </div>
       <h3 class="text-lg font-semibold mb-1">
-        No attendees saved
+        {{ $t('saved_attendees.no_attendees') }}
       </h3>
       <p class="text-muted-foreground mb-6 max-w-sm mx-auto">
-        Save the details of people you frequently buy tickets for to speed up your checkout process.
+        {{ $t('saved_attendees.no_attendees_desc') }}
       </p>
       <div class="flex justify-center gap-3">
         <Button
           variant="outline"
           @click="createFromProfile"
         >
-          Add Myself
+          {{ $t('saved_attendees.add_myself') }}
         </Button>
         <Button @click="openCreateDialog">
-          Add Attendee
+          {{ $t('saved_attendees.add_attendee') }}
         </Button>
       </div>
     </div>
@@ -295,7 +296,7 @@ function isMinor(birthDate?: Date | string | null) {
           v-if="attendee.isSelf"
           class="absolute top-0 right-0 bg-primary/10 text-primary text-xs font-semibold px-2 py-1 rounded-bl-lg"
         >
-          Self
+          {{ $t('saved_attendees.self_badge') }}
         </div>
         <div class="p-5 flex-1 space-y-4">
           <div class="flex items-start justify-between">
@@ -311,7 +312,7 @@ function isMinor(birthDate?: Date | string | null) {
                   v-if="attendee.preferredName"
                   class="text-xs text-muted-foreground truncate"
                 >
-                  Legal: {{ attendee.legalName }}
+                  {{ $t('saved_attendees.legal_label', { name: attendee.legalName }) }}
                 </p>
               </div>
             </div>
@@ -334,7 +335,7 @@ function isMinor(birthDate?: Date | string | null) {
               v-if="!attendee.email && !attendee.phone"
               class="text-muted-foreground italic text-xs"
             >
-              No direct contact info
+              {{ $t('saved_attendees.no_contact') }}
             </div>
 
             <div
@@ -342,13 +343,13 @@ function isMinor(birthDate?: Date | string | null) {
               class="inline-flex items-center bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300 text-xs px-2 py-0.5 rounded-full mt-2"
             >
               <ShieldIcon class="w-3 h-3 mr-1" />
-              Minor
+              {{ $t('saved_attendees.minor_badge') }}
             </div>
             <div
               v-if="attendee.guardianName"
               class="text-xs text-muted-foreground mt-1 line-clamp-1"
             >
-              Guardian: {{ attendee.guardianName }}
+              {{ $t('saved_attendees.guardian_prefix', { name: attendee.guardianName }) }}
             </div>
           </div>
         </div>
@@ -360,7 +361,7 @@ function isMinor(birthDate?: Date | string | null) {
             @click="openEditDialog(attendee)"
           >
             <Edit2Icon class="w-4 h-4 mr-1.5" />
-            Edit
+            {{ $t('saved_attendees.edit') }}
           </Button>
           <Button
             variant="ghost"
@@ -369,7 +370,7 @@ function isMinor(birthDate?: Date | string | null) {
             @click="deleteAttendee(attendee.id)"
           >
             <Trash2Icon class="w-4 h-4 mr-1.5" />
-            Delete
+            {{ $t('saved_attendees.delete') }}
           </Button>
         </div>
       </Card>
@@ -379,9 +380,9 @@ function isMinor(birthDate?: Date | string | null) {
     <Dialog v-model:open="isDialogOpen">
       <DialogScrollContent class="sm:max-w-[600px]">
         <DialogHeader>
-          <DialogTitle>{{ editingId ? 'Edit Attendee' : 'Add Attendee' }}</DialogTitle>
+          <DialogTitle>{{ editingId ? $t('saved_attendees.dialog_edit_title') : $t('saved_attendees.dialog_add_title') }}</DialogTitle>
           <DialogDescription>
-            Enter the details for this attendee. Information saved here can be auto-filled during checkout.
+            {{ $t('saved_attendees.dialog_desc') }}
           </DialogDescription>
         </DialogHeader>
 
@@ -393,10 +394,10 @@ function isMinor(birthDate?: Date | string | null) {
             <div class="flex items-center justify-between p-3 border rounded-lg bg-muted/20 mb-4">
               <div>
                 <p class="font-medium text-sm">
-                  This is my profile
+                  {{ $t('saved_attendees.is_self_label') }}
                 </p>
                 <p class="text-xs text-muted-foreground">
-                  Check this if you are saving your own details.
+                  {{ $t('saved_attendees.is_self_desc') }}
                 </p>
               </div>
               <VeeField
@@ -417,10 +418,10 @@ function isMinor(birthDate?: Date | string | null) {
                 name="legalName"
               >
                 <Field :data-invalid="!!errors.length">
-                  <FieldLabel>Legal Name *</FieldLabel>
+                  <FieldLabel>{{ $t('saved_attendees.legal_name') }}</FieldLabel>
                   <Input
                     v-bind="field"
-                    placeholder="John Doe"
+                    :placeholder="$t('saved_attendees.legal_name_placeholder')"
                   />
                   <FieldError
                     v-if="errors.length"
@@ -434,10 +435,10 @@ function isMinor(birthDate?: Date | string | null) {
                 name="preferredName"
               >
                 <Field :data-invalid="!!errors.length">
-                  <FieldLabel>Preferred Name</FieldLabel>
+                  <FieldLabel>{{ $t('saved_attendees.preferred_name') }}</FieldLabel>
                   <Input
                     v-bind="field"
-                    placeholder="Johnny"
+                    :placeholder="$t('saved_attendees.preferred_name_placeholder')"
                   />
                   <FieldError
                     v-if="errors.length"
@@ -453,11 +454,11 @@ function isMinor(birthDate?: Date | string | null) {
                 name="email"
               >
                 <Field :data-invalid="!!errors.length">
-                  <FieldLabel>Email</FieldLabel>
+                  <FieldLabel>{{ $t('saved_attendees.email') }}</FieldLabel>
                   <Input
                     v-bind="field"
                     type="email"
-                    placeholder="john@example.com"
+                    :placeholder="$t('saved_attendees.email_placeholder')"
                   />
                   <FieldError
                     v-if="errors.length"
@@ -471,7 +472,7 @@ function isMinor(birthDate?: Date | string | null) {
                 name="phone"
               >
                 <Field :data-invalid="!!errors.length">
-                  <FieldLabel>Phone</FieldLabel>
+                  <FieldLabel>{{ $t('saved_attendees.phone') }}</FieldLabel>
                   <Input
                     v-bind="field"
                     type="tel"
@@ -491,7 +492,7 @@ function isMinor(birthDate?: Date | string | null) {
                 name="birthDate"
               >
                 <Field :data-invalid="!!errors.length">
-                  <FieldLabel>Birth Date</FieldLabel>
+                  <FieldLabel>{{ $t('saved_attendees.birth_date') }}</FieldLabel>
                   <Input
                     v-bind="field"
                     type="date"
@@ -508,26 +509,26 @@ function isMinor(birthDate?: Date | string | null) {
                 name="gender"
               >
                 <Field :data-invalid="!!errors.length">
-                  <FieldLabel>Gender</FieldLabel>
+                  <FieldLabel>{{ $t('saved_attendees.gender') }}</FieldLabel>
                   <Select
                     :model-value="value"
                     @update:model-value="field.onChange"
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Select gender" />
+                      <SelectValue :placeholder="$t('saved_attendees.gender_placeholder')" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="female">
-                        Female
+                        {{ $t('saved_attendees.gender_female') }}
                       </SelectItem>
                       <SelectItem value="male">
-                        Male
+                        {{ $t('saved_attendees.gender_male') }}
                       </SelectItem>
                       <SelectItem value="non-binary">
-                        Non-binary
+                        {{ $t('saved_attendees.gender_non_binary') }}
                       </SelectItem>
                       <SelectItem value="prefer-not-to-say">
-                        Prefer not to say
+                        {{ $t('saved_attendees.gender_prefer_not') }}
                       </SelectItem>
                     </SelectContent>
                   </Select>
@@ -541,7 +542,7 @@ function isMinor(birthDate?: Date | string | null) {
 
             <div class="pt-4 border-t">
               <h4 class="text-sm font-medium mb-3">
-                Guardian Information (If Minor)
+                {{ $t('saved_attendees.guardian_section') }}
               </h4>
               <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <VeeField
@@ -549,10 +550,10 @@ function isMinor(birthDate?: Date | string | null) {
                   name="guardianName"
                 >
                   <Field :data-invalid="!!errors.length">
-                    <FieldLabel>Guardian Name</FieldLabel>
+                    <FieldLabel>{{ $t('saved_attendees.guardian_name') }}</FieldLabel>
                     <Input
                       v-bind="field"
-                      placeholder="Jane Doe"
+                      :placeholder="$t('common.full_name_placeholder') || 'Jane Doe'"
                     />
                     <FieldError
                       v-if="errors.length"
@@ -566,7 +567,7 @@ function isMinor(birthDate?: Date | string | null) {
                   name="guardianPhone"
                 >
                   <Field :data-invalid="!!errors.length">
-                    <FieldLabel>Guardian Phone</FieldLabel>
+                    <FieldLabel>{{ $t('saved_attendees.guardian_phone') }}</FieldLabel>
                     <Input
                       v-bind="field"
                       type="tel"
@@ -584,7 +585,7 @@ function isMinor(birthDate?: Date | string | null) {
                     name="guardianEmail"
                   >
                     <Field :data-invalid="!!errors.length">
-                      <FieldLabel>Guardian Email</FieldLabel>
+                      <FieldLabel>{{ $t('saved_attendees.guardian_email') }}</FieldLabel>
                       <Input
                         v-bind="field"
                         type="email"
@@ -601,7 +602,7 @@ function isMinor(birthDate?: Date | string | null) {
 
             <div class="pt-4 border-t space-y-4">
               <h4 class="text-sm font-medium">
-                Additional Information
+                {{ $t('saved_attendees.additional_section') }}
               </h4>
 
               <VeeField
@@ -609,10 +610,10 @@ function isMinor(birthDate?: Date | string | null) {
                 name="accessibilityNeeds"
               >
                 <Field :data-invalid="!!errors.length">
-                  <FieldLabel>Accessibility Needs</FieldLabel>
+                  <FieldLabel>{{ $t('saved_attendees.accessibility') }}</FieldLabel>
                   <Textarea
                     v-bind="field"
-                    placeholder="E.g., Wheelchair access, ASL interpreter"
+                    :placeholder="$t('saved_attendees.accessibility_placeholder')"
                     class="resize-none h-20"
                   />
                   <FieldError
@@ -627,10 +628,10 @@ function isMinor(birthDate?: Date | string | null) {
                 name="notes"
               >
                 <Field :data-invalid="!!errors.length">
-                  <FieldLabel>Notes</FieldLabel>
+                  <FieldLabel>{{ $t('saved_attendees.notes') }}</FieldLabel>
                   <Textarea
                     v-bind="field"
-                    placeholder="Any internal notes or special dietary requirements"
+                    :placeholder="$t('saved_attendees.notes_placeholder')"
                     class="resize-none h-20"
                   />
                   <FieldError
@@ -649,13 +650,13 @@ function isMinor(birthDate?: Date | string | null) {
               :disabled="isSubmitting"
               @click="isDialogOpen = false"
             >
-              Cancel
+              {{ $t('saved_attendees.cancel') }}
             </Button>
             <Button
               type="submit"
               :is-loading="isSubmitting"
             >
-              {{ editingId ? 'Save Changes' : 'Add Attendee' }}
+              {{ editingId ? $t('saved_attendees.save_changes') : $t('saved_attendees.add_attendee') }}
             </Button>
           </DialogFooter>
         </form>

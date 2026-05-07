@@ -22,6 +22,7 @@ import {
 } from '@/components/ui/field'
 import { toast } from 'vue-sonner'
 
+const { t } = useI18n()
 const route = useRoute()
 const orderId = computed(() => route.params.orderId.toString())
 const holdPublicId = computed(() => typeof route.query.hold === 'string' ? route.query.hold : '')
@@ -250,7 +251,7 @@ const isHoldExpired = computed(() => holdTimeRemainingMs.value === 0)
 const onSubmit = handleSubmit(
   async (values) => {
     if (!checkout.value?.order || !holdPublicId.value || isHoldExpired.value) {
-      toast.error('Your seat hold has expired. Please return to the event and choose seats again.')
+      toast.error(t('checkout.hold_expired_toast'))
       return
     }
 
@@ -274,11 +275,11 @@ const onSubmit = handleSubmit(
         },
       })
 
-      toast.success('Order confirmed')
+      toast.success(t('checkout.order_confirmed_toast'))
       await refresh()
     }
     catch (error) {
-      let message = 'We could not confirm the order'
+      let message = t('checkout.order_confirm_error')
 
       if (error && typeof error === 'object' && 'data' in error) {
         const errorData = error.data
@@ -336,10 +337,10 @@ definePageMeta({
       <div class="space-y-4">
         <div class="space-y-3">
           <h1 class="text-3xl font-semibold tracking-tight">
-            {{ checkout.order.status === 'confirmed' ? 'Order confirmed.' : 'Review your order.' }}
+            {{ checkout.order.status === 'confirmed' ? $t('checkout.order_confirmed') : $t('checkout.review_order') }}
           </h1>
           <p class="max-w-[40rem] text-base leading-8 text-muted-foreground">
-            This demo checkout does not connect to a live payment provider. Confirming the order finalizes your held seats and issues QR tickets immediately.
+            {{ $t('checkout.demo_note') }}
           </p>
         </div>
       </div>
@@ -356,13 +357,13 @@ definePageMeta({
             ]"
           >
             <p class="text-sm text-muted-foreground">
-              Hold timer
+              {{ $t('checkout.hold_timer') }}
             </p>
             <p class="mt-2 text-3xl font-semibold tracking-[-0.05em]">
               {{ holdCountdownLabel }}
             </p>
             <p class="mt-2 text-sm leading-7 text-muted-foreground">
-              {{ isHoldExpired ? 'The hold expired. Return to the event and choose seats again.' : 'Seats remain reserved while this countdown is active.' }}
+              {{ isHoldExpired ? $t('checkout.hold_expired_note') : $t('checkout.hold_active_note') }}
             </p>
           </div>
 
@@ -388,7 +389,7 @@ definePageMeta({
 
           <div class="rounded-[1.75rem] bg-accent px-5 py-5">
             <p class="text-sm text-muted-foreground">
-              Order total
+              {{ $t('checkout.order_total') }}
             </p>
             <p class="mt-2 text-4xl font-semibold tracking-[-0.06em]">
               {{ Intl.NumberFormat('en-US').format(checkout.order.amountCents / 100) }} VND
@@ -403,7 +404,7 @@ definePageMeta({
               {{ checkout.event.title }}
             </p>
             <p class="mt-1">
-              {{ checkoutSessionStartsAt ? new Date(checkoutSessionStartsAt).toLocaleString() : 'Session time will be announced by the organizer.' }}
+              {{ checkoutSessionStartsAt ? new Date(checkoutSessionStartsAt).toLocaleString() : $t('checkout.session_time_tba') }}
             </p>
           </div>
         </div>
@@ -421,10 +422,10 @@ definePageMeta({
         <div class="grid gap-8 lg:grid-cols-2">
           <div class="space-y-3">
             <h2 class="text-3xl font-semibold tracking-[-0.05em]">
-              Finish the order inside your hold window.
+              {{ $t('checkout.finish_order_title') }}
             </h2>
             <p class="text-sm leading-7 text-muted-foreground">
-              We use this information for the digital ticket payload and dashboard demographics. You can keep optional fields minimal if you prefer.
+              {{ $t('checkout.finish_order_desc') }}
             </p>
           </div>
 
@@ -436,7 +437,7 @@ definePageMeta({
               >
                 <Field :data-invalid="!!errors.length">
                   <FieldLabel for="checkout-customer-name">
-                    Full name
+                    {{ $t('checkout.full_name') }}
                   </FieldLabel>
                   <Input
                     id="checkout-customer-name"
@@ -458,7 +459,7 @@ definePageMeta({
               >
                 <Field :data-invalid="!!errors.length">
                   <FieldLabel for="checkout-customer-email">
-                    Email
+                    {{ $t('checkout.email') }}
                   </FieldLabel>
                   <Input
                     id="checkout-customer-email"
@@ -481,7 +482,7 @@ definePageMeta({
               >
                 <Field :data-invalid="!!errors.length">
                   <FieldLabel for="checkout-customer-phone">
-                    Phone
+                    {{ $t('checkout.phone') }}
                   </FieldLabel>
                   <Input
                     id="checkout-customer-phone"
@@ -490,7 +491,7 @@ definePageMeta({
                     :aria-invalid="!!errors.length"
                     @update:model-value="field.onChange"
                   />
-                  <FieldDescription>Optional. Useful for organizer outreach on schedule changes.</FieldDescription>
+                  <FieldDescription>{{ $t('checkout.phone_desc') }}</FieldDescription>
                   <FieldError
                     v-if="errors.length"
                     :errors="errors"
@@ -505,7 +506,7 @@ definePageMeta({
                 >
                   <Field :data-invalid="!!errors.length">
                     <FieldLabel for="checkout-age-bracket">
-                      Age bracket
+                      {{ $t('checkout.age_bracket') }}
                     </FieldLabel>
                     <Select
                       :model-value="field.value"
@@ -516,7 +517,7 @@ definePageMeta({
                         :aria-invalid="!!errors.length"
                         @blur="field.onBlur"
                       >
-                        <SelectValue :placeholder="field.value ? undefined : 'Select age bracket'" />
+                        <SelectValue :placeholder="field.value ? undefined : $t('checkout.age_bracket_placeholder')" />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="18-24">
@@ -546,7 +547,7 @@ definePageMeta({
                 >
                   <Field :data-invalid="!!errors.length">
                     <FieldLabel for="checkout-customer-gender">
-                      Gender
+                      {{ $t('checkout.gender') }}
                     </FieldLabel>
                     <Select
                       :model-value="field.value"
@@ -557,7 +558,7 @@ definePageMeta({
                         :aria-invalid="!!errors.length"
                         @blur="field.onBlur"
                       >
-                        <SelectValue :placeholder="field.value ? undefined : 'Select gender'" />
+                        <SelectValue :placeholder="field.value ? undefined : $t('checkout.gender_placeholder')" />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="female">
@@ -588,10 +589,10 @@ definePageMeta({
         <div class="space-y-6 border-t border-border pt-8">
           <div class="space-y-2">
             <h3 class="text-2xl font-semibold tracking-[-0.04em]">
-              Ticket assignments
+              {{ $t('checkout.ticket_assignments_title') }}
             </h3>
             <p class="text-sm leading-7 text-muted-foreground">
-              Assign each ticket to your account, a saved attendee, or enter details manually.
+              {{ $t('checkout.ticket_assignments_desc') }}
             </p>
           </div>
 
@@ -615,21 +616,21 @@ definePageMeta({
               <div class="space-y-4">
                 <div class="space-y-2">
                   <FieldLabel :for="`source-${draft.eventSeatId}`">
-                    Assignment method
+                    {{ $t('checkout.assignment_method') }}
                   </FieldLabel>
                   <Select v-model="draft.source">
                     <SelectTrigger :id="`source-${draft.eventSeatId}`">
-                      <SelectValue placeholder="Select method" />
+                      <SelectValue :placeholder="$t('checkout.assignment_placeholder')" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="account">
-                        Use buyer details
+                        {{ $t('checkout.use_buyer_details') }}
                       </SelectItem>
                       <SelectItem value="saved-attendee">
-                        Select saved attendee
+                        {{ $t('checkout.select_saved_attendee') }}
                       </SelectItem>
                       <SelectItem value="manual">
-                        Enter manually
+                        {{ $t('checkout.enter_manually') }}
                       </SelectItem>
                     </SelectContent>
                   </Select>
@@ -639,7 +640,7 @@ definePageMeta({
                   v-if="draft.source === 'account'"
                   class="rounded-xl border border-black/5 bg-accent/50 p-4 text-sm text-muted-foreground dark:border-white/10"
                 >
-                  Ticket holder details are automatically synced with the buyer details above.
+                  {{ $t('checkout.auto_synced_note') }}
                 </div>
 
                 <div
@@ -647,11 +648,11 @@ definePageMeta({
                   class="space-y-2"
                 >
                   <FieldLabel :for="`attendee-${draft.eventSeatId}`">
-                    Saved attendee
+                    {{ $t('checkout.saved_attendee_label') }}
                   </FieldLabel>
                   <Select v-model="draft.savedAttendeeId">
                     <SelectTrigger :id="`attendee-${draft.eventSeatId}`">
-                      <SelectValue placeholder="Choose an attendee" />
+                      <SelectValue :placeholder="$t('checkout.attendee_placeholder')" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem
@@ -671,7 +672,7 @@ definePageMeta({
                 >
                   <div class="space-y-2">
                     <FieldLabel :for="`name-${draft.eventSeatId}`">
-                      Legal name
+                      {{ $t('checkout.legal_name') }}
                     </FieldLabel>
                     <Input
                       :id="`name-${draft.eventSeatId}`"
@@ -683,7 +684,7 @@ definePageMeta({
 
                   <div class="space-y-2">
                     <FieldLabel :for="`email-${draft.eventSeatId}`">
-                      Email
+                      {{ $t('checkout.email') }}
                     </FieldLabel>
                     <Input
                       :id="`email-${draft.eventSeatId}`"
@@ -696,7 +697,7 @@ definePageMeta({
 
                   <div class="space-y-2">
                     <FieldLabel :for="`phone-${draft.eventSeatId}`">
-                      Phone
+                      {{ $t('checkout.phone') }}
                     </FieldLabel>
                     <Input
                       :id="`phone-${draft.eventSeatId}`"
@@ -708,14 +709,14 @@ definePageMeta({
 
                   <div class="space-y-2">
                     <FieldLabel :for="`gender-${draft.eventSeatId}`">
-                      Gender
+                      {{ $t('checkout.gender') }}
                     </FieldLabel>
                     <Select
                       v-model="draft.holder.gender"
                       :disabled="draft.source === 'account'"
                     >
                       <SelectTrigger :id="`gender-${draft.eventSeatId}`">
-                        <SelectValue placeholder="Select gender" />
+                        <SelectValue :placeholder="$t('checkout.gender_placeholder')" />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="female">
@@ -736,7 +737,7 @@ definePageMeta({
 
                   <div class="space-y-2">
                     <FieldLabel :for="`birth-${draft.eventSeatId}`">
-                      Birth date
+                      {{ $t('checkout.birth_date') }}
                     </FieldLabel>
                     <Input
                       :id="`birth-${draft.eventSeatId}`"
@@ -748,7 +749,7 @@ definePageMeta({
 
                   <div class="space-y-2">
                     <FieldLabel :for="`preferred-${draft.eventSeatId}`">
-                      Preferred name
+                      {{ $t('checkout.preferred_name') }}
                     </FieldLabel>
                     <Input
                       :id="`preferred-${draft.eventSeatId}`"
@@ -759,7 +760,7 @@ definePageMeta({
 
                   <div class="space-y-2">
                     <FieldLabel :for="`guardian-name-${draft.eventSeatId}`">
-                      Guardian name
+                      {{ $t('checkout.guardian_name') }}
                     </FieldLabel>
                     <Input
                       :id="`guardian-name-${draft.eventSeatId}`"
@@ -770,7 +771,7 @@ definePageMeta({
 
                   <div class="space-y-2">
                     <FieldLabel :for="`guardian-email-${draft.eventSeatId}`">
-                      Guardian email
+                      {{ $t('checkout.guardian_email') }}
                     </FieldLabel>
                     <Input
                       :id="`guardian-email-${draft.eventSeatId}`"
@@ -782,7 +783,7 @@ definePageMeta({
 
                   <div class="space-y-2">
                     <FieldLabel :for="`guardian-phone-${draft.eventSeatId}`">
-                      Guardian phone
+                      {{ $t('checkout.guardian_phone') }}
                     </FieldLabel>
                     <Input
                       :id="`guardian-phone-${draft.eventSeatId}`"
@@ -793,7 +794,7 @@ definePageMeta({
 
                   <div class="space-y-2 md:col-span-2">
                     <FieldLabel :for="`notes-${draft.eventSeatId}`">
-                      Notes
+                      {{ $t('checkout.notes') }}
                     </FieldLabel>
                     <Input
                       :id="`notes-${draft.eventSeatId}`"
@@ -804,7 +805,7 @@ definePageMeta({
 
                   <div class="space-y-2 md:col-span-2">
                     <FieldLabel :for="`access-${draft.eventSeatId}`">
-                      Accessibility needs
+                      {{ $t('checkout.accessibility_needs') }}
                     </FieldLabel>
                     <Input
                       :id="`access-${draft.eventSeatId}`"
@@ -822,10 +823,10 @@ definePageMeta({
                         :for="`save-${draft.eventSeatId}`"
                         class="text-base"
                       >
-                        Save as attendee
+                        {{ $t('checkout.save_as_attendee_label') }}
                       </FieldLabel>
                       <p class="text-sm text-muted-foreground">
-                        Save this person for faster checkout next time.
+                        {{ $t('checkout.save_as_attendee_desc') }}
                       </p>
                     </div>
                     <Switch
@@ -846,7 +847,7 @@ definePageMeta({
           :is-loading="isSubmitting"
           :disabled="isHoldExpired"
         >
-          Confirm order
+          {{ $t('checkout.confirm_order') }}
         </Button>
       </form>
     </section>
@@ -867,7 +868,7 @@ definePageMeta({
         <div class="flex flex-col gap-4 p-6 md:flex-row md:items-center md:justify-between md:p-8">
           <div>
             <p class="mt-3 text-sm text-muted-foreground">
-              Your issued tickets are now available in your account wallet.
+              {{ $t('checkout.tickets_in_wallet') }}
             </p>
           </div>
 
@@ -876,7 +877,7 @@ definePageMeta({
             class="rounded-full"
           >
             <NuxtLink to="/tickets">
-              Open my tickets
+              {{ $t('checkout.open_my_tickets') }}
             </NuxtLink>
           </Button>
         </div>

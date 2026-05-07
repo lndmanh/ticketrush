@@ -101,14 +101,14 @@ definePageMeta({
       <div class="space-y-6">
         <Card>
           <CardHeader>
-            <CardTitle>Event Details</CardTitle>
+            <CardTitle>{{ $t('event_detail.card_title') }}</CardTitle>
           </CardHeader>
           <CardContent class="grid gap-4">
             <div class="flex items-start gap-4">
               <CalendarRange class="mt-0.5 size-4 text-muted-foreground" />
               <div>
                 <p class="text-sm font-medium leading-none">
-                  Date Range
+                  {{ $t('event_detail.date_range_label') }}
                 </p>
                 <p class="mt-1 text-sm text-muted-foreground">
                   {{ dateRangeLabel }}
@@ -119,7 +119,7 @@ definePageMeta({
               <MapPin class="mt-0.5 size-4 text-muted-foreground" />
               <div>
                 <p class="text-sm font-medium leading-none">
-                  Location
+                  {{ $t('event_detail.location_label') }}
                 </p>
                 <p class="mt-1 text-sm text-muted-foreground">
                   {{ venue?.name || 'TBA' }}
@@ -130,7 +130,7 @@ definePageMeta({
               <Ticket class="mt-0.5 size-4 text-muted-foreground" />
               <div>
                 <p class="text-sm font-medium leading-none">
-                  Ticket Releases
+                  {{ $t('event_detail.ticket_releases_label') }}
                 </p>
                 <p class="mt-1 text-sm text-muted-foreground">
                   {{ releaseCount }} across {{ sortedSessions.length }} session{{ sortedSessions.length === 1 ? '' : 's' }}
@@ -145,10 +145,10 @@ definePageMeta({
     <section class="space-y-6">
       <div class="flex flex-col gap-2">
         <h2 class="text-2xl font-semibold tracking-tight">
-          Select a Session
+          {{ $t('event_detail.select_session_title') }}
         </h2>
         <p class="text-sm text-muted-foreground">
-          Choose a date and time to view available seats and book tickets.
+          {{ $t('event_detail.select_session_desc') }}
         </p>
       </div>
 
@@ -164,7 +164,7 @@ definePageMeta({
 
       <Card v-if="sortedSessions.length === 0">
         <CardContent class="p-8 text-center text-sm text-muted-foreground">
-          Sessions will appear here once the organizer publishes the schedule.
+          {{ $t('event_detail.sessions_empty') }}
         </CardContent>
       </Card>
     </section>

@@ -9,6 +9,7 @@ import type { EventSessionDetailResponse } from '~~/types/events'
 import type { SessionSeatMapResponse } from '~~/types/seatmap'
 import type { EventSessionGateResponse, HoldData } from '~~/types/ticketing'
 
+const { t } = useI18n()
 const route = useRoute()
 const slug = computed(() => route.params.slug.toString())
 const sessionPublicId = computed(() => route.params.sessionId.toString())
@@ -159,10 +160,10 @@ async function reserveSeats() {
   catch (error) {
     if (error && typeof error === 'object') {
       const statusCode = getErrorStatusCode(error)
-      const message = getErrorMessage(error, 'We could not open checkout. Please try again.')
+      const message = getErrorMessage(error, t('seats_toast.checkout_failed'))
 
       if (statusCode === 409) {
-        toast.error('Some of the selected seats are no longer available. We refreshed the map for you.')
+        toast.error(t('seats_toast.seats_taken'))
         return
       }
 
@@ -179,7 +180,7 @@ async function reserveSeats() {
       return
     }
 
-    toast.error('We could not open checkout. Please try again.')
+    toast.error(t('seats_toast.checkout_failed'))
   }
   finally {
     isSubmitting.value = false
@@ -197,7 +198,7 @@ watch(seatMap, (value) => {
   const nextSelectedSeatIds = selectedSeatIds.value.filter(seatId => availableSeatIds.has(seatId))
   if (nextSelectedSeatIds.length !== selectedSeatIds.value.length) {
     selectedSeatIds.value = nextSelectedSeatIds
-    toast.error('One or more selected seats were taken by another customer.')
+    toast.error(t('seats_toast.seats_taken_by_other'))
   }
 }, { deep: true })
 
@@ -239,17 +240,17 @@ definePageMeta({
           </div>
           <div class="flex gap-4 rounded-lg border bg-muted/40 p-3 text-sm">
             <div class="flex flex-col">
-              <span class="text-xs text-muted-foreground">Available</span>
+              <span class="text-xs text-muted-foreground">{{ $t('common.available') }}</span>
               <span class="font-medium">{{ inventorySummary.available }}</span>
             </div>
             <div class="w-px bg-border" />
             <div class="flex flex-col">
-              <span class="text-xs text-muted-foreground">Held</span>
+              <span class="text-xs text-muted-foreground">{{ $t('common.held') }}</span>
               <span class="font-medium">{{ inventorySummary.locked }}</span>
             </div>
             <div class="w-px bg-border" />
             <div class="flex flex-col">
-              <span class="text-xs text-muted-foreground">Sold</span>
+              <span class="text-xs text-muted-foreground">{{ $t('common.sold') }}</span>
               <span class="font-medium">{{ inventorySummary.sold }}</span>
             </div>
           </div>
@@ -258,7 +259,7 @@ definePageMeta({
         <Card>
           <CardHeader>
             <CardTitle class="text-base">
-              Seat map
+              {{ $t('seats.seat_map') }}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -281,9 +282,9 @@ definePageMeta({
               <ShoppingBag class="size-4 text-muted-foreground" />
             </div>
             <div>
-              <CardTitle>Selection summary</CardTitle>
+              <CardTitle>{{ $t('seats.selection_summary') }}</CardTitle>
               <p class="text-sm text-muted-foreground">
-                Choose up to 10 seats, then continue straight to checkout.
+                {{ $t('seats.selection_summary_desc') }}
               </p>
             </div>
           </div>
@@ -296,10 +297,10 @@ definePageMeta({
                 <Users class="mt-0.5 size-4 text-muted-foreground" />
                 <div>
                   <p class="text-xs text-muted-foreground">
-                    Selected
+                    {{ $t('common.selected') }}
                   </p>
                   <p class="text-sm font-medium text-foreground">
-                    {{ selectedSeatIds.length }} seats
+                    {{ $t('seats.selected_seats', { count: selectedSeatIds.length }) }}
                   </p>
                 </div>
               </CardContent>
@@ -309,10 +310,10 @@ definePageMeta({
                 <Clock3 class="mt-0.5 size-4 text-muted-foreground" />
                 <div>
                   <p class="text-xs text-muted-foreground">
-                    Hold window
+                    {{ $t('seats.hold_window') }}
                   </p>
                   <p class="text-sm font-medium text-foreground">
-                    10 minutes
+                    {{ $t('seats.hold_minutes') }}
                   </p>
                 </div>
               </CardContent>
@@ -322,10 +323,10 @@ definePageMeta({
                 <RefreshCw class="mt-0.5 size-4 text-muted-foreground" />
                 <div>
                   <p class="text-xs text-muted-foreground">
-                    Inventory
+                    {{ $t('common.inventory') }}
                   </p>
                   <p class="text-sm font-medium text-foreground">
-                    Live updating
+                    {{ $t('seats.live_updating') }}
                   </p>
                 </div>
               </CardContent>
@@ -346,7 +347,7 @@ definePageMeta({
                     {{ seat.sectionNameSnapshot }} · {{ seat.rowLabelSnapshot }}{{ seat.rowLabelSnapshot ? '-' : '' }}{{ seat.seatLabelSnapshot }}
                   </p>
                   <p class="text-sm text-muted-foreground">
-                    Reserved for checkout after you continue.
+                    {{ $t('seats.reserved_for_checkout') }}
                   </p>
                 </div>
                 <p class="font-mono text-sm font-medium text-foreground">
@@ -359,14 +360,14 @@ definePageMeta({
               v-if="selectedSeats.length === 0"
               class="rounded-md border border-dashed p-4 text-sm text-muted-foreground"
             >
-              Pick seats from the map to build your order.
+              {{ $t('seats.pick_seats_prompt') }}
             </div>
           </div>
 
           <Card class="py-4">
             <CardContent class="space-y-2 px-4">
               <p class="text-xs text-muted-foreground">
-                Subtotal
+                {{ $t('common.subtotal') }}
               </p>
               <p class="text-2xl font-semibold tracking-tight text-foreground">
                 {{ formatCurrency(totalValue) }}
@@ -382,7 +383,7 @@ definePageMeta({
               :is-loading="isSubmitting"
               @click="reserveSeats"
             >
-              Continue to checkout
+              {{ $t('seats.continue_to_checkout') }}
             </Button>
             <Button
               class="w-full"
@@ -390,7 +391,7 @@ definePageMeta({
               variant="outline"
               @click="refreshSeatMap"
             >
-              Refresh map
+              {{ $t('seats.refresh_map') }}
             </Button>
           </div>
         </CardContent>

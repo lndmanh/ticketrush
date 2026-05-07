@@ -7,6 +7,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { eventPricingFormSchema, getEventSessionTimingIssues } from '#shared/schemas/ticketingSchema'
 import type { EventPricingFormInput } from '#shared/schemas/ticketingSchema'
 
+const { t } = useI18n()
+
 const route = useRoute()
 const eventId = computed(() => Number(route.params.id))
 const isSaving = ref(false)
@@ -264,11 +266,11 @@ const onSubmit = handleSubmit(
         },
       })
 
-      toast.success('Event pricing updated')
+      toast.success(t('admin_event_pricing.updated'))
       await refreshDetail()
     }
     catch (err) {
-      toast.error(getErrorMessage(err, 'Failed to update pricing'))
+      toast.error(getErrorMessage(err, t('admin_event_pricing.update_failed')))
     }
     finally {
       isSaving.value = false
@@ -307,9 +309,9 @@ definePageMeta({
       <CardHeader class="border-b bg-muted/20">
         <div class="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
           <div>
-            <CardTitle>Pricing & scheduling</CardTitle>
+            <CardTitle>{{ $t('admin_event_pricing.title') }}</CardTitle>
             <p class="mt-1 text-sm text-muted-foreground">
-              Edit the event sessions buyers will see on the public event page.
+              {{ $t('admin_event_pricing.desc') }}
             </p>
           </div>
           <Badge
@@ -334,9 +336,9 @@ definePageMeta({
               <LockKeyhole />
             </ItemMedia>
             <ItemContent>
-              <ItemTitle>Pricing is read-only</ItemTitle>
+              <ItemTitle>{{ $t('admin_event_pricing.read_only_title') }}</ItemTitle>
               <ItemDescription>
-                Switch the event back to draft if you need to make pricing or scheduling changes.
+                {{ $t('admin_event_pricing.read_only_desc') }}
               </ItemDescription>
             </ItemContent>
           </Item>
@@ -352,7 +354,7 @@ definePageMeta({
 
           <div class="flex flex-col gap-3 border-t pt-5 sm:flex-row sm:items-center sm:justify-between">
             <p class="text-sm text-muted-foreground">
-              Changes apply to every session listed above.
+              {{ $t('admin_event_pricing.changes_note') }}
             </p>
             <Button
               type="submit"
@@ -360,7 +362,7 @@ definePageMeta({
               :disabled="isLockedConfiguration || isSaving"
               :is-loading="isSaving"
             >
-              Save changes
+              {{ $t('admin_event_pricing.save_changes') }}
             </Button>
           </div>
         </form>

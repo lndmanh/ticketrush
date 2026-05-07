@@ -500,12 +500,12 @@ const onSubmit = handleSubmit(
         body: validation.data,
       })
 
-      toast.success('Venue updated')
+      toast.success(t('admin_venue_detail.updated'))
       savedVenueSnapshot.value = currentVenueSnapshot.value
       await refreshVenue()
     }
     catch {
-      toast.error('We could not update the venue blueprint')
+      toast.error(t('admin_venue_detail.update_failed'))
     }
     finally {
       isSaving.value = false
@@ -536,6 +536,8 @@ definePageMeta({
   middleware: ['auth', 'admin'],
   layout: 'empty',
 })
+
+const { t } = useI18n()
 </script>
 
 <template>
@@ -564,7 +566,7 @@ definePageMeta({
               {{ venueDetail.venue.name }}
             </h1>
             <p class="text-sm text-muted-foreground">
-              Venue setup
+              {{ $t('admin_venue_detail.setup_label') }}
             </p>
           </div>
         </div>
@@ -574,22 +576,22 @@ definePageMeta({
             <div class="inline-flex items-center gap-2 rounded-md border bg-muted/30 px-2.5 py-1.5">
               <LayoutGrid class="size-3.5" />
               <span class="font-medium text-foreground">{{ totalSections }}</span>
-              <span>sections</span>
+              <span>{{ $t('admin_venue_detail.sections_stat') }}</span>
             </div>
             <div class="inline-flex items-center gap-2 rounded-md border bg-muted/30 px-2.5 py-1.5">
               <Rows3 class="size-3.5" />
               <span class="font-medium text-foreground">{{ totalRows }}</span>
-              <span>rows</span>
+              <span>{{ $t('admin_venue_detail.rows_stat') }}</span>
             </div>
             <div class="inline-flex items-center gap-2 rounded-md border bg-muted/30 px-2.5 py-1.5">
               <Users class="size-3.5" />
               <span class="font-medium text-foreground">{{ totalCapacity }}</span>
-              <span>capacity</span>
+              <span>{{ $t('admin_venue_detail.capacity_stat') }}</span>
             </div>
             <div class="inline-flex items-center gap-2 rounded-md border bg-muted/30 px-2.5 py-1.5">
               <CalendarRange class="size-3.5" />
               <span class="font-medium text-foreground">{{ linkedEvents.length }}</span>
-              <span>events</span>
+              <span>{{ $t('admin_venue_detail.events_stat') }}</span>
             </div>
           </div>
 
@@ -648,10 +650,10 @@ definePageMeta({
             >
               <CardContent class="px-4 text-center">
                 <p class="text-sm font-medium">
-                  Stage
+                  {{ $t('admin_venue_detail.stage') }}
                 </p>
                 <p class="text-xs text-muted-foreground">
-                  Front of house
+                  {{ $t('admin_venue_detail.front_of_house') }}
                 </p>
               </CardContent>
             </Card>
@@ -660,7 +662,7 @@ definePageMeta({
               <Card class="gap-2 py-3">
                 <CardContent class="px-4">
                   <p class="text-xs text-muted-foreground">
-                    Focus
+                    {{ $t('admin_venue_detail.focus_label') }}
                   </p>
                   <p class="text-sm font-medium">
                     {{ highlightedSection?.label ?? 'All sections' }}
@@ -670,7 +672,7 @@ definePageMeta({
               <Card class="gap-2 py-3">
                 <CardContent class="px-4">
                   <p class="text-xs text-muted-foreground">
-                    Largest
+                    {{ $t('admin_venue_detail.largest_label') }}
                   </p>
                   <p class="text-sm font-medium">
                     {{ largestSection?.name ?? 'Not set' }}
@@ -680,7 +682,7 @@ definePageMeta({
               <Card class="gap-2 py-3">
                 <CardContent class="px-4">
                   <p class="text-xs text-muted-foreground">
-                    Accessible
+                    {{ $t('admin_venue_detail.accessible_label') }}
                   </p>
                   <p class="text-sm font-medium">
                     {{ totalAccessibleSeats }}
@@ -781,7 +783,7 @@ definePageMeta({
               @click="activeConfigTab = 'details'"
             >
               <Building2 />
-              Details
+              {{ $t('admin_venue_detail.tab_details') }}
             </Button>
             <Button
               type="button"
@@ -790,7 +792,7 @@ definePageMeta({
               @click="activeConfigTab = 'layout'"
             >
               <LayoutGrid />
-              Layout
+              {{ $t('admin_venue_detail.tab_layout') }}
             </Button>
             <Button
               type="button"
@@ -799,7 +801,7 @@ definePageMeta({
               @click="activeConfigTab = 'events'"
             >
               <CalendarRange />
-              Events
+              {{ $t('admin_venue_detail.tab_events') }}
             </Button>
           </CardHeader>
 
@@ -815,7 +817,7 @@ definePageMeta({
                 >
                   <Field :data-invalid="!!errors.length">
                     <FieldLabel for="edit-venue-name">
-                      Venue name
+                    {{ $t('admin_venue_detail.venue_name_label') }}
                     </FieldLabel>
                     <Input
                       id="edit-venue-name"
@@ -947,7 +949,7 @@ definePageMeta({
                 >
                   <Field :data-invalid="!!errors.length">
                     <FieldLabel for="edit-venue-cover-image">
-                      Cover image URL
+                    {{ $t('admin_venue_detail.cover_image_label') }}
                     </FieldLabel>
                     <Input
                       id="edit-venue-cover-image"
@@ -956,7 +958,7 @@ definePageMeta({
                       :aria-invalid="!!errors.length"
                       @update:model-value="field.onChange"
                     />
-                    <FieldDescription>Optional</FieldDescription>
+                    <FieldDescription>{{ $t('admin_venue_detail.optional') }}</FieldDescription>
                     <FieldError
                       v-if="errors.length"
                       :errors="errors"
@@ -991,7 +993,7 @@ definePageMeta({
                       size="sm"
                       @click="applyBlueprintPreset(preset)"
                     >
-                      Apply
+                      {{ $t('admin_venue_detail.apply_preset') }}
                     </Button>
                   </CardContent>
                 </Card>
@@ -1010,20 +1012,20 @@ definePageMeta({
                 <Card class="gap-2 py-3">
                   <CardContent class="px-4">
                     <p class="text-xs text-muted-foreground">
-                      Dependencies
+                    {{ $t('admin_venue_detail.dependencies_label') }}
                     </p>
                     <p class="text-sm font-medium">
-                      {{ linkedEvents.length }} linked events
+                      {{ $t('admin_venue_detail.linked_events_count', { count: linkedEvents.length }) }}
                     </p>
                   </CardContent>
                 </Card>
                 <Card class="gap-2 py-3">
                   <CardContent class="px-4">
                     <p class="text-xs text-muted-foreground">
-                      Rule
+                    {{ $t('admin_venue_detail.rule_label') }}
                     </p>
                     <p class="text-sm font-medium">
-                      Future launches only
+                      {{ $t('admin_venue_detail.future_launches_only') }}
                     </p>
                   </CardContent>
                 </Card>
@@ -1033,15 +1035,15 @@ definePageMeta({
                 <CardContent class="grid gap-3 px-4 md:grid-cols-3">
                   <div>
                     <p class="text-xs text-muted-foreground">
-                      Capacity
+                    {{ $t('admin_venue_detail.capacity_label') }}
                     </p>
                     <p class="text-sm font-medium">
-                      {{ totalCapacity }} seats
+                      {{ $t('admin_venue_detail.capacity_seats', { count: totalCapacity }) }}
                     </p>
                   </div>
                   <div>
                     <p class="text-xs text-muted-foreground">
-                      Largest
+                    {{ $t('admin_venue_detail.largest_label') }}
                     </p>
                     <p class="text-sm font-medium">
                       {{ largestSection?.name ?? 'Not set' }}
@@ -1049,10 +1051,10 @@ definePageMeta({
                   </div>
                   <div>
                     <p class="text-xs text-muted-foreground">
-                      Snapshot
+                    {{ $t('admin_venue_detail.snapshot_label') }}
                     </p>
                     <p class="text-sm font-medium">
-                      Existing seats stay frozen
+                      {{ $t('admin_venue_detail.snapshot_desc') }}
                     </p>
                   </div>
                 </CardContent>
@@ -1062,7 +1064,7 @@ definePageMeta({
 
               <div class="space-y-3">
                 <p class="text-sm font-medium">
-                  Linked events
+                  {{ $t('admin_venue_detail.linked_events_title') }}
                 </p>
 
                 <div
@@ -1094,7 +1096,7 @@ definePageMeta({
                   class="py-6"
                 >
                   <CardContent class="px-4 text-sm text-muted-foreground">
-                    No linked events.
+                    {{ $t('admin_venue_detail.no_linked_events') }}
                   </CardContent>
                 </Card>
               </div>
