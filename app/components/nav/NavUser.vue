@@ -21,6 +21,7 @@ import {
 import ThemeSwitcher from '@/components/ThemeSwitcher.vue'
 
 const { user, clear, loggedIn } = useUserSession()
+const { t } = useI18n()
 
 function getInitials(name: string) {
   return name.split(' ').map(n => n[0]).join('').toUpperCase()
@@ -57,7 +58,7 @@ function logout() {
           <ChevronsUpDown class="ml-auto size-4" />
         </template>
         <template v-else>
-          <span class="font-medium">Sign In</span>
+          <span class="font-medium">{{ $t('common.sign_in') }}</span>
           <ChevronsUpDown class="ml-auto size-4" />
         </template>
       </SidebarMenuButton>
@@ -74,25 +75,25 @@ function logout() {
           @click="navigateTo('/admin')"
         >
           <UsersIcon />
-          Admin
+          {{ $t('common.admin') }}
         </DropdownMenuItem>
         <DropdownMenuItem
           v-if="loggedIn"
           @click="navigateTo('/settings/account')"
         >
           <UserIcon />
-          Account
+          {{ $t('common.account') }}
         </DropdownMenuItem>
         <DropdownMenuItem
           v-else
           @click="navigateTo('/auth/login')"
         >
           <LogIn />
-          Sign In
+          {{ $t('common.sign_in') }}
         </DropdownMenuItem>
         <DropdownMenuItem @click="navigateTo('/settings')">
           <Settings />
-          Settings
+          {{ $t('common.settings') }}
         </DropdownMenuItem>
       </DropdownMenuGroup>
 
@@ -101,7 +102,7 @@ function logout() {
         <DropdownMenuSub>
           <DropdownMenuSubTrigger>
             <SunMoon />
-            Appearance
+            {{ $t('common.appearance') }}
           </DropdownMenuSubTrigger>
           <DropdownMenuPortal>
             <DropdownMenuSubContent>
@@ -117,7 +118,7 @@ function logout() {
         @click="logout"
       >
         <LogOut />
-        Log out
+        {{ $t('common.log_out') }}
       </DropdownMenuItem>
     </DropdownMenuContent>
   </DropdownMenu>

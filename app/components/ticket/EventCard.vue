@@ -21,6 +21,8 @@ interface EventCardProps {
 
 const props = defineProps<EventCardProps>()
 
+const { t } = useI18n()
+
 const firstSessionStartsAt = computed(() => {
   const sessions = props.event.sessions ?? []
   const firstSession = [...sessions].sort((first, second) => {
@@ -72,22 +74,22 @@ const startsAtLabel = computed(() => {
                   {{ event.title }}
                 </h3>
                 <p class="max-w-[36rem] break-words text-sm leading-6 text-white/76 md:text-base md:leading-7">
-                  {{ event.subtitle || event.venue?.name || 'Flash-sale-ready ticketing with reserved seating.' }}
+                  {{ event.subtitle || event.venue?.name || $t('event_card.default_subtitle') }}
                 </p>
               </div>
 
               <div class="grid gap-3 rounded-[1.75rem] border border-white/10 bg-black/35 p-4 text-white backdrop-blur-sm md:grid-cols-[1fr_auto] md:items-end">
                 <div class="min-w-0 space-y-1">
                   <p class="text-[11px] uppercase tracking-[0.18em] text-white/64">
-                    Venue
+                    {{ $t('event_card.venue_label') }}
                   </p>
                   <p class="break-words text-sm leading-6 text-white/86 md:text-base">
-                    {{ event.venue?.name || 'Venue to be announced' }}
+                    {{ event.venue?.name || $t('event_card.venue_tba') }}
                   </p>
                 </div>
                 <div class="justify-self-start md:justify-self-end">
                   <span class="inline-flex max-w-full items-center rounded-full border border-white/10 bg-white/8 px-3 py-1.5 text-xs uppercase tracking-[0.18em] text-white/72">
-                    {{ event.venue?.city || 'Live' }}
+                    {{ event.venue?.city || $t('common.live') }}
                   </span>
                 </div>
                 <div
@@ -95,7 +97,7 @@ const startsAtLabel = computed(() => {
                   class="justify-self-start md:justify-self-end"
                 >
                   <span class="inline-flex max-w-full items-center rounded-full border border-white/10 bg-white/8 px-3 py-1.5 text-xs uppercase tracking-[0.18em] text-white/72">
-                    {{ event.sessions.length }} session{{ event.sessions.length === 1 ? '' : 's' }}
+                    {{ $t('event_card.session_count', event.sessions!.length) }}
                   </span>
                 </div>
               </div>

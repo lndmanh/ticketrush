@@ -31,7 +31,7 @@ withDefaults(defineProps<{
           @click="navigateTo('/')"
         >
           <HomeIcon />
-          <span class="sr-only">Go Home</span>
+          <span class="sr-only">{{ $t('common.go_home') }}</span>
         </Button>
         <Separator
           orientation="vertical"

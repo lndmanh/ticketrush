@@ -106,7 +106,7 @@ const { loggedIn, user } = useUserSession()
           @click="navigateTo('/')"
         >
           <HomeIcon />
-          <span class="sr-only">Toggle Sidebar</span>
+          <span class="sr-only">{{ $t('common.toggle_menu') }}</span>
         </Button>
         <Separator
           orientation="vertical"
@@ -155,7 +155,7 @@ const { loggedIn, user } = useUserSession()
                       class="size-8"
                     >
                       <BreadcrumbEllipsis class="size-4" />
-                      <span class="sr-only">Open breadcrumb path</span>
+                      <span class="sr-only">{{ $t('nav.open_breadcrumb') }}</span>
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent
@@ -215,7 +215,7 @@ const { loggedIn, user } = useUserSession()
             <LogInIcon />
             <span
               class="hidden sm:flex"
-            >Sign In</span>
+            >{{ $t('common.sign_in') }}</span>
           </Button>
           <component
             :is="titleControls"

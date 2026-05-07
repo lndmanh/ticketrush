@@ -4,6 +4,8 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import type { PublicEventSessionSummary, PublicTicketTypeSummary } from '~~/types/events'
 
+const { t } = useI18n()
+
 const props = defineProps<{
   session: PublicEventSessionSummary
   ticketTypes: PublicTicketTypeSummary[]
@@ -48,18 +50,18 @@ const isBookable = computed(() => {
 
 const bookingLabel = computed(() => {
   if (props.session.status === 'sold_out') {
-    return 'Sold out'
+    return t('event_detail.sold_out')
   }
 
   if (new Date(props.session.salesStartAt).getTime() > Date.now()) {
-    return 'Sales open soon'
+    return t('event_detail.sales_open_soon')
   }
 
   if (new Date(props.session.salesEndAt).getTime() < Date.now()) {
-    return 'Sales ended'
+    return t('event_detail.sales_ended')
   }
 
-  return isBookable.value ? 'Book tickets' : 'Unavailable'
+  return isBookable.value ? t('event_detail.book_tickets') : t('event_detail.unavailable')
 })
 
 const lowestTicket = computed(() => {
@@ -149,7 +151,7 @@ function formatCurrency(value: number, currency: string) {
       <div class="flex flex-col gap-3 border-t pt-5 sm:flex-row sm:items-center sm:justify-between">
         <p class="inline-flex items-center gap-2 text-sm text-muted-foreground">
           <Ticket class="size-4" />
-          {{ ticketTypes.length }} release{{ ticketTypes.length === 1 ? '' : 's' }} available
+          {{ $t('event_detail.releases_available', ticketTypes.length) }}
         </p>
 
         <Button
@@ -158,7 +160,7 @@ function formatCurrency(value: number, currency: string) {
           class="rounded-full"
         >
           <NuxtLink :to="bookingPath">
-            Book tickets
+            {{ $t('event_detail.book_tickets') }}
           </NuxtLink>
         </Button>
         <Button

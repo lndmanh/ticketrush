@@ -12,7 +12,7 @@
       class="absolute rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100"
       :size="18"
     />
-    <span class="sr-only">Toggle theme</span>
+    <span class="sr-only">{{ $t('common.toggle_theme') }}</span>
   </Button>
 </template>
 

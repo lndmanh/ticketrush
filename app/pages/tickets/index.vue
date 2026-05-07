@@ -1,10 +1,11 @@
 <script setup lang="ts">
 const { data: ticketsResponse } = await useFetch('/api/tickets')
 const tickets = computed(() => ticketsResponse.value?.data ?? [])
+const { t } = useI18n()
 
 definePageMeta({
-  title: 'My tickets',
-  breadcrumb: 'Tickets',
+  title: t('tickets.page_title'),
+  breadcrumb: t('tickets.breadcrumb'),
   middleware: ['auth'],
 })
 </script>
@@ -13,14 +14,14 @@ definePageMeta({
   <main class="space-y-8 pb-16 pt-6 md:space-y-12 md:pb-24">
     <section class="space-y-4">
       <span class="section-eyebrow">
-        Ticket wallet
+        {{ $t('tickets.eyebrow') }}
       </span>
       <div class="space-y-3">
         <h1 class="display-title md:text-5xl">
-          Your issued passes, ready whenever doors open.
+          {{ $t('tickets.title') }}
         </h1>
         <p class="max-w-[40rem] text-base leading-8 text-muted-foreground">
-          Every confirmed order lands here with its digital QR token and purchase metadata.
+          {{ $t('tickets.subtitle') }}
         </p>
       </div>
     </section>
@@ -55,16 +56,16 @@ definePageMeta({
 
           <div class="grid gap-4 sm:grid-cols-3">
             <TicketSummaryMetric
-              label="Ticket"
+              :label="$t('tickets.ticket_label')"
               :value="ticket.publicId"
             />
             <TicketSummaryMetric
-              label="Seat"
-              :value="ticket.orderItem?.seatLabel || 'GA'"
+              :label="$t('tickets.seat_label')"
+              :value="ticket.orderItem?.seatLabel || $t('tickets.ga')"
             />
             <TicketSummaryMetric
-              label="Event time"
-              :value="ticket.event?.startsAt ? new Date(ticket.event.startsAt).toLocaleDateString() : 'TBA'"
+              :label="$t('tickets.event_time')"
+              :value="ticket.event?.startsAt ? new Date(ticket.event.startsAt).toLocaleDateString() : $t('common.tba')"
             />
           </div>
         </div>
@@ -78,13 +79,13 @@ definePageMeta({
       <div class="surface-core flex flex-col gap-6 py-10 md:flex-row md:items-center md:justify-between">
         <div class="space-y-3">
           <span class="section-eyebrow">
-            Empty wallet
+            {{ $t('tickets.empty_eyebrow') }}
           </span>
           <h2 class="text-3xl font-semibold tracking-[-0.05em]">
-            Your first issued ticket will appear here.
+            {{ $t('tickets.empty_title') }}
           </h2>
           <p class="max-w-[36rem] text-sm leading-7 text-muted-foreground">
-            Once you confirm a checkout, TicketRush stores the QR pass, seat assignment, and event timing in this wallet automatically.
+            {{ $t('tickets.empty_subtitle') }}
           </p>
         </div>
 
@@ -93,7 +94,7 @@ definePageMeta({
           class="rounded-full"
         >
           <NuxtLink to="/events">
-            Browse events
+            {{ $t('tickets.browse_events') }}
           </NuxtLink>
         </Button>
       </div>
