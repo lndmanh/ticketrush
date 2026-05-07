@@ -3,10 +3,10 @@
     <section class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
       <div class="space-y-1">
         <h2 class="text-2xl font-semibold text-foreground">
-          Events
+          {{ $t('admin.events.title') }}
         </h2>
         <p class="text-sm text-muted-foreground">
-          Track drafts, publish state, and launch activity.
+          {{ $t('admin.events.desc') }}
         </p>
       </div>
 
@@ -14,7 +14,7 @@
         <Button as-child>
           <NuxtLink to="/admin/events/create">
             <Rocket class="h-4 w-4" />
-            Create event
+            {{ $t('admin.events.create_event') }}
           </NuxtLink>
         </Button>
         <Button
@@ -22,7 +22,7 @@
           variant="outline"
           @click="openEvent(firstDraftEventId)"
         >
-          Open latest draft
+          {{ $t('admin.events.open_latest_draft') }}
         </Button>
       </div>
     </section>
@@ -33,10 +33,10 @@
           <CardContent class="flex h-full flex-col justify-between gap-5">
             <div class="flex items-center justify-between gap-3">
               <p class="text-[11px] font-medium uppercase tracking-[0.24em] text-background/70">
-                Tracked
+                {{ $t('admin.events.tracked') }}
               </p>
               <span class="rounded-full bg-background/12 px-2.5 py-1 text-xs font-medium text-background/90">
-                Registry
+                {{ $t('admin.events.registry') }}
               </span>
             </div>
             <div class="space-y-2">
@@ -44,7 +44,7 @@
                 {{ rows.length }}
               </p>
               <p class="text-sm leading-6 text-background/72">
-                Events currently in the admin catalog.
+                {{ $t('admin.events.catalog_desc') }}
               </p>
             </div>
           </CardContent>
@@ -54,10 +54,10 @@
           <CardContent class="flex h-full flex-col justify-between gap-5">
             <div class="flex items-center justify-between gap-3">
               <p class="text-[11px] font-medium uppercase tracking-[0.24em] text-white/70">
-                Drafts
+                {{ $t('admin.events.drafts') }}
               </p>
               <span class="rounded-full bg-white/15 px-2.5 py-1 text-xs font-medium text-white/90">
-                In progress
+                {{ $t('admin.events.in_progress') }}
               </span>
             </div>
             <div class="space-y-2">
@@ -65,7 +65,7 @@
                 {{ draftRows.length }}
               </p>
               <p class="text-sm leading-6 text-white/80">
-                Events still being shaped before launch.
+                {{ $t('admin.events.drafts_desc') }}
               </p>
             </div>
           </CardContent>
@@ -75,10 +75,10 @@
           <CardContent class="flex h-full flex-col justify-between gap-5">
             <div class="flex items-center justify-between gap-3">
               <p class="text-[11px] font-medium uppercase tracking-[0.24em] text-white/70">
-                Live
+                {{ $t('admin.events.live_label') }}
               </p>
               <span class="rounded-full bg-white/15 px-2.5 py-1 text-xs font-medium text-white/90">
-                Selling now
+                {{ $t('admin.events.selling_now') }}
               </span>
             </div>
             <div class="space-y-2">
@@ -86,7 +86,7 @@
                 {{ liveRows.length }}
               </p>
               <p class="text-sm leading-6 text-white/80">
-                Public events that are available to buyers.
+                {{ $t('admin.events.live_desc') }}
               </p>
             </div>
           </CardContent>
@@ -95,13 +95,13 @@
 
       <AdminFeaturedEventCard
         v-if="featuredPriorityEvent"
-        eyebrow="Priority event"
+        :eyebrow="$t('admin.events.priority_event')"
         :title="featuredPriorityEvent.title"
         :venue-name="featuredPriorityEvent.venueName"
         :starts-at="featuredPriorityEvent.startsAt"
         :status="featuredPriorityEvent.status"
         :href="`/admin/events/${featuredPriorityEvent.id}`"
-        open-label="Open event"
+        :open-label="$t('admin.events.open_event')"
         :leading-icon="Rocket"
       >
         <template #actions>
@@ -109,7 +109,7 @@
             v-if="featuredPriorityEvent.status === 'draft'"
             size="icon-sm"
             variant="outline"
-            title="Publish event"
+            :title="$t('admin.events.publish_event')"
             @click="publishEvent(featuredPriorityEvent.id)"
           >
             <Rocket class="size-4" />
@@ -118,7 +118,7 @@
             v-else
             size="icon-sm"
             variant="outline"
-            title="Move event back to draft"
+            :title="$t('admin.events.move_to_draft')"
             @click="unpublishEvent(featuredPriorityEvent.id)"
           >
             <ArchiveIcon class="size-4" />
@@ -140,10 +140,10 @@
     >
       <div class="flex flex-col gap-1">
         <h3 class="text-lg font-semibold tracking-[-0.03em] text-foreground">
-          Unfinished autosave draft
+          {{ $t('admin.events.unfinished_draft') }}
         </h3>
         <p class="text-sm text-muted-foreground">
-          This incomplete event form has not been saved as a real draft event yet.
+          {{ $t('admin.events.unfinished_draft_desc') }}
         </p>
       </div>
 
@@ -152,7 +152,7 @@
           <div class="min-w-0 space-y-1">
             <div class="flex flex-wrap items-center gap-2">
               <p class="truncate text-sm font-medium text-foreground">
-                {{ unfinishedDraft.titleSnapshot || 'Untitled event' }}
+                {{ unfinishedDraft.titleSnapshot || $t('admin.events.untitled_event') }}
               </p>
               <Badge variant="outline">
                 Step {{ unfinishedDraft.lastSavedStep }}
@@ -169,14 +169,14 @@
               size="sm"
               @click="discardAutosaveDraft(unfinishedDraft.draftKey)"
             >
-              Discard
+              {{ $t('admin.events.discard') }}
             </Button>
             <Button
               type="button"
               size="sm"
               @click="resumeAutosaveDraft(unfinishedDraft.draftKey)"
             >
-              Resume
+              {{ $t('admin.events.resume') }}
             </Button>
           </div>
         </CardContent>
@@ -187,11 +187,11 @@
       :columns="columns"
       :data="rows"
       :loading="loading"
-      toolbar-label="Event registry"
-      toolbar-description="Search launches and update their status."
-      search-placeholder="Search events, venues, or statuses"
-      empty-title="No events match the current view."
-      empty-description="Adjust the search or create a new event."
+      :toolbar-label="$t('admin.events.event_registry')"
+      :toolbar-description="$t('admin.events.registry_desc')"
+      :search-placeholder="$t('admin.events.search_events')"
+      :empty-title="$t('admin.events.no_match')"
+      :empty-description="$t('admin.events.no_match_desc')"
       @update:data="fetchEvents"
     />
   </div>
@@ -201,6 +201,8 @@
 import { computed, onMounted, ref } from 'vue'
 import { toast } from 'vue-sonner'
 import type { Event, Venue } from '#shared/db'
+
+const { t } = useI18n()
 import type { ApiResponse } from '~~/types/api'
 import { ArchiveIcon, Rocket } from '@lucide/vue'
 import { Button } from '@/components/ui/button'
@@ -262,7 +264,7 @@ const rows = computed<EventTableRow[]>(() => {
     subtitle: event.subtitle,
     status: event.status,
     venueId: event.venueId,
-    venueName: venueById.get(event.venueId) ?? 'Unknown venue',
+    venueName: venueById.get(event.venueId) ?? t('admin.events.unknown_venue'),
     startsAt: new Date(event.startsAt),
     salesStartAt: new Date(event.salesStartAt),
     updatedAt: event.updatedAt ? new Date(event.updatedAt) : null,
@@ -310,7 +312,7 @@ async function fetchEvents() {
     unfinishedDraft.value = autosavesResponse.data
   }
   catch (error) {
-    toast.error(getCaughtErrorMessage(error && typeof error === 'object' ? error : null, 'Failed to load events'))
+    toast.error(getCaughtErrorMessage(error && typeof error === 'object' ? error : null, t('admin.events.load_failed')))
   }
   finally {
     loading.value = false
@@ -323,7 +325,7 @@ function openEvent(eventId: number) {
 
 function getAutosaveVenueName(venueId: number | null) {
   if (!venueId) {
-    return 'No venue selected'
+    return t('admin.events.no_venue')
   }
 
   return venues.value.find(venue => venue.id === venueId)?.name ?? 'Unknown venue'
@@ -343,10 +345,10 @@ async function discardAutosaveDraft(draftKey: string) {
     if (unfinishedDraft.value?.draftKey === draftKey) {
       unfinishedDraft.value = null
     }
-    toast.success('Autosave draft discarded')
+    toast.success(t('admin.events.autosave_discarded'))
   }
   catch (error) {
-    toast.error(getCaughtErrorMessage(error && typeof error === 'object' ? error : null, 'Failed to discard autosave draft'))
+    toast.error(getCaughtErrorMessage(error && typeof error === 'object' ? error : null, t('admin.events.discard_failed')))
   }
   finally {
     loading.value = false
@@ -357,11 +359,11 @@ async function publishEvent(eventId: number) {
   try {
     loading.value = true
     await $fetch(`/api/admin/events/${eventId}/publish`, { method: 'POST' })
-    toast.success('Event published')
+    toast.success(t('admin.events.published'))
     await fetchEvents()
   }
   catch (error) {
-    toast.error(getCaughtErrorMessage(error && typeof error === 'object' ? error : null, 'Failed to publish event'))
+    toast.error(getCaughtErrorMessage(error && typeof error === 'object' ? error : null, t('admin.events.publish_failed')))
   }
   finally {
     loading.value = false
@@ -372,11 +374,11 @@ async function unpublishEvent(eventId: number) {
   try {
     loading.value = true
     await $fetch(`/api/admin/events/${eventId}/unpublish`, { method: 'POST' })
-    toast.success('Event moved back to draft')
+    toast.success(t('admin.events.unpublished'))
     await fetchEvents()
   }
   catch (error) {
-    toast.error(getCaughtErrorMessage(error && typeof error === 'object' ? error : null, 'Failed to unpublish event'))
+    toast.error(getCaughtErrorMessage(error && typeof error === 'object' ? error : null, t('admin.events.unpublish_failed')))
   }
   finally {
     loading.value = false

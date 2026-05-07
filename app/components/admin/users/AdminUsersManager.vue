@@ -3,16 +3,16 @@
     <section class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
       <div class="space-y-1">
         <h2 class="text-2xl font-semibold text-foreground">
-          Users
+          {{ $t('admin.users.title') }}
         </h2>
         <p class="text-sm text-muted-foreground">
-          Manage accounts, roles, and recent access activity.
+          {{ $t('admin.users.desc') }}
         </p>
       </div>
 
       <Button @click="openAddDialog">
         <UserPlus class="h-4 w-4" />
-        Add user
+        {{ $t('admin.users.add_user') }}
       </Button>
     </section>
 
@@ -21,11 +21,11 @@
       :columns="columns"
       :data="users"
       :loading="loading"
-      toolbar-label="User registry"
-      toolbar-description="Search accounts and manage roles."
-      search-placeholder="Search users, emails, or roles"
-      empty-title="No users match the current view."
-      empty-description="Adjust the search or add a new account."
+      :toolbar-label="$t('admin.users.user_registry')"
+      :toolbar-description="$t('admin.users.registry_desc')"
+      :search-placeholder="$t('admin.users.search_users')"
+      :empty-title="$t('admin.users.no_match')"
+      :empty-description="$t('admin.users.no_match_desc')"
       @update:data="fetchUsers"
     />
 
@@ -36,7 +36,7 @@
       <div class="flex-1 flex items-center gap-2">
         <InfoIcon class="h-4 w-4 text-muted-foreground" />
         <span class="text-sm text-muted-foreground">
-          {{ selectedUserIds.length }} user(s) selected
+          {{ $t('admin.users.selected_count', { count: selectedUserIds.length }) }}
         </span>
       </div>
       <Button
@@ -45,27 +45,27 @@
         @click="openBatchDeleteDialog"
       >
         <Trash2Icon class="h-4 w-4" />
-        Delete Selected
+        {{ $t('admin.users.delete_selected') }}
       </Button>
     </div>
 
     <AlertDialog v-model:open="singleDeleteDialogOpen">
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Delete user?</AlertDialogTitle>
+          <AlertDialogTitle>{{ $t('admin.users.delete_user_title') }}</AlertDialogTitle>
           <AlertDialogDescription>
-            Are you sure you want to delete user "{{ userToDelete?.username }}"? This action cannot be undone.
+            {{ $t('admin.users.delete_user_desc', { username: userToDelete?.username }) }}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel @click="closeSingleDeleteDialog">
-            Cancel
+            {{ $t('common.cancel') }}
           </AlertDialogCancel>
           <AlertDialogAction
             :disabled="loading"
             @click="confirmSingleDelete"
           >
-            Delete
+            {{ $t('common.delete') }}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
@@ -74,20 +74,20 @@
     <AlertDialog v-model:open="batchDeleteDialogOpen">
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Delete selected users?</AlertDialogTitle>
+          <AlertDialogTitle>{{ $t('admin.users.delete_batch_title') }}</AlertDialogTitle>
           <AlertDialogDescription>
-            Are you sure you want to delete {{ selectedUserIds.length }} user(s)? This action cannot be undone.
+            {{ $t('admin.users.delete_batch_desc', { count: selectedUserIds.length }) }}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel>
-            Cancel
+            {{ $t('common.cancel') }}
           </AlertDialogCancel>
           <AlertDialogAction
             :disabled="loading || selectedUserIds.length === 0"
             @click="confirmBatchDelete"
           >
-            Delete selected
+            {{ $t('admin.users.delete_confirm') }}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
@@ -97,10 +97,10 @@
       <DialogScrollContent class="max-w-2xl">
         <DialogHeader>
           <DialogTitle>
-            {{ isEditing ? 'Edit user' : 'Add user' }}
+            {{ isEditing ? $t('admin.users.edit_user') : $t('admin.users.add_user_dialog') }}
           </DialogTitle>
           <DialogDescription>
-            Account details and permissions.
+            {{ $t('admin.users.dialog_desc') }}
           </DialogDescription>
         </DialogHeader>
 
@@ -109,7 +109,7 @@
         >
           <FieldGroup>
             <FieldSet>
-              <FieldLegend>Basic information</FieldLegend>
+              <FieldLegend>{{ $t('admin.users.basic_info') }}</FieldLegend>
               <FieldGroup>
                 <VeeField
                   v-slot="{ field, errors }"
@@ -117,11 +117,11 @@
                 >
                   <Field :data-invalid="!!errors.length">
                     <FieldLabel for="admin-user-username">
-                      Username
+                      {{ $t('admin.users.username') }}
                     </FieldLabel>
                     <Input
                       id="admin-user-username"
-                      placeholder="Enter username"
+                      :placeholder="$t('admin.users.username_placeholder')"
                       :disabled="isEditing"
                       autocomplete="off"
                       :aria-invalid="!!errors.length"
@@ -129,7 +129,7 @@
                       @update:model-value="field.onChange"
                     />
                     <FieldDescription v-if="isEditing">
-                      Username cannot be changed
+                      {{ $t('admin.users.username_readonly') }}
                     </FieldDescription>
                     <FieldError
                       v-if="errors.length"
@@ -144,12 +144,12 @@
                 >
                   <Field :data-invalid="!!errors.length">
                     <FieldLabel for="admin-user-name">
-                      Full Name
+                      {{ $t('admin.users.full_name') }}
                     </FieldLabel>
                     <Input
                       id="admin-user-name"
                       :model-value="field.value"
-                      placeholder="Enter full name"
+                      :placeholder="$t('admin.users.full_name_placeholder')"
                       :aria-invalid="!!errors.length"
                       @update:model-value="field.onChange"
                     />
@@ -166,13 +166,13 @@
                 >
                   <Field :data-invalid="!!errors.length">
                     <FieldLabel for="admin-user-email">
-                      Email
+                      {{ $t('admin.users.email') }}
                     </FieldLabel>
                     <Input
                       id="admin-user-email"
                       :model-value="field.value"
                       type="email"
-                      placeholder="Enter email"
+                      :placeholder="$t('admin.users.email_placeholder')"
                       :aria-invalid="!!errors.length"
                       @update:model-value="field.onChange"
                     />
@@ -189,19 +189,19 @@
                 >
                   <Field :data-invalid="!!errors.length">
                     <FieldLabel for="admin-user-password">
-                      Password
+                      {{ $t('admin.users.password_label') }}
                     </FieldLabel>
                     <Input
                       id="admin-user-password"
                       :model-value="field.value"
                       type="password"
-                      :placeholder="isEditing ? 'Leave blank to keep current password' : 'Enter password'"
+                      :placeholder="isEditing ? $t('admin.users.password_edit_placeholder') : $t('admin.users.password_placeholder')"
                       autocomplete="new-password"
                       :aria-invalid="!!errors.length"
                       @update:model-value="field.onChange"
                     />
                     <FieldDescription v-if="isEditing">
-                      Only fill this if you want to change the password
+                      {{ $t('admin.users.password_edit_note') }}
                     </FieldDescription>
                     <FieldError
                       v-if="errors.length"
@@ -215,7 +215,7 @@
             <FieldSeparator />
 
             <FieldSet>
-              <FieldLegend>Settings</FieldLegend>
+              <FieldLegend>{{ $t('admin.users.settings_legend') }}</FieldLegend>
               <FieldGroup>
                 <VeeField
                   v-slot="{ field, errors }"
@@ -227,10 +227,10 @@
                   >
                     <FieldContent>
                       <FieldLabel for="admin-user-is-admin">
-                        Administrator
+                        {{ $t('admin.users.administrator') }}
                       </FieldLabel>
                       <FieldDescription>
-                        Mark as an admin user with elevated permissions
+                        {{ $t('admin.users.admin_desc') }}
                       </FieldDescription>
                       <FieldError
                         v-if="errors.length"
@@ -256,13 +256,13 @@
               :disabled="loading"
               @click="closeDialog"
             >
-              Cancel
+              {{ $t('common.cancel') }}
             </Button>
             <Button
               type="submit"
               :is-loading="loading"
             >
-              {{ isEditing ? 'Save changes' : 'Create user' }}
+              {{ isEditing ? $t('admin.users.save_changes') : $t('admin.users.create_user') }}
             </Button>
           </DialogFooter>
         </form>
@@ -288,6 +288,8 @@ import type { ApiResponse } from '~~/types/api'
 import { InfoIcon, Trash2Icon, UserPlus } from '@lucide/vue'
 import DataTable from '@/components/DataTable.vue'
 import { createColumns } from './columns'
+
+const { t } = useI18n()
 
 type UserFormValues = AdminUserCreateFormInput & Pick<AdminUserEditFormInput, 'id'>
 
@@ -380,12 +382,12 @@ const onSubmit = handleSubmit(
         })
       }
 
-      toast.success(isEditing.value ? 'User updated successfully' : 'User created successfully')
+      toast.success(isEditing.value ? t('admin.users.user_updated') : t('admin.users.user_created'))
       closeDialog()
       await fetchUsers()
     }
     catch (error) {
-      const message = extractErrorMessage(error, 'Failed to save the user record')
+      const message = extractErrorMessage(error, t('admin.users.save_failed'))
       setFieldError('email', message)
     }
     finally {
@@ -423,7 +425,7 @@ async function fetchUsers() {
     users.value = res.data
   }
   catch (error) {
-    toast.error(extractErrorMessage(error, 'Failed to load the user records'))
+    toast.error(extractErrorMessage(error, t('admin.users.load_failed')))
   }
   finally {
     loading.value = false
@@ -492,11 +494,11 @@ async function handleDelete(userId: number) {
     await $fetch(`/api/admin/users/${userId}`, {
       method: 'DELETE',
     })
-    toast.success('User deleted successfully')
+    toast.success(t('admin.users.user_deleted'))
     await fetchUsers()
   }
   catch (error) {
-    toast.error(extractErrorMessage(error, 'Failed to delete the user record'))
+    toast.error(extractErrorMessage(error, t('admin.users.delete_failed')))
   }
   finally {
     loading.value = false
@@ -515,13 +517,13 @@ async function handleBatchDelete() {
       method: 'POST',
       body: { userIds: selectedUserIds.value },
     })
-    toast.success(`Successfully deleted ${count} user(s)`)
+    toast.success(t('admin.users.batch_deleted', { count }))
 
     dataTableRef.value?.table?.resetRowSelection()
     await fetchUsers()
   }
   catch (error) {
-    toast.error(extractErrorMessage(error, 'Failed to delete the selected users'))
+    toast.error(extractErrorMessage(error, t('admin.users.batch_delete_failed')))
   }
   finally {
     loading.value = false

@@ -3,16 +3,16 @@
     <section class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
       <div class="space-y-1">
         <h2 class="text-2xl font-semibold text-foreground">
-          Venues
+          {{ $t('admin.venues.title') }}
         </h2>
         <p class="text-sm text-muted-foreground">
-          Manage reusable room layouts and blueprint coverage.
+          {{ $t('admin.venues.desc') }}
         </p>
       </div>
 
       <Button @click="openCreateDialog">
         <Rows3 class="h-4 w-4" />
-        Add venue
+        {{ $t('admin.venues.add_venue') }}
       </Button>
     </section>
 
@@ -21,9 +21,9 @@
       :columns="columns"
       :data="venues"
       :loading="tableLoading"
-      search-placeholder="Search venues, cities, or addresses"
-      empty-title="No venue blueprints match the current view."
-      empty-description="Adjust the search or add a new venue."
+      :search-placeholder="$t('admin.venues.search_venues')"
+      :empty-title="$t('admin.venues.no_match')"
+      :empty-description="$t('admin.venues.no_match_desc')"
       @update:data="fetchVenues"
     />
 
@@ -31,10 +31,10 @@
       <DialogScrollContent class="max-w-3xl">
         <DialogHeader>
           <DialogTitle>
-            Create venue
+            {{ $t('admin.venues.create_venue') }}
           </DialogTitle>
           <DialogDescription>
-            Add the venue details first. Configure sections, rows, and seats in Venue Studio after creation.
+            {{ $t('admin.venues.create_desc') }}
           </DialogDescription>
         </DialogHeader>
 
@@ -49,7 +49,7 @@
             >
               <Field :data-invalid="!!errors.length">
                 <FieldLabel for="venue-dialog-name">
-                  Venue name
+                  {{ $t('admin.venues.venue_name') }}
                 </FieldLabel>
                 <Input
                   id="venue-dialog-name"
@@ -71,7 +71,7 @@
             >
               <Field :data-invalid="!!errors.length">
                 <FieldLabel for="venue-dialog-slug">
-                  Slug
+                  {{ $t('admin.venues.slug') }}
                 </FieldLabel>
                 <Input
                   id="venue-dialog-slug"
@@ -93,7 +93,7 @@
             >
               <Field :data-invalid="!!errors.length">
                 <FieldLabel for="venue-dialog-address">
-                  Address
+                  {{ $t('admin.venues.address') }}
                 </FieldLabel>
                 <Input
                   id="venue-dialog-address"
@@ -116,7 +116,7 @@
               >
                 <Field :data-invalid="!!errors.length">
                   <FieldLabel for="venue-dialog-city">
-                    City
+                    {{ $t('admin.venues.city') }}
                   </FieldLabel>
                   <Input
                     id="venue-dialog-city"
@@ -137,7 +137,7 @@
               >
                 <Field :data-invalid="!!errors.length">
                   <FieldLabel for="venue-dialog-country">
-                    Country
+                    {{ $t('admin.venues.country') }}
                   </FieldLabel>
                   <Input
                     id="venue-dialog-country"
@@ -159,7 +159,7 @@
             >
               <Field :data-invalid="!!errors.length">
                 <FieldLabel for="venue-dialog-description">
-                  Description
+                  {{ $t('admin.venues.description') }}
                 </FieldLabel>
                 <Textarea
                   id="venue-dialog-description"
@@ -181,7 +181,7 @@
             >
               <Field :data-invalid="!!errors.length">
                 <FieldLabel for="venue-dialog-cover-image">
-                  Cover image URL
+                  {{ $t('admin.venues.cover_image') }}
                 </FieldLabel>
                 <Input
                   id="venue-dialog-cover-image"
@@ -190,7 +190,7 @@
                   :aria-invalid="!!errors.length"
                   @update:model-value="field.onChange"
                 />
-                <FieldDescription>Optional</FieldDescription>
+                <FieldDescription>{{ $t('common.optional') }}</FieldDescription>
                 <FieldError
                   v-if="errors.length"
                   :errors="errors"
@@ -206,13 +206,13 @@
               :disabled="dialogLoading"
               @click="closeDialog"
             >
-              Cancel
+              {{ $t('common.cancel') }}
             </Button>
             <Button
               type="submit"
               :is-loading="dialogLoading"
             >
-              Create venue
+              {{ $t('admin.venues.create_venue') }}
             </Button>
           </DialogFooter>
         </form>
@@ -232,6 +232,8 @@ import type { VenueBuilderInput } from '#shared/schemas/ticketingSchema'
 import { Rows3 } from '@lucide/vue'
 import DataTable from '@/components/DataTable.vue'
 import { createColumns } from './columns'
+
+const { t } = useI18n()
 
 function extractErrorMessage(error: unknown, fallback: string) {
   if (typeof error === 'object' && error !== null && 'data' in error) {
@@ -315,19 +317,19 @@ const onSubmit = handleSubmit(
         body: buildVenuePayload(formValues),
       })
 
-      toast.success('Venue created successfully')
+      toast.success(t('admin.venues.created'))
       closeDialog()
       await fetchVenues()
     }
     catch (error) {
-      toast.error(extractErrorMessage(error, 'Failed to save the venue blueprint'))
+      toast.error(extractErrorMessage(error, t('admin.venues.create_failed')))
     }
     finally {
       dialogLoading.value = false
     }
   },
   ({ errors }) => {
-    const firstError = Object.values(errors).flat().filter(Boolean)[0] || 'Please fix the errors above'
+    const firstError = Object.values(errors).flat().filter(Boolean)[0] || t('admin.venues.fix_errors')
     toast.error(firstError)
   },
 )
@@ -342,7 +344,7 @@ async function fetchVenues() {
     venues.value = response.data
   }
   catch (error) {
-    toast.error(extractErrorMessage(error, 'Failed to load venues'))
+    toast.error(extractErrorMessage(error, t('admin.venues.load_failed')))
   }
   finally {
     tableLoading.value = false

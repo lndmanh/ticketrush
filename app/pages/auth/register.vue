@@ -16,6 +16,7 @@ import { Field, FieldLabel, FieldError } from '@/components/ui/field'
 import type { ApiResponse } from '~~/types/api'
 import type { OAuthPopupCompleteMessage } from '~~/types/auth'
 
+const { t } = useI18n()
 const route = useRoute()
 const showPassword = ref(false)
 const showConfirmPassword = ref(false)
@@ -71,7 +72,7 @@ function onOAuthPopupComplete(event: MessageEvent<OAuthPopupCompleteMessage>) {
     target = new URL(event.data.url)
   }
   catch {
-    error.value = 'Authentication completed but response URL was invalid. Please try again.'
+    error.value = t('auth.oauth_url_invalid')
     return
   }
 
@@ -110,7 +111,7 @@ const isFormValid = computed(() => {
 watch(() => route.query.error, (queryValue) => {
   const errorCode = getQueryString(queryValue)
   if (errorCode) {
-    error.value = getAuthErrorMessage(errorCode) || 'An error occurred during registration'
+    error.value = getAuthErrorMessage(errorCode) || t('auth.register_error_generic')
   }
 }, { immediate: true })
 
@@ -189,14 +190,14 @@ async function signUpWithProvider(provider: string) {
       stopOAuthPopupTimeout()
       oauthPopup.value = null
       oauthLoadingProvider.value = null
-      error.value = 'OAuth session timed out or popup was closed. Please try again.'
+      error.value = t('auth.oauth_timeout')
     }, 120000)
   }
   catch {
     stopOAuthPopupCloseMonitor()
     stopOAuthPopupTimeout()
     oauthPopup.value = null
-    error.value = 'Unable to continue with provider right now. Please try again.'
+    error.value = t('auth.oauth_failed')
     oauthLoadingProvider.value = null
   }
 }
@@ -219,7 +220,7 @@ definePageMeta({
     <Card class="w-full max-w-md mx-4">
       <CardHeader class="text-center relative">
         <CardTitle>
-          Create Account
+          {{ $t('auth.register_heading') }}
         </CardTitle>
       </CardHeader>
 
@@ -249,7 +250,7 @@ definePageMeta({
               <div class="h-4 w-4 flex items-center justify-center">
                 <OAuthIcon :provider="provider.id" />
               </div>
-              Sign up with {{ provider.name }}
+              {{ $t('auth.sign_up_with', { provider: provider.name }) }}
             </Button>
           </template>
 
@@ -258,7 +259,7 @@ definePageMeta({
               <span class="w-full border-t border-gray-200 dark:border-gray-700" />
             </div>
             <div class="relative flex justify-center text-xs uppercase">
-              <span class="bg-card/60 px-2 text-gray-500 dark:text-gray-400 rounded-xl">Or sign up with email</span>
+              <span class="bg-card/60 px-2 text-gray-500 dark:text-gray-400 rounded-xl">{{ $t('auth.or_sign_up_email') }}</span>
             </div>
           </div>
         </div>
@@ -282,7 +283,7 @@ definePageMeta({
                 for="username"
                 class="text-sm font-medium"
               >
-                Username
+              {{ $t('auth.username_label') }}
               </FieldLabel>
               <div class="relative">
                 <UserIcon class="absolute left-3 top-3 h-4 w-4" />
@@ -290,7 +291,7 @@ definePageMeta({
                   id="username"
                   :model-value="field.value"
                   type="text"
-                  placeholder="Enter your username"
+                  :placeholder="$t('auth.username_placeholder')"
                   class="pl-9 h-11"
                   :aria-invalid="!!errors.length"
                   :disabled="isLoading"
@@ -316,7 +317,7 @@ definePageMeta({
                 for="name"
                 class="text-sm font-medium"
               >
-                Display Name
+              {{ $t('auth.display_name_label') }}
               </FieldLabel>
               <div class="relative">
                 <UserIcon class="absolute left-3 top-3 h-4 w-4" />
@@ -324,7 +325,7 @@ definePageMeta({
                   id="name"
                   :model-value="field.value"
                   type="text"
-                  placeholder="Enter your display name"
+                  :placeholder="$t('auth.display_name_placeholder')"
                   class="pl-9 h-11"
                   :aria-invalid="!!errors.length"
                   :disabled="isLoading"
@@ -350,7 +351,7 @@ definePageMeta({
                 for="email"
                 class="text-sm font-medium"
               >
-                Email
+              {{ $t('auth.email_label') }}
               </FieldLabel>
               <div class="relative">
                 <Mail class="absolute left-3 top-3 h-4 w-4" />
@@ -358,7 +359,7 @@ definePageMeta({
                   id="email"
                   :model-value="field.value"
                   type="email"
-                  placeholder="Enter your email"
+                  :placeholder="$t('auth.email_placeholder')"
                   class="pl-9 h-11"
                   :aria-invalid="!!errors.length"
                   :disabled="isLoading"
@@ -384,7 +385,7 @@ definePageMeta({
                 for="password"
                 class="text-sm font-medium"
               >
-                Password
+              {{ $t('auth.password_label') }}
               </FieldLabel>
               <div class="relative">
                 <Lock class="absolute left-3 top-3 h-4 w-4" />
@@ -392,7 +393,7 @@ definePageMeta({
                   id="password"
                   :model-value="field.value"
                   :type="showPassword ? 'text' : 'password'"
-                  placeholder="Enter your password"
+                  :placeholder="$t('auth.password_placeholder')"
                   class="pl-9 pr-9 h-11"
                   :aria-invalid="!!errors.length"
                   :disabled="isLoading"
@@ -439,7 +440,7 @@ definePageMeta({
                 for="confirmPassword"
                 class="text-sm font-medium"
               >
-                Confirm Password
+              {{ $t('auth.confirm_password_label') }}
               </FieldLabel>
               <div class="relative">
                 <Lock class="absolute left-3 top-3 h-4 w-4" />
@@ -447,7 +448,7 @@ definePageMeta({
                   id="confirmPassword"
                   :model-value="field.value"
                   :type="showConfirmPassword ? 'text' : 'password'"
-                  placeholder="Confirm your password"
+                  :placeholder="$t('auth.confirm_password_placeholder')"
                   class="pl-9 pr-9 h-11"
                   :aria-invalid="!!errors.length"
                   :disabled="isLoading"
@@ -487,45 +488,45 @@ definePageMeta({
             <Lock
               class="h-4 w-4"
             />
-            Create Account
+            {{ $t('auth.create_account') }}
           </Button>
           <p
             v-if="values.password && passwordStrength.score < 80"
             class="text-xs text-center"
           >
-            Password must be strong to create an account
+            {{ $t('auth.password_weak_note') }}
           </p>
         </form>
 
         <div class="text-center mt-6 space-y-3">
           <div class="text-xs text-gray-500 dark:text-gray-400">
-            By creating an account, you agree to our
+            {{ $t('auth.agree_register_terms') }}
             <NuxtLink
               to="https://nnsvn.me/terms"
               class="underline"
               target="_blank"
               rel="noopener noreferrer"
             >
-              Terms of Service
+              {{ $t('auth.terms_link') }}
             </NuxtLink>
-            and
+            {{ $t('auth.and') }}
             <NuxtLink
               to="https://nnsvn.me/privacy"
               class="underline"
               target="_blank"
               rel="noopener noreferrer"
             >
-              Privacy Policy
+              {{ $t('auth.privacy_link') }}
             </NuxtLink>
           </div>
 
           <div class="text-sm text-gray-600 dark:text-gray-300">
-            Already have an account?
+            {{ $t('auth.have_account') }}
             <NuxtLink
               to="/auth/login"
               class="text-primary hover:underline font-medium"
             >
-              Sign In
+              {{ $t('auth.sign_in_link') }}
             </NuxtLink>
           </div>
         </div>

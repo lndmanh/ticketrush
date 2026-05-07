@@ -23,26 +23,28 @@ import type {
 
 const EVENTS_PAGE_SIZE = 9
 
-const statusOptions: Array<{ label: string, value: EventCatalogStatusFilter }> = [
-  { label: 'All statuses', value: 'all' },
-  { label: 'Upcoming', value: 'published' },
-  { label: 'On sale', value: 'on_sale' },
-  { label: 'Sold out', value: 'sold_out' },
-  { label: 'Ended', value: 'ended' },
-]
+const { t } = useI18n()
 
-const dateOptions: Array<{ label: string, value: EventCatalogDateFilter }> = [
-  { label: 'Any date', value: 'all' },
-  { label: 'Today', value: 'today' },
-  { label: 'Next 7 days', value: 'week' },
-  { label: 'Next 30 days', value: 'month' },
-]
+const statusOptions = computed(() => [
+  { label: t('events.status_all'), value: 'all' as EventCatalogStatusFilter },
+  { label: t('events.status_upcoming'), value: 'published' as EventCatalogStatusFilter },
+  { label: t('events.status_on_sale'), value: 'on_sale' as EventCatalogStatusFilter },
+  { label: t('events.status_sold_out'), value: 'sold_out' as EventCatalogStatusFilter },
+  { label: t('events.status_ended'), value: 'ended' as EventCatalogStatusFilter },
+])
 
-const sortOptions: Array<{ label: string, value: EventCatalogSort }> = [
-  { label: 'Soonest first', value: 'soonest' },
-  { label: 'Newest releases', value: 'newest' },
-  { label: 'Sales ending soon', value: 'ending_soon' },
-]
+const dateOptions = computed(() => [
+  { label: t('events.date_any'), value: 'all' as EventCatalogDateFilter },
+  { label: t('events.date_today'), value: 'today' as EventCatalogDateFilter },
+  { label: t('events.date_week'), value: 'week' as EventCatalogDateFilter },
+  { label: t('events.date_month'), value: 'month' as EventCatalogDateFilter },
+])
+
+const sortOptions = computed(() => [
+  { label: t('events.sort_soonest'), value: 'soonest' as EventCatalogSort },
+  { label: t('events.sort_newest_releases'), value: 'newest' as EventCatalogSort },
+  { label: t('events.sort_ending_soon'), value: 'ending_soon' as EventCatalogSort },
+])
 
 const router = useRouter()
 const route = useRoute()
@@ -237,12 +239,12 @@ const activeFilterCount = computed(() => {
 const resultSummary = computed(() => {
   const total = pagination.value.totalItems
   if (total === 0) {
-    return 'No events found'
+    return t('events.result_no_events')
   }
 
   const start = (pagination.value.page - 1) * pagination.value.pageSize + 1
   const end = Math.min(pagination.value.page * pagination.value.pageSize, total)
-  return `Showing ${start}-${end} of ${total} event${total === 1 ? '' : 's'}`
+  return t('events.result_showing', { start, end, total })
 })
 
 definePageMeta({
@@ -262,14 +264,14 @@ definePageMeta({
           variant="outline"
           class="w-fit rounded-full px-3 py-1 text-[11px] uppercase tracking-[0.22em]"
         >
-          Event catalog
+          {{ $t('events.catalog_eyebrow') }}
         </Badge>
         <div class="space-y-4">
           <h1 class="display-title max-w-4xl text-balance">
-            Find your next event.
+            {{ $t('events.catalog_title') }}
           </h1>
           <p class="max-w-[42rem] text-base leading-8 text-muted-foreground md:text-lg">
-            Search live shows, compare cities and dates, then choose the session that fits your plans.
+            {{ $t('events.catalog_subtitle') }}
           </p>
         </div>
       </div>
@@ -281,7 +283,7 @@ definePageMeta({
               {{ pagination.totalItems }}
             </p>
             <p class="text-xs uppercase tracking-[0.18em] text-muted-foreground">
-              Events
+              {{ $t('events.stat_events') }}
             </p>
           </div>
           <div>
@@ -289,7 +291,7 @@ definePageMeta({
               {{ cityOptions.length }}
             </p>
             <p class="text-xs uppercase tracking-[0.18em] text-muted-foreground">
-              Cities
+              {{ $t('events.stat_cities') }}
             </p>
           </div>
           <div>
@@ -297,7 +299,7 @@ definePageMeta({
               {{ activeFilterCount }}
             </p>
             <p class="text-xs uppercase tracking-[0.18em] text-muted-foreground">
-              Active filters
+              {{ $t('events.stat_active_filters') }}
             </p>
           </div>
         </CardContent>
@@ -311,14 +313,14 @@ definePageMeta({
           @submit.prevent="applySearch"
         >
           <div class="space-y-2">
-            <Label for="event-search">Search events</Label>
+            <Label for="event-search">{{ $t('events.search_events_label') }}</Label>
             <div class="relative">
               <Search class="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 id="event-search"
                 v-model="searchInput"
                 class="h-11 rounded-full pl-10"
-                placeholder="Search by event, venue, or city"
+                :placeholder="$t('events.search_events_placeholder')"
               />
             </div>
           </div>
@@ -328,7 +330,7 @@ definePageMeta({
               type="submit"
               class="h-11 rounded-full px-5"
             >
-              Search
+              {{ $t('events.search_btn') }}
             </Button>
             <Button
               type="button"
@@ -338,14 +340,14 @@ definePageMeta({
               @click="resetFilters"
             >
               <X class="size-4" />
-              Reset
+              {{ $t('events.reset_btn') }}
             </Button>
           </div>
         </form>
 
         <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
           <div class="space-y-2">
-            <Label for="event-status-filter">Status</Label>
+            <Label for="event-status-filter">{{ $t('events.status_label') }}</Label>
             <Select
               v-model="activeStatus"
               @update:model-value="replaceCatalogQuery(1)"
@@ -354,7 +356,7 @@ definePageMeta({
                 id="event-status-filter"
                 class="h-11 rounded-full"
               >
-                <SelectValue placeholder="All statuses" />
+                <SelectValue :placeholder="$t('events.status_all')" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem
@@ -369,7 +371,7 @@ definePageMeta({
           </div>
 
           <div class="space-y-2">
-            <Label for="event-city-filter">City</Label>
+            <Label for="event-city-filter">{{ $t('events.city_label') }}</Label>
             <Select
               v-model="activeCity"
               @update:model-value="replaceCatalogQuery(1)"
@@ -378,11 +380,12 @@ definePageMeta({
                 id="event-city-filter"
                 class="h-11 rounded-full"
               >
-                <SelectValue placeholder="All cities" />
+                <SelectValue :placeholder="$t('events.city_all')" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">
                   All cities
+                  {{ $t('events.city_all') }}
                 </SelectItem>
                 <SelectItem
                   v-for="city in cityOptions"
@@ -396,7 +399,7 @@ definePageMeta({
           </div>
 
           <div class="space-y-2">
-            <Label for="event-date-filter">Date</Label>
+            <Label for="event-date-filter">{{ $t('events.date_label') }}</Label>
             <Select
               v-model="activeDate"
               @update:model-value="replaceCatalogQuery(1)"
@@ -405,7 +408,7 @@ definePageMeta({
                 id="event-date-filter"
                 class="h-11 rounded-full"
               >
-                <SelectValue placeholder="Any date" />
+                <SelectValue :placeholder="$t('events.date_any')" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem
@@ -420,7 +423,7 @@ definePageMeta({
           </div>
 
           <div class="space-y-2">
-            <Label for="event-sort-filter">Sort</Label>
+            <Label for="event-sort-filter">{{ $t('events.sort_label') }}</Label>
             <Select
               v-model="activeSort"
               @update:model-value="replaceCatalogQuery(1)"
@@ -429,7 +432,7 @@ definePageMeta({
                 id="event-sort-filter"
                 class="h-11 rounded-full"
               >
-                <SelectValue placeholder="Soonest first" />
+                <SelectValue :placeholder="$t('events.sort_soonest')" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem
@@ -461,7 +464,7 @@ definePageMeta({
             variant="outline"
             class="rounded-full"
           >
-            Loading
+            {{ $t('events.badge_loading') }}
           </Badge>
         </div>
         <p class="text-sm text-muted-foreground">
@@ -497,9 +500,9 @@ definePageMeta({
           <div class="mx-auto mb-4 flex size-12 items-center justify-center rounded-full border bg-muted/40">
             <CalendarDays class="size-5 text-muted-foreground" />
           </div>
-          <EmptyTitle>No events match your filters</EmptyTitle>
+          <EmptyTitle>{{ $t('events.no_match_title') }}</EmptyTitle>
           <EmptyDescription>
-            Try a broader search, another city, or reset filters to see every live event.
+            {{ $t('events.no_match_desc') }}
           </EmptyDescription>
         </EmptyHeader>
         <Button
@@ -507,7 +510,7 @@ definePageMeta({
           class="mt-5 rounded-full"
           @click="resetFilters"
         >
-          Reset filters
+          {{ $t('events.reset_filters') }}
         </Button>
       </Empty>
 
@@ -525,7 +528,7 @@ definePageMeta({
             @click="goToPage(pagination.page - 1)"
           >
             <ChevronLeft class="size-4" />
-            Previous
+            {{ $t('events.prev_page') }}
           </Button>
           <Button
             type="button"
@@ -535,7 +538,7 @@ definePageMeta({
             aria-label="Go to next events page"
             @click="goToPage(pagination.page + 1)"
           >
-            Next
+            {{ $t('events.next_page') }}
             <ChevronRight class="size-4" />
           </Button>
         </div>
