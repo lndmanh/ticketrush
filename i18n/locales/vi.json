@@ -1,4 +1,4 @@
-{
+﻿{
   "common": {
     "privacy": "Quyền riêng tư",
     "terms": "Điều khoản",
@@ -629,11 +629,15 @@
       "identity": "Danh tính",
       "event_basics": "Thông tin cơ bản",
       "title_label": "Tiêu đề",
+      "title_placeholder": "Midnight Skyline Live",
       "slug_label": "Slug",
+      "slug_placeholder": "midnight-skyline-live",
       "subtitle_label": "Phụ đề",
+      "subtitle_placeholder": "Một đêm nhạc điện tử cao cấp tại Sài Gòn.",
       "description_label": "Mô tả",
       "description_placeholder": "Mô tả sự kiện.",
       "cover_image_label": "URL ảnh bìa",
+      "cover_image_placeholder": "https://example.com/event-cover.jpg",
       "venue_label": "Địa điểm",
       "choose_venue": "Chọn bản thiết kế địa điểm",
       "choose_venue_prompt": "Chọn địa điểm để tạo đợt bán vé và xem trước bố cục.",
@@ -739,9 +743,13 @@
       "accessibility_label": "Nhãn tiếp cận",
       "accessible_seat": "Ghế tiếp cận",
       "remove_seat": "Xóa ghế",
-      "add_row": "Thêm hàng"
-    },
-    "columns": {
+      "add_row": "Thêm hàng",
+      "venue_name_placeholder": "Saigon Sound Hall",
+      "slug_placeholder": "saigon-sound-hall",
+      "address_placeholder": "Quận 1, Thành phố Hồ Chí Minh",
+      "description_placeholder": "Một phòng được thiết kế cho tầm nhìn cao cấp.",
+      "cover_image_placeholder": "https://example.com/venue.jpg"
+        "columns": {
       "event": "Sự kiện",
       "status": "Trạng thái",
       "venue": "Địa điểm",

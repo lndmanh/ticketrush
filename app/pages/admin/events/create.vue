@@ -692,8 +692,8 @@ const onSubmit = handleSubmit(
 )
 
 definePageMeta({
-  title: 'Create Event',
-  breadcrumb: 'Create Event',
+  title: t('admin.event_create.page_title'),
+  breadcrumb: t('admin.event_create.breadcrumb'),
   middleware: ['auth', 'admin'],
   layout: 'dashboard',
 })
@@ -849,7 +849,7 @@ onUnmounted(() => {
                     <Input
                       id="event-create-title"
                       :model-value="field.value"
-                      placeholder="Midnight Skyline Live"
+                      :placeholder="$t('admin.event_create.title_placeholder')"
                       :aria-invalid="!!errors.length"
                       @update:model-value="field.onChange"
                     />
@@ -871,7 +871,7 @@ onUnmounted(() => {
                     <Input
                       id="event-create-slug"
                       :model-value="field.value"
-                      placeholder="midnight-skyline-live"
+                      :placeholder="$t('admin.event_create.slug_placeholder')"
                       :aria-invalid="!!errors.length"
                       @update:model-value="field.onChange"
                     />
@@ -893,7 +893,7 @@ onUnmounted(() => {
                     <Input
                       id="event-create-subtitle"
                       :model-value="field.value"
-                      placeholder="A premium electronic pop night in Saigon."
+                      :placeholder="$t('admin.event_create.subtitle_placeholder')"
                       :aria-invalid="!!errors.length"
                       @update:model-value="field.onChange"
                     />
@@ -937,7 +937,7 @@ onUnmounted(() => {
                     <Input
                       id="event-create-cover-image"
                       :model-value="field.value"
-                      placeholder="https://example.com/event-cover.jpg"
+                      :placeholder="$t('admin.event_create.cover_image_placeholder')"
                       :aria-invalid="!!errors.length"
                       @update:model-value="field.onChange"
                     />

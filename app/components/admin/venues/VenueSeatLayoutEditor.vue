@@ -374,7 +374,7 @@ function removeSeat(sectionIndex: number, rowIndex: number, seatIndex: number) {
                     size="sm"
                     :title="$t('admin.venues.toggle_row_seats')"
                   >
-                    <span class="sr-only">Toggle row seats</span>
+                    <span class="sr-only">{{ $t('admin.venues.toggle_row_seats') }}</span>
                     <ChevronDown
                       class="size-4 transition-transform duration-200"
                       :class="open ? 'rotate-180' : ''"

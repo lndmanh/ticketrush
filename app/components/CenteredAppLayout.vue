@@ -60,7 +60,7 @@ withDefaults(defineProps<{
     <footer class="shrink-0 border-t bg-muted/10 backdrop-blur-md">
       <div class="px-4 py-6">
         <p class="text-center text-sm">
-          © {{ new Date().getFullYear() }} Developed by <strong>No Name Studio</strong> All rights reserved.
+          {{ $t('footer.centered_copyright', { year: new Date().getFullYear() }) }}
         </p>
       </div>
     </footer>

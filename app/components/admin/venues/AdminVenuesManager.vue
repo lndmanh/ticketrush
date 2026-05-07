@@ -54,7 +54,7 @@
                 <Input
                   id="venue-dialog-name"
                   :model-value="field.value"
-                  placeholder="Saigon Sound Hall"
+                  :placeholder="$t('admin.venues.venue_name_placeholder')"
                   :aria-invalid="!!errors.length"
                   @update:model-value="field.onChange"
                 />
@@ -76,7 +76,7 @@
                 <Input
                   id="venue-dialog-slug"
                   :model-value="field.value"
-                  placeholder="saigon-sound-hall"
+                  :placeholder="$t('admin.venues.slug_placeholder')"
                   :aria-invalid="!!errors.length"
                   @update:model-value="field.onChange"
                 />
@@ -98,7 +98,7 @@
                 <Input
                   id="venue-dialog-address"
                   :model-value="field.value"
-                  placeholder="District 1, Ho Chi Minh City"
+                  :placeholder="$t('admin.venues.address_placeholder')"
                   :aria-invalid="!!errors.length"
                   @update:model-value="field.onChange"
                 />
@@ -164,7 +164,7 @@
                 <Textarea
                   id="venue-dialog-description"
                   :model-value="field.value"
-                  placeholder="A room tuned for premium lines of sight."
+                  :placeholder="$t('admin.venues.description_placeholder')"
                   :aria-invalid="!!errors.length"
                   @update:model-value="field.onChange"
                 />
@@ -186,7 +186,7 @@
                 <Input
                   id="venue-dialog-cover-image"
                   :model-value="field.value"
-                  placeholder="https://example.com/venue.jpg"
+                  :placeholder="$t('admin.venues.cover_image_placeholder')"
                   :aria-invalid="!!errors.length"
                   @update:model-value="field.onChange"
                 />
