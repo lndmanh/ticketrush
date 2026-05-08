@@ -217,11 +217,11 @@ const catalogQuery = computed(() => ({
   pageSize: EVENTS_PAGE_SIZE,
 }))
 
-const { data: catalogResponse, pending, error: catalogFetchError } = await useFetch('/api/events', {
+const { data: catalogResponse, pending, error: catalogFetchError } = await useAPI(() => '/api/events', {
   query: catalogQuery,
 })
 
-const { data: cityResponse } = await useFetch('/api/events/cities')
+const { data: cityResponse } = await useAPI(() => '/api/events/cities')
 
 const catalog = computed(() => {
   const response = catalogResponse.value
