@@ -66,44 +66,6 @@ const totalValue = computed(() => {
   return selectedSeats.value.reduce((total, seat) => total + seat.priceCents, 0)
 })
 
-function getErrorData(error: object) {
-  if ('data' in error && typeof error.data === 'object' && error.data !== null) {
-    return error.data
-  }
-
-  return null
-}
-
-function getErrorStatusCode(error: object) {
-  if ('statusCode' in error && typeof error.statusCode === 'number') {
-    return error.statusCode
-  }
-
-  const data = getErrorData(error)
-  if (data && 'statusCode' in data && typeof data.statusCode === 'number') {
-    return data.statusCode
-  }
-
-  return null
-}
-
-function getErrorMessage(error: object, fallback: string) {
-  const data = getErrorData(error)
-  if (data && 'statusMessage' in data && typeof data.statusMessage === 'string') {
-    return data.statusMessage
-  }
-
-  if (data && 'message' in data && typeof data.message === 'string') {
-    return data.message
-  }
-
-  if ('message' in error && typeof error.message === 'string') {
-    return error.message
-  }
-
-  return fallback
-}
-
 function formatCurrency(value: number, currency = 'VND') {
   return `${Intl.NumberFormat('en-US').format(value / 100)} ${currency}`
 }
@@ -155,27 +117,27 @@ async function reserveSeats() {
     await navigateTo(`/checkout/${checkoutResponse.data.publicId}?hold=${holdPublicId}`)
   }
   catch (error) {
-    if (error && typeof error === 'object') {
-      const statusCode = getErrorStatusCode(error)
-      const message = parseApiError(error, 'We could not open checkout. Please try again.').message
+    const parsedError = parseApiError(error, 'We could not open checkout. Please try again.')
 
-      if (statusCode === 409) {
-        toast.error('Some of the selected seats are no longer available. We refreshed the map for you.')
-        return
-      }
+    const statusCode = parsedError.status
+    const message = parsedError.message
 
-      if (statusCode === 403) {
-        toast.error(message)
-        await navigateTo({
-          path: `/waiting-room/${sessionPublicId.value}`,
-          query: { slug: slug.value },
-        })
-        return
-      }
-
-      toast.error(message)
+    if (statusCode === 409) {
+      toast.error('Some of the selected seats are no longer available. We refreshed the map for you.')
       return
     }
+
+    if (statusCode === 403) {
+      toast.error(message)
+      await navigateTo({
+        path: `/waiting-room/${sessionPublicId.value}`,
+        query: { slug: slug.value },
+      })
+      return
+    }
+
+    toast.error(message)
+    return
 
     toast.error('We could not open checkout. Please try again.')
   }

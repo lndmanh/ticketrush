@@ -1,9 +1,7 @@
 <script setup lang="ts">
-import { CalendarClock, Layers3, LockKeyhole, Ticket } from '@lucide/vue'
+import { LockKeyhole } from '@lucide/vue'
 import { useForm } from 'vee-validate'
 import { toast } from 'vue-sonner'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { apiRequest } from '@/utils/apiRequest'
 import { parseApiError } from '@/utils/apiError'
 import { apiRoutes } from '#shared/apiRoutes'
@@ -76,38 +74,6 @@ const isLockedConfiguration = computed(() => detail.value?.event?.status !== 'dr
 
 function normalizeSessionErrorPath(path: string) {
   return path.replace(/\[(\d+)\]/g, '.$1')
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null
-}
-
-function getErrorMessage(errorValue: unknown, fallback: string) {
-  if (!isRecord(errorValue)) {
-    return fallback
-  }
-
-  const data = errorValue.data
-
-  if (isRecord(data)) {
-    if (isRecord(data.error) && typeof data.error.message === 'string' && data.error.message) {
-      return data.error.message
-    }
-
-    if (typeof data.message === 'string' && data.message) {
-      return data.message
-    }
-
-    if (typeof data.statusMessage === 'string' && data.statusMessage) {
-      return data.statusMessage
-    }
-  }
-
-  if (typeof errorValue.message === 'string' && errorValue.message) {
-    return errorValue.message
-  }
-
-  return fallback
 }
 
 interface ExistingPricingTicket {

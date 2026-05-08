@@ -32,30 +32,6 @@ watch(settingsResponse, (response) => {
   })
 }, { immediate: true })
 
-function getErrorMessage(error: object, fallback: string) {
-  if ('data' in error && error.data && typeof error.data === 'object' && 'statusMessage' in error.data && typeof error.data.statusMessage === 'string') {
-    return error.data.statusMessage
-  }
-
-  if ('message' in error && typeof error.message === 'string') {
-    return error.message
-  }
-
-  return fallback
-}
-
-function getUnknownErrorMessage(error: unknown, fallback: string) {
-  if (typeof error === 'object' && error !== null) {
-    return getErrorMessage(error, fallback)
-  }
-
-  if (error instanceof Error && error.message) {
-    return error.message
-  }
-
-  return fallback
-}
-
 function updatePositiveNumber(onChange: (value: number | '') => void, value: string | number) {
   const nextValue = String(value)
   if (!nextValue) {

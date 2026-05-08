@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { toast } from 'vue-sonner'
 import { Clock, Database, Loader2, Play, Users } from '@lucide/vue'
-import type { AdminTaskData, AdminTaskResult } from '~~/types/admin-tasks'
+import type { AdminTaskResult } from '~~/types/admin-tasks'
 import { apiRequest } from '@/utils/apiRequest'
 import { parseApiError } from '@/utils/apiError'
 
@@ -43,26 +43,6 @@ const tasks: TaskDefinition[] = [
 
 const runningTasks = ref<Set<string>>(new Set())
 const taskResults = ref<Record<string, AdminTaskResult>>({})
-
-function getTaskErrorMessage(error: unknown) {
-  if (typeof error === 'object' && error !== null) {
-    if ('data' in error && typeof error.data === 'object' && error.data !== null) {
-      if ('message' in error.data && typeof error.data.message === 'string') {
-        return error.data.message
-      }
-    }
-
-    if ('statusMessage' in error && typeof error.statusMessage === 'string') {
-      return error.statusMessage
-    }
-  }
-
-  if (error instanceof Error && error.message) {
-    return error.message
-  }
-
-  return 'Task failed'
-}
 
 async function runTask(task: TaskDefinition) {
   if (runningTasks.value.has(task.id)) return
