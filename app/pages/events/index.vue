@@ -385,21 +385,24 @@ definePageMeta({
     :hide-header="true"
     class-name="relative gap-8 overflow-hidden py-6 md:gap-10 md:py-10"
   >
-    <div class="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[30rem] bg-[radial-gradient(circle_at_16%_12%,hsl(var(--primary)/0.16),transparent_34%),radial-gradient(circle_at_88%_8%,hsl(var(--muted-foreground)/0.12),transparent_28%)]" />
+    <!-- Enhanced background -->
+    <div class="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[38rem] overflow-hidden">
+      <div class="absolute inset-0 bg-[radial-gradient(ellipse_70%_55%_at_15%_-5%,oklch(0.47_0.27_277_/_0.18),transparent_55%),radial-gradient(ellipse_50%_45%_at_88%_5%,oklch(0.64_0.22_290_/_0.12),transparent_50%)]" />
+    </div>
 
     <section class="surface-shell overflow-hidden">
       <div class="surface-core relative grid gap-8 overflow-hidden px-5 py-7 md:px-8 md:py-9 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,0.42fr)] lg:items-end">
-        <div class="pointer-events-none absolute -right-24 -top-24 size-64 rounded-full bg-primary/10 blur-3xl" />
+        <div class="pointer-events-none absolute -right-24 -top-24 size-64 rounded-full bg-primary/8 blur-3xl" />
         <div class="relative space-y-5">
           <Badge
             variant="outline"
-            class="w-fit rounded-full border-primary/20 bg-primary/5 px-3 py-1 text-[11px] uppercase tracking-[0.22em] text-primary"
+            class="w-fit rounded-full border-primary/30 bg-primary/8 px-3 py-1 text-[11px] uppercase tracking-[0.22em] text-primary shadow-sm"
           >
             {{ $t('events.catalog_eyebrow') }}
           </Badge>
           <div class="space-y-4">
             <h1 class="display-title max-w-4xl text-balance md:text-7xl">
-              {{ $t('events.catalog_title') }}
+              <span class="gradient-text">{{ $t('events.catalog_title') }}</span>
             </h1>
             <p class="max-w-[44rem] text-base leading-8 text-muted-foreground md:text-lg">
               {{ $t('events.catalog_subtitle') }}
@@ -408,24 +411,24 @@ definePageMeta({
         </div>
 
         <div class="relative grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
-          <div class="rounded-[1.5rem] border bg-background/70 p-4 backdrop-blur">
-            <p class="font-mono text-3xl font-semibold tracking-[-0.06em] text-foreground">
+          <div class="group rounded-[1.5rem] border bg-background/80 p-4 backdrop-blur transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/20 hover:shadow-sm">
+            <p class="font-mono text-3xl font-bold tracking-[-0.06em] text-foreground">
               {{ pagination.totalItems }}
             </p>
             <p class="mt-1 text-xs uppercase tracking-[0.18em] text-muted-foreground">
               {{ $t('events.stat_events') }}
             </p>
           </div>
-          <div class="rounded-[1.5rem] border bg-background/70 p-4 backdrop-blur">
-            <p class="font-mono text-3xl font-semibold tracking-[-0.06em] text-foreground">
+          <div class="group rounded-[1.5rem] border bg-background/80 p-4 backdrop-blur transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/20 hover:shadow-sm">
+            <p class="font-mono text-3xl font-bold tracking-[-0.06em] text-foreground">
               {{ cityOptions.length }}
             </p>
             <p class="mt-1 text-xs uppercase tracking-[0.18em] text-muted-foreground">
               {{ $t('events.stat_cities') }}
             </p>
           </div>
-          <div class="rounded-[1.5rem] border bg-background/70 p-4 backdrop-blur">
-            <p class="font-mono text-3xl font-semibold tracking-[-0.06em] text-foreground">
+          <div class="group rounded-[1.5rem] border bg-background/80 p-4 backdrop-blur transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/20 hover:shadow-sm">
+            <p class="font-mono text-3xl font-bold tracking-[-0.06em] text-foreground">
               {{ activeFilterCount }}
             </p>
             <p class="mt-1 text-xs uppercase tracking-[0.18em] text-muted-foreground">

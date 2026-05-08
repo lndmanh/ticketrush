@@ -16,6 +16,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Motion } from 'motion-v'
 import type { PaginatedApiResponse } from '~~/types/api'
 import type { EventCatalogItem, EventCatalogQueryOptions } from '~~/types/events'
 
@@ -141,7 +142,13 @@ async function searchEvents() {
     class="relative flex min-h-full flex-1 flex-col overflow-hidden"
     :hide-header="true"
   >
-    <div class="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[44rem] bg-[radial-gradient(circle_at_18%_18%,hsl(var(--primary)/0.18),transparent_34%),radial-gradient(circle_at_78%_12%,hsl(var(--muted-foreground)/0.14),transparent_28%)]" />
+    <!-- Enhanced hero background with multiple layers -->
+    <div class="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[52rem] overflow-hidden">
+      <!-- Primary radial glow -->
+      <div class="absolute inset-0 bg-[radial-gradient(ellipse_80%_60%_at_10%_-10%,oklch(0.47_0.27_277_/_0.20),transparent_60%),radial-gradient(ellipse_60%_50%_at_85%_5%,oklch(0.64_0.22_290_/_0.14),transparent_50%),radial-gradient(ellipse_40%_40%_at_50%_100%,oklch(0.47_0.27_277_/_0.08),transparent_60%)]" />
+      <!-- Noise texture overlay for depth -->
+      <div class="absolute inset-0 opacity-[0.015] [background-image:url(&quot;data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E&quot;)]" />
+    </div>
 
     <section class="grid gap-8 pb-10 pt-4 lg:grid-cols-[minmax(0,1.05fr)_minmax(23rem,0.74fr)] lg:items-stretch lg:pb-14">
       <div class="surface-shell overflow-hidden">
@@ -150,25 +157,48 @@ async function searchEvents() {
           <div class="pointer-events-none absolute bottom-10 left-10 h-px w-1/2 bg-linear-to-r from-primary/60 to-transparent" />
 
           <div class="relative space-y-8">
-            <Badge
-              variant="outline"
-              class="w-fit rounded-full border-primary/20 bg-primary/5 px-3 py-1 text-[11px] uppercase tracking-[0.22em] text-primary"
+            <Motion
+              tag="div"
+              :initial="{ opacity: 0, y: -12 }"
+              :animate="{ opacity: 1, y: 0 }"
+              :transition="{ duration: 0.5, ease: 'easeOut' }"
             >
-              <Sparkles class="size-3.5" />
-              {{ $t('home.badge') }}
-            </Badge>
+              <Badge
+                variant="outline"
+                class="w-fit rounded-full border-primary/30 bg-primary/8 px-3 py-1 text-[11px] uppercase tracking-[0.22em] text-primary shadow-sm"
+              >
+                <Sparkles class="size-3.5" />
+                {{ $t('home.badge') }}
+              </Badge>
+            </Motion>
 
             <div class="space-y-5">
-              <h1 class="display-title max-w-5xl text-balance md:text-7xl">
-                {{ $t('home.title') }}
-              </h1>
-              <p class="max-w-[48rem] text-base leading-8 text-muted-foreground md:text-lg">
+              <Motion
+                tag="h1"
+                class="display-title max-w-5xl text-balance md:text-7xl"
+                :initial="{ opacity: 0, y: 24 }"
+                :animate="{ opacity: 1, y: 0 }"
+                :transition="{ duration: 0.6, delay: 0.1, ease: [0.22, 1, 0.36, 1] }"
+              >
+                <span class="gradient-text">{{ $t('home.title') }}</span>
+              </Motion>
+              <Motion
+                tag="p"
+                class="max-w-[48rem] text-base leading-8 text-muted-foreground md:text-lg"
+                :initial="{ opacity: 0, y: 16 }"
+                :animate="{ opacity: 1, y: 0 }"
+                :transition="{ duration: 0.5, delay: 0.22, ease: 'easeOut' }"
+              >
                 {{ $t('home.subtitle') }}
-              </p>
+              </Motion>
             </div>
 
-            <form
+            <Motion
+              tag="form"
               class="grid gap-3 rounded-[2rem] border border-border/70 bg-background/80 p-2 shadow-sm backdrop-blur md:grid-cols-[minmax(0,1fr)_auto] md:items-center"
+              :initial="{ opacity: 0, y: 16 }"
+              :animate="{ opacity: 1, y: 0 }"
+              :transition="{ duration: 0.5, delay: 0.34, ease: 'easeOut' }"
               @submit.prevent="searchEvents"
             >
               <div class="space-y-2">
@@ -192,18 +222,24 @@ async function searchEvents() {
               <Button
                 type="submit"
                 size="lg"
-                class="h-12 rounded-full px-6"
+                class="h-12 rounded-full px-6 transition-all duration-300 hover:shadow-lg hover:shadow-primary/30 hover:-translate-y-0.5"
               >
                 {{ $t('home.search_button') }}
                 <ArrowRight class="size-4" />
               </Button>
-            </form>
+            </Motion>
 
-            <div class="flex flex-col gap-3 sm:flex-row">
+            <Motion
+              tag="div"
+              class="flex flex-col gap-3 sm:flex-row"
+              :initial="{ opacity: 0, y: 12 }"
+              :animate="{ opacity: 1, y: 0 }"
+              :transition="{ duration: 0.5, delay: 0.46, ease: 'easeOut' }"
+            >
               <Button
                 as-child
                 variant="secondary"
-                class="rounded-full px-5"
+                class="rounded-full px-5 transition-all duration-300 hover:-translate-y-0.5"
               >
                 <NuxtLink to="/events">
                   {{ $t('home.browse_all') }}
@@ -213,37 +249,43 @@ async function searchEvents() {
               <Button
                 as-child
                 variant="ghost"
-                class="rounded-full px-5 text-muted-foreground"
+                class="rounded-full px-5 text-muted-foreground hover:text-foreground"
               >
                 <NuxtLink to="/admin">
                   {{ $t('home.organizer_cta') }}
                 </NuxtLink>
               </Button>
-            </div>
+            </Motion>
           </div>
 
           <div class="relative mt-8 grid gap-3 sm:grid-cols-3">
-            <div
-              v-for="item in quickStatItems"
+            <Motion
+              v-for="(item, idx) in quickStatItems"
               :key="item.key"
-              class="rounded-[1.5rem] border bg-background/75 p-4 backdrop-blur transition-all hover:-translate-y-0.5 hover:bg-background/95"
+              tag="div"
+              class="rounded-[1.5rem] border bg-background/80 p-4 backdrop-blur transition-all hover:-translate-y-1 hover:bg-background/95 hover:shadow-md hover:shadow-primary/10 hover:border-primary/20"
+              :initial="{ opacity: 0, y: 20 }"
+              :animate="{ opacity: 1, y: 0 }"
+              :transition="{ duration: 0.45, delay: 0.55 + idx * 0.1, ease: 'easeOut' }"
             >
               <div class="mb-3 flex items-center justify-between gap-2">
-                <component
-                  :is="item.icon"
-                  class="size-4 text-primary"
-                />
-                <span class="rounded-full border bg-background/90 px-2.5 py-1 font-mono text-[11px] font-medium text-foreground/80">
+                <div class="flex size-8 items-center justify-center rounded-xl bg-primary/10">
+                  <component
+                    :is="item.icon"
+                    class="size-4 text-primary"
+                  />
+                </div>
+                <span class="rounded-full border border-primary/20 bg-primary/8 px-2.5 py-1 font-mono text-[13px] font-bold text-primary">
                   {{ item.value || 0 }}
                 </span>
               </div>
-              <p class="text-base font-semibold leading-5 tracking-[-0.03em] text-foreground">
+              <p class="text-sm font-semibold leading-5 tracking-[-0.02em] text-foreground">
                 {{ item.title }}
               </p>
               <p class="mt-1 line-clamp-1 text-xs text-muted-foreground">
                 {{ item.hint }}
               </p>
-            </div>
+            </Motion>
           </div>
         </div>
       </div>
@@ -253,10 +295,11 @@ async function searchEvents() {
           <img
             :src="heroImage"
             :alt="heroPreviewEvent?.title || $t('home.hero_img_alt')"
-            class="absolute inset-0 h-full w-full object-cover grayscale transition-transform duration-700 hover:scale-[1.02]"
+            class="absolute inset-0 h-full w-full object-cover transition-transform duration-700 hover:scale-[1.02]"
           >
-          <div class="absolute inset-0 bg-[linear-gradient(160deg,rgba(0,0,0,0.1),rgba(0,0,0,0.72)_52%,rgba(0,0,0,0.94))]" />
-          <div class="absolute left-0 top-0 h-full w-1 bg-primary" />
+          <!-- Richer gradient overlay with color tint -->
+          <div class="absolute inset-0 bg-[linear-gradient(160deg,oklch(0.47_0.27_277_/_0.08),rgba(0,0,0,0.55)_40%,rgba(0,0,0,0.92))]" />
+          <div class="absolute left-0 top-0 h-full w-1 bg-gradient-to-b from-primary via-primary/70 to-transparent" />
 
           <div class="relative z-10 flex min-h-[34rem] flex-col justify-between gap-8 p-5 text-white md:p-6">
             <div class="flex items-start justify-between gap-4">
@@ -318,55 +361,28 @@ async function searchEvents() {
     </section>
 
     <section class="grid gap-3 pb-10 md:grid-cols-2 xl:grid-cols-4">
-      <div class="group flex min-h-28 gap-4 rounded-[1.75rem] border bg-card/70 p-5 transition-all hover:-translate-y-0.5 hover:bg-card/95">
-        <div class="flex size-10 shrink-0 items-center justify-center rounded-2xl border bg-background text-primary shadow-sm transition-colors group-hover:border-primary/25 group-hover:bg-primary/5">
-          <ShieldCheck class="size-4" />
+      <div
+        v-for="(item, idx) in [
+          { icon: ShieldCheck, titleKey: 'home.trust_holds_title', descKey: 'home.trust_holds_desc' },
+          { icon: Clock3, titleKey: 'home.trust_countdown_title', descKey: 'home.trust_countdown_desc' },
+          { icon: UsersRound, titleKey: 'home.trust_attendees_title', descKey: 'home.trust_attendees_desc' },
+          { icon: Ticket, titleKey: 'home.trust_reserved_title', descKey: 'home.trust_reserved_desc' },
+        ]"
+        :key="idx"
+        class="group flex min-h-28 gap-4 rounded-[1.75rem] border bg-card/70 p-5 transition-all duration-300 hover:-translate-y-0.5 hover:bg-card/95 hover:border-primary/20 hover:shadow-sm"
+      >
+        <div class="flex size-10 shrink-0 items-center justify-center rounded-2xl border bg-background text-primary shadow-sm transition-all duration-300 group-hover:border-primary/30 group-hover:bg-primary/8 group-hover:shadow-primary/10">
+          <component
+            :is="item.icon"
+            class="size-4 transition-transform duration-300 group-hover:scale-110"
+          />
         </div>
         <div class="min-w-0 space-y-1.5">
           <p class="text-base font-semibold tracking-[-0.03em]">
-            {{ $t('home.trust_holds_title') }}
+            {{ $t(item.titleKey) }}
           </p>
           <p class="text-sm leading-6 text-muted-foreground">
-            {{ $t('home.trust_holds_desc') }}
-          </p>
-        </div>
-      </div>
-      <div class="group flex min-h-28 gap-4 rounded-[1.75rem] border bg-card/70 p-5 transition-all hover:-translate-y-0.5 hover:bg-card/95">
-        <div class="flex size-10 shrink-0 items-center justify-center rounded-2xl border bg-background text-primary shadow-sm transition-colors group-hover:border-primary/25 group-hover:bg-primary/5">
-          <Clock3 class="size-4" />
-        </div>
-        <div class="min-w-0 space-y-1.5">
-          <p class="text-base font-semibold tracking-[-0.03em]">
-            {{ $t('home.trust_countdown_title') }}
-          </p>
-          <p class="text-sm leading-6 text-muted-foreground">
-            {{ $t('home.trust_countdown_desc') }}
-          </p>
-        </div>
-      </div>
-      <div class="group flex min-h-28 gap-4 rounded-[1.75rem] border bg-card/70 p-5 transition-all hover:-translate-y-0.5 hover:bg-card/95">
-        <div class="flex size-10 shrink-0 items-center justify-center rounded-2xl border bg-background text-primary shadow-sm transition-colors group-hover:border-primary/25 group-hover:bg-primary/5">
-          <UsersRound class="size-4" />
-        </div>
-        <div class="min-w-0 space-y-1.5">
-          <p class="text-base font-semibold tracking-[-0.03em]">
-            {{ $t('home.trust_attendees_title') }}
-          </p>
-          <p class="text-sm leading-6 text-muted-foreground">
-            {{ $t('home.trust_attendees_desc') }}
-          </p>
-        </div>
-      </div>
-      <div class="group flex min-h-28 gap-4 rounded-[1.75rem] border bg-card/70 p-5 transition-all hover:-translate-y-0.5 hover:bg-card/95">
-        <div class="flex size-10 shrink-0 items-center justify-center rounded-2xl border bg-background text-primary shadow-sm transition-colors group-hover:border-primary/25 group-hover:bg-primary/5">
-          <Ticket class="size-4" />
-        </div>
-        <div class="min-w-0 space-y-1.5">
-          <p class="text-base font-semibold tracking-[-0.03em]">
-            {{ $t('home.trust_reserved_title') }}
-          </p>
-          <p class="text-sm leading-6 text-muted-foreground">
-            {{ $t('home.trust_reserved_desc') }}
+            {{ $t(item.descKey) }}
           </p>
         </div>
       </div>
