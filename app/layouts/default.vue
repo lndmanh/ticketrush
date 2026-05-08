@@ -7,8 +7,8 @@
         :class="cn(
           'rounded-full border px-8 transition-all',
           isScrolled
-            ? 'border-border bg-background/40 shadow-lg backdrop-blur-xs shadow-black/8 py-3'
-            : 'border-border/20 bg-background/60 py-4 backdrop-blur-xs',
+            ? 'border-border/40 bg-background/30 shadow-[0_8px_30px_rgb(0,0,0,0.12)] backdrop-blur-md py-3'
+            : 'border-border/10 bg-background/40 py-4 backdrop-blur-sm',
         )"
       >
         <div class="flex h-full items-center justify-between">
