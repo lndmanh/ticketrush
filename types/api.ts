@@ -1,5 +1,8 @@
 import type { PaginationMeta } from '~~/types/models/pagination'
 
+export type ApiFieldErrors = Record<string, string[]>
+export type ApiErrorDetails = Record<string, unknown>
+
 export interface ApiResponseSuccess<T> {
   success: true
   data: T
@@ -12,6 +15,8 @@ export interface ApiResponseFailure {
   error: {
     code: string
     message: string
+    fieldErrors?: ApiFieldErrors
+    details?: ApiErrorDetails
   }
   timestamp: string
 }
