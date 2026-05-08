@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import type { CheckoutStartData } from '~~/types/ticketing'
 import checkoutService from '~~/server/utils/ticketing/checkout'
-import { success } from '~~/server/utils/apiResponse'
+import { apiError, success, zodErrorToFieldErrors } from '~~/server/utils/apiResponse'
 import { getTicketingSessionKey } from '~~/server/utils/ticketing/session'
 
 const startCheckoutSchema = z.object({
@@ -13,7 +13,7 @@ export default defineEventHandler(async (event) => {
 
   const result = await readValidatedBody(event, body => startCheckoutSchema.safeParse(body))
   if (!result.success) {
-    throw createError({ statusCode: 400, statusMessage: 'Bad Request. Checkout request is invalid.', data: result.error })
+    throw apiError({ status: 400, statusText: 'Bad Request', code: 'VALIDATION_ERROR', message: 'Invalid request.', fieldErrors: zodErrorToFieldErrors(result.error), cause: result.error })
   }
 
   const checkout = await checkoutService.startCheckout(result.data.holdPublicId, getTicketingSessionKey(event))
