@@ -1,12 +1,15 @@
 <script setup lang="ts">
 import { Field as VeeField, useForm } from 'vee-validate'
 import { toast } from 'vue-sonner'
+import { apiRequest } from '@/utils/apiRequest'
+import { parseApiError } from '@/utils/apiError'
+import { apiRoutes } from '#shared/apiRoutes'
 import { waitingRoomSettingsSchema } from '#shared/schemas/ticketingSchema'
 import type { WaitingRoomSettingsInput } from '#shared/schemas/ticketingSchema'
 
 const isSaving = ref(false)
 
-const { data: settingsResponse, refresh } = await useFetch('/api/admin/waiting-room-settings')
+const { data: settingsResponse, refresh } = await useAPI(() => apiRoutes.ADMIN_WAITING_ROOM_SETTINGS)
 
 const defaultValues: WaitingRoomSettingsInput = {
   queueActivationThreshold: 250,
@@ -41,6 +44,18 @@ function getErrorMessage(error: object, fallback: string) {
   return fallback
 }
 
+function getUnknownErrorMessage(error: unknown, fallback: string) {
+  if (typeof error === 'object' && error !== null) {
+    return getErrorMessage(error, fallback)
+  }
+
+  if (error instanceof Error && error.message) {
+    return error.message
+  }
+
+  return fallback
+}
+
 function updatePositiveNumber(onChange: (value: number | '') => void, value: string | number) {
   const nextValue = String(value)
   if (!nextValue) {
@@ -59,20 +74,18 @@ const onSubmit = handleSubmit(
     isSaving.value = true
 
     try {
-      await $fetch('/api/admin/waiting-room-settings', {
+      const response = await apiRequest(apiRoutes.ADMIN_WAITING_ROOM_SETTINGS, {
         method: 'PUT',
         body: formValues,
       })
+      if (!response.success) {
+        throw response
+      }
       await refresh()
       toast.success('Waiting room settings updated')
     }
-    catch (error) {
-      if (error && typeof error === 'object') {
-        toast.error(getErrorMessage(error, 'Failed to update waiting room settings'))
-        return
-      }
-
-      toast.error('Failed to update waiting room settings')
+    catch (error: unknown) {
+      toast.error(parseApiError(error, 'Failed to update waiting room settings').message)
     }
     finally {
       isSaving.value = false
