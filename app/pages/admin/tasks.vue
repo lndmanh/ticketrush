@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { toast } from 'vue-sonner'
 import { Clock, Database, Loader2, Play, Users } from '@lucide/vue'
-import type { ApiResponse } from '~~/types/api'
 import type { AdminTaskData, AdminTaskResult } from '~~/types/admin-tasks'
+import { apiRequest } from '@/utils/apiRequest'
+import { parseApiError } from '@/utils/apiError'
 
 interface TaskDefinition {
   id: string
@@ -68,9 +69,9 @@ async function runTask(task: TaskDefinition) {
 
   runningTasks.value.add(task.id)
   try {
-    const response = await $fetch<ApiResponse<AdminTaskData>>(task.endpoint, { method: 'POST' })
+    const response = await apiRequest(task.endpoint, { method: 'POST' })
     if (!response.success) {
-      throw new Error(response.error.message)
+      throw response
     }
 
     taskResults.value[task.id] = {
@@ -81,7 +82,7 @@ async function runTask(task: TaskDefinition) {
     toast.success(`${task.title} completed`)
   }
   catch (err) {
-    const message = getTaskErrorMessage(err)
+    const message = parseApiError(err, 'Task failed').message
     taskResults.value[task.id] = {
       success: false,
       error: message,
