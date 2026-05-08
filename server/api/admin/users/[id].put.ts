@@ -1,14 +1,26 @@
+import { apiError, zodErrorToFieldErrors } from '~~/server/utils/apiResponse'
 import { userUpdateSchema } from '#shared/schemas/userSchema'
 import userService from '~~/server/utils/database/user'
 
 export default defineEventHandler(async (event) => {
   const userId = Number(getRouterParam(event, 'id'))
   if (Number.isNaN(userId)) {
-    throw createError({ statusCode: 400, statusMessage: 'Bad Request. The provided user ID is not a valid number.' })
+    throw apiError({
+      status: 400,
+      statusText: 'Bad Request',
+      message: 'Bad Request. The provided user ID is not a valid number.',
+      code: 'INVALID_USER_ID',
+    })
   }
   const result = await readValidatedBody(event, body => userUpdateSchema.safeParse(body))
   if (!result.success) {
-    throw createError({ statusCode: 400, statusMessage: 'Bad Request. The submitted user data is invalid.', data: result.error })
+    throw apiError({
+      status: 400,
+      statusText: 'Bad Request',
+      message: 'Bad Request. The submitted user data is invalid.',
+      code: 'VALIDATION_ERROR',
+      fieldErrors: zodErrorToFieldErrors(result.error),
+    })
   }
 
   // Hash password if provided
@@ -16,6 +28,5 @@ export default defineEventHandler(async (event) => {
     result.data.password = await hashPassword(result.data.password)
   }
 
-  const user = await userService.update(result.data)
-  return { user }
+  return success({ user })
 })
