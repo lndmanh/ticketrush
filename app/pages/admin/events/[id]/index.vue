@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { CircleDollarSign, LayoutGrid, LockKeyhole, Ticket, TrendingUp, Users } from '@lucide/vue'
 import AdminChartCard from '@/components/admin/charts/AdminChartCard.vue'
+import { apiRequest } from '@/utils/apiRequest'
+import { parseApiError } from '@/utils/apiError'
+import { apiRoutes } from '#shared/apiRoutes'
 
 const route = useRoute()
 const eventId = computed(() => Number(route.params.id))
@@ -86,8 +89,12 @@ const seatStatusOption = computed(() => {
 async function publishEvent() {
   isPublishing.value = true
   try {
-    await $fetch(`/api/admin/events/${eventId.value}/publish`, { method: 'POST' })
+    const response = await apiRequest(apiRoutes.adminEventPublish(eventId.value), { method: 'POST' })
+    if (!response.success) throw response
     await refreshAll()
+  }
+  catch (error) {
+    toast.error(parseApiError(error, 'Failed to publish event').message)
   }
   finally {
     isPublishing.value = false
@@ -97,8 +104,12 @@ async function publishEvent() {
 async function unpublishEvent() {
   isUnpublishing.value = true
   try {
-    await $fetch(`/api/admin/events/${eventId.value}/unpublish`, { method: 'POST' })
+    const response = await apiRequest(apiRoutes.adminEventUnpublish(eventId.value), { method: 'POST' })
+    if (!response.success) throw response
     await refreshAll()
+  }
+  catch (error) {
+    toast.error(parseApiError(error, 'Failed to unpublish event').message)
   }
   finally {
     isUnpublishing.value = false
