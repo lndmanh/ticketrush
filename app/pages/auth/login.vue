@@ -240,7 +240,7 @@ definePageMeta({
 
 <template>
   <AuthPageLayout
-    quote="Gromet Reader keeps my library organized and lets me get back to reading without fighting the interface."
+    quote="The future belongs to those who believe in the beauty of their dreams."
     quote-author="Morgan Vale"
   >
     <div class="space-y-1">
