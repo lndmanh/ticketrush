@@ -235,23 +235,6 @@ import { parseApiError } from '@/utils/apiError'
 import { apiRoutes } from '#shared/apiRoutes'
 import { createColumns } from './columns'
 
-function extractErrorMessage(error: unknown, fallback: string) {
-  if (isRecord(error) && isRecord(error.data)) {
-    if (typeof error.data.statusMessage === 'string') {
-      return error.data.statusMessage
-    }
-    if (typeof error.data.message === 'string') {
-      return error.data.message
-    }
-  }
-
-  if (error instanceof Error && error.message) {
-    return error.message
-  }
-
-  return fallback
-}
-
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null
 }
