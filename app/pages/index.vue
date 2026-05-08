@@ -8,6 +8,7 @@ import {
   Sparkles,
 } from '@lucide/vue'
 import type { EventCatalogQueryOptions } from '~~/types/events'
+import { apiRoutes } from '#shared/apiRoutes'
 
 const FEATURED_EVENT_LIMIT = 3
 
@@ -22,7 +23,7 @@ const {
   data: featuredEventsResponse,
   pending: featuredEventsPending,
   error: featuredEventsFetchError,
-} = await useFetch('/api/events', {
+} = await useAPI(() => '/api/events', {
   query: featuredEventsQuery,
 })
 
