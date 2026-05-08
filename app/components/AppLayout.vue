@@ -215,7 +215,7 @@ const { loggedIn, user } = useUserSession()
             <LogInIcon />
             <span
               class="hidden sm:flex"
-            >Sign In</span>
+            >{{ $t('common.sign_in') }}</span>
           </Button>
           <component
             :is="titleControls"

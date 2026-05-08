@@ -436,12 +436,12 @@ definePageMeta({
               >
                 <Field :data-invalid="!!errors.length">
                   <FieldLabel for="checkout-customer-name">
-                    Full name
+                    {{ $t('checkout.full_name') }}
                   </FieldLabel>
                   <Input
                     id="checkout-customer-name"
                     :model-value="field.value"
-                    placeholder="Nguyen Minh Anh"
+                    :placeholder="$t('checkout.full_name')"
                     :aria-invalid="!!errors.length"
                     @update:model-value="field.onChange"
                   />
@@ -458,7 +458,7 @@ definePageMeta({
               >
                 <Field :data-invalid="!!errors.length">
                   <FieldLabel for="checkout-customer-email">
-                    Email
+                    {{ $t('checkout.email') }}
                   </FieldLabel>
                   <Input
                     id="checkout-customer-email"
@@ -481,7 +481,7 @@ definePageMeta({
               >
                 <Field :data-invalid="!!errors.length">
                   <FieldLabel for="checkout-customer-phone">
-                    Phone
+                    {{ $t('checkout.phone') }}
                   </FieldLabel>
                   <Input
                     id="checkout-customer-phone"
@@ -490,7 +490,7 @@ definePageMeta({
                     :aria-invalid="!!errors.length"
                     @update:model-value="field.onChange"
                   />
-                  <FieldDescription>Optional. Useful for organizer outreach on schedule changes.</FieldDescription>
+                  <FieldDescription>{{ $t('checkout.phone_desc') }}</FieldDescription>
                   <FieldError
                     v-if="errors.length"
                     :errors="errors"
@@ -505,7 +505,7 @@ definePageMeta({
                 >
                   <Field :data-invalid="!!errors.length">
                     <FieldLabel for="checkout-age-bracket">
-                      Age bracket
+                      {{ $t('checkout.age_bracket') }}
                     </FieldLabel>
                     <Select
                       :model-value="field.value"
@@ -516,7 +516,7 @@ definePageMeta({
                         :aria-invalid="!!errors.length"
                         @blur="field.onBlur"
                       >
-                        <SelectValue :placeholder="field.value ? undefined : 'Select age bracket'" />
+                        <SelectValue :placeholder="field.value ? undefined : $t('checkout.age_bracket_placeholder')" />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="18-24">
@@ -546,7 +546,7 @@ definePageMeta({
                 >
                   <Field :data-invalid="!!errors.length">
                     <FieldLabel for="checkout-customer-gender">
-                      Gender
+                      {{ $t('checkout.gender') }}
                     </FieldLabel>
                     <Select
                       :model-value="field.value"
@@ -557,20 +557,20 @@ definePageMeta({
                         :aria-invalid="!!errors.length"
                         @blur="field.onBlur"
                       >
-                        <SelectValue :placeholder="field.value ? undefined : 'Select gender'" />
+                        <SelectValue :placeholder="field.value ? undefined : $t('checkout.gender_placeholder')" />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="female">
-                          Female
+                          {{ $t('checkout.gender_female') }}
                         </SelectItem>
                         <SelectItem value="male">
-                          Male
+                          {{ $t('checkout.gender_male') }}
                         </SelectItem>
                         <SelectItem value="non-binary">
-                          Non-binary
+                          {{ $t('checkout.gender_non_binary') }}
                         </SelectItem>
                         <SelectItem value="prefer-not-to-say">
-                          Prefer not to say
+                          {{ $t('checkout.gender_prefer_not') }}
                         </SelectItem>
                       </SelectContent>
                     </Select>
@@ -588,10 +588,10 @@ definePageMeta({
         <div class="space-y-6 border-t border-border pt-8">
           <div class="space-y-2">
             <h3 class="text-2xl font-semibold tracking-[-0.04em]">
-              Ticket assignments
+              {{ $t('checkout.ticket_assignments_title') }}
             </h3>
             <p class="text-sm leading-7 text-muted-foreground">
-              Assign each ticket to your account, a saved attendee, or enter details manually.
+              {{ $t('checkout.ticket_assignments_desc') }}
             </p>
           </div>
 
@@ -615,21 +615,21 @@ definePageMeta({
               <div class="space-y-4">
                 <div class="space-y-2">
                   <FieldLabel :for="`source-${draft.eventSeatId}`">
-                    Assignment method
+                    {{ $t('checkout.assignment_method') }}
                   </FieldLabel>
                   <Select v-model="draft.source">
                     <SelectTrigger :id="`source-${draft.eventSeatId}`">
-                      <SelectValue placeholder="Select method" />
+                      <SelectValue :placeholder="$t('checkout.assignment_placeholder')" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="account">
-                        Use buyer details
+                        {{ $t('checkout.use_buyer_details') }}
                       </SelectItem>
                       <SelectItem value="saved-attendee">
-                        Select saved attendee
+                        {{ $t('checkout.select_saved_attendee') }}
                       </SelectItem>
                       <SelectItem value="manual">
-                        Enter manually
+                        {{ $t('checkout.enter_manually') }}
                       </SelectItem>
                     </SelectContent>
                   </Select>
@@ -639,7 +639,7 @@ definePageMeta({
                   v-if="draft.source === 'account'"
                   class="rounded-xl border border-black/5 bg-accent/50 p-4 text-sm text-muted-foreground dark:border-white/10"
                 >
-                  Ticket holder details are automatically synced with the buyer details above.
+                  {{ $t('checkout.auto_synced_note') }}
                 </div>
 
                 <div
@@ -647,11 +647,11 @@ definePageMeta({
                   class="space-y-2"
                 >
                   <FieldLabel :for="`attendee-${draft.eventSeatId}`">
-                    Saved attendee
+                    {{ $t('checkout.saved_attendee_label') }}
                   </FieldLabel>
                   <Select v-model="draft.savedAttendeeId">
                     <SelectTrigger :id="`attendee-${draft.eventSeatId}`">
-                      <SelectValue placeholder="Choose an attendee" />
+                      <SelectValue :placeholder="$t('checkout.attendee_placeholder')" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem
@@ -671,64 +671,64 @@ definePageMeta({
                 >
                   <div class="space-y-2">
                     <FieldLabel :for="`name-${draft.eventSeatId}`">
-                      Legal name
+                      {{ $t('checkout.legal_name') }}
                     </FieldLabel>
                     <Input
                       :id="`name-${draft.eventSeatId}`"
                       v-model="draft.holder.legalName"
                       :readonly="draft.source === 'account'"
-                      placeholder="Legal name"
+                      :placeholder="$t('checkout.legal_name')"
                     />
                   </div>
 
                   <div class="space-y-2">
                     <FieldLabel :for="`email-${draft.eventSeatId}`">
-                      Email
+                      {{ $t('checkout.email') }}
                     </FieldLabel>
                     <Input
                       :id="`email-${draft.eventSeatId}`"
                       v-model="draft.holder.email"
                       type="email"
                       :readonly="draft.source === 'account'"
-                      placeholder="Email"
+                      :placeholder="$t('checkout.email')"
                     />
                   </div>
 
                   <div class="space-y-2">
                     <FieldLabel :for="`phone-${draft.eventSeatId}`">
-                      Phone
+                      {{ $t('checkout.phone') }}
                     </FieldLabel>
                     <Input
                       :id="`phone-${draft.eventSeatId}`"
                       v-model="draft.holder.phone"
                       :readonly="draft.source === 'account'"
-                      placeholder="Phone"
+                      :placeholder="$t('checkout.phone')"
                     />
                   </div>
 
                   <div class="space-y-2">
                     <FieldLabel :for="`gender-${draft.eventSeatId}`">
-                      Gender
+                      {{ $t('checkout.gender') }}
                     </FieldLabel>
                     <Select
                       v-model="draft.holder.gender"
                       :disabled="draft.source === 'account'"
                     >
                       <SelectTrigger :id="`gender-${draft.eventSeatId}`">
-                        <SelectValue placeholder="Select gender" />
+                        <SelectValue :placeholder="$t('checkout.gender_placeholder')" />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="female">
-                          Female
+                          {{ $t('checkout.gender_female') }}
                         </SelectItem>
                         <SelectItem value="male">
-                          Male
+                          {{ $t('checkout.gender_male') }}
                         </SelectItem>
                         <SelectItem value="non-binary">
-                          Non-binary
+                          {{ $t('checkout.gender_non_binary') }}
                         </SelectItem>
                         <SelectItem value="prefer-not-to-say">
-                          Prefer not to say
+                          {{ $t('checkout.gender_prefer_not') }}
                         </SelectItem>
                       </SelectContent>
                     </Select>
@@ -736,80 +736,80 @@ definePageMeta({
 
                   <div class="space-y-2">
                     <FieldLabel :for="`birth-${draft.eventSeatId}`">
-                      Birth date
+                      {{ $t('checkout.birth_date') }}
                     </FieldLabel>
                     <Input
                       :id="`birth-${draft.eventSeatId}`"
                       v-model="draft.holder.birthDate"
                       type="date"
-                      placeholder="Birth date"
+                      :placeholder="$t('checkout.birth_date')"
                     />
                   </div>
 
                   <div class="space-y-2">
                     <FieldLabel :for="`preferred-${draft.eventSeatId}`">
-                      Preferred name
+                      {{ $t('checkout.preferred_name') }}
                     </FieldLabel>
                     <Input
                       :id="`preferred-${draft.eventSeatId}`"
                       v-model="draft.holder.preferredName"
-                      placeholder="Preferred name"
+                      :placeholder="$t('checkout.preferred_name')"
                     />
                   </div>
 
                   <div class="space-y-2">
                     <FieldLabel :for="`guardian-name-${draft.eventSeatId}`">
-                      Guardian name
+                      {{ $t('checkout.guardian_name') }}
                     </FieldLabel>
                     <Input
                       :id="`guardian-name-${draft.eventSeatId}`"
                       v-model="draft.holder.guardianName"
-                      placeholder="Guardian name"
+                      :placeholder="$t('checkout.guardian_name')"
                     />
                   </div>
 
                   <div class="space-y-2">
                     <FieldLabel :for="`guardian-email-${draft.eventSeatId}`">
-                      Guardian email
+                      {{ $t('checkout.guardian_email') }}
                     </FieldLabel>
                     <Input
                       :id="`guardian-email-${draft.eventSeatId}`"
                       v-model="draft.holder.guardianEmail"
                       type="email"
-                      placeholder="Guardian email"
+                      :placeholder="$t('checkout.guardian_email')"
                     />
                   </div>
 
                   <div class="space-y-2">
                     <FieldLabel :for="`guardian-phone-${draft.eventSeatId}`">
-                      Guardian phone
+                      {{ $t('checkout.guardian_phone') }}
                     </FieldLabel>
                     <Input
                       :id="`guardian-phone-${draft.eventSeatId}`"
                       v-model="draft.holder.guardianPhone"
-                      placeholder="Guardian phone"
+                      :placeholder="$t('checkout.guardian_phone')"
                     />
                   </div>
 
                   <div class="space-y-2 md:col-span-2">
                     <FieldLabel :for="`notes-${draft.eventSeatId}`">
-                      Notes
+                      {{ $t('checkout.notes') }}
                     </FieldLabel>
                     <Input
                       :id="`notes-${draft.eventSeatId}`"
                       v-model="draft.holder.notes"
-                      placeholder="Notes"
+                      :placeholder="$t('checkout.notes')"
                     />
                   </div>
 
                   <div class="space-y-2 md:col-span-2">
                     <FieldLabel :for="`access-${draft.eventSeatId}`">
-                      Accessibility needs
+                      {{ $t('checkout.accessibility_needs') }}
                     </FieldLabel>
                     <Input
                       :id="`access-${draft.eventSeatId}`"
                       v-model="draft.holder.accessibilityNeeds"
-                      placeholder="Accessibility needs"
+                      :placeholder="$t('checkout.accessibility_needs')"
                     />
                   </div>
 
@@ -822,10 +822,10 @@ definePageMeta({
                         :for="`save-${draft.eventSeatId}`"
                         class="text-base"
                       >
-                        Save as attendee
+                        {{ $t('checkout.save_as_attendee_label') }}
                       </FieldLabel>
                       <p class="text-sm text-muted-foreground">
-                        Save this person for faster checkout next time.
+                        {{ $t('checkout.save_as_attendee_desc') }}
                       </p>
                     </div>
                     <Switch

@@ -62,32 +62,6 @@ const largestVenue = computed(() => {
   return [...venues.value].sort((left, right) => (right.capacity ?? 0) - (left.capacity ?? 0))[0] ?? null
 })
 
-const cockpitSignals = computed(() => {
-  return [
-    {
-      title: 'Publish backlog',
-      value: draftEvents.value.length,
-      description: draftEvents.value.length > 0
-        ? 'Draft launches still need final pricing, seat verification, or publish approval.'
-        : 'All tracked events are already live or complete.',
-    },
-    {
-      title: 'Live programs',
-      value: publishedEvents.value.length,
-      description: publishedEvents.value.length > 0
-        ? 'Published events are now available for seat, sales, and buyer operations review.'
-        : 'No published events are currently tracked in the command center.',
-    },
-    {
-      title: 'City coverage',
-      value: cityCoverage.value,
-      description: cityCoverage.value > 0
-        ? 'Venue blueprints are distributed across active city footprints for future launches.'
-        : 'Add venue blueprints to establish regional coverage for future events.',
-    },
-  ]
-})
-
 definePageMeta({
   title: 'Admin Dashboard',
   breadcrumb: 'Admin',
@@ -197,7 +171,7 @@ definePageMeta({
         :status="featuredEvent.status"
         :href="`/admin/events/${featuredEvent.id}`"
         open-label="Open event"
-        secondary-label="Events list"
+        :secondary-label="$t('admin.events.event_registry')"
         secondary-href="/admin/events"
         :leading-icon="CalendarRange"
       />
@@ -206,21 +180,21 @@ definePageMeta({
         v-else
         class="rounded-lg border border-dashed bg-card p-4 text-sm text-muted-foreground"
       >
-        No upcoming launches yet.
+        {{ $t('admin.no_upcoming_launches') }}
       </p>
     </section>
 
     <section class="grid gap-4 xl:grid-cols-[1.05fr_0.95fr]">
       <Card>
         <CardHeader class="flex flex-row items-center justify-between gap-3">
-          <CardTitle>Recent events</CardTitle>
+          <CardTitle>{{ $t('admin.recent_events') }}</CardTitle>
           <Button
             as-child
             size="sm"
             variant="outline"
           >
             <NuxtLink to="/admin/events">
-              View all
+              {{ $t('admin.events.view_all') }}
             </NuxtLink>
           </Button>
         </CardHeader>
@@ -238,13 +212,13 @@ definePageMeta({
             </div>
             <div class="flex-1 min-w-0">
               <p class="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-                Recent update
+                {{ $t('admin.recent_update') }}
               </p>
               <p class="truncate text-sm font-semibold leading-tight text-foreground">
                 {{ event.title }}
               </p>
               <p class="truncate text-xs text-muted-foreground">
-                {{ event.venue?.name || 'Venue pending' }} · {{ new Date(event.startsAt).toLocaleString() }}
+                {{ event.venue?.name || $t('admin.venue_pending') }} · {{ new Date(event.startsAt).toLocaleString() }}
               </p>
             </div>
             <div class="shrink-0 text-xs text-muted-foreground">
@@ -256,21 +230,21 @@ definePageMeta({
             v-if="recentEvents.length === 0"
             class="text-sm text-muted-foreground"
           >
-            No recent events.
+            {{ $t('admin.no_recent_events') }}
           </p>
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader class="flex flex-row items-center justify-between gap-3">
-          <CardTitle>Venue coverage</CardTitle>
+          <CardTitle>{{ $t('admin.venue_coverage') }}</CardTitle>
           <Button
             as-child
             size="sm"
             variant="outline"
           >
             <NuxtLink to="/admin/venues">
-              View all
+              {{ $t('admin.events.view_all') }}
             </NuxtLink>
           </Button>
         </CardHeader>

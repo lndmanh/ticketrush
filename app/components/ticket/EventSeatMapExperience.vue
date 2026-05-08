@@ -151,20 +151,11 @@ function getStatusDescription(status: SeatMapStatus) {
 
   return 'This location is currently not being released for public purchase.'
 }
-
-function getStatusRatio(count: number, total: number) {
-  if (total === 0) {
-    return '0%'
-  }
-
-  return `${(count / total) * 100}%`
-}
 </script>
 
 <template>
   <TicketSeatMapLayoutProvider
     v-slot="{
-      sections,
       inventorySummary,
       sectionOptions,
       selectedSection,
@@ -207,7 +198,7 @@ function getStatusRatio(count: number, total: number) {
             @update:model-value="setSelectedSection"
           >
             <SelectTrigger class="min-w-[12rem]">
-              <SelectValue placeholder="Focus section" />
+              <SelectValue :placeholder="$t('common.focus_section')" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">
@@ -227,7 +218,7 @@ function getStatusRatio(count: number, total: number) {
             <Button
               variant="ghost"
               size="icon-sm"
-              aria-label="Zoom out"
+              :aria-label="$t('common.zoom_out')"
               @click="decreaseZoom"
             >
               <ZoomOut class="size-4" />
@@ -238,7 +229,7 @@ function getStatusRatio(count: number, total: number) {
             <Button
               variant="ghost"
               size="icon-sm"
-              aria-label="Zoom in"
+              :aria-label="$t('common.zoom_in')"
               @click="increaseZoom"
             >
               <ZoomIn class="size-4" />

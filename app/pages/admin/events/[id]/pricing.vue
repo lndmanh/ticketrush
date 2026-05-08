@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { CalendarClock, Layers3, LockKeyhole, Ticket } from '@lucide/vue'
+import { LockKeyhole } from '@lucide/vue'
 import { useForm } from 'vee-validate'
 import { toast } from 'vue-sonner'
 import { Button } from '@/components/ui/button'
@@ -307,7 +307,7 @@ definePageMeta({
       <CardHeader class="border-b bg-muted/20">
         <div class="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
           <div>
-            <CardTitle>Pricing & scheduling</CardTitle>
+            <CardTitle>{{ $t('admin_event_pricing.title') }}</CardTitle>
             <p class="mt-1 text-sm text-muted-foreground">
               Edit the event sessions buyers will see on the public event page.
             </p>
@@ -334,7 +334,7 @@ definePageMeta({
               <LockKeyhole />
             </ItemMedia>
             <ItemContent>
-              <ItemTitle>Pricing is read-only</ItemTitle>
+              <ItemTitle>{{ $t('admin_event_pricing.read_only_title') }}</ItemTitle>
               <ItemDescription>
                 Switch the event back to draft if you need to make pricing or scheduling changes.
               </ItemDescription>

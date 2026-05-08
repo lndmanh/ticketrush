@@ -64,7 +64,7 @@ const hasTopInset = computed(() => props.side === 'right' || props.side === 'lef
         )"
       >
         <X class="size-4" />
-        <span class="sr-only">Close</span>
+      <span class="sr-only">{{ $t('common.close') }}</span>
       </DialogClose>
     </DialogContent>
   </DialogPortal>

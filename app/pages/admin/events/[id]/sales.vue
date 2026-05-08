@@ -87,7 +87,7 @@ definePageMeta({
       <Card class="h-full">
         <CardContent>
           <div class="flex items-center gap-3 text-muted-foreground">
-            <CircleDollarSign class="size-4" /><span class="text-[11px] uppercase tracking-[0.22em]">Revenue</span>
+            <CircleDollarSign class="size-4" /><span class="text-[11px] uppercase tracking-[0.22em]">{{ $t('admin_event_sales.revenue_label') }}</span>
           </div><p class="mt-4 text-2xl font-semibold tracking-[-0.05em] text-foreground">
             {{ Intl.NumberFormat('en-US').format((dashboard.revenueCents || 0) / 100) }} VND
           </p><p class="mt-2 text-sm text-muted-foreground">
@@ -98,7 +98,7 @@ definePageMeta({
       <Card class="h-full">
         <CardContent>
           <div class="flex items-center gap-3 text-muted-foreground">
-            <TrendingUp class="size-4" /><span class="text-[11px] uppercase tracking-[0.22em]">Occupancy</span>
+            <TrendingUp class="size-4" /><span class="text-[11px] uppercase tracking-[0.22em]">{{ $t('admin_event_sales.occupancy_label') }}</span>
           </div><p class="mt-4 text-2xl font-semibold tracking-[-0.05em] text-foreground">
             {{ Math.round((dashboard.occupancyRate || 0) * 100) }}%
           </p><p class="mt-2 text-sm text-muted-foreground">
@@ -109,7 +109,7 @@ definePageMeta({
       <Card class="h-full">
         <CardContent>
           <div class="flex items-center gap-3 text-muted-foreground">
-            <Ticket class="size-4" /><span class="text-[11px] uppercase tracking-[0.22em]">Revenue / seat</span>
+            <Ticket class="size-4" /><span class="text-[11px] uppercase tracking-[0.22em]">{{ $t('admin_event_sales.revenue_per_seat_label') }}</span>
           </div><p class="mt-4 text-2xl font-semibold tracking-[-0.05em] text-foreground">
             {{ Intl.NumberFormat('en-US').format(revenuePerSeat / 100) }} VND
           </p><p class="mt-2 text-sm text-muted-foreground">
@@ -120,7 +120,7 @@ definePageMeta({
       <Card class="h-full">
         <CardContent>
           <div class="flex items-center gap-3 text-muted-foreground">
-            <PieChart class="size-4" /><span class="text-[11px] uppercase tracking-[0.22em]">Active holds</span>
+            <PieChart class="size-4" /><span class="text-[11px] uppercase tracking-[0.22em]">{{ $t('admin_event_sales.active_holds_label') }}</span>
           </div><p class="mt-4 text-2xl font-semibold tracking-[-0.05em] text-foreground">
             {{ dashboard.activeHoldsCount }}
           </p><p class="mt-2 text-sm text-muted-foreground">
@@ -134,7 +134,7 @@ definePageMeta({
       <AdminChartCard
         class="xl:col-span-5"
         eyebrow="Ranking"
-        title="Section revenue"
+        :title="$t('admin_event_sales.section_revenue')"
         description="Top sections ranked by confirmed revenue."
         :option="sectionRevenueOption"
         :height="320"
@@ -145,7 +145,7 @@ definePageMeta({
       <AdminChartCard
         class="xl:col-span-4"
         eyebrow="Audience"
-        title="Audience mix"
+        :title="$t('admin_event_sales.audience_mix')"
         description="Current age distribution of buyers captured in the dashboard snapshot."
         :option="audienceMixOption"
         :height="320"
@@ -156,7 +156,7 @@ definePageMeta({
       <AdminChartCard
         class="xl:col-span-3"
         eyebrow="Sample"
-        title="Recent order sample"
+        :title="$t('admin_event_sales.recent_order_sample')"
         description="Latest order amounts shown as a recent-value sample, not a long-term trend."
         :option="recentOrderSampleOption"
         :height="320"
@@ -166,7 +166,7 @@ definePageMeta({
       />
 
       <Card class="h-full xl:col-span-8">
-        <CardHeader><CardTitle>Recent orders</CardTitle></CardHeader>
+        <CardHeader><CardTitle>{{ $t('admin_event_sales.recent_orders_title') }}</CardTitle></CardHeader>
         <CardContent class="space-y-3">
           <div
             v-for="order in dashboard.recentOrders"
@@ -196,7 +196,7 @@ definePageMeta({
       </Card>
 
       <Card class="h-full xl:col-span-4">
-        <CardHeader><CardTitle>Live pressure</CardTitle></CardHeader>
+        <CardHeader><CardTitle>{{ $t('admin_event_sales.live_pressure_title') }}</CardTitle></CardHeader>
         <CardContent class="grid gap-3 sm:grid-cols-2">
           <div class="rounded-[1.25rem] border border-border bg-secondary/30 p-4">
             <p class="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">

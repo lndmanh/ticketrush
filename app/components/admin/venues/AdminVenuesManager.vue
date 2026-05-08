@@ -3,16 +3,16 @@
     <section class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
       <div class="space-y-1">
         <h2 class="text-2xl font-semibold text-foreground">
-          Venues
+          {{ $t('admin.venues.title') }}
         </h2>
         <p class="text-sm text-muted-foreground">
-          Manage reusable room layouts and blueprint coverage.
+          {{ $t('admin.venues.desc') }}
         </p>
       </div>
 
       <Button @click="openCreateDialog">
         <Rows3 class="h-4 w-4" />
-        Add venue
+        {{ $t('admin.venues.add_venue') }}
       </Button>
     </section>
 
@@ -21,9 +21,9 @@
       :columns="columns"
       :data="venues"
       :loading="tableLoading"
-      search-placeholder="Search venues, cities, or addresses"
-      empty-title="No venue blueprints match the current view."
-      empty-description="Adjust the search or add a new venue."
+      :search-placeholder="$t('admin.venues.search_venues')"
+      :empty-title="$t('admin.venues.no_match')"
+      :empty-description="$t('admin.venues.no_match_desc')"
       @update:data="fetchVenues"
     />
 
@@ -31,10 +31,10 @@
       <DialogScrollContent class="max-w-3xl">
         <DialogHeader>
           <DialogTitle>
-            Create venue
+            {{ $t('admin.venues.create_venue') }}
           </DialogTitle>
           <DialogDescription>
-            Add the venue details first. Configure sections, rows, and seats in Venue Studio after creation.
+            {{ $t('admin.venues.create_desc') }}
           </DialogDescription>
         </DialogHeader>
 
@@ -49,12 +49,12 @@
             >
               <Field :data-invalid="!!errors.length">
                 <FieldLabel for="venue-dialog-name">
-                  Venue name
+                  {{ $t('admin.venues.venue_name') }}
                 </FieldLabel>
                 <Input
                   id="venue-dialog-name"
                   :model-value="field.value"
-                  placeholder="Saigon Sound Hall"
+                  :placeholder="$t('admin.venues.venue_name_placeholder')"
                   :aria-invalid="!!errors.length"
                   @update:model-value="field.onChange"
                 />
@@ -71,12 +71,12 @@
             >
               <Field :data-invalid="!!errors.length">
                 <FieldLabel for="venue-dialog-slug">
-                  Slug
+                  {{ $t('admin.venues.slug') }}
                 </FieldLabel>
                 <Input
                   id="venue-dialog-slug"
                   :model-value="field.value"
-                  placeholder="saigon-sound-hall"
+                  :placeholder="$t('admin.venues.slug_placeholder')"
                   :aria-invalid="!!errors.length"
                   @update:model-value="field.onChange"
                 />
@@ -93,12 +93,12 @@
             >
               <Field :data-invalid="!!errors.length">
                 <FieldLabel for="venue-dialog-address">
-                  Address
+                  {{ $t('admin.venues.address') }}
                 </FieldLabel>
                 <Input
                   id="venue-dialog-address"
                   :model-value="field.value"
-                  placeholder="District 1, Ho Chi Minh City"
+                  :placeholder="$t('admin.venues.address_placeholder')"
                   :aria-invalid="!!errors.length"
                   @update:model-value="field.onChange"
                 />
@@ -116,7 +116,7 @@
               >
                 <Field :data-invalid="!!errors.length">
                   <FieldLabel for="venue-dialog-city">
-                    City
+                    {{ $t('admin.venues.city') }}
                   </FieldLabel>
                   <Input
                     id="venue-dialog-city"
@@ -137,7 +137,7 @@
               >
                 <Field :data-invalid="!!errors.length">
                   <FieldLabel for="venue-dialog-country">
-                    Country
+                    {{ $t('admin.venues.country') }}
                   </FieldLabel>
                   <Input
                     id="venue-dialog-country"
@@ -159,12 +159,12 @@
             >
               <Field :data-invalid="!!errors.length">
                 <FieldLabel for="venue-dialog-description">
-                  Description
+                  {{ $t('admin.venues.description') }}
                 </FieldLabel>
                 <Textarea
                   id="venue-dialog-description"
                   :model-value="field.value"
-                  placeholder="A room tuned for premium lines of sight."
+                  :placeholder="$t('admin.venues.description_placeholder')"
                   :aria-invalid="!!errors.length"
                   @update:model-value="field.onChange"
                 />
@@ -181,16 +181,16 @@
             >
               <Field :data-invalid="!!errors.length">
                 <FieldLabel for="venue-dialog-cover-image">
-                  Cover image URL
+                  {{ $t('admin.venues.cover_image') }}
                 </FieldLabel>
                 <Input
                   id="venue-dialog-cover-image"
                   :model-value="field.value"
-                  placeholder="https://example.com/venue.jpg"
+                  :placeholder="$t('admin.venues.cover_image_placeholder')"
                   :aria-invalid="!!errors.length"
                   @update:model-value="field.onChange"
                 />
-                <FieldDescription>Optional</FieldDescription>
+                <FieldDescription>{{ $t('common.optional') }}</FieldDescription>
                 <FieldError
                   v-if="errors.length"
                   :errors="errors"
@@ -206,13 +206,13 @@
               :disabled="dialogLoading"
               @click="closeDialog"
             >
-              Cancel
+              {{ $t('common.cancel') }}
             </Button>
             <Button
               type="submit"
               :is-loading="dialogLoading"
             >
-              Create venue
+              {{ $t('admin.venues.create_venue') }}
             </Button>
           </DialogFooter>
         </form>

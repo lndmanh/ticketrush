@@ -11,7 +11,7 @@
     >
       <button
         class="group relative flex h-12 w-12 items-center justify-center rounded-full bg-muted/10 backdrop-blur-md shadow-lg transition-all hover:scale-110 hover:shadow-xl focus:outline-none border border-border/50 cursor-pointer"
-        aria-label="Scroll to top"
+        :aria-label="$t('common.scroll_to_top')"
         @click="scrollToTop"
       >
         <!-- Progress Ring SVG -->

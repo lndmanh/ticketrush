@@ -95,13 +95,13 @@
 
       <AdminFeaturedEventCard
         v-if="featuredPriorityEvent"
-        eyebrow="Priority event"
+        :eyebrow="$t('admin.events.priority_event')"
         :title="featuredPriorityEvent.title"
         :venue-name="featuredPriorityEvent.venueName"
         :starts-at="featuredPriorityEvent.startsAt"
         :status="featuredPriorityEvent.status"
         :href="`/admin/events/${featuredPriorityEvent.id}`"
-        open-label="Open event"
+        :open-label="$t('admin.events.open_event')"
         :leading-icon="Rocket"
       >
         <template #actions>
@@ -109,7 +109,7 @@
             v-if="featuredPriorityEvent.status === 'draft'"
             size="icon-sm"
             variant="outline"
-            title="Publish event"
+            :title="$t('admin.events.publish_event')"
             @click="publishEvent(featuredPriorityEvent.id)"
           >
             <Rocket class="size-4" />
@@ -118,7 +118,7 @@
             v-else
             size="icon-sm"
             variant="outline"
-            title="Move event back to draft"
+            :title="$t('admin.events.move_to_draft')"
             @click="unpublishEvent(featuredPriorityEvent.id)"
           >
             <ArchiveIcon class="size-4" />
@@ -130,7 +130,7 @@
         v-else
         class="rounded-lg border border-dashed bg-card p-4 text-sm text-muted-foreground"
       >
-        No events to review.
+        {{ $t('admin.events.no_events') }}
       </p>
     </section>
 
@@ -140,10 +140,10 @@
     >
       <div class="flex flex-col gap-1">
         <h3 class="text-lg font-semibold tracking-[-0.03em] text-foreground">
-          Unfinished autosave draft
+          {{ $t('admin.events.unfinished_draft') }}
         </h3>
         <p class="text-sm text-muted-foreground">
-          This incomplete event form has not been saved as a real draft event yet.
+          {{ $t('admin.events.unfinished_draft_desc') }}
         </p>
       </div>
 
@@ -152,10 +152,10 @@
           <div class="min-w-0 space-y-1">
             <div class="flex flex-wrap items-center gap-2">
               <p class="truncate text-sm font-medium text-foreground">
-                {{ unfinishedDraft.titleSnapshot || 'Untitled event' }}
+                {{ unfinishedDraft.titleSnapshot || $t('admin.events.untitled_event') }}
               </p>
               <Badge variant="outline">
-                Step {{ unfinishedDraft.lastSavedStep }}
+                {{ $t('common.step') }} {{ unfinishedDraft.lastSavedStep }}
               </Badge>
             </div>
             <p class="text-sm text-muted-foreground">
@@ -169,14 +169,14 @@
               size="sm"
               @click="discardAutosaveDraft(unfinishedDraft.draftKey)"
             >
-              Discard
+              {{ $t('admin.events.discard') }}
             </Button>
             <Button
               type="button"
               size="sm"
               @click="resumeAutosaveDraft(unfinishedDraft.draftKey)"
             >
-              Resume
+              {{ $t('admin.events.resume') }}
             </Button>
           </div>
         </CardContent>
@@ -187,11 +187,11 @@
       :columns="columns"
       :data="rows"
       :loading="loading"
-      toolbar-label="Event registry"
-      toolbar-description="Search launches and update their status."
-      search-placeholder="Search events, venues, or statuses"
-      empty-title="No events match the current view."
-      empty-description="Adjust the search or create a new event."
+      :toolbar-label="$t('admin.events.event_registry')"
+      :toolbar-description="$t('admin.events.registry_desc')"
+      :search-placeholder="$t('admin.events.search_events')"
+      :empty-title="$t('admin.events.no_match')"
+      :empty-description="$t('admin.events.no_match_desc')"
       @update:data="fetchEvents"
     />
   </div>

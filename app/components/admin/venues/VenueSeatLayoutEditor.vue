@@ -258,7 +258,7 @@ function removeSeat(sectionIndex: number, rowIndex: number, seatIndex: number) {
         variant="outline"
         @click="addSection"
       >
-        Add section
+        {{ $t('admin.venues.add_section') }}
       </Button>
     </div>
 
@@ -275,21 +275,21 @@ function removeSeat(sectionIndex: number, rowIndex: number, seatIndex: number) {
         <div class="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
           <div class="grid flex-1 gap-3 md:grid-cols-3">
             <div class="space-y-2">
-              <label class="text-xs uppercase tracking-[0.18em] text-muted-foreground">Code</label>
+              <label class="text-xs uppercase tracking-[0.18em] text-muted-foreground">{{ $t('admin.columns.code') }}</label>
               <Input
                 :model-value="section.code"
                 @update:model-value="updateSection(sectionIndex, 'code', $event)"
               />
             </div>
             <div class="space-y-2">
-              <label class="text-xs uppercase tracking-[0.18em] text-muted-foreground">Name</label>
+              <label class="text-xs uppercase tracking-[0.18em] text-muted-foreground">{{ $t('admin.columns.name') }}</label>
               <Input
                 :model-value="section.name"
                 @update:model-value="updateSection(sectionIndex, 'name', $event)"
               />
             </div>
             <div class="space-y-2">
-              <label class="text-xs uppercase tracking-[0.18em] text-muted-foreground">Color</label>
+              <label class="text-xs uppercase tracking-[0.18em] text-muted-foreground">{{ $t('admin.columns.color') }}</label>
               <Input
                 :model-value="section.color"
                 @update:model-value="updateSection(sectionIndex, 'color', $event)"
@@ -302,7 +302,7 @@ function removeSeat(sectionIndex: number, rowIndex: number, seatIndex: number) {
               type="button"
               variant="ghost"
               size="sm"
-              title="Duplicate section"
+              :title="$t('admin.venues.duplicate_section')"
               @click="duplicateSection(sectionIndex)"
             >
               <CopyPlus class="size-4" />
@@ -311,7 +311,7 @@ function removeSeat(sectionIndex: number, rowIndex: number, seatIndex: number) {
               type="button"
               variant="ghost"
               size="sm"
-              title="Remove section"
+              :title="$t('admin.venues.remove_section')"
               @click="removeSection(sectionIndex)"
             >
               <Trash2 class="size-4" />
@@ -329,7 +329,7 @@ function removeSeat(sectionIndex: number, rowIndex: number, seatIndex: number) {
           >
             <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
               <div class="flex w-full flex-col gap-2 sm:flex-row sm:items-center lg:max-w-64">
-                <label class="shrink-0 text-xs uppercase tracking-[0.18em] text-muted-foreground">Row label</label>
+                <label class="shrink-0 text-xs uppercase tracking-[0.18em] text-muted-foreground">{{ $t('admin.venues.row_label') }}</label>
                 <Input
                   :model-value="row.label"
                   class="sm:flex-1"
@@ -345,7 +345,7 @@ function removeSeat(sectionIndex: number, rowIndex: number, seatIndex: number) {
                   @click="addSeat(sectionIndex, rowIndex)"
                 >
                   <Plus class="size-4" />
-                  Add seat
+                  {{ $t('admin.venues.add_seat') }}
                 </Button>
                 <Button
                   type="button"
@@ -354,7 +354,7 @@ function removeSeat(sectionIndex: number, rowIndex: number, seatIndex: number) {
                   @click="duplicateRow(sectionIndex, rowIndex)"
                 >
                   <CopyPlus class="size-4" />
-                  Duplicate row
+                  {{ $t('admin.venues.duplicate_row') }}
                 </Button>
                 <Button
                   type="button"
@@ -363,16 +363,16 @@ function removeSeat(sectionIndex: number, rowIndex: number, seatIndex: number) {
                   @click="removeRow(sectionIndex, rowIndex)"
                 >
                   <Trash2 class="size-4" />
-                  Remove row
+                  {{ $t('admin.venues.remove_row') }}
                 </Button>
                 <CollapsibleTrigger as-child>
                   <Button
                     type="button"
                     variant="ghost"
                     size="sm"
-                    title="Toggle row seats"
+                    :title="$t('admin.venues.toggle_row_seats')"
                   >
-                    <span class="sr-only">Toggle row seats</span>
+                    <span class="sr-only">{{ $t('admin.venues.toggle_row_seats') }}</span>
                     <ChevronDown
                       class="size-4 transition-transform duration-200"
                       :class="open ? 'rotate-180' : ''"
@@ -392,14 +392,14 @@ function removeSeat(sectionIndex: number, rowIndex: number, seatIndex: number) {
                   <div class="grid gap-3">
                     <div class="grid gap-3 sm:grid-cols-2">
                       <div class="space-y-2">
-                        <label class="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Label</label>
+                        <label class="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">{{ $t('admin.venues.seat_label') }}</label>
                         <Input
                           :model-value="seat.label"
                           @update:model-value="updateSeat(sectionIndex, rowIndex, seatIndex, 'label', $event)"
                         />
                       </div>
                       <div class="space-y-2">
-                        <label class="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Seat no.</label>
+                        <label class="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">{{ $t('admin.venues.seat_no') }}</label>
                         <Input
                           :model-value="String(seat.seatNumber)"
                           type="number"
@@ -432,7 +432,7 @@ function removeSeat(sectionIndex: number, rowIndex: number, seatIndex: number) {
 
                     <div class="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
                       <div class="space-y-2">
-                        <label class="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Accessibility label</label>
+                        <label class="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">{{ $t('admin.venues.accessibility_label') }}</label>
                         <Input
                           :model-value="seat.accessibilityLabel || ''"
                           @update:model-value="updateSeat(sectionIndex, rowIndex, seatIndex, 'accessibilityLabel', $event)"
@@ -441,7 +441,7 @@ function removeSeat(sectionIndex: number, rowIndex: number, seatIndex: number) {
 
                       <div
                         class="flex min-h-10 items-center justify-between rounded-[0.9rem] border border-border bg-secondary px-3 py-2 sm:min-w-24"
-                        title="Accessible seat"
+                        :title="$t('admin.venues.accessible_seat')"
                       >
                         <Accessibility class="size-4 text-muted-foreground" />
                         <Switch
@@ -457,7 +457,7 @@ function removeSeat(sectionIndex: number, rowIndex: number, seatIndex: number) {
                       size="sm"
                       @click="removeSeat(sectionIndex, rowIndex, seatIndex)"
                     >
-                      Remove seat
+                      {{ $t('admin.venues.remove_seat') }}
                     </Button>
                   </div>
                 </div>

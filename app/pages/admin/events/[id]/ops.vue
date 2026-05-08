@@ -74,7 +74,7 @@ definePageMeta({
       <Card class="h-full">
         <CardContent>
           <div class="flex items-center gap-3 text-muted-foreground">
-            <ShoppingCart class="size-4" /><span class="text-[11px] uppercase tracking-[0.22em]">Orders</span>
+            <ShoppingCart class="size-4" /><span class="text-[11px] uppercase tracking-[0.22em]">{{ $t('admin_event_ops.orders_label') }}</span>
           </div><p class="mt-4 text-2xl font-semibold tracking-[-0.05em] text-foreground">
             {{ ops.totals.ordersCount }}
           </p><p class="mt-2 text-sm text-muted-foreground">
@@ -85,7 +85,7 @@ definePageMeta({
       <Card class="h-full">
         <CardContent>
           <div class="flex items-center gap-3 text-muted-foreground">
-            <Tickets class="size-4" /><span class="text-[11px] uppercase tracking-[0.22em]">Tickets</span>
+            <Tickets class="size-4" /><span class="text-[11px] uppercase tracking-[0.22em]">{{ $t('admin_event_ops.tickets_label') }}</span>
           </div><p class="mt-4 text-2xl font-semibold tracking-[-0.05em] text-foreground">
             {{ ops.totals.ticketsCount }}
           </p><p class="mt-2 text-sm text-muted-foreground">
@@ -96,7 +96,7 @@ definePageMeta({
       <Card class="h-full">
         <CardContent>
           <div class="flex items-center gap-3 text-muted-foreground">
-            <LockKeyhole class="size-4" /><span class="text-[11px] uppercase tracking-[0.22em]">Active holds</span>
+            <LockKeyhole class="size-4" /><span class="text-[11px] uppercase tracking-[0.22em]">{{ $t('admin_event_ops.active_holds_label') }}</span>
           </div><p class="mt-4 text-2xl font-semibold tracking-[-0.05em] text-foreground">
             {{ ops.totals.activeHoldsCount }}
           </p><p class="mt-2 text-sm text-muted-foreground">
@@ -107,7 +107,7 @@ definePageMeta({
       <Card class="h-full">
         <CardContent>
           <div class="flex items-center gap-3 text-muted-foreground">
-            <Activity class="size-4" /><span class="text-[11px] uppercase tracking-[0.22em]">Queue entries</span>
+            <Activity class="size-4" /><span class="text-[11px] uppercase tracking-[0.22em]">{{ $t('admin_event_ops.queue_entries_label') }}</span>
           </div><p class="mt-4 text-2xl font-semibold tracking-[-0.05em] text-foreground">
             {{ ops.totals.queueEntriesCount }}
           </p><p class="mt-2 text-sm text-muted-foreground">
@@ -121,7 +121,7 @@ definePageMeta({
       <AdminChartCard
         class="xl:col-span-4"
         eyebrow="Footprint"
-        title="Operations mix"
+        :title="$t('admin_event_ops.operations_mix')"
         description="Current operations footprint across orders, tickets, holds, and queue entries."
         :option="operationsMixOption"
         :height="320"
@@ -132,7 +132,7 @@ definePageMeta({
       <AdminChartCard
         class="xl:col-span-4"
         eyebrow="Queue"
-        title="Queue status"
+        :title="$t('admin_event_ops.queue_status')"
         description="Distribution of queue entry statuses in the current feed."
         :option="queueStatusOption"
         :height="320"
@@ -143,7 +143,7 @@ definePageMeta({
       <AdminChartCard
         class="xl:col-span-4"
         eyebrow="Sample"
-        title="Recent order sample"
+        :title="$t('admin_event_ops.recent_order_sample')"
         description="Latest order amounts shown as a recent-value sample, not a long-term trend."
         :option="recentOrderSampleOption"
         :height="320"
@@ -153,7 +153,7 @@ definePageMeta({
       />
 
       <Card class="h-full xl:col-span-7">
-        <CardHeader><CardTitle>Orders</CardTitle></CardHeader>
+        <CardHeader><CardTitle>{{ $t('admin_event_ops.orders_title') }}</CardTitle></CardHeader>
         <CardContent class="space-y-3">
           <div
             v-for="order in orders"
@@ -183,7 +183,7 @@ definePageMeta({
       </Card>
 
       <Card class="h-full xl:col-span-5">
-        <CardHeader><CardTitle>Active holds</CardTitle></CardHeader>
+        <CardHeader><CardTitle>{{ $t('admin_event_ops.active_holds_title') }}</CardTitle></CardHeader>
         <CardContent class="space-y-3">
           <div
             v-for="hold in holds"
@@ -213,7 +213,7 @@ definePageMeta({
       </Card>
 
       <Card class="h-full xl:col-span-6">
-        <CardHeader><CardTitle>Tickets</CardTitle></CardHeader>
+        <CardHeader><CardTitle>{{ $t('admin_event_ops.tickets_title') }}</CardTitle></CardHeader>
         <CardContent class="grid gap-3 sm:grid-cols-2">
           <div
             v-for="ticket in tickets"
@@ -237,7 +237,7 @@ definePageMeta({
       </Card>
 
       <Card class="h-full xl:col-span-6">
-        <CardHeader><CardTitle>Queue feed</CardTitle></CardHeader>
+        <CardHeader><CardTitle>{{ $t('admin_event_ops.queue_feed_title') }}</CardTitle></CardHeader>
         <CardContent class="space-y-3">
           <div
             v-for="entry in queueFeed"

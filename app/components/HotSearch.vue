@@ -52,11 +52,11 @@ watch([Meta_K, Ctrl_K], (v) => {
     >
       <CommandInput
         v-model="searchQuery"
-        placeholder="Search features..."
+        :placeholder="$t('nav.search_features')"
       />
       <CommandList>
         <template v-if="filteredFeatures.length > 0">
-          <CommandGroup heading="Features">
+          <CommandGroup :heading="$t('nav.features')">
             <CommandItem
               v-for="(feature, i) in filteredFeatures"
               :key="i"
@@ -73,14 +73,14 @@ watch([Meta_K, Ctrl_K], (v) => {
 
           <CommandGroup
             v-if="searchQuery"
-            heading="Search"
+            :heading="$t('search.title')"
           >
             <CommandItem
               :value="'Search for ' + searchQuery"
               @select="handleSearchFallback"
             >
               <Search class="mr-2 h-4 w-4" />
-              <span>Search for "{{ searchQuery }}"</span>
+              <span>{{ $t('nav.search_for', { query: searchQuery }) }}</span>
             </CommandItem>
           </CommandGroup>
         </template>
@@ -90,9 +90,9 @@ watch([Meta_K, Ctrl_K], (v) => {
             <EmptyMedia variant="icon">
               <Search class="size-5" />
             </EmptyMedia>
-            <EmptyTitle>No matching features</EmptyTitle>
+            <EmptyTitle>{{ $t('nav.no_matching') }}</EmptyTitle>
             <EmptyDescription>
-              Try another keyword, or search the library directly.
+              {{ $t('nav.no_matching_desc') }}
             </EmptyDescription>
           </EmptyHeader>
         </Empty>

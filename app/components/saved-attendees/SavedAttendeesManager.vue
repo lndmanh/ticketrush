@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, ref } from 'vue'
 import { Field as VeeField, useForm } from 'vee-validate'
 import { toast } from 'vue-sonner'
 import { savedAttendeeFormSchema } from '#shared/schemas/savedAttendeeSchema'
@@ -133,7 +133,7 @@ const onSubmit = handleSubmit(async (values) => {
     isDialogOpen.value = false
     await refresh()
   }
-  catch (error) {
+  catch {
     toast.error('Failed to save attendee. Please try again.')
   }
   finally {
@@ -153,7 +153,7 @@ async function deleteAttendee(id: number) {
     toast.success('Attendee deleted successfully')
     await refresh()
   }
-  catch (error) {
+  catch {
     toast.error('Failed to delete attendee. Please try again.')
   }
 }
@@ -417,10 +417,10 @@ function isMinor(birthDate?: Date | string | null) {
                 name="legalName"
               >
                 <Field :data-invalid="!!errors.length">
-                  <FieldLabel>Legal Name *</FieldLabel>
+                  <FieldLabel>{{ $t('saved_attendees.legal_name') }}</FieldLabel>
                   <Input
                     v-bind="field"
-                    placeholder="John Doe"
+                    :placeholder="$t('saved_attendees.legal_name_placeholder')"
                   />
                   <FieldError
                     v-if="errors.length"
@@ -434,10 +434,10 @@ function isMinor(birthDate?: Date | string | null) {
                 name="preferredName"
               >
                 <Field :data-invalid="!!errors.length">
-                  <FieldLabel>Preferred Name</FieldLabel>
+                  <FieldLabel>{{ $t('saved_attendees.preferred_name') }}</FieldLabel>
                   <Input
                     v-bind="field"
-                    placeholder="Johnny"
+                    :placeholder="$t('saved_attendees.preferred_name_placeholder')"
                   />
                   <FieldError
                     v-if="errors.length"
@@ -453,11 +453,11 @@ function isMinor(birthDate?: Date | string | null) {
                 name="email"
               >
                 <Field :data-invalid="!!errors.length">
-                  <FieldLabel>Email</FieldLabel>
+                  <FieldLabel>{{ $t('saved_attendees.email') }}</FieldLabel>
                   <Input
                     v-bind="field"
                     type="email"
-                    placeholder="john@example.com"
+                    :placeholder="$t('saved_attendees.email_placeholder')"
                   />
                   <FieldError
                     v-if="errors.length"
@@ -471,7 +471,7 @@ function isMinor(birthDate?: Date | string | null) {
                 name="phone"
               >
                 <Field :data-invalid="!!errors.length">
-                  <FieldLabel>Phone</FieldLabel>
+                  <FieldLabel>{{ $t('saved_attendees.phone') }}</FieldLabel>
                   <Input
                     v-bind="field"
                     type="tel"
@@ -491,7 +491,7 @@ function isMinor(birthDate?: Date | string | null) {
                 name="birthDate"
               >
                 <Field :data-invalid="!!errors.length">
-                  <FieldLabel>Birth Date</FieldLabel>
+                  <FieldLabel>{{ $t('saved_attendees.birth_date') }}</FieldLabel>
                   <Input
                     v-bind="field"
                     type="date"
@@ -508,26 +508,26 @@ function isMinor(birthDate?: Date | string | null) {
                 name="gender"
               >
                 <Field :data-invalid="!!errors.length">
-                  <FieldLabel>Gender</FieldLabel>
+                  <FieldLabel>{{ $t('saved_attendees.gender') }}</FieldLabel>
                   <Select
                     :model-value="value"
                     @update:model-value="field.onChange"
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Select gender" />
+                      <SelectValue :placeholder="$t('saved_attendees.gender_placeholder')" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="female">
-                        Female
+                        {{ $t('saved_attendees.gender_female') }}
                       </SelectItem>
                       <SelectItem value="male">
-                        Male
+                        {{ $t('saved_attendees.gender_male') }}
                       </SelectItem>
                       <SelectItem value="non-binary">
-                        Non-binary
+                        {{ $t('saved_attendees.gender_non_binary') }}
                       </SelectItem>
                       <SelectItem value="prefer-not-to-say">
-                        Prefer not to say
+                        {{ $t('saved_attendees.gender_prefer_not') }}
                       </SelectItem>
                     </SelectContent>
                   </Select>
@@ -541,7 +541,7 @@ function isMinor(birthDate?: Date | string | null) {
 
             <div class="pt-4 border-t">
               <h4 class="text-sm font-medium mb-3">
-                Guardian Information (If Minor)
+                {{ $t('saved_attendees.guardian_section') }}
               </h4>
               <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <VeeField
@@ -549,10 +549,10 @@ function isMinor(birthDate?: Date | string | null) {
                   name="guardianName"
                 >
                   <Field :data-invalid="!!errors.length">
-                    <FieldLabel>Guardian Name</FieldLabel>
+                    <FieldLabel>{{ $t('saved_attendees.guardian_name') }}</FieldLabel>
                     <Input
                       v-bind="field"
-                      placeholder="Jane Doe"
+                      :placeholder="$t('saved_attendees.guardian_name_placeholder')"
                     />
                     <FieldError
                       v-if="errors.length"
@@ -566,7 +566,7 @@ function isMinor(birthDate?: Date | string | null) {
                   name="guardianPhone"
                 >
                   <Field :data-invalid="!!errors.length">
-                    <FieldLabel>Guardian Phone</FieldLabel>
+                    <FieldLabel>{{ $t('saved_attendees.guardian_phone') }}</FieldLabel>
                     <Input
                       v-bind="field"
                       type="tel"
@@ -584,7 +584,7 @@ function isMinor(birthDate?: Date | string | null) {
                     name="guardianEmail"
                   >
                     <Field :data-invalid="!!errors.length">
-                      <FieldLabel>Guardian Email</FieldLabel>
+                      <FieldLabel>{{ $t('saved_attendees.guardian_email') }}</FieldLabel>
                       <Input
                         v-bind="field"
                         type="email"
@@ -601,7 +601,7 @@ function isMinor(birthDate?: Date | string | null) {
 
             <div class="pt-4 border-t space-y-4">
               <h4 class="text-sm font-medium">
-                Additional Information
+                {{ $t('saved_attendees.additional_section') }}
               </h4>
 
               <VeeField
@@ -609,10 +609,10 @@ function isMinor(birthDate?: Date | string | null) {
                 name="accessibilityNeeds"
               >
                 <Field :data-invalid="!!errors.length">
-                  <FieldLabel>Accessibility Needs</FieldLabel>
+                  <FieldLabel>{{ $t('saved_attendees.accessibility') }}</FieldLabel>
                   <Textarea
                     v-bind="field"
-                    placeholder="E.g., Wheelchair access, ASL interpreter"
+                    :placeholder="$t('saved_attendees.accessibility_placeholder')"
                     class="resize-none h-20"
                   />
                   <FieldError
@@ -627,10 +627,10 @@ function isMinor(birthDate?: Date | string | null) {
                 name="notes"
               >
                 <Field :data-invalid="!!errors.length">
-                  <FieldLabel>Notes</FieldLabel>
+                  <FieldLabel>{{ $t('saved_attendees.notes') }}</FieldLabel>
                   <Textarea
                     v-bind="field"
-                    placeholder="Any internal notes or special dietary requirements"
+                    :placeholder="$t('saved_attendees.notes_placeholder')"
                     class="resize-none h-20"
                   />
                   <FieldError

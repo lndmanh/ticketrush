@@ -95,7 +95,7 @@ function closeDialog() {
       class="mb-4"
     >
       <CheckCircle class="h-4 w-4" />
-      <AlertDescription>Passkey created successfully!</AlertDescription>
+      <AlertDescription>{{ $t('passkey.success') }}</AlertDescription>
     </Alert>
 
     <div

@@ -6,7 +6,7 @@ import { createVenueSchema } from '#shared/schemas/ticketingSchema'
 import type { VenueSectionDraftInput } from '#shared/schemas/ticketingSchema'
 import type { ApiResponse } from '~~/types/api'
 import type { VenueDetail } from '~~/types/venues'
-import { ArrowLeft, Building2, CalendarRange, LayoutGrid, LayoutDashboardIcon, Rows3, Save, Settings2, Users } from '@lucide/vue'
+import { ArrowLeft, Building2, CalendarRange, LayoutGrid, LayoutDashboardIcon, Rows3, Save, Users } from '@lucide/vue'
 import AdminVenuesVenueSeatLayoutEditor from '@/components/admin/venues/VenueSeatLayoutEditor.vue'
 
 interface AdminEventListItem {
@@ -553,7 +553,7 @@ definePageMeta({
           >
             <NuxtLink
               to="/admin/venues"
-              aria-label="Back to venues"
+              :aria-label="$t('admin_venue_detail.back_to_venues')"
             >
               <ArrowLeft />
             </NuxtLink>
@@ -564,7 +564,7 @@ definePageMeta({
               {{ venueDetail.venue.name }}
             </h1>
             <p class="text-sm text-muted-foreground">
-              Venue setup
+              {{ $t('admin_venue_detail.setup_label') }}
             </p>
           </div>
         </div>
@@ -574,22 +574,22 @@ definePageMeta({
             <div class="inline-flex items-center gap-2 rounded-md border bg-muted/30 px-2.5 py-1.5">
               <LayoutGrid class="size-3.5" />
               <span class="font-medium text-foreground">{{ totalSections }}</span>
-              <span>sections</span>
+              <span>{{ $t('admin_venue_detail.sections_stat') }}</span>
             </div>
             <div class="inline-flex items-center gap-2 rounded-md border bg-muted/30 px-2.5 py-1.5">
               <Rows3 class="size-3.5" />
               <span class="font-medium text-foreground">{{ totalRows }}</span>
-              <span>rows</span>
+              <span>{{ $t('admin_venue_detail.rows_stat') }}</span>
             </div>
             <div class="inline-flex items-center gap-2 rounded-md border bg-muted/30 px-2.5 py-1.5">
               <Users class="size-3.5" />
               <span class="font-medium text-foreground">{{ totalCapacity }}</span>
-              <span>capacity</span>
+              <span>{{ $t('admin_venue_detail.capacity_stat') }}</span>
             </div>
             <div class="inline-flex items-center gap-2 rounded-md border bg-muted/30 px-2.5 py-1.5">
               <CalendarRange class="size-3.5" />
               <span class="font-medium text-foreground">{{ linkedEvents.length }}</span>
-              <span>events</span>
+              <span>{{ $t('admin_venue_detail.events_stat') }}</span>
             </div>
           </div>
 
@@ -601,7 +601,7 @@ definePageMeta({
             :is-loading="isSaving"
           >
             <Save />
-            Save
+            {{ $t('common.save') }}
           </Button>
         </div>
       </div>
@@ -624,7 +624,7 @@ definePageMeta({
                 @click="selectedVisualizationSection = 'all'"
               >
                 <LayoutDashboardIcon class="size-4" />
-                All
+                {{ $t('admin_venue_detail.all') }}
               </Button>
               <Button
                 v-for="section in visualizationFilterOptions"
@@ -648,10 +648,10 @@ definePageMeta({
             >
               <CardContent class="px-4 text-center">
                 <p class="text-sm font-medium">
-                  Stage
+                  {{ $t('admin_venue_detail.stage') }}
                 </p>
                 <p class="text-xs text-muted-foreground">
-                  Front of house
+                  {{ $t('admin_venue_detail.front_of_house') }}
                 </p>
               </CardContent>
             </Card>
@@ -660,27 +660,27 @@ definePageMeta({
               <Card class="gap-2 py-3">
                 <CardContent class="px-4">
                   <p class="text-xs text-muted-foreground">
-                    Focus
+                    {{ $t('admin_venue_detail.focus_label') }}
                   </p>
                   <p class="text-sm font-medium">
-                    {{ highlightedSection?.label ?? 'All sections' }}
+                    {{ highlightedSection?.label ?? $t('common.all_sections') }}
                   </p>
                 </CardContent>
               </Card>
               <Card class="gap-2 py-3">
                 <CardContent class="px-4">
                   <p class="text-xs text-muted-foreground">
-                    Largest
+                    {{ $t('admin_venue_detail.largest_label') }}
                   </p>
                   <p class="text-sm font-medium">
-                    {{ largestSection?.name ?? 'Not set' }}
+                    {{ largestSection?.name ?? $t('common.not_set') }}
                   </p>
                 </CardContent>
               </Card>
               <Card class="gap-2 py-3">
                 <CardContent class="px-4">
                   <p class="text-xs text-muted-foreground">
-                    Accessible
+                    {{ $t('admin_venue_detail.accessible_label') }}
                   </p>
                   <p class="text-sm font-medium">
                     {{ totalAccessibleSeats }}
@@ -711,12 +711,12 @@ definePageMeta({
                           {{ section.name }}
                         </p>
                         <p class="text-xs text-muted-foreground">
-                          {{ section.capacity }} seats · {{ section.rowCount }} rows
+                          {{ $t('admin_venue_detail.capacity_seats', { count: section.capacity }) }} · {{ section.rowCount }} {{ $t('admin_venue_detail.rows_stat') }}
                         </p>
                       </div>
                     </div>
                     <p class="text-xs text-muted-foreground">
-                      {{ section.accessibleSeats }} accessible
+                      {{ $t('admin_venue_detail.accessible_count', { count: section.accessibleSeats }) }}
                     </p>
                   </div>
 
@@ -781,7 +781,7 @@ definePageMeta({
               @click="activeConfigTab = 'details'"
             >
               <Building2 />
-              Details
+              {{ $t('admin_venue_detail.tab_details') }}
             </Button>
             <Button
               type="button"
@@ -790,7 +790,7 @@ definePageMeta({
               @click="activeConfigTab = 'layout'"
             >
               <LayoutGrid />
-              Layout
+              {{ $t('admin_venue_detail.tab_layout') }}
             </Button>
             <Button
               type="button"
@@ -799,7 +799,7 @@ definePageMeta({
               @click="activeConfigTab = 'events'"
             >
               <CalendarRange />
-              Events
+              {{ $t('admin_venue_detail.tab_events') }}
             </Button>
           </CardHeader>
 
@@ -815,12 +815,12 @@ definePageMeta({
                 >
                   <Field :data-invalid="!!errors.length">
                     <FieldLabel for="edit-venue-name">
-                      Venue name
+                      {{ $t('admin_venue_detail.venue_name_label') }}
                     </FieldLabel>
                     <Input
                       id="edit-venue-name"
                       :model-value="field.value"
-                      placeholder="Saigon Sound Hall"
+                      :placeholder="$t('admin.venues.venue_name_placeholder')"
                       :aria-invalid="!!errors.length"
                       @update:model-value="field.onChange"
                     />
@@ -837,12 +837,12 @@ definePageMeta({
                 >
                   <Field :data-invalid="!!errors.length">
                     <FieldLabel for="edit-venue-slug">
-                      Slug
+                      {{ $t('admin.venues.slug') }}
                     </FieldLabel>
                     <Input
                       id="edit-venue-slug"
                       :model-value="field.value"
-                      placeholder="saigon-sound-hall"
+                      :placeholder="$t('admin.venues.slug_placeholder')"
                       :aria-invalid="!!errors.length"
                       @update:model-value="field.onChange"
                     />
@@ -859,12 +859,12 @@ definePageMeta({
                 >
                   <Field :data-invalid="!!errors.length">
                     <FieldLabel for="edit-venue-address">
-                      Address
+                      {{ $t('admin.venues.address') }}
                     </FieldLabel>
                     <Input
                       id="edit-venue-address"
                       :model-value="field.value"
-                      placeholder="District 1, Ho Chi Minh City"
+                      :placeholder="$t('admin.venues.address_placeholder')"
                       :aria-invalid="!!errors.length"
                       @update:model-value="field.onChange"
                     />
@@ -882,7 +882,7 @@ definePageMeta({
                   >
                     <Field :data-invalid="!!errors.length">
                       <FieldLabel for="edit-venue-city">
-                        City
+                        {{ $t('admin.venues.city') }}
                       </FieldLabel>
                       <Input
                         id="edit-venue-city"
@@ -903,7 +903,7 @@ definePageMeta({
                   >
                     <Field :data-invalid="!!errors.length">
                       <FieldLabel for="edit-venue-country">
-                        Country
+                        {{ $t('admin.venues.country') }}
                       </FieldLabel>
                       <Input
                         id="edit-venue-country"
@@ -925,12 +925,12 @@ definePageMeta({
                 >
                   <Field :data-invalid="!!errors.length">
                     <FieldLabel for="edit-venue-description">
-                      Description
+                      {{ $t('admin.venues.description') }}
                     </FieldLabel>
                     <Textarea
                       id="edit-venue-description"
                       :model-value="field.value"
-                      placeholder="Optional notes"
+                      :placeholder="$t('admin_venue_detail.optional_notes_placeholder')"
                       :aria-invalid="!!errors.length"
                       @update:model-value="field.onChange"
                     />
@@ -947,16 +947,16 @@ definePageMeta({
                 >
                   <Field :data-invalid="!!errors.length">
                     <FieldLabel for="edit-venue-cover-image">
-                      Cover image URL
+                      {{ $t('admin_venue_detail.cover_image_label') }}
                     </FieldLabel>
                     <Input
                       id="edit-venue-cover-image"
                       :model-value="field.value"
-                      placeholder="https://example.com/venue.jpg"
+                      :placeholder="$t('admin.venues.cover_image_placeholder')"
                       :aria-invalid="!!errors.length"
                       @update:model-value="field.onChange"
                     />
-                    <FieldDescription>Optional</FieldDescription>
+                    <FieldDescription>{{ $t('common.optional') }}</FieldDescription>
                     <FieldError
                       v-if="errors.length"
                       :errors="errors"

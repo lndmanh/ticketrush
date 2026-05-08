@@ -14,9 +14,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import {
-  SidebarMenu,
   SidebarMenuButton,
-  SidebarMenuItem,
 } from '@/components/ui/sidebar'
 import ThemeSwitcher from '@/components/ThemeSwitcher.vue'
 
@@ -57,7 +55,7 @@ function logout() {
           <ChevronsUpDown class="ml-auto size-4" />
         </template>
         <template v-else>
-          <span class="font-medium">Sign In</span>
+          <span class="font-medium">{{ $t('common.sign_in') }}</span>
           <ChevronsUpDown class="ml-auto size-4" />
         </template>
       </SidebarMenuButton>

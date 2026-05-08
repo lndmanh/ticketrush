@@ -5,6 +5,7 @@ import AdminChartCard from '@/components/admin/charts/AdminChartCard.vue'
 
 const route = useRoute()
 const eventId = computed(() => Number(route.params.id))
+const { t } = useI18n()
 const selectedStatus = ref<'all' | 'available' | 'locked' | 'sold'>('all')
 
 const { detail, dashboard } = await useAdminEventWorkspace(eventId, {
@@ -39,12 +40,12 @@ const topSections = computed(() => {
 const seatStatusOption = computed(() => {
   return createDonutChartOption({
     data: [
-      { label: 'Available', value: detail.value?.seats.filter(seat => seat.status === 'available').length ?? 0 },
-      { label: 'Held', value: detail.value?.seats.filter(seat => seat.status === 'locked').length ?? 0 },
-      { label: 'Sold', value: detail.value?.seats.filter(seat => seat.status === 'sold').length ?? 0 },
+      { label: t('common.available'), value: detail.value?.seats.filter(seat => seat.status === 'available').length ?? 0 },
+      { label: t('common.held'), value: detail.value?.seats.filter(seat => seat.status === 'locked').length ?? 0 },
+      { label: t('common.sold'), value: detail.value?.seats.filter(seat => seat.status === 'sold').length ?? 0 },
     ],
     centerValue: `${dashboard.value?.soldSeatsCount || 0}`,
-    centerLabel: 'Sold seats',
+    centerLabel: t('admin_event_seatmap.sold_seats'),
   })
 })
 
@@ -77,7 +78,7 @@ definePageMeta({
       <Card class="h-full">
         <CardContent>
           <div class="flex items-center gap-3 text-muted-foreground">
-            <Ticket class="size-4" /><span class="text-[11px] uppercase tracking-[0.22em]">Available</span>
+            <Ticket class="size-4" /><span class="text-[11px] uppercase tracking-[0.22em]">{{ $t('admin_event_seatmap.available_label') }}</span>
           </div><p class="mt-4 text-2xl font-semibold tracking-[-0.05em] text-foreground">
             {{ dashboard.availableSeatsCount }}
           </p><p class="mt-2 text-sm text-muted-foreground">
@@ -88,7 +89,7 @@ definePageMeta({
       <Card class="h-full">
         <CardContent>
           <div class="flex items-center gap-3 text-muted-foreground">
-            <LockKeyhole class="size-4" /><span class="text-[11px] uppercase tracking-[0.22em]">Active holds</span>
+            <LockKeyhole class="size-4" /><span class="text-[11px] uppercase tracking-[0.22em]">{{ $t('admin_event_seatmap.active_holds_label') }}</span>
           </div><p class="mt-4 text-2xl font-semibold tracking-[-0.05em] text-foreground">
             {{ dashboard.activeHoldsCount }}
           </p><p class="mt-2 text-sm text-muted-foreground">
@@ -99,7 +100,7 @@ definePageMeta({
       <Card class="h-full">
         <CardContent>
           <div class="flex items-center gap-3 text-muted-foreground">
-            <Map class="size-4" /><span class="text-[11px] uppercase tracking-[0.22em]">Sections</span>
+            <Map class="size-4" /><span class="text-[11px] uppercase tracking-[0.22em]">{{ $t('admin_event_seatmap.sections_label') }}</span>
           </div><p class="mt-4 text-2xl font-semibold tracking-[-0.05em] text-foreground">
             {{ sectionCount }}
           </p><p class="mt-2 text-sm text-muted-foreground">
@@ -110,21 +111,21 @@ definePageMeta({
       <Card class="h-full">
         <CardContent class="flex h-full flex-col justify-between gap-4">
           <div class="flex items-center gap-3 text-muted-foreground">
-            <Eye class="size-4" /><span class="text-[11px] uppercase tracking-[0.22em]">Status filter</span>
+            <Eye class="size-4" /><span class="text-[11px] uppercase tracking-[0.22em]">{{ $t('admin_event_seatmap.status_filter_label') }}</span>
           </div><Select v-model="selectedStatus">
-            <SelectTrigger><SelectValue placeholder="Filter status" /></SelectTrigger><SelectContent>
+            <SelectTrigger><SelectValue :placeholder="$t('admin_event_seatmap.filter_placeholder')" /></SelectTrigger><SelectContent>
               <SelectItem value="all">
-                All statuses
+                {{ $t('admin_event_seatmap.all_statuses') }}
               </SelectItem><SelectItem value="available">
-                Available
+                {{ $t('admin_event_seatmap.available') }}
               </SelectItem><SelectItem value="locked">
-                Held
+                {{ $t('admin_event_seatmap.held') }}
               </SelectItem><SelectItem value="sold">
-                Sold
+                {{ $t('admin_event_seatmap.sold') }}
               </SelectItem>
             </SelectContent>
           </Select><p class="text-sm text-muted-foreground">
-            Use the filter to isolate inventory states without leaving the seat workspace.
+            {{ $t('admin_event_seatmap.status_filter_desc') }}
           </p>
         </CardContent>
       </Card>
@@ -142,7 +143,7 @@ definePageMeta({
       <div class="grid gap-4 xl:col-span-5 xl:auto-rows-fr">
         <AdminChartCard
           eyebrow="Inventory"
-          title="Seat status mix"
+          :title="$t('admin.event_chart_seat_status')"
           description="Current inventory split across available, held, and sold seats."
           :option="seatStatusOption"
           :height="260"
@@ -152,7 +153,7 @@ definePageMeta({
         />
         <AdminChartCard
           eyebrow="Ranking"
-          title="Sections by sold seats"
+          :title="$t('admin_event_seatmap.sections_by_sold_seats')"
           description="Section ranking based on sold inventory."
           :option="sectionSoldOption"
           :height="260"
@@ -163,7 +164,7 @@ definePageMeta({
       </div>
 
       <Card class="h-full xl:col-span-6">
-        <CardHeader><CardTitle>Top sections</CardTitle></CardHeader>
+        <CardHeader><CardTitle>{{ $t('admin_event_seatmap.top_sections') }}</CardTitle></CardHeader>
         <CardContent class="space-y-3">
           <div
             v-for="[section, row] in topSections"
@@ -193,7 +194,7 @@ definePageMeta({
       </Card>
 
       <Card class="h-full xl:col-span-6">
-        <CardHeader><CardTitle>Queue pulse</CardTitle></CardHeader>
+        <CardHeader><CardTitle>{{ $t('admin_event_seatmap.queue_pulse') }}</CardTitle></CardHeader>
         <CardContent class="grid gap-3 sm:grid-cols-2">
           <div class="rounded-[1.25rem] border border-border bg-secondary/30 p-4">
             <p class="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
