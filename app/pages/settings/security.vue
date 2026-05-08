@@ -575,10 +575,6 @@ watch(
   },
 )
 
-onMounted(() => {
-  window.addEventListener('message', onOAuthPopupComplete)
-})
-
 // Fetch profile data
 const {
   data: profile,
@@ -613,23 +609,14 @@ const oauthPopupTimeout = ref<ReturnType<typeof setTimeout> | null>(null)
 const showUnlinkConfirmDialog = ref(false)
 const providerToUnlink = ref<string | null>(null)
 
-type OAuthPopupCompleteMessage = {
-  type: 'oauth:complete'
-  url: string
-}
-
-function onOAuthPopupComplete(event: MessageEvent<OAuthPopupCompleteMessage>) {
-  if (event.origin !== window.location.origin) return
-  if (event.data?.type !== 'oauth:complete') return
-  if (oauthPopup.value && event.source !== oauthPopup.value) return
-
+function onOAuthPopupComplete(message: { url: string }) {
   stopOAuthPopupTimeout()
   oauthPopup.value = null
   linkingProvider.value = null
 
   let target: URL
   try {
-    target = new URL(event.data.url)
+    target = new URL(message.url)
   }
   catch {
     toast.error('OAuth completed but returned an invalid callback URL.')
@@ -642,6 +629,12 @@ function onOAuthPopupComplete(event: MessageEvent<OAuthPopupCompleteMessage>) {
 
   navigateTo(`${target.pathname}${target.search}${target.hash}`)
 }
+
+const oauthPopupListener = useOAuthPopupListener(onOAuthPopupComplete)
+
+onMounted(() => {
+  oauthPopupListener.start()
+})
 
 function stopOAuthPopupTimeout() {
   if (oauthPopupTimeout.value) {
@@ -712,7 +705,7 @@ async function linkProvider(provider: string) {
 
 onBeforeUnmount(() => {
   stopOAuthPopupTimeout()
-  window.removeEventListener('message', onOAuthPopupComplete)
+  oauthPopupListener.stop()
 })
 
 async function executeUnlink() {

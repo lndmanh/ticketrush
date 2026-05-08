@@ -28,11 +28,6 @@ const oauthPopup = ref<Window | null>(null)
 const oauthPopupTimeout = ref<ReturnType<typeof setTimeout> | null>(null)
 const oauthPopupCloseMonitor = ref<ReturnType<typeof setInterval> | null>(null)
 
-type OAuthPopupCompleteMessage = {
-  type: 'oauth:complete'
-  url: string
-}
-
 function getQueryString(value: string | string[] | null | undefined) {
   if (typeof value === 'string') {
     return value
@@ -78,11 +73,7 @@ function stopOAuthPopupCloseMonitor() {
   }
 }
 
-function onOAuthPopupComplete(event: MessageEvent<OAuthPopupCompleteMessage>) {
-  if (event.origin !== window.location.origin) return
-  if (event.data?.type !== 'oauth:complete') return
-  if (!oauthPopup.value || event.source !== oauthPopup.value) return
-
+function onOAuthPopupComplete(message: { url: string }) {
   stopOAuthPopupCloseMonitor()
   stopOAuthPopupTimeout()
   oauthPopup.value = null
@@ -90,7 +81,7 @@ function onOAuthPopupComplete(event: MessageEvent<OAuthPopupCompleteMessage>) {
 
   let target: URL
   try {
-    target = new URL(event.data.url)
+    target = new URL(message.url)
   }
   catch {
     error.value = 'Authentication completed but response URL was invalid. Please try again.'
@@ -99,6 +90,8 @@ function onOAuthPopupComplete(event: MessageEvent<OAuthPopupCompleteMessage>) {
 
   window.location.assign(`${target.pathname}${target.search}${target.hash}`)
 }
+
+const oauthPopupListener = useOAuthPopupListener(onOAuthPopupComplete)
 
 const form = useForm({
   initialValues: {
@@ -138,7 +131,7 @@ watch(() => route.query.error, (queryValue) => {
 }, { immediate: true })
 
 onMounted(() => {
-  window.addEventListener('message', onOAuthPopupComplete)
+  oauthPopupListener.start()
 })
 
 async function signUpWithProvider(provider: string) {
@@ -150,7 +143,7 @@ async function signUpWithProvider(provider: string) {
   try {
     const response = await apiRequest(apiRoutes.AUTH_OAUTH_URL, {
       method: 'POST',
-      body: { provider, action: 'login' },
+      body: { provider, action: 'login', redirectTo: redirectTo.value },
     })
     if (!response.success) {
       throw response
@@ -219,7 +212,7 @@ async function signUpWithProvider(provider: string) {
 onBeforeUnmount(() => {
   stopOAuthPopupCloseMonitor()
   stopOAuthPopupTimeout()
-  window.removeEventListener('message', onOAuthPopupComplete)
+  oauthPopupListener.stop()
 })
 
 definePageMeta({
