@@ -230,6 +230,9 @@ import { venueBuilderSchema } from '#shared/schemas/ticketingSchema'
 import type { VenueBuilderInput } from '#shared/schemas/ticketingSchema'
 import { Rows3 } from '@lucide/vue'
 import DataTable from '@/components/DataTable.vue'
+import { apiRequest } from '@/utils/apiRequest'
+import { parseApiError } from '@/utils/apiError'
+import { apiRoutes } from '#shared/apiRoutes'
 import { createColumns } from './columns'
 
 function extractErrorMessage(error: unknown, fallback: string) {
@@ -385,17 +388,18 @@ const onSubmit = handleSubmit(
   async (formValues) => {
     try {
       dialogLoading.value = true
-      await $fetch('/api/admin/venues', {
+      const response = await apiRequest(apiRoutes.ADMIN_VENUES, {
         method: 'POST',
         body: buildVenuePayload(formValues),
       })
+      if (!response.success) throw response
 
       toast.success('Venue created successfully')
       closeDialog()
       await fetchVenues()
     }
     catch (error) {
-      const message = extractErrorMessage(error, 'Failed to save the venue blueprint')
+      const message = parseApiError(error, 'Failed to save the venue blueprint').message
       const structuredIssue = getIssueFieldAndMessage(error)
       if (structuredIssue) {
         setFieldError(structuredIssue.field, structuredIssue.message)
@@ -423,14 +427,14 @@ const onSubmit = handleSubmit(
 async function fetchVenues() {
   try {
     tableLoading.value = true
-    const response = await $fetch('/api/admin/venues')
+    const response = await apiRequest(apiRoutes.ADMIN_VENUES)
     if (!response.success) {
-      throw new Error('Unsuccessful response')
+      throw response
     }
     venues.value = response.data
   }
   catch (error) {
-    toast.error(extractErrorMessage(error, 'Failed to load venues'))
+    toast.error(parseApiError(error).message)
   }
   finally {
     tableLoading.value = false
