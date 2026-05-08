@@ -5,6 +5,8 @@ import { IDatabaseService } from '~~/types/db/database-service'
 import { createPublicVenueId } from '~~/server/utils/ticketing/ids'
 import type { VenueDetail } from '~~/types/venues'
 
+const D1_INSERT_BATCH_SIZE = 5
+
 class VenueService extends IDatabaseService<Venue> {
   private static instance: VenueService
 
@@ -111,98 +113,92 @@ class VenueService extends IDatabaseService<Venue> {
   async create(data: CreateVenueInput) {
     const now = new Date()
 
-    const venue = await this.db.transaction(async (tx) => {
-      const createdVenue = await tx
-        .insert(tables.venues)
-        .values({
-          publicId: createPublicVenueId(),
-          slug: data.slug,
-          name: data.name,
-          description: data.description ?? null,
-          city: data.city,
-          country: data.country,
-          address: data.address,
-          coverImage: data.coverImage || null,
-          capacity: this.calculateCapacity(data.sections),
-          createdAt: now,
-          updatedAt: now,
-        })
-        .returning()
-        .get()
+    const db = this.db
+    const createdVenue = await db
+      .insert(tables.venues)
+      .values({
+        publicId: createPublicVenueId(),
+        slug: data.slug,
+        name: data.name,
+        description: data.description ?? null,
+        city: data.city,
+        country: data.country,
+        address: data.address,
+        coverImage: data.coverImage || null,
+        capacity: this.calculateCapacity(data.sections),
+        createdAt: now,
+        updatedAt: now,
+      })
+      .returning()
+      .get()
 
-      if (!createdVenue) {
-        throw new Error('Failed to create venue')
-      }
+    if (!createdVenue) {
+      throw new Error('Failed to create venue')
+    }
 
-      await this.insertVenueTree(tx, createdVenue.id, data.sections, now)
+    await this.insertVenueTree(db, createdVenue.id, data.sections, now)
 
-      return createdVenue
-    })
-
-    return venue
+    return createdVenue
   }
 
   async update(data: UpdateVenueInput) {
     const now = new Date()
 
-    const venue = await this.db.transaction(async (tx) => {
-      const updatedVenue = await tx
-        .update(tables.venues)
-        .set({
-          slug: data.slug,
-          name: data.name,
-          description: data.description ?? null,
-          city: data.city,
-          country: data.country,
-          address: data.address,
-          coverImage: data.coverImage || null,
-          capacity: this.calculateCapacity(data.sections),
-          updatedAt: now,
-        })
-        .where(eq(tables.venues.id, data.id))
-        .returning()
-        .get()
+    const db = this.db
+    const updatedVenue = await db
+      .update(tables.venues)
+      .set({
+        slug: data.slug,
+        name: data.name,
+        description: data.description ?? null,
+        city: data.city,
+        country: data.country,
+        address: data.address,
+        coverImage: data.coverImage || null,
+        capacity: this.calculateCapacity(data.sections),
+        updatedAt: now,
+      })
+      .where(eq(tables.venues.id, data.id))
+      .returning()
+      .get()
 
-      if (!updatedVenue) {
-        throw new Error('Venue not found')
-      }
+    if (!updatedVenue) {
+      throw new Error('Venue not found')
+    }
 
-      const existingSections = await tx
-        .select({ id: tables.venueSections.id })
-        .from(tables.venueSections)
-        .where(eq(tables.venueSections.venueId, data.id))
+    const existingSections = await db
+      .select({ id: tables.venueSections.id })
+      .from(tables.venueSections)
+      .where(eq(tables.venueSections.venueId, data.id))
+      .all()
+
+    const sectionIds = existingSections.map(section => section.id)
+    if (sectionIds.length > 0) {
+      const existingRows = await db
+        .select({ id: tables.venueRows.id })
+        .from(tables.venueRows)
+        .where(inArray(tables.venueRows.sectionId, sectionIds))
         .all()
 
-      const sectionIds = existingSections.map(section => section.id)
-      if (sectionIds.length > 0) {
-        const existingRows = await tx
-          .select({ id: tables.venueRows.id })
-          .from(tables.venueRows)
-          .where(inArray(tables.venueRows.sectionId, sectionIds))
-          .all()
-
-        const rowIds = existingRows.map(row => row.id)
-        if (rowIds.length > 0) {
-          await tx
-            .delete(tables.venueSeats)
-            .where(inArray(tables.venueSeats.rowId, rowIds))
-        }
-
-        await tx
-          .delete(tables.venueRows)
-          .where(inArray(tables.venueRows.sectionId, sectionIds))
-
-        await tx
-          .delete(tables.venueSections)
-          .where(eq(tables.venueSections.venueId, data.id))
+      const rowIds = existingRows.map(row => row.id)
+      if (rowIds.length > 0) {
+        await db
+          .delete(tables.venueSeats)
+          .where(inArray(tables.venueSeats.rowId, rowIds))
       }
 
-      await this.insertVenueTree(tx, data.id, data.sections, now)
+      await db
+        .delete(tables.venueRows)
+        .where(inArray(tables.venueRows.sectionId, sectionIds))
 
-      return updatedVenue
-    })
+      await db
+        .delete(tables.venueSections)
+        .where(eq(tables.venueSections.venueId, data.id))
+    }
 
-    return venue
+    await this.insertVenueTree(db, data.id, data.sections, now)
+
+    return updatedVenue
   }
 
   async delete(id: number) {
@@ -280,20 +276,23 @@ class VenueService extends IDatabaseService<Venue> {
         throw new Error('Failed to create venue row')
       }
 
-      await tx.insert(tables.venueSeats).values(
-        row.seats.map(seat => ({
-          rowId: createdRow.id,
-          label: seat.label,
-          seatNumber: seat.seatNumber,
-          x: seat.x,
-          y: seat.y,
-          sortOrder: seat.sortOrder,
-          accessibilityLabel: seat.accessibilityLabel ?? null,
-          isAccessible: seat.isAccessible,
-          createdAt: timestamp,
-          updatedAt: timestamp,
-        })),
-      )
+      for (let start = 0; start < row.seats.length; start += D1_INSERT_BATCH_SIZE) {
+        const seatBatch = row.seats.slice(start, start + D1_INSERT_BATCH_SIZE)
+        await tx.insert(tables.venueSeats).values(
+          seatBatch.map(seat => ({
+            rowId: createdRow.id,
+            label: seat.label,
+            seatNumber: seat.seatNumber,
+            x: seat.x,
+            y: seat.y,
+            sortOrder: seat.sortOrder,
+            accessibilityLabel: seat.accessibilityLabel ?? null,
+            isAccessible: seat.isAccessible,
+            createdAt: timestamp,
+            updatedAt: timestamp,
+          })),
+        )
+      }
     }
   }
 }
