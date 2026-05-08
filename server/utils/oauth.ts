@@ -128,14 +128,12 @@ export async function handleOAuthSuccess(event: H3Event, provider: string, profi
     avatarUrl: profile.avatarUrl,
   })
 
-  const subscription = await subscriptionService.getActiveByUserId(newUser.id)
   await setUserSession(event, {
     user: {
       id: newUser.id,
       username: newUser.username,
       name: newUser.name,
       isAdmin: newUser.isAdmin,
-      subscription,
     },
   })
 
