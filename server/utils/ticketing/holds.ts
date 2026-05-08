@@ -96,68 +96,65 @@ class HoldService {
     const expiresAt = new Date(Date.now() + HOLD_DURATION_MS)
 
     try {
-      const created = await this.db.transaction(async (tx) => {
-        const hold = await tx
-          .insert(tables.seatHolds)
-          .values({
-            publicId: createPublicHoldId(),
-            eventId: session.eventId,
-            eventSessionId: session.id,
-            userId: userId ?? null,
-            sessionKey: input.sessionKey,
-            idempotencyKey: input.idempotencyKey,
-            status: 'active',
-            expiresAt,
-            checkoutStartedAt: null,
-            releasedAt: null,
-            createdAt: now,
+      const db = this.db
+      const hold = await db
+        .insert(tables.seatHolds)
+        .values({
+          publicId: createPublicHoldId(),
+          eventId: session.eventId,
+          eventSessionId: session.id,
+          userId: userId ?? null,
+          sessionKey: input.sessionKey,
+          idempotencyKey: input.idempotencyKey,
+          status: 'active',
+          expiresAt,
+          checkoutStartedAt: null,
+          releasedAt: null,
+          createdAt: now,
+          updatedAt: now,
+        })
+        .returning()
+        .get()
+
+      if (!hold) {
+        throw createError({ statusCode: 500, statusMessage: 'Failed to create seat hold.' })
+      }
+
+      const availableSeats = await db
+        .select()
+        .from(tables.eventSeats)
+        .where(and(
+          eq(tables.eventSeats.eventSessionId, session.id),
+          inArray(tables.eventSeats.id, input.eventSeatIds),
+        ))
+        .all()
+
+      const sellableSeats = availableSeats.filter(seat => seat.status === 'available')
+      if (sellableSeats.length !== input.eventSeatIds.length) {
+        throw createError({ statusCode: 409, statusMessage: 'One or more selected seats are no longer available.' })
+      }
+
+      for (const seat of sellableSeats) {
+        const lockedSeat = await db
+          .update(tables.eventSeats)
+          .set({
+            status: 'locked',
+            holdId: hold.id,
+            lockedAt: now,
             updatedAt: now,
           })
+          .where(and(
+            eq(tables.eventSeats.id, seat.id),
+            eq(tables.eventSeats.status, 'available'),
+            isNull(tables.eventSeats.holdId),
+          ))
           .returning()
           .get()
 
-        if (!hold) {
-          throw createError({ statusCode: 500, statusMessage: 'Failed to create seat hold.' })
-        }
-
-        const availableSeats = await tx
-          .select()
-          .from(tables.eventSeats)
-          .where(and(
-            eq(tables.eventSeats.eventSessionId, session.id),
-            inArray(tables.eventSeats.id, input.eventSeatIds),
-          ))
-          .all()
-
-        const sellableSeats = availableSeats.filter(seat => seat.status === 'available')
-        if (sellableSeats.length !== input.eventSeatIds.length) {
+        if (!lockedSeat) {
           throw createError({ statusCode: 409, statusMessage: 'One or more selected seats are no longer available.' })
         }
-
-        for (const seat of sellableSeats) {
-          const lockedSeat = await tx
-            .update(tables.eventSeats)
-            .set({
-              status: 'locked',
-              holdId: hold.id,
-              lockedAt: now,
-              updatedAt: now,
-            })
-            .where(and(
-              eq(tables.eventSeats.id, seat.id),
-              eq(tables.eventSeats.status, 'available'),
-              isNull(tables.eventSeats.holdId),
-            ))
-            .returning()
-            .get()
-
-          if (!lockedSeat) {
-            throw createError({ statusCode: 409, statusMessage: 'One or more selected seats are no longer available.' })
-          }
-        }
-
-        return hold
-      })
+      }
 
       await queueService.completeEntry(input.eventSessionId, input.sessionKey)
 
@@ -199,26 +196,25 @@ class HoldService {
 
     const now = new Date()
 
-    await this.db.transaction(async (tx) => {
-      await tx
-        .update(tables.eventSeats)
-        .set({
-          status: 'available',
-          holdId: null,
-          lockedAt: null,
-          updatedAt: now,
-        })
-        .where(eq(tables.eventSeats.holdId, hold.id))
+    const db = this.db
+    await db
+      .update(tables.eventSeats)
+      .set({
+        status: 'available',
+        holdId: null,
+        lockedAt: null,
+        updatedAt: now,
+      })
+      .where(eq(tables.eventSeats.holdId, hold.id))
 
-      await tx
-        .update(tables.seatHolds)
-        .set({
-          status: 'released',
-          releasedAt: now,
-          updatedAt: now,
-        })
-        .where(eq(tables.seatHolds.id, hold.id))
-    })
+    await db
+      .update(tables.seatHolds)
+      .set({
+        status: 'released',
+        releasedAt: now,
+        updatedAt: now,
+      })
+      .where(eq(tables.seatHolds.id, hold.id))
 
     return this.getHoldByPublicId(holdPublicId)
   }
@@ -245,26 +241,25 @@ class HoldService {
     const expiredHolds = holds.filter(hold => hold.status === 'active' && hold.expiresAt.getTime() <= now.getTime())
 
     for (const hold of expiredHolds) {
-      await this.db.transaction(async (tx) => {
-        await tx
-          .update(tables.eventSeats)
-          .set({
-            status: 'available',
-            holdId: null,
-            lockedAt: null,
-            updatedAt: now,
-          })
-          .where(eq(tables.eventSeats.holdId, hold.id))
+      const db = this.db
+      await db
+        .update(tables.eventSeats)
+        .set({
+          status: 'available',
+          holdId: null,
+          lockedAt: null,
+          updatedAt: now,
+        })
+        .where(eq(tables.eventSeats.holdId, hold.id))
 
-        await tx
-          .update(tables.seatHolds)
-          .set({
-            status: 'expired',
-            releasedAt: now,
-            updatedAt: now,
-          })
-          .where(eq(tables.seatHolds.id, hold.id))
-      })
+      await db
+        .update(tables.seatHolds)
+        .set({
+          status: 'expired',
+          releasedAt: now,
+          updatedAt: now,
+        })
+        .where(eq(tables.seatHolds.id, hold.id))
     }
 
     return expiredHolds.length

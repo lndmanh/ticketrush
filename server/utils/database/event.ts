@@ -22,8 +22,7 @@ type EventDetail = {
   }>
 }
 
-type Database = ReturnType<typeof useDB>
-type Transaction = Parameters<Parameters<Database['transaction']>[0]>[0]
+type Transaction = ReturnType<typeof useDB>
 
 const publicEventStatuses: EventCatalogPublicStatus[] = ['published', 'on_sale', 'sold_out', 'ended']
 
@@ -136,41 +135,38 @@ class EventService extends IDatabaseService<Event> {
       throw new Error('At least one event session is required.')
     }
 
-    const event = await this.db.transaction(async (tx) => {
-      const createdEvent = await tx
-        .insert(tables.events)
-        .values({
-          publicId: createPublicEventId(),
-          slug: data.slug,
-          title: data.title,
-          subtitle: data.subtitle ?? null,
-          description: data.description,
-          status: 'draft',
-          venueId: data.venueId,
-          coverImage: data.coverImage || null,
-          startsAt: primarySession.startsAt,
-          endsAt: primarySession.endsAt ?? null,
-          salesStartAt: primarySession.salesStartAt,
-          salesEndAt: primarySession.salesEndAt,
-          publishedAt: null,
-          createdAt: now,
-          updatedAt: now,
-        })
-        .returning()
-        .get()
+    const db = this.db
+    const createdEvent = await db
+      .insert(tables.events)
+      .values({
+        publicId: createPublicEventId(),
+        slug: data.slug,
+        title: data.title,
+        subtitle: data.subtitle ?? null,
+        description: data.description,
+        status: 'draft',
+        venueId: data.venueId,
+        coverImage: data.coverImage || null,
+        startsAt: primarySession.startsAt,
+        endsAt: primarySession.endsAt ?? null,
+        salesStartAt: primarySession.salesStartAt,
+        salesEndAt: primarySession.salesEndAt,
+        publishedAt: null,
+        createdAt: now,
+        updatedAt: now,
+      })
+      .returning()
+      .get()
 
-      if (!createdEvent) {
-        throw new Error('Failed to create event')
-      }
+    if (!createdEvent) {
+      throw new Error('Failed to create event')
+    }
 
-      for (const session of data.sessions) {
-        await eventSessionService.createForEventInTransaction(tx, createdEvent.id, data.venueId, session, now)
-      }
+    for (const session of data.sessions) {
+      await eventSessionService.createForEventInTransaction(db, createdEvent.id, data.venueId, session, now)
+    }
 
-      return createdEvent
-    })
-
-    return event
+    return createdEvent
   }
 
   async update(data: UpdateEventInput) {
@@ -180,43 +176,40 @@ class EventService extends IDatabaseService<Event> {
       throw new Error('At least one event session is required.')
     }
 
-    const event = await this.db.transaction(async (tx) => {
-      const existingEvent = await tx.select().from(tables.events).where(eq(tables.events.id, data.id)).get()
-      if (!existingEvent) {
-        throw new Error('Event not found')
-      }
+    const db = this.db
+    const existingEvent = await db.select().from(tables.events).where(eq(tables.events.id, data.id)).get()
+    if (!existingEvent) {
+      throw new Error('Event not found')
+    }
 
-      const updatedEvent = await tx
-        .update(tables.events)
-        .set({
-          slug: data.slug,
-          title: data.title,
-          subtitle: data.subtitle ?? null,
-          description: data.description,
-          venueId: data.venueId,
-          coverImage: data.coverImage || null,
-          startsAt: primarySession.startsAt,
-          endsAt: primarySession.endsAt ?? null,
-          salesStartAt: primarySession.salesStartAt,
-          salesEndAt: primarySession.salesEndAt,
-          updatedAt: now,
-        })
-        .where(eq(tables.events.id, data.id))
-        .returning()
-        .get()
+    const updatedEvent = await db
+      .update(tables.events)
+      .set({
+        slug: data.slug,
+        title: data.title,
+        subtitle: data.subtitle ?? null,
+        description: data.description,
+        venueId: data.venueId,
+        coverImage: data.coverImage || null,
+        startsAt: primarySession.startsAt,
+        endsAt: primarySession.endsAt ?? null,
+        salesStartAt: primarySession.salesStartAt,
+        salesEndAt: primarySession.salesEndAt,
+        updatedAt: now,
+      })
+      .where(eq(tables.events.id, data.id))
+      .returning()
+      .get()
 
-      if (!updatedEvent) {
-        throw new Error('Event not found')
-      }
+    if (!updatedEvent) {
+      throw new Error('Event not found')
+    }
 
-      for (const session of data.sessions) {
-        await eventSessionService.updateForEventInTransaction(tx, data.id, data.venueId, session, now)
-      }
+    for (const session of data.sessions) {
+      await eventSessionService.updateForEventInTransaction(db, data.id, data.venueId, session, now)
+    }
 
-      return updatedEvent
-    })
-
-    return event
+    return updatedEvent
   }
 
   private toEventCatalogItem(event: Event, venue: Venue | null, sessions: EventSession[]): EventCatalogItem {
@@ -493,76 +486,73 @@ class EventService extends IDatabaseService<Event> {
 
   async createSession(eventId: number, input: EventSessionDraftInput) {
     const now = new Date()
-    return this.db.transaction(async (tx) => {
-      const parent = await tx.select().from(tables.events).where(eq(tables.events.id, eventId)).get()
-      if (!parent) {
-        throw new Error('Event not found')
-      }
+    const db = this.db
+    const parent = await db.select().from(tables.events).where(eq(tables.events.id, eventId)).get()
+    if (!parent) {
+      throw new Error('Event not found')
+    }
 
-      const created = await eventSessionService.createForEventInTransaction(tx, eventId, parent.venueId, input, now)
-      await this.updateParentSummaryFieldsInTransaction(tx, eventId, now)
-      return created
-    })
+    const created = await eventSessionService.createForEventInTransaction(db, eventId, parent.venueId, input, now)
+    await this.updateParentSummaryFieldsInTransaction(db, eventId, now)
+    return created
   }
 
   async updateSession(eventId: number, sessionId: number, input: EventSessionDraftInput) {
     const now = new Date()
-    return this.db.transaction(async (tx) => {
-      const parent = await tx.select().from(tables.events).where(eq(tables.events.id, eventId)).get()
-      if (!parent) {
-        throw new Error('Event not found')
-      }
+    const db = this.db
+    const parent = await db.select().from(tables.events).where(eq(tables.events.id, eventId)).get()
+    if (!parent) {
+      throw new Error('Event not found')
+    }
 
-      const updated = await eventSessionService.updateForEventInTransaction(tx, eventId, parent.venueId, { ...input, id: sessionId }, now)
-      await this.updateParentSummaryFieldsInTransaction(tx, eventId, now)
-      return updated
-    })
+    const updated = await eventSessionService.updateForEventInTransaction(db, eventId, parent.venueId, { ...input, id: sessionId }, now)
+    await this.updateParentSummaryFieldsInTransaction(db, eventId, now)
+    return updated
   }
 
   async publish(eventId: number) {
     const now = new Date()
 
-    return this.db.transaction(async (tx) => {
-      const event = await tx.select().from(tables.events).where(eq(tables.events.id, eventId)).get()
-      if (!event) {
-        throw new Error('Event not found')
-      }
+    const db = this.db
+    const event = await db.select().from(tables.events).where(eq(tables.events.id, eventId)).get()
+    if (!event) {
+      throw new Error('Event not found')
+    }
 
-      const sessions = await tx
-        .select()
-        .from(tables.eventSessions)
-        .where(eq(tables.eventSessions.eventId, eventId))
-        .orderBy(asc(tables.eventSessions.startsAt))
-        .all()
-      if (sessions.length === 0) {
-        throw new Error('At least one event session is required before publishing.')
-      }
+    const sessions = await db
+      .select()
+      .from(tables.eventSessions)
+      .where(eq(tables.eventSessions.eventId, eventId))
+      .orderBy(asc(tables.eventSessions.startsAt))
+      .all()
+    if (sessions.length === 0) {
+      throw new Error('At least one event session is required before publishing.')
+    }
 
-      for (const session of sessions) {
-        await eventSessionService.assertCanPublishSessionInTransaction(tx, session.id)
-      }
+    for (const session of sessions) {
+      await eventSessionService.assertCanPublishSessionInTransaction(db, session.id)
+    }
 
-      for (const session of sessions) {
-        await eventSessionService.publishSessionInTransaction(tx, session.id, now)
-      }
+    for (const session of sessions) {
+      await eventSessionService.publishSessionInTransaction(db, session.id, now)
+    }
 
-      const publishedEvent = await tx
-        .update(tables.events)
-        .set({
-          status: 'published',
-          publishedAt: event.publishedAt ?? now,
-          updatedAt: now,
-        })
-        .where(eq(tables.events.id, eventId))
-        .returning()
-        .get()
+    const publishedEvent = await db
+      .update(tables.events)
+      .set({
+        status: 'published',
+        publishedAt: event.publishedAt ?? now,
+        updatedAt: now,
+      })
+      .where(eq(tables.events.id, eventId))
+      .returning()
+      .get()
 
-      if (!publishedEvent) {
-        throw new Error('Failed to publish event')
-      }
+    if (!publishedEvent) {
+      throw new Error('Failed to publish event')
+    }
 
-      return publishedEvent
-    })
+    return publishedEvent
   }
 
   async delete(id: number) {

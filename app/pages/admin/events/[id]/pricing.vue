@@ -2,8 +2,6 @@
 import { LockKeyhole } from '@lucide/vue'
 import { useForm } from 'vee-validate'
 import { toast } from 'vue-sonner'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { apiRequest } from '@/utils/apiRequest'
 import { parseApiError } from '@/utils/apiError'
 import { apiRoutes } from '#shared/apiRoutes'
