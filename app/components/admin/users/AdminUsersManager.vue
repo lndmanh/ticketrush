@@ -376,23 +376,6 @@ function mapUserErrorToField(message: string): UserFieldName | null {
   return null
 }
 
-function extractErrorMessage(error: unknown, fallback: string) {
-  if (isRecord(error) && isRecord(error.data)) {
-    if (typeof error.data.statusMessage === 'string') {
-      return error.data.statusMessage
-    }
-    if (typeof error.data.message === 'string') {
-      return error.data.message
-    }
-  }
-
-  if (error instanceof Error && error.message) {
-    return error.message
-  }
-
-  return fallback
-}
-
 const dataTableRef = ref<{ table?: { getFilteredSelectedRowModel: () => { rows: TableRowWithOriginal[] }, resetRowSelection: () => void } }>()
 const users = ref<User[]>([])
 const loading = ref(false)
