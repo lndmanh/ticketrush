@@ -328,8 +328,7 @@ const defaultValues: VenueBuilderInput = {
   address: '',
   coverImage: '',
   sections: [
-    { code: 'VIP', name: 'Front Row', color: '#0F766E', rowCount: 4, seatsPerRow: 8 },
-    { code: 'GA', name: 'Main Floor', color: '#334155', rowCount: 8, seatsPerRow: 12 },
+    { code: 'VIP', name: 'Front Row', color: '#0F766E', rowCount: 1, seatsPerRow: 2 },
   ],
 }
 

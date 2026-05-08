@@ -558,6 +558,5 @@ definePageMeta({
         </NuxtLink>
       </div>
     </div>
-
   </AuthPageLayout>
 </template>
