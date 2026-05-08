@@ -2,7 +2,7 @@
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { ChevronLeftIcon, Eye, EyeOff, Grid2x2PlusIcon, Lock, Mail, UserIcon } from '@lucide/vue'
+import { ChevronLeftIcon, Eye, EyeOff, Grid2x2PlusIcon, Lock, Mail, UserIcon, ShieldCheck, Sparkles } from '@lucide/vue'
 import { motion } from 'motion-v'
 import PasskeyRegistrationDialog from '@/components/PasskeyRegistrationDialog.vue'
 import PasswordStrengthIndicator from '@/components/PasswordStrengthIndicator.vue'
@@ -314,17 +314,24 @@ definePageMeta({
 
 <template>
   <main class="relative h-[100dvh] overflow-hidden bg-background lg:grid lg:grid-cols-2">
-    <section class="relative hidden h-full flex-col overflow-hidden border-r bg-muted/60 p-10 lg:flex">
-      <div class="absolute inset-0 bg-gradient-to-t from-background to-transparent" />
-      <div class="relative flex items-center gap-2">
-        <Grid2x2PlusIcon class="size-6" />
-        <p class="text-xl font-semibold">
+    <section class="relative hidden h-full flex-col overflow-hidden border-r bg-muted/30 p-10 lg:flex">
+      <!-- Premium Background Effects -->
+      <div class="absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,_var(--tw-gradient-stops))] from-primary/10 via-background to-background" />
+      <div class="absolute bottom-0 right-0 h-96 w-96 translate-x-1/3 translate-y-1/3 rounded-full bg-primary/10 blur-[100px]" />
+
+      <!-- Brand Logo -->
+      <div class="relative z-10 flex items-center gap-3">
+        <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary shadow-inner">
+          <Grid2x2PlusIcon class="size-5" />
+        </div>
+        <p class="text-2xl font-bold tracking-tight">
           Ticket Rush
         </p>
       </div>
 
+      <!-- Floating Animated Background -->
       <div
-        class="pointer-events-none absolute inset-0 text-slate-950 dark:text-white"
+        class="pointer-events-none absolute inset-0 text-primary/5 dark:text-primary/10"
         aria-hidden="true"
       >
         <svg
@@ -346,13 +353,51 @@ definePageMeta({
         </svg>
       </div>
 
-      <div class="relative mt-auto max-w-xl">
-        <blockquote class="space-y-2">
-          <p class="text-xl leading-relaxed">
-            &ldquo;Ticket Rush makes buying and selling tickets so easy, I can focus on what matters most - enjoying the event.&rdquo;
+      <!-- Feature Highlights -->
+      <div class="relative z-10 mt-auto max-w-xl space-y-8">
+        <div class="space-y-4">
+          <h2 class="text-3xl font-semibold tracking-tight text-foreground/90">
+            Join the revolution of event ticketing.
+          </h2>
+          <p class="text-lg text-muted-foreground">
+            Experience the most secure, fast, and reliable way to buy and sell tickets for your favorite events.
           </p>
-          <footer class="font-mono text-sm font-semibold">
-            ~ Ticket Rush
+        </div>
+
+        <div class="grid gap-6">
+          <div class="flex items-center gap-4 rounded-xl border bg-background/50 p-4 shadow-sm backdrop-blur-sm transition-colors hover:bg-background/80">
+            <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+              <ShieldCheck class="h-6 w-6" />
+            </div>
+            <div>
+              <h3 class="font-medium">
+                100% Secure Guarantee
+              </h3>
+              <p class="text-sm text-muted-foreground">
+                Every ticket is verified and authentic.
+              </p>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-4 rounded-xl border bg-background/50 p-4 shadow-sm backdrop-blur-sm transition-colors hover:bg-background/80">
+            <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+              <Sparkles class="h-6 w-6" />
+            </div>
+            <div>
+              <h3 class="font-medium">
+                Premium Experience
+              </h3>
+              <p class="text-sm text-muted-foreground">
+                Skip the queue with our VIP access system.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <blockquote class="border-l-2 border-primary pl-4 italic text-muted-foreground">
+          &ldquo;Ticket Rush completely changed how we manage our events. The platform is incredibly intuitive.&rdquo;
+          <footer class="mt-2 text-sm font-medium not-italic text-foreground">
+            — Event Organizer
           </footer>
         </blockquote>
       </div>
