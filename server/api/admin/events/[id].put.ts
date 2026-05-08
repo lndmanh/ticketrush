@@ -1,23 +1,24 @@
 import { updateEventSchema } from '#shared/schemas/ticketingSchema'
 import eventService from '~~/server/utils/database/event'
-import { success } from '~~/server/utils/apiResponse'
+import { apiError, success, zodErrorToFieldErrors } from '~~/server/utils/apiResponse'
 
 export default defineEventHandler(async (event) => {
   const eventId = Number(getRouterParam(event, 'id'))
   if (!Number.isSafeInteger(eventId) || eventId <= 0) {
-    throw createError({ statusCode: 400, statusMessage: 'Bad Request. Event ID is invalid.' })
+    throw apiError({ status: 400, statusText: 'Bad Request', code: 'INVALID_EVENT_ID', message: 'Event ID is invalid.' })
   }
 
   const current = await eventService.getById(eventId)
   if (!current) {
-    throw createError({ statusCode: 404, statusMessage: 'Event not found.' })
+    throw apiError({ status: 404, statusText: 'Not Found', code: 'EVENT_NOT_FOUND', message: 'Event not found.' })
   }
 
   const result = await readValidatedBody(event, body => updateEventSchema.safeParse({ ...body, id: eventId }))
   if (!result.success) {
-    throw createError({ statusCode: 400, statusMessage: 'Bad Request. Event update data is invalid.', data: result.error })
+    throw apiError({ status: 400, statusText: 'Bad Request', code: 'VALIDATION_ERROR', message: 'Invalid request.', fieldErrors: zodErrorToFieldErrors(result.error), cause: result.error })
   }
 
   const updated = await eventService.update(result.data)
-  return success(updated)
+  const response: Awaited<ReturnType<typeof eventService.update>> = updated
+  return success(response)
 })
