@@ -7,6 +7,7 @@ import eventSessionService from '~~/server/utils/database/event-session'
 import type {
   EventCatalogDateFilter,
   EventCatalogItem,
+  EventCatalogLocationOptions,
   EventCatalogPublicStatus,
   EventCatalogQueryOptions,
   EventCatalogResult,
@@ -275,9 +276,38 @@ class EventService extends IDatabaseService<Event> {
       item.slug,
       item.venue?.name,
       item.venue?.city,
+      item.venue?.country,
+      item.venue?.address,
     ].filter((value): value is string => typeof value === 'string' && value.length > 0)
 
     return values.some(value => value.toLowerCase().includes(normalizedSearchTerm))
+  }
+
+  private matchesLocationText(item: EventCatalogItem, normalizedArea: string) {
+    if (!normalizedArea) {
+      return true
+    }
+
+    const values = [
+      item.venue?.name,
+      item.venue?.address,
+      item.venue?.city,
+      item.venue?.country,
+    ].filter((value): value is string => typeof value === 'string' && value.length > 0)
+
+    return values.some(value => value.toLowerCase().includes(normalizedArea))
+  }
+
+  private getAddressAreas(address: string, city: string, country: string) {
+    return address
+      .split(',')
+      .map(part => part.trim())
+      .filter((part) => {
+        if (!part) return false
+        const normalizedPart = part.toLowerCase()
+        return normalizedPart !== city.toLowerCase()
+          && normalizedPart !== country.toLowerCase()
+      })
   }
 
   private matchesCatalogDate(item: EventCatalogItem, dateFilter: EventCatalogDateFilter) {
@@ -349,15 +379,23 @@ class EventService extends IDatabaseService<Event> {
 
   async getEventCatalog(options: EventCatalogQueryOptions): Promise<EventCatalogResult> {
     const normalizedSearchTerm = options.q.trim().toLowerCase()
+    const normalizedCountry = options.country.trim().toLowerCase()
     const normalizedCity = options.city.trim().toLowerCase()
+    const normalizedArea = options.area.trim().toLowerCase()
+    const normalizedVenue = options.venue.trim().toLowerCase()
     const items = await this.getPublicEventCatalogItems()
 
     const filteredItems = items.filter((item) => {
       const statusMatches = options.status === 'all' || item.status === options.status
+      const countryMatches = normalizedCountry === 'all' || item.venue?.country.toLowerCase() === normalizedCountry
       const cityMatches = normalizedCity === 'all' || item.venue?.city.toLowerCase() === normalizedCity
+      const venueMatches = normalizedVenue === 'all' || item.venue?.slug.toLowerCase() === normalizedVenue
 
       return statusMatches
+        && countryMatches
         && cityMatches
+        && venueMatches
+        && this.matchesLocationText(item, normalizedArea)
         && this.matchesCatalogDate(item, options.date)
         && this.matchesCatalogSearch(item, normalizedSearchTerm)
     })
@@ -369,6 +407,41 @@ class EventService extends IDatabaseService<Event> {
     return {
       items: sortedItems.slice(start, end),
       totalItems: filteredItems.length,
+    }
+  }
+
+  async getEventCatalogLocationOptions(): Promise<EventCatalogLocationOptions> {
+    const items = await this.getPublicEventCatalogItems()
+    const countries = new Set<string>()
+    const cities = new Set<string>()
+    const areas = new Set<string>()
+    const venueBySlug = new Map<string, EventCatalogLocationOptions['venues'][number]>()
+
+    for (const item of items) {
+      const venue = item.venue
+      if (!venue) {
+        continue
+      }
+
+      countries.add(venue.country)
+      cities.add(venue.city)
+      for (const area of this.getAddressAreas(venue.address, venue.city, venue.country)) {
+        areas.add(area)
+      }
+      venueBySlug.set(venue.slug, {
+        slug: venue.slug,
+        name: venue.name,
+        city: venue.city,
+        country: venue.country,
+        address: venue.address,
+      })
+    }
+
+    return {
+      countries: Array.from(countries).sort((left, right) => left.localeCompare(right)),
+      cities: Array.from(cities).sort((left, right) => left.localeCompare(right)),
+      areas: Array.from(areas).sort((left, right) => left.localeCompare(right)),
+      venues: Array.from(venueBySlug.values()).sort((left, right) => left.name.localeCompare(right.name)),
     }
   }
 
