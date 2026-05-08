@@ -372,7 +372,7 @@
     "uppercase": "One uppercase letter (A-Z)",
     "lowercase": "One lowercase letter (a-z)",
     "number": "One number (0-9)",
-    "special": "One special character (!@#$...)"
+    "special": "One special character"
   },
   "admin": {
     "dashboard_title": "Admin",
