@@ -3,5 +3,6 @@ import { success } from '~~/server/utils/apiResponse'
 
 export default defineEventHandler(async () => {
   const settings = await waitingRoomSettingsService.getSettings()
-  return success(settings)
+  const response: Awaited<ReturnType<typeof waitingRoomSettingsService.getSettings>> = settings
+  return success(response)
 })
