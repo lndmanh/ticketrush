@@ -1,18 +1,20 @@
 import { updateVenueSchema } from '#shared/schemas/ticketingSchema'
 import venueService from '~~/server/utils/database/venue'
-import { success } from '~~/server/utils/apiResponse'
+import { apiError, success, zodErrorToFieldErrors } from '~~/server/utils/apiResponse'
+import type { VenueDetail } from '~~/types/venues'
 
 export default defineEventHandler(async (event) => {
   const venueId = Number(getRouterParam(event, 'id'))
   if (Number.isNaN(venueId)) {
-    throw createError({ statusCode: 400, statusMessage: 'Bad Request. Venue ID is invalid.' })
+    throw apiError({ status: 400, statusText: 'Bad Request', code: 'INVALID_VENUE_ID', message: 'Venue ID is invalid.' })
   }
 
   const result = await readValidatedBody(event, body => updateVenueSchema.safeParse({ ...body, id: venueId }))
   if (!result.success) {
-    throw createError({ statusCode: 400, statusMessage: 'Bad Request. Venue update data is invalid.', data: result.error })
+    throw apiError({ status: 400, statusText: 'Bad Request', code: 'VALIDATION_ERROR', message: 'Invalid request.', fieldErrors: zodErrorToFieldErrors(result.error), cause: result.error })
   }
 
   const venue = await venueService.update(result.data)
-  return success(venue)
+  const response: VenueDetail = venue
+  return success(response)
 })

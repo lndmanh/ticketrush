@@ -4,10 +4,12 @@ import { Field as VeeField, useForm } from 'vee-validate'
 import { toast } from 'vue-sonner'
 import { createVenueSchema } from '#shared/schemas/ticketingSchema'
 import type { VenueSectionDraftInput } from '#shared/schemas/ticketingSchema'
-import type { ApiResponse } from '~~/types/api'
 import type { VenueDetail } from '~~/types/venues'
 import { ArrowLeft, Building2, CalendarRange, LayoutGrid, LayoutDashboardIcon, Rows3, Save, Users } from '@lucide/vue'
 import AdminVenuesVenueSeatLayoutEditor from '@/components/admin/venues/VenueSeatLayoutEditor.vue'
+import { apiRequest } from '@/utils/apiRequest'
+import { parseApiError } from '@/utils/apiError'
+import { apiRoutes } from '#shared/apiRoutes'
 
 interface AdminEventListItem {
   id: number
@@ -55,8 +57,8 @@ interface VenueBlueprintPreset {
 const route = useRoute()
 const venueId = computed(() => Number(route.params.id))
 
-const { data: venueResponse, refresh: refreshVenue } = await useFetch<ApiResponse<VenueDetail>>(() => `/api/admin/venues/${venueId.value}`)
-const { data: eventsResponse } = await useFetch('/api/admin/events')
+const { data: venueResponse, refresh: refreshVenue } = await useAPI(() => apiRoutes.adminVenue(venueId.value))
+const { data: eventsResponse } = await useAPI(() => apiRoutes.ADMIN_EVENTS)
 
 const venueDetail = computed<VenueDetail | null>(() => venueResponse.value?.success ? venueResponse.value.data : null)
 const linkedEvents = computed<AdminEventListItem[]>(() => {
@@ -495,17 +497,18 @@ const onSubmit = handleSubmit(
 
     isSaving.value = true
     try {
-      await $fetch(`/api/admin/venues/${venueId.value}`, {
+      const response = await apiRequest(apiRoutes.adminVenue(venueId.value), {
         method: 'PUT',
         body: validation.data,
       })
+      if (!response.success) throw response
 
       toast.success('Venue updated')
       savedVenueSnapshot.value = currentVenueSnapshot.value
       await refreshVenue()
     }
-    catch {
-      toast.error('We could not update the venue blueprint')
+    catch (error) {
+      toast.error(parseApiError(error, 'We could not update the venue blueprint').message)
     }
     finally {
       isSaving.value = false

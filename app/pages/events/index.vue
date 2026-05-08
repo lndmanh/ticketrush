@@ -13,10 +13,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import type { ApiResponse, PaginatedApiResponse } from '~~/types/api'
 import type {
   EventCatalogDateFilter,
-  EventCatalogItem,
   EventCatalogLocationOptions,
   EventCatalogSort,
   EventCatalogStatusFilter,
@@ -209,11 +207,11 @@ const catalogQuery = computed(() => ({
   pageSize: EVENTS_PAGE_SIZE,
 }))
 
-const { data: catalogResponse, pending, error: catalogFetchError } = await useFetch<PaginatedApiResponse<EventCatalogItem[]>>('/api/events', {
+const { data: catalogResponse, pending, error: catalogFetchError } = await useAPI(() => '/api/events', {
   query: catalogQuery,
 })
 
-const { data: locationResponse } = await useFetch<ApiResponse<EventCatalogLocationOptions>>('/api/events/locations')
+const { data: locationResponse } = await useAPI(() => '/api/events/locations')
 
 const catalog = computed(() => {
   const response = catalogResponse.value

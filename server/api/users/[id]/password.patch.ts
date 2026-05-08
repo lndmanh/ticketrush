@@ -1,36 +1,27 @@
 import { changePasswordSchema } from '#shared/schemas/userSchema'
 import userService from '~~/server/utils/database/user'
 import { getAuthorizedUserId } from '~~/server/utils/authorization'
-import { success } from '~~/server/utils/apiResponse'
+import { apiError, success, zodErrorToFieldErrors } from '~~/server/utils/apiResponse'
+import type { MessagePayload } from '~~/types/common'
 
 export default defineEventHandler(async (event) => {
   const userId = await getAuthorizedUserId(event)
 
   const result = await readValidatedBody(event, body => changePasswordSchema.safeParse(body))
   if (!result.success) {
-    throw createError({
-      statusCode: 400,
-      statusMessage: 'Bad Request. The password change request contains invalid data.',
-      data: result.error,
-    })
+    throw apiError({ status: 400, statusText: 'Bad Request', code: 'VALIDATION_ERROR', message: 'Invalid request.', fieldErrors: zodErrorToFieldErrors(result.error), cause: result.error })
   }
 
   // Get current user
   const user = await userService.getById(userId)
   if (!user) {
-    throw createError({
-      statusCode: 404,
-      statusMessage: 'Not Found. The requested user account does not exist.',
-    })
+    throw apiError({ status: 404, statusText: 'Not Found', code: 'USER_NOT_FOUND', message: 'The requested user account does not exist.' })
   }
 
   // Verify current password
   const isValidPassword = await verifyPassword(user.password, result.data.currentPassword)
   if (!isValidPassword) {
-    throw createError({
-      statusCode: 401,
-      statusMessage: 'Unauthorized. The current password provided is incorrect.',
-    })
+    throw apiError({ status: 401, statusText: 'Unauthorized', code: 'CURRENT_PASSWORD_INCORRECT', message: 'The current password provided is incorrect.' })
   }
 
   // Hash new password
@@ -43,11 +34,9 @@ export default defineEventHandler(async (event) => {
   })
 
   if (!updatedUser) {
-    throw createError({
-      statusCode: 500,
-      statusMessage: 'Internal Server Error. Failed to update the password.',
-    })
+    throw apiError({ status: 500, statusText: 'Internal Server Error', code: 'PASSWORD_UPDATE_FAILED', message: 'Failed to update the password.' })
   }
 
-  return success({ message: 'Password updated successfully' })
+  const response: MessagePayload = { message: 'Password updated successfully' }
+  return success(response)
 })

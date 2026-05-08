@@ -1,21 +1,28 @@
 <script setup lang="ts">
-import { ChevronLeftIcon, Eye, EyeOff, Fingerprint, Grid2x2PlusIcon, Lock, User } from '@lucide/vue'
-import { motion } from 'motion-v'
+import { User, Lock, Eye, EyeOff, Fingerprint } from '@lucide/vue'
 import { getAuthErrorMessage, AUTH_SUCCESS_MESSAGES } from '#shared/constants/authMessages'
 import { AVAILABLE_PROVIDERS } from '#shared/constants/oauthProviders'
 import { apiRoutes } from '#shared/apiRoutes'
 import { Field as VeeField, useForm } from 'vee-validate'
 import { loginSchema } from '#shared/schemas/userSchema'
-import type { ApiResponse } from '~~/types/api'
+import { parseApiError } from '@/utils/apiError'
+import { apiRequest } from '@/utils/apiRequest'
+import { APP_MANIFEST } from '#shared/constants/manifest'
+
+const formSchema = loginSchema.pick({ username: true, password: true })
+
+function isAuthSuccessMessageKey(value: string): value is keyof typeof AUTH_SUCCESS_MESSAGES {
+  return value in AUTH_SUCCESS_MESSAGES
+}
 
 const { authenticate } = useWebAuthn()
 const route = useRoute()
+const requestUrl = useRequestURL()
 const showPassword = ref(false)
 const isLoading = ref(false)
 const error = ref('')
 const success = ref('')
 const turnstileToken = ref('')
-const turnstileRenderKey = ref(0)
 const oauthLoadingProvider = ref<string | null>(null)
 const oauthPopup = ref<Window | null>(null)
 const oauthPopupTimeout = ref<ReturnType<typeof setTimeout> | null>(null)
@@ -24,39 +31,6 @@ const oauthPopupCloseMonitor = ref<ReturnType<typeof setInterval> | null>(null)
 type OAuthPopupCompleteMessage = {
   type: 'oauth:complete'
   url: string
-}
-
-type FloatingPath = {
-  id: number
-  d: string
-  width: number
-  opacity: number
-  duration: number
-}
-
-function createFloatingPaths(position: number): FloatingPath[] {
-  return Array.from({ length: 36 }, (_, index) => ({
-    id: index,
-    d: `M-${380 - index * 5 * position} -${189 + index * 6}C-${
-      380 - index * 5 * position
-    } -${189 + index * 6} -${312 - index * 5 * position} ${216 - index * 6} ${
-      152 - index * 5 * position
-    } ${343 - index * 6}C${616 - index * 5 * position} ${470 - index * 6} ${
-      684 - index * 5 * position
-    } ${875 - index * 6} ${684 - index * 5 * position} ${875 - index * 6}`,
-    width: 0.5 + index * 0.03,
-    opacity: 0.1 + index * 0.03,
-    duration: 20 + (index % 10),
-  }))
-}
-
-const floatingPaths = [
-  ...createFloatingPaths(1),
-  ...createFloatingPaths(-1),
-]
-
-function isAuthSuccessMessageKey(value: string): value is keyof typeof AUTH_SUCCESS_MESSAGES {
-  return value in AUTH_SUCCESS_MESSAGES
 }
 
 function getQueryString(value: string | string[] | null | undefined) {
@@ -71,16 +45,18 @@ function getQueryString(value: string | string[] | null | undefined) {
   return ''
 }
 
-function getErrorMessage(errorValue: object, fallback: string) {
-  if ('data' in errorValue && errorValue.data && typeof errorValue.data === 'object' && 'statusMessage' in errorValue.data && typeof errorValue.data.statusMessage === 'string') {
-    return errorValue.data.statusMessage
-  }
+function safeRedirectPath(value: string, baseUrl: string) {
+  try {
+    const parsed = new URL(value, baseUrl)
+    if (parsed.origin !== baseUrl) {
+      return '/'
+    }
 
-  if ('message' in errorValue && typeof errorValue.message === 'string') {
-    return errorValue.message
+    return `${parsed.pathname}${parsed.search}${parsed.hash}`
   }
-
-  return fallback
+  catch {
+    return '/'
+  }
 }
 
 function stopOAuthPopupTimeout() {
@@ -119,60 +95,21 @@ function onOAuthPopupComplete(event: MessageEvent<OAuthPopupCompleteMessage>) {
   window.location.assign(`${target.pathname}${target.search}${target.hash}`)
 }
 
-const redirectTo = computed(() => getQueryString(route.query.redirectTo) || '/')
-const isTwoFactorStep = computed(() => getQueryString(route.query.step) === '2fa')
-
-const {
-  handleSubmit,
-  setFieldError,
-  setFieldValue,
-  values,
-} = useForm({
+const { handleSubmit, values } = useForm({
   initialValues: {
-    'username': '',
-    'password': '',
-    'cf-turnstile-response': '',
-    'redirect-to': redirectTo.value,
+    username: '',
+    password: '',
   },
-  validationSchema: loginSchema,
+  validationSchema: formSchema,
 })
 
-watch(turnstileToken, (token) => {
-  setFieldValue('cf-turnstile-response', token)
+const onSubmit = handleSubmit(async () => {
+  // Native form submission for server-side auth
+  const formEl = document.querySelector('form[action="/api/auth/login-password"]')
+  if (formEl instanceof HTMLFormElement) formEl.submit()
 })
 
-watch(redirectTo, (value) => {
-  setFieldValue('redirect-to', value)
-})
-
-const onSubmit = handleSubmit(async (formValues) => {
-  isLoading.value = true
-  error.value = ''
-  success.value = ''
-
-  try {
-    const response = await $fetch<{ redirectTo: string }>('/api/auth/login-password', {
-      method: 'POST',
-      body: formValues,
-    })
-
-    await navigateTo(response.redirectTo, { external: response.redirectTo.startsWith('http') })
-  }
-  catch (submitError) {
-    const message = submitError && typeof submitError === 'object'
-      ? getErrorMessage(submitError, 'Unable to sign in. Please try again')
-      : 'Unable to sign in. Please try again'
-
-    error.value = message
-    setFieldError('password', message)
-    turnstileToken.value = ''
-    setFieldValue('cf-turnstile-response', '')
-    turnstileRenderKey.value += 1
-  }
-  finally {
-    isLoading.value = false
-  }
-})
+const redirectTo = computed(() => safeRedirectPath(getQueryString(route.query.redirectTo) || '/', requestUrl.origin))
 
 watch(() => route.query.error, (queryValue) => {
   const errorCode = getQueryString(queryValue)
@@ -208,8 +145,7 @@ async function signInWithPasskey() {
     window.location.href = redirectTo.value
   }
   catch (err) {
-    createError({ statusCode: 401, statusMessage: 'Unauthorized. Passkey authentication failed. Please ensure your passkey is set up correctly.', data: err })
-    error.value = 'Authentication failed. Please ensure your passkey is set up correctly, or sign in with your password.'
+    error.value = parseApiError(err, 'Authentication failed. Please ensure your passkey is set up correctly, or sign in with your password.').message
     isLoading.value = false
   }
 }
@@ -221,12 +157,12 @@ async function signInWithProvider(provider: string) {
   error.value = ''
 
   try {
-    const response = await $fetch<ApiResponse<{ url: string }>>(apiRoutes.AUTH_OAUTH_URL, {
+    const response = await apiRequest(apiRoutes.AUTH_OAUTH_URL, {
       method: 'POST',
       body: { provider, action: 'login' },
     })
     if (!response.success) {
-      throw new Error(response.error.message)
+      throw response
     }
 
     const popupWidth = Math.min(560, window.outerWidth - 40)
@@ -280,11 +216,11 @@ async function signInWithProvider(provider: string) {
       error.value = 'OAuth session timed out or popup was closed. Please try again.'
     }, 120000)
   }
-  catch {
+  catch (error) {
     stopOAuthPopupCloseMonitor()
     stopOAuthPopupTimeout()
     oauthPopup.value = null
-    error.value = 'Unable to continue with provider right now. Please try again.'
+    error.value = parseApiError(error, 'Unable to continue with provider right now. Please try again.').message
     oauthLoadingProvider.value = null
   }
 }
@@ -303,314 +239,246 @@ definePageMeta({
 </script>
 
 <template>
-  <main class="relative h-[100dvh] overflow-hidden bg-background lg:grid lg:grid-cols-2">
-    <section class="relative hidden h-full flex-col overflow-hidden border-r bg-muted/60 p-10 lg:flex">
-      <div class="absolute inset-0 bg-gradient-to-t from-background to-transparent" />
-      <div class="relative flex items-center gap-2">
-        <Grid2x2PlusIcon class="size-6" />
-        <p class="text-xl font-semibold">
-          Ticket Rush
-        </p>
-      </div>
+  <AuthPageLayout
+    quote="Gromet Reader keeps my library organized and lets me get back to reading without fighting the interface."
+    quote-author="Morgan Vale"
+  >
+    <div class="space-y-1">
+      <h1 class="text-2xl font-bold tracking-tight">
+        Welcome back
+      </h1>
+      <p class="text-base text-muted-foreground">
+        {{ APP_MANIFEST.description }}
+      </p>
+    </div>
 
-      <div
-        class="pointer-events-none absolute inset-0 text-slate-950 dark:text-white"
-        aria-hidden="true"
+    <Alert
+      v-if="success"
+      class="border-green-200 bg-green-50 dark:border-green-900 dark:bg-green-950"
+    >
+      <AlertDescription class="text-green-700 dark:text-green-300">
+        {{ success }}
+      </AlertDescription>
+    </Alert>
+
+    <Alert
+      v-if="error"
+      variant="destructive"
+    >
+      <AlertDescription>{{ error }}</AlertDescription>
+    </Alert>
+
+    <form
+      action="/api/auth/login-password"
+      method="POST"
+      class="space-y-4"
+      @submit.prevent="onSubmit"
+    >
+      <input
+        type="hidden"
+        name="redirect-to"
+        :value="redirectTo"
       >
-        <svg
-          class="h-full w-full"
-          viewBox="0 0 696 316"
-          fill="none"
+      <VeeField
+        v-slot="{ field, errors }"
+        name="username"
+      >
+        <Field
+          :data-invalid="!!errors.length"
+          class="space-y-2"
         >
-          <motion.path
-            v-for="path in floatingPaths"
-            :key="`${path.id}-${path.d}`"
-            :d="path.d"
-            stroke="currentColor"
-            :stroke-width="path.width"
-            :stroke-opacity="path.opacity"
-            :initial="{ pathLength: 0.3, opacity: 0.6 }"
-            :animate="{ pathLength: 1, opacity: [0.3, 0.6, 0.3], pathOffset: [0, 1, 0] }"
-            :transition="{ duration: path.duration, repeat: Number.POSITIVE_INFINITY, ease: 'linear' }"
+          <FieldLabel
+            for="username"
+            class="text-sm font-medium"
+          >
+            Username
+          </FieldLabel>
+          <div class="relative">
+            <User
+              aria-hidden="true"
+              class="absolute left-3 top-3 h-4 w-4"
+            />
+            <Input
+              id="username"
+              :model-value="field.value"
+              name="username"
+              type="text"
+              placeholder="Enter your username"
+              class="pl-9 h-11"
+              :disabled="isLoading"
+              :aria-invalid="!!errors.length"
+              @update:model-value="field.onChange"
+            />
+          </div>
+          <FieldError
+            v-if="errors.length"
+            :errors="errors"
           />
-        </svg>
-      </div>
+        </Field>
+      </VeeField>
 
-      <div class="relative mt-auto max-w-xl">
-        <blockquote class="space-y-2">
-          <p class="text-xl leading-relaxed">
-            &ldquo;Ticket Rush makes buying and selling tickets so easy, I can focus on what matters most - enjoying the event.&rdquo;
-          </p>
-          <footer class="font-mono text-sm font-semibold">
-            ~ Morgan Vale
-          </footer>
-        </blockquote>
-      </div>
-    </section>
-
-    <section class="relative flex h-full min-h-0 flex-col overflow-x-hidden overflow-y-auto px-4 py-20 sm:px-6 lg:px-10">
-      <div
-        aria-hidden="true"
-        class="absolute inset-0 -z-10 isolate opacity-60"
+      <VeeField
+        v-slot="{ field, errors }"
+        name="password"
       >
-        <div class="absolute right-0 top-0 h-80 w-80 -translate-y-1/2 translate-x-1/4 rounded-full bg-foreground/[0.04] blur-3xl" />
-        <div class="absolute bottom-0 left-0 h-72 w-72 translate-y-1/3 rounded-full bg-muted blur-3xl" />
-      </div>
-
-      <Button
-        variant="ghost"
-        class="absolute left-5 top-7"
-        @click="navigateTo('/')"
-      >
-        <ChevronLeftIcon class="me-2 size-4" />
-        Home
-      </Button>
-
-      <div class="mx-auto my-auto w-full max-w-sm space-y-5">
-        <div class="flex items-center gap-2 lg:hidden">
-          <Grid2x2PlusIcon class="size-6" />
-          <p class="text-xl font-semibold">
-            Ticket Rush
-          </p>
-        </div>
-
-        <div class="space-y-1">
-          <template v-if="!isTwoFactorStep">
-            <h1 class="text-2xl font-bold tracking-tight">
-              Welcome back
-            </h1>
-            <p class="text-base text-muted-foreground">
-              Sign in to your Ticket Rush account to continue.
-            </p>
-          </template>
-          <template v-else>
-            <h1 class="text-2xl font-bold tracking-tight">
-              Two-factor verification
-            </h1>
-            <p class="text-base text-muted-foreground">
-              Enter the code from your authenticator app to continue.
-            </p>
-          </template>
-        </div>
-
-        <Alert
-          v-if="success"
-          class="border-green-200 bg-green-50 dark:border-green-900 dark:bg-green-950"
+        <Field
+          :data-invalid="!!errors.length"
+          class="space-y-2"
         >
-          <AlertDescription class="text-green-700 dark:text-green-300">
-            {{ success }}
-          </AlertDescription>
-        </Alert>
-
-        <Alert
-          v-if="error"
-          variant="destructive"
-        >
-          <AlertDescription>{{ error }}</AlertDescription>
-        </Alert>
-
-        <form
-          action="/api/auth/login-password"
-          method="POST"
-          class="space-y-4"
-          @submit.prevent="onSubmit"
-        >
-          <input
-            type="hidden"
-            name="redirect-to"
-            :value="redirectTo"
+          <FieldLabel
+            for="password"
+            class="text-sm font-medium"
           >
-          <input
-            type="hidden"
-            name="cf-turnstile-response"
-            :value="turnstileToken"
-          >
-          <VeeField
-            v-slot="{ field, errors }"
-            name="username"
-          >
-            <Field
-              :data-invalid="!!errors.length"
-              class="space-y-2"
-            >
-              <FieldLabel
-                for="username"
-                class="text-sm font-medium"
-              >
-                {{ $t('auth.username_label') }}
-              </FieldLabel>
-              <div class="relative">
-                <User class="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                <Input
-                  id="username"
-                  :model-value="field.value"
-                  name="username"
-                  type="text"
-                  autocomplete="username"
-                  :placeholder="$t('auth.username_placeholder')"
-                  class="h-11 pl-9"
-                  :disabled="isLoading"
-                  :aria-invalid="!!errors.length"
-                  @update:model-value="field.onChange"
-                />
-              </div>
-              <FieldError
-                v-if="errors.length"
-                :errors="errors"
-              />
-            </Field>
-          </VeeField>
-
-          <VeeField
-            v-slot="{ field, errors }"
-            name="password"
-          >
-            <Field
-              :data-invalid="!!errors.length"
-              class="space-y-2"
-            >
-              <FieldLabel
-                for="password"
-                class="text-sm font-medium"
-              >
-                {{ $t('auth.password_label') }}
-              </FieldLabel>
-              <div class="relative">
-                <Lock class="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                <Input
-                  id="password"
-                  :model-value="field.value"
-                  name="password"
-                  :type="showPassword ? 'text' : 'password'"
-                  autocomplete="current-password"
-                  :placeholder="$t('auth.password_placeholder')"
-                  class="h-11 pl-9 pr-9"
-                  :disabled="isLoading"
-                  :aria-invalid="!!errors.length"
-                  @update:model-value="field.onChange"
-                />
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  class="absolute right-1 top-1 h-9 w-9 p-0 hover:bg-transparent"
-                  :aria-label="showPassword ? $t('auth.hide_password') : $t('auth.show_password')"
-                  :aria-pressed="showPassword"
-                  @click="showPassword = !showPassword"
-                >
-                  <Eye
-                    v-if="!showPassword"
-                    class="h-4 w-4"
-                  />
-                  <EyeOff
-                    v-else
-                    class="h-4 w-4"
-                  />
-                </Button>
-              </div>
-              <FieldError
-                v-if="errors.length"
-                :errors="errors"
-              />
-            </Field>
-          </VeeField>
-
-          <div class="space-y-3">
-            <NuxtTurnstile
-              :key="turnstileRenderKey"
-              v-model="turnstileToken"
+            Password
+          </FieldLabel>
+          <div class="relative">
+            <Lock
+              aria-hidden="true"
+              class="absolute left-3 top-3 h-4 w-4"
+            />
+            <Input
+              id="password"
+              :model-value="field.value"
+              name="password"
+              :type="showPassword ? 'text' : 'password'"
+              placeholder="Enter your password"
+              class="h-11 pl-9 pr-9"
+              :disabled="isLoading"
+              :aria-invalid="!!errors.length"
+              @update:model-value="field.onChange"
             />
             <Button
-              type="submit"
-              class="h-11 w-full active:scale-[0.98]"
-              :is-loading="isLoading"
-            >
-              <Lock class="h-4 w-4" />
-              {{ $t('auth.sign_in_password') }}
-            </Button>
-
-            <div class="flex items-center gap-2 py-1">
-              <div class="h-px flex-1 bg-border" />
-              <span class="text-xs uppercase text-muted-foreground">{{ $t('auth.or') }}</span>
-              <div class="h-px flex-1 bg-border" />
-            </div>
-
-            <Button
               type="button"
-              variant="outline"
-              class="w-full active:scale-[0.98]"
-              :disabled="!values.username?.trim()"
-              :is-loading="isLoading"
-              @click="signInWithPasskey"
+              variant="ghost"
+              size="sm"
+              class="absolute right-1 top-1 h-9 w-9 p-0 hover:bg-transparent"
+              :aria-label="showPassword ? 'Hide password' : 'Show password'"
+              :aria-pressed="showPassword"
+              @click="showPassword = !showPassword"
             >
-              <Fingerprint class="h-4 w-4" />
-              {{ $t('auth.sign_in_passkey') }}
+              <Eye
+                v-if="!showPassword"
+                aria-hidden="true"
+                class="h-4 w-4"
+              />
+              <EyeOff
+                v-else
+                aria-hidden="true"
+                class="h-4 w-4"
+              />
             </Button>
-
-            <div class="flex items-center gap-2 py-1">
-              <div class="h-px flex-1 bg-border" />
-              <span class="text-xs uppercase text-muted-foreground">{{ $t('auth.or') }}</span>
-              <div class="h-px flex-1 bg-border" />
-            </div>
-
-            <template
-              v-for="provider in AVAILABLE_PROVIDERS"
-              :key="provider.id"
-            >
-              <Button
-                type="button"
-                variant="outline"
-                class="w-full active:scale-[0.98]"
-                :is-loading="oauthLoadingProvider === provider.id"
-                :disabled="isLoading || oauthLoadingProvider !== null"
-                @click="signInWithProvider(provider.id)"
-              >
-                <div class="flex h-4 w-4 items-center justify-center">
-                  <OAuthIcon :provider="provider.id" />
-                </div>
-                {{ $t('auth.continue_with', { provider: provider.name }) }}
-              </Button>
-            </template>
           </div>
-        </form>
+          <FieldError
+            v-if="errors.length"
+            :errors="errors"
+          />
+        </Field>
+      </VeeField>
 
-        <div
-          v-if="!isTwoFactorStep"
-          class="space-y-3 text-center"
+      <div class="flex justify-end">
+        <NuxtLink
+          :to="{ path: '/auth/forgot-password' }"
+          class="text-xs text-primary hover:underline"
         >
-          <p class="text-xs text-muted-foreground">
-            {{ $t('auth.agree_terms') }}
-            <NuxtLink
-              to="https://nnsvn.me/terms"
-              class="underline underline-offset-4 hover:text-primary"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              {{ $t('auth.terms_link') }}
-            </NuxtLink>
-            {{ $t('auth.and') }}
-            <NuxtLink
-              to="https://nnsvn.me/privacy"
-              class="underline underline-offset-4 hover:text-primary"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              {{ $t('auth.privacy_link') }}
-            </NuxtLink>
-            .
-          </p>
-
-          <p class="text-sm text-muted-foreground">
-            {{ $t('auth.no_account') }}
-            <NuxtLink
-              to="/auth/register"
-              class="font-medium text-primary hover:underline"
-            >
-              {{ $t('auth.sign_up') }}
-            </NuxtLink>
-          </p>
-        </div>
+          Forgot password?
+        </NuxtLink>
       </div>
-    </section>
-  </main>
+
+      <div class="space-y-3">
+        <NuxtTurnstile v-model="turnstileToken" />
+        <Button
+          type="submit"
+          class="h-11 w-full active:scale-[0.98]"
+          :is-loading="isLoading"
+        >
+          <Lock
+            aria-hidden="true"
+            class="h-4 w-4"
+          />
+          Sign In with Password
+        </Button>
+
+        <div class="flex items-center gap-2 py-1">
+          <div class="h-px flex-1 bg-border" />
+          <span class="text-xs uppercase text-muted-foreground">Or</span>
+          <div class="h-px flex-1 bg-border" />
+        </div>
+
+        <Button
+          type="button"
+          variant="outline"
+          class="w-full active:scale-[0.98]"
+          :disabled="!values.username?.trim()"
+          :is-loading="isLoading"
+          @click="signInWithPasskey"
+        >
+          <Fingerprint
+            aria-hidden="true"
+            class="h-4 w-4"
+          />
+          Sign In with a Passkey
+        </Button>
+
+        <div class="flex items-center gap-2 py-1">
+          <div class="h-px flex-1 bg-border" />
+          <span class="text-xs uppercase text-muted-foreground">Or</span>
+          <div class="h-px flex-1 bg-border" />
+        </div>
+
+        <template
+          v-for="provider in AVAILABLE_PROVIDERS"
+          :key="provider.id"
+        >
+          <Button
+            type="button"
+            variant="outline"
+            class="w-full"
+            :is-loading="oauthLoadingProvider === provider.id"
+            :disabled="isLoading || oauthLoadingProvider !== null"
+            @click="signInWithProvider(provider.id)"
+          >
+            <div class="flex h-4 w-4 items-center justify-center">
+              <OAuthIcon :provider="provider.id" />
+            </div>
+            Continue with {{ provider.name }}
+          </Button>
+        </template>
+      </div>
+    </form>
+
+    <div
+      class="space-y-3 text-center"
+    >
+      <div class="text-xs text-muted-foreground">
+        By signing in, you agree to our
+        <NuxtLink
+          to="https://nnsvn.me/terms"
+          class="underline underline-offset-4 hover:text-primary"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Terms of Service
+        </NuxtLink>
+        and
+        <NuxtLink
+          to="https://nnsvn.me/privacy"
+          class="underline underline-offset-4 hover:text-primary"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Privacy Policy
+        </NuxtLink>
+      </div>
+
+      <div class="text-sm text-muted-foreground">
+        Don't have an account?
+        <NuxtLink
+          to="/auth/register"
+          class="font-medium text-primary hover:underline"
+        >
+          Sign Up
+        </NuxtLink>
+      </div>
+    </div>
+  </AuthPageLayout>
 </template>

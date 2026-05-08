@@ -2,10 +2,13 @@
 import { computed, ref } from 'vue'
 import { Field as VeeField, useForm } from 'vee-validate'
 import { toast } from 'vue-sonner'
+import { apiRequest } from '@/utils/apiRequest'
+import { parseApiError } from '@/utils/apiError'
+import { apiRoutes } from '#shared/apiRoutes'
 import { savedAttendeeFormSchema } from '#shared/schemas/savedAttendeeSchema'
 import { PlusIcon, UserIcon, Trash2Icon, Edit2Icon, ShieldIcon } from '@lucide/vue'
 
-const { data: attendeesResponse, refresh, status, error: fetchError } = useFetch('/api/saved-attendees')
+const { data: attendeesResponse, refresh, status, error: fetchError } = useAPI(() => apiRoutes.SAVED_ATTENDEES)
 const attendees = computed(() => attendeesResponse.value?.data || [])
 const loading = computed(() => status.value === 'pending')
 
@@ -117,24 +120,26 @@ const onSubmit = handleSubmit(async (values) => {
   isSubmitting.value = true
   try {
     if (editingId.value) {
-      await $fetch(`/api/saved-attendees/${editingId.value}`, {
+      const response = await apiRequest(apiRoutes.savedAttendee(editingId.value), {
         method: 'PATCH',
         body: values,
       })
+      if (!response.success) throw response
       toast.success('Attendee updated successfully')
     }
     else {
-      await $fetch('/api/saved-attendees', {
+      const response = await apiRequest(apiRoutes.SAVED_ATTENDEES, {
         method: 'POST',
         body: values,
       })
+      if (!response.success) throw response
       toast.success('Attendee saved successfully')
     }
     isDialogOpen.value = false
     await refresh()
   }
-  catch {
-    toast.error('Failed to save attendee. Please try again.')
+  catch (error) {
+    toast.error(parseApiError(error, 'Failed to save attendee. Please try again.').message)
   }
   finally {
     isSubmitting.value = false
@@ -147,14 +152,15 @@ async function deleteAttendee(id: number) {
   }
 
   try {
-    await $fetch(`/api/saved-attendees/${id}`, {
+    const response = await apiRequest(apiRoutes.savedAttendee(id), {
       method: 'DELETE',
     })
+    if (!response.success) throw response
     toast.success('Attendee deleted successfully')
     await refresh()
   }
-  catch {
-    toast.error('Failed to delete attendee. Please try again.')
+  catch (error) {
+    toast.error(parseApiError(error, 'Failed to delete attendee. Please try again.').message)
   }
 }
 

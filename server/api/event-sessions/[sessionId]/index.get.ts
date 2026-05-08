@@ -1,7 +1,7 @@
 import eventService from '~~/server/utils/database/event'
 import eventSessionService from '~~/server/utils/database/event-session'
 import venueService from '~~/server/utils/database/venue'
-import { success } from '~~/server/utils/apiResponse'
+import { apiError, success } from '~~/server/utils/apiResponse'
 import type { EventSessionDetailResponse, PublicEventSessionBase, PublicEventSummary, PublicVenueDetail } from '~~/types/events'
 
 function mapVenue(venueDetail: Awaited<ReturnType<typeof venueService.getDetail>>): PublicVenueDetail | null {
@@ -59,16 +59,16 @@ function mapSession(session: Awaited<ReturnType<typeof eventSessionService.getBy
 export default defineEventHandler(async (event) => {
   const sessionPublicId = getRouterParam(event, 'sessionId')
   if (!sessionPublicId) {
-    throw createError({ statusCode: 400, statusMessage: 'Bad Request. Session ID is required.' })
+    throw apiError({ status: 400, statusText: 'Bad Request', code: 'INVALID_SESSION_ID', message: 'Session ID is required.' })
   }
 
   const session = await eventSessionService.getByPublicId(sessionPublicId)
   if (!session) {
-    throw createError({ statusCode: 404, statusMessage: 'Session not found.' })
+    throw apiError({ status: 404, statusText: 'Not Found', code: 'SESSION_NOT_FOUND', message: 'Session not found.' })
   }
 
   if (session.status === 'draft' || session.status === 'cancelled') {
-    throw createError({ statusCode: 404, statusMessage: 'Session not found.' })
+    throw apiError({ status: 404, statusText: 'Not Found', code: 'SESSION_NOT_FOUND', message: 'Session not found.' })
   }
 
   const [parent, venue, seatMap] = await Promise.all([
@@ -78,7 +78,7 @@ export default defineEventHandler(async (event) => {
   ])
 
   if (!parent) {
-    throw createError({ statusCode: 404, statusMessage: 'Event not found.' })
+    throw apiError({ status: 404, statusText: 'Not Found', code: 'EVENT_NOT_FOUND', message: 'Event not found.' })
   }
 
   const response: EventSessionDetailResponse = {

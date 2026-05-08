@@ -1,7 +1,7 @@
 import { eq } from 'drizzle-orm'
 import { z } from 'zod'
 import { useKV } from '~~/server/utils/kv'
-import type { SessionUser } from '~~/auth'
+import { apiError } from '~~/server/utils/apiResponse'
 
 export default defineWebAuthnRegisterEventHandler({
   async storeChallenge(event, challenge, attemptId) {
@@ -10,10 +10,7 @@ export default defineWebAuthnRegisterEventHandler({
   async getChallenge(event, attemptId) {
     const challenge = await useKV().get<string>(`auth:challenge:${attemptId}`)
     if (!challenge) {
-      throw createError({
-        statusCode: 400,
-        statusMessage: 'Bad Request. The authentication challenge has expired or was not found. Please try again.',
-      })
+      throw apiError({ status: 400, statusText: 'Bad Request', code: 'WEBAUTHN_CHALLENGE_EXPIRED', message: 'The authentication challenge has expired or was not found. Please try again.' })
     }
     await useKV().del(`auth:challenge:${attemptId}`)
     return challenge
@@ -27,19 +24,13 @@ export default defineWebAuthnRegisterEventHandler({
     const session = await getUserSession(event)
 
     if (!session?.user) {
-      throw createError({
-        statusCode: 401,
-        statusMessage: 'Unauthorized. You must be signed in to add a passkey.',
-      })
+      throw apiError({ status: 401, statusText: 'Unauthorized', code: 'AUTH_REQUIRED', message: 'You must be signed in to add a passkey.' })
     }
 
     // Verify the username matches the logged-in user
-    const sessionUser = session.user as SessionUser
+    const sessionUser = session.user
     if (sessionUser.username !== user.userName) {
-      throw createError({
-        statusCode: 403,
-        statusMessage: 'Forbidden. The username does not match the currently authenticated user.',
-      })
+      throw apiError({ status: 403, statusText: 'Forbidden', code: 'WEBAUTHN_REGISTRATION_FAILED', message: 'The username does not match the currently authenticated user.' })
     }
 
     // Check if user already has a credential with this ID
@@ -50,10 +41,7 @@ export default defineWebAuthnRegisterEventHandler({
       .get()
 
     if (existingCredential) {
-      throw createError({
-        statusCode: 400,
-        statusMessage: 'Bad Request. A passkey with this credential already exists on this account.',
-      })
+      throw apiError({ status: 400, statusText: 'Bad Request', code: 'WEBAUTHN_CREDENTIAL_EXISTS', message: 'A passkey with this credential already exists on this account.' })
     }
 
     await db.insert(tables.credentials).values({
@@ -71,7 +59,7 @@ export default defineWebAuthnRegisterEventHandler({
       return []
     }
 
-    const sessionUser = session.user as SessionUser
+    const sessionUser = session.user
     return useDB()
       .select({
         id: tables.credentials.id,

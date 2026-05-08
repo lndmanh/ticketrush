@@ -4,6 +4,9 @@ import { useForm } from 'vee-validate'
 import { toast } from 'vue-sonner'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { apiRequest } from '@/utils/apiRequest'
+import { parseApiError } from '@/utils/apiError'
+import { apiRoutes } from '#shared/apiRoutes'
 import { eventPricingFormSchema, getEventSessionTimingIssues } from '#shared/schemas/ticketingSchema'
 import type { EventPricingFormInput } from '#shared/schemas/ticketingSchema'
 
@@ -73,38 +76,6 @@ const isLockedConfiguration = computed(() => detail.value?.event?.status !== 'dr
 
 function normalizeSessionErrorPath(path: string) {
   return path.replace(/\[(\d+)\]/g, '.$1')
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null
-}
-
-function getErrorMessage(errorValue: unknown, fallback: string) {
-  if (!isRecord(errorValue)) {
-    return fallback
-  }
-
-  const data = errorValue.data
-
-  if (isRecord(data)) {
-    if (isRecord(data.error) && typeof data.error.message === 'string' && data.error.message) {
-      return data.error.message
-    }
-
-    if (typeof data.message === 'string' && data.message) {
-      return data.message
-    }
-
-    if (typeof data.statusMessage === 'string' && data.statusMessage) {
-      return data.statusMessage
-    }
-  }
-
-  if (typeof errorValue.message === 'string' && errorValue.message) {
-    return errorValue.message
-  }
-
-  return fallback
 }
 
 interface ExistingPricingTicket {
@@ -245,7 +216,7 @@ const onSubmit = handleSubmit(
         throw new Error('Event details not loaded')
       }
 
-      await $fetch(`/api/admin/events/${eventId.value}`, {
+      const response = await apiRequest(apiRoutes.adminEvent(eventId.value), {
         method: 'PUT',
         body: {
           id: eventId.value,
@@ -263,12 +234,13 @@ const onSubmit = handleSubmit(
           sessions: buildSessionPayload(formValues.sessions),
         },
       })
+      if (!response.success) throw response
 
       toast.success('Event pricing updated')
       await refreshDetail()
     }
     catch (err) {
-      toast.error(getErrorMessage(err, 'Failed to update pricing'))
+      toast.error(parseApiError(err, 'Failed to update pricing').message)
     }
     finally {
       isSaving.value = false

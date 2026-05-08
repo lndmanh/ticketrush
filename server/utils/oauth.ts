@@ -1,7 +1,13 @@
 import type { H3Event } from 'h3'
-import type { OAuthProfile } from '~~/types/auth'
 import userService from '~~/server/utils/database/user'
 import oauthAccountService from '~~/server/utils/database/oauthAccount'
+
+export interface OAuthProfile {
+  id: string
+  email: string
+  name: string
+  avatarUrl?: string
+}
 
 /**
  * Generate a valid username from a provider email address.
@@ -42,11 +48,11 @@ async function generateUniqueUsername(email: string): Promise<string> {
  */
 export async function handleOAuthSuccess(event: H3Event, provider: string, profile: OAuthProfile) {
   const session = await getUserSession(event)
-  const currentUser = session?.user
+  const isLoggedIn = !!session?.user?.id
 
   // ── MODE 1: Link Provider to existing logged-in account ──
-  if (currentUser?.id) {
-    const currentUserId = currentUser.id
+  if (isLoggedIn) {
+    const currentUserId = session.user!.id
 
     // Check if this provider account is already linked to someone
     const existingLink = await oauthAccountService.getByProviderAccount(provider, profile.id)
@@ -89,7 +95,6 @@ export async function handleOAuthSuccess(event: H3Event, provider: string, profi
     }
 
     await userService.update({ id: dbUser.id, lastLoginAt: new Date() })
-
     await setUserSession(event, {
       user: {
         id: dbUser.id,
@@ -110,6 +115,7 @@ export async function handleOAuthSuccess(event: H3Event, provider: string, profi
     name: profile.name || username,
     email: profile.email,
     password: '',
+    emailVerified: true, // OAuth providers verify email ownership
     isAdmin: false,
   })
 
@@ -122,12 +128,14 @@ export async function handleOAuthSuccess(event: H3Event, provider: string, profi
     avatarUrl: profile.avatarUrl,
   })
 
+  const subscription = await subscriptionService.getActiveByUserId(newUser.id)
   await setUserSession(event, {
     user: {
       id: newUser.id,
       username: newUser.username,
       name: newUser.name,
       isAdmin: newUser.isAdmin,
+      subscription,
     },
   })
 

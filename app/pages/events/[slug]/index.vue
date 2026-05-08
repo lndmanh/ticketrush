@@ -2,13 +2,12 @@
 import { CalendarRange, MapPin, Ticket } from '@lucide/vue'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import type { ApiResponse } from '~~/types/api'
-import type { EventDetailResponse } from '~~/types/events'
+import { apiRoutes } from '#shared/apiRoutes'
 
 const route = useRoute()
 const slug = computed(() => route.params.slug.toString())
 
-const { data: detailResponse } = await useFetch<ApiResponse<EventDetailResponse>>(() => `/api/events/${slug.value}`)
+const { data: detailResponse } = await useAPI(() => apiRoutes.event(slug.value))
 
 const detail = computed(() => detailResponse.value?.success ? detailResponse.value.data : null)
 const event = computed(() => detail.value?.event ?? null)

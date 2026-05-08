@@ -1,41 +1,27 @@
 import { registerUserSchema } from '#shared/schemas/userSchema'
 import userService from '~~/server/utils/database/user'
+import authTokenService from '~~/server/utils/database/authToken'
+import { sendVerificationEmail } from '~~/server/utils/email'
 import { apiRoutes } from '#shared/apiRoutes'
 import type { User } from '#shared/db'
+import type { RegisterUserInput } from '#shared/schemas/userSchema'
 
-function wantsJsonResponse(event: H3Event) {
-  const accept = getHeader(event, 'accept') ?? ''
-  return accept.includes('application/json')
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object'
 }
 
-function authFailure(event: H3Event, redirectPath: string, message: string) {
-  if (wantsJsonResponse(event)) {
-    throw createError({ statusCode: 400, statusMessage: message })
-  }
-  return sendRedirect(event, redirectPath)
-}
-
-function authSuccess(event: H3Event, redirectPath: string) {
-  if (wantsJsonResponse(event)) {
-    return { redirectTo: redirectPath }
-  }
-  return sendRedirect(event, redirectPath)
-}
-
-function safeRedirectPath(value: string | undefined) {
-  if (typeof value !== 'string' || value.length === 0) {
-    return '/'
-  }
-  if (!value.startsWith('/') || value.startsWith('//')) {
+function safeRedirectPath(value: string | undefined, origin: string): string {
+  if (!value) {
     return '/'
   }
 
   try {
-    const url = new URL(value, 'http://localhost')
-    if (url.origin !== 'http://localhost') {
+    const parsed = new URL(value, origin)
+    if (parsed.origin !== origin) {
       return '/'
     }
-    return `${url.pathname}${url.search}${url.hash}` || '/'
+
+    return `${parsed.pathname}${parsed.search}${parsed.hash}`
   }
   catch {
     return '/'
@@ -45,15 +31,17 @@ function safeRedirectPath(value: string | undefined) {
 export default defineEventHandler(async (event) => {
   const result = await readValidatedBody(event, body => registerUserSchema.safeParse(body))
   if (!result.success) {
-    return authFailure(event, apiRoutes.AUTH_REGISTER + '?error=validation', 'Please check your registration details')
+    return sendRedirect(event, apiRoutes.AUTH_REGISTER + '?error=validation')
   }
 
   const { username, password, 'cf-turnstile-response': token } = result.data
 
   const tokenValidation = await verifyTurnstileToken(token)
   if (!tokenValidation.success) {
-    return authFailure(event, apiRoutes.AUTH_REGISTER + '?error=captcha', 'Verification failed. Please try again')
+    return sendRedirect(event, apiRoutes.AUTH_REGISTER + '?error=captcha')
   }
+
+  const redirectTo = safeRedirectPath(result.data['redirect-to'], getRequestURL(event).origin)
 
   // 1. CHEAP PRE-CHECK: Prevent CPU Exhaustion (DoS) by checking constraints before hashing
   const [existingUsername, existingEmail] = await Promise.all([
@@ -62,10 +50,10 @@ export default defineEventHandler(async (event) => {
   ])
 
   if (existingUsername) {
-    return authFailure(event, apiRoutes.AUTH_REGISTER + '?error=existed', 'Username is already taken')
+    return sendRedirect(event, apiRoutes.AUTH_REGISTER + '?error=existed')
   }
   if (existingEmail) {
-    return authFailure(event, apiRoutes.AUTH_REGISTER + '?error=email-existed', 'Email is already registered')
+    return sendRedirect(event, apiRoutes.AUTH_REGISTER + '?error=email-existed')
   }
 
   // 2. EXPENSIVE OPERATION: Hash only when pre-checks pass
@@ -74,48 +62,59 @@ export default defineEventHandler(async (event) => {
   // 3. ATOMIC INSERT: Protect against Time-Of-Check to Time-Of-Use (TOCTOU) race conditions
   let newUser: User
   try {
-    newUser = await userService.create({
-      username,
+    const createPayload: Pick<RegisterUserInput, 'username' | 'email' | 'name'> & {
+      password: string
+      emailVerified: boolean
+      isAdmin: boolean
+    } = {
+      username: result.data.username,
       email: result.data.email,
       name: result.data.name,
       password: hashedPassword,
+      emailVerified: false,
       isAdmin: false,
+    }
+
+    newUser = await userService.create({
+      ...createPayload,
     })
   }
   catch (err: unknown) {
-    if (typeof err === 'object' && err !== null) {
-      const codeValue = Reflect.get(err, 'code')
-      const messageValue = Reflect.get(err, 'message')
-      let causeMessage = ''
-      const causeValue = Reflect.get(err, 'cause')
-      if (typeof causeValue === 'object' && causeValue !== null) {
-        const nestedMessage = Reflect.get(causeValue, 'message')
-        if (typeof nestedMessage === 'string') {
-          causeMessage = nestedMessage
+    let maybeErrCode: string | undefined
+    let maybeErrMessage: string | undefined
+    let maybeErrCauseMessage: string | undefined
+
+    if (isRecord(err)) {
+      const errorRecord = err
+      if (typeof errorRecord.code === 'string') {
+        maybeErrCode = errorRecord.code
+      }
+      if (typeof errorRecord.message === 'string') {
+        maybeErrMessage = errorRecord.message
+      }
+      if (isRecord(errorRecord.cause)) {
+        const causeRecord = errorRecord.cause
+        if (typeof causeRecord.message === 'string') {
+          maybeErrCauseMessage = causeRecord.message
         }
       }
-      const code = typeof codeValue === 'string' ? codeValue : ''
-      const message = typeof messageValue === 'string' ? messageValue : ''
-      const isUniqueConstraint = code === 'SQLITE_CONSTRAINT' || code === 'SQLITE_CONSTRAINT_UNIQUE' || message.includes('UNIQUE')
-      if (isUniqueConstraint) {
-        if (message.includes('email') || causeMessage.includes('email')) {
-          return authFailure(event, apiRoutes.AUTH_REGISTER + '?error=email-existed', 'Email is already registered')
-        }
-        return authFailure(event, apiRoutes.AUTH_REGISTER + '?error=existed', 'Username is already taken')
+    }
+    // Fallback for strict concurrency races relying on standard SQLite constraint codes
+    const isUniqueConstraint = maybeErrCode === 'SQLITE_CONSTRAINT' || maybeErrCode === 'SQLITE_CONSTRAINT_UNIQUE' || maybeErrMessage?.includes('UNIQUE')
+    if (isUniqueConstraint) {
+      if (maybeErrMessage?.includes('email') || maybeErrCauseMessage?.includes('email')) {
+        return sendRedirect(event, apiRoutes.AUTH_REGISTER + '?error=email-existed')
       }
+      return sendRedirect(event, apiRoutes.AUTH_REGISTER + '?error=existed')
     }
     throw err
   }
 
-  // we only set necessary properties from user object
-  await setUserSession(event, {
-    user: {
-      id: newUser.id,
-      username: newUser.username,
-      name: newUser.name,
-      isAdmin: newUser.isAdmin,
-    },
+  // Send verification email (non-blocking - don't fail registration if email fails)
+  const verificationToken = await authTokenService.createToken(newUser.id, 'email_verification')
+  sendVerificationEmail(newUser.email, newUser.username, verificationToken).catch((err) => {
+    console.error('[Register] Failed to send verification email:', err)
   })
 
-  return authSuccess(event, safeRedirectPath(result.data['redirect-to']))
+  return sendRedirect(event, apiRoutes.AUTH_VERIFY_EMAIL + '?email=' + encodeURIComponent(newUser.email) + '&redirectTo=' + encodeURIComponent(redirectTo))
 })

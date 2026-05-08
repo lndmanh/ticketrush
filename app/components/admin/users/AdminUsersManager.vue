@@ -284,6 +284,9 @@ import type {
 import type { User } from '#shared/db'
 import { InfoIcon, Trash2Icon, UserPlus } from '@lucide/vue'
 import DataTable from '@/components/DataTable.vue'
+import { apiRequest } from '@/utils/apiRequest'
+import { parseApiError } from '@/utils/apiError'
+import { apiRoutes } from '#shared/apiRoutes'
 import { createColumns } from './columns'
 
 type UserFormValues = AdminUserCreateFormInput & Pick<AdminUserEditFormInput, 'id'>
@@ -373,23 +376,6 @@ function mapUserErrorToField(message: string): UserFieldName | null {
   return null
 }
 
-function extractErrorMessage(error: unknown, fallback: string) {
-  if (isRecord(error) && isRecord(error.data)) {
-    if (typeof error.data.statusMessage === 'string') {
-      return error.data.statusMessage
-    }
-    if (typeof error.data.message === 'string') {
-      return error.data.message
-    }
-  }
-
-  if (error instanceof Error && error.message) {
-    return error.message
-  }
-
-  return fallback
-}
-
 const dataTableRef = ref<{ table?: { getFilteredSelectedRowModel: () => { rows: TableRowWithOriginal[] }, resetRowSelection: () => void } }>()
 const users = ref<User[]>([])
 const loading = ref(false)
@@ -435,10 +421,11 @@ const onSubmit = handleSubmit(
           isAdmin: values.isAdmin,
         }
 
-        await $fetch(`/api/admin/users/${editingUserId.value}`, {
+        const response = await apiRequest(apiRoutes.adminUser(editingUserId.value), {
           method: 'PUT',
           body: payload,
         })
+        if (!response.success) throw response
       }
       else {
         const payload: AdminUserCreateFormInput = {
@@ -449,10 +436,11 @@ const onSubmit = handleSubmit(
           isAdmin: values.isAdmin,
         }
 
-        await $fetch('/api/admin/users', {
+        const response = await apiRequest(apiRoutes.ADMIN_USERS, {
           method: 'POST',
           body: payload,
         })
+        if (!response.success) throw response
       }
 
       toast.success(isEditing.value ? 'User updated successfully' : 'User created successfully')
@@ -460,7 +448,7 @@ const onSubmit = handleSubmit(
       await fetchUsers()
     }
     catch (error) {
-      const message = extractErrorMessage(error, 'Failed to save the user record')
+      const message = parseApiError(error, 'Failed to save the user record').message
       const structuredIssue = getIssueFieldAndMessage(error)
       if (structuredIssue) {
         setFieldError(structuredIssue.field, structuredIssue.message)
@@ -507,14 +495,14 @@ const columns = computed(() => createColumns(handleEdit, handleDeleteConfirm))
 async function fetchUsers() {
   try {
     loading.value = true
-    const res = await $fetch('/api/admin/users')
+    const res = await apiRequest(apiRoutes.ADMIN_USERS)
     if (!res.success) {
-      throw new Error('Unsuccessful response')
+      throw res
     }
     users.value = res.data
   }
   catch (error) {
-    toast.error(extractErrorMessage(error, 'Failed to load the user records'))
+    toast.error(parseApiError(error, 'Failed to load the user records').message)
   }
   finally {
     loading.value = false
@@ -580,14 +568,15 @@ async function confirmSingleDelete() {
 async function handleDelete(userId: number) {
   try {
     loading.value = true
-    await $fetch(`/api/admin/users/${userId}`, {
+    const response = await apiRequest(apiRoutes.adminUser(userId), {
       method: 'DELETE',
     })
+    if (!response.success) throw response
     toast.success('User deleted successfully')
     await fetchUsers()
   }
   catch (error) {
-    toast.error(extractErrorMessage(error, 'Failed to delete the user record'))
+    toast.error(parseApiError(error, 'Failed to delete the user record').message)
   }
   finally {
     loading.value = false
@@ -602,17 +591,18 @@ async function handleBatchDelete() {
   try {
     loading.value = true
     const count = selectedUserIds.value.length
-    await $fetch('/api/admin/users/delete', {
+    const response = await apiRequest(apiRoutes.ADMIN_USERS_DELETE, {
       method: 'POST',
       body: { userIds: selectedUserIds.value },
     })
+    if (!response.success) throw response
     toast.success(`Successfully deleted ${count} user(s)`)
 
     dataTableRef.value?.table?.resetRowSelection()
     await fetchUsers()
   }
   catch (error) {
-    toast.error(extractErrorMessage(error, 'Failed to delete the selected users'))
+    toast.error(parseApiError(error, 'Failed to delete the selected users').message)
   }
   finally {
     loading.value = false

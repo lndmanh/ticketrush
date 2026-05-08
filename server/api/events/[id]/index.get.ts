@@ -1,6 +1,6 @@
 import eventService from '~~/server/utils/database/event'
 import venueService from '~~/server/utils/database/venue'
-import { success } from '~~/server/utils/apiResponse'
+import { apiError, success } from '~~/server/utils/apiResponse'
 import type { EventDetailResponse, PublicEventSessionSummary, PublicEventSummary, PublicVenueDetail } from '~~/types/events'
 
 function mapVenue(venueDetail: Awaited<ReturnType<typeof venueService.getDetail>>): PublicVenueDetail | null {
@@ -66,12 +66,12 @@ function mapSession(session: NonNullable<Awaited<ReturnType<typeof eventService.
 export default defineEventHandler(async (event) => {
   const slug = getRouterParam(event, 'id')
   if (!slug) {
-    throw createError({ statusCode: 400, statusMessage: 'Bad Request. Event slug is required.' })
+    throw apiError({ status: 400, statusText: 'Bad Request', code: 'INVALID_EVENT_ID', message: 'Event slug is required.' })
   }
 
   const detail = await eventService.getDetailBySlug(slug)
   if (!detail) {
-    throw createError({ statusCode: 404, statusMessage: 'Event not found.' })
+    throw apiError({ status: 404, statusText: 'Not Found', code: 'EVENT_NOT_FOUND', message: 'Event not found.' })
   }
 
   const publicSessionStatuses = ['published', 'on_sale', 'sold_out']

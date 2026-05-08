@@ -1,13 +1,14 @@
 import { createEventSchema } from '#shared/schemas/ticketingSchema'
 import eventService from '~~/server/utils/database/event'
-import { success } from '~~/server/utils/apiResponse'
+import { apiError, success, zodErrorToFieldErrors } from '~~/server/utils/apiResponse'
 
 export default defineEventHandler(async (event) => {
   const result = await readValidatedBody(event, body => createEventSchema.safeParse(body))
   if (!result.success) {
-    throw createError({ statusCode: 400, statusMessage: 'Bad Request. Event data is invalid.', data: result.error })
+    throw apiError({ status: 400, statusText: 'Bad Request', code: 'VALIDATION_ERROR', message: 'Invalid request.', fieldErrors: zodErrorToFieldErrors(result.error), cause: result.error })
   }
 
   const created = await eventService.create(result.data)
-  return success(created)
+  const response: Awaited<ReturnType<typeof eventService.create>> = created
+  return success(response)
 })

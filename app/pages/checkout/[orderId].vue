@@ -1,26 +1,12 @@
 <script setup lang="ts">
+import { apiRoutes } from '#shared/apiRoutes'
 import { Field as VeeField, useForm } from 'vee-validate'
 import type { SavedAttendeeFormInput, SavedAttendeeGender } from '#shared/schemas/savedAttendeeSchema'
 import { checkoutCustomerSchema } from '#shared/schemas/ticketingSchema'
 import type { CheckoutCustomerInput, CheckoutTicketHolderInput } from '#shared/schemas/ticketingSchema'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Switch } from '@/components/ui/switch'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import {
-  Field,
-  FieldDescription,
-  FieldError,
-  FieldGroup,
-  FieldLabel,
-} from '@/components/ui/field'
 import { toast } from 'vue-sonner'
+import { apiRequest } from '@/utils/apiRequest'
+import { parseApiError } from '@/utils/apiError'
 
 const route = useRoute()
 const orderId = computed(() => route.params.orderId.toString())
@@ -30,10 +16,10 @@ const currentTime = ref(Date.now())
 let holdClockIntervalId: number | null = null
 let checkoutRefreshIntervalId: number | null = null
 
-const { data: checkoutResponse, refresh } = await useFetch(() => `/api/checkout/${orderId.value}`)
+const { data: checkoutResponse, refresh } = await useAPI(() => `/api/checkout/${orderId.value}`)
 const checkout = computed(() => checkoutResponse.value?.data ?? null)
 
-const { data: savedAttendeesResponse } = await useFetch('/api/saved-attendees')
+const { data: savedAttendeesResponse } = await useAPI(() => '/api/saved-attendees')
 const savedAttendees = computed(() => savedAttendeesResponse.value?.data ?? [])
 
 type TicketHolderSource = 'account' | 'saved-attendee' | 'manual'
@@ -263,7 +249,7 @@ const onSubmit = handleSubmit(
     isSubmitting.value = true
 
     try {
-      await $fetch('/api/checkout/confirm', {
+      const response = await apiRequest(apiRoutes.CHECKOUT_CONFIRM, {
         method: 'POST',
         body: {
           checkoutSessionId: checkout.value.order.checkoutSessionId,
@@ -273,21 +259,13 @@ const onSubmit = handleSubmit(
           ticketHolders: ticketHolderDrafts.value.map(toPayloadHolder),
         },
       })
+      if (!response.success) throw response
 
       toast.success('Order confirmed')
       await refresh()
     }
     catch (error) {
-      let message = 'We could not confirm the order'
-
-      if (error && typeof error === 'object' && 'data' in error) {
-        const errorData = error.data
-        if (errorData && typeof errorData === 'object' && 'message' in errorData && typeof errorData.message === 'string') {
-          message = errorData.message
-        }
-      }
-
-      toast.error(message)
+      toast.error(parseApiError(error, 'We could not confirm the order').message)
     }
     finally {
       isSubmitting.value = false

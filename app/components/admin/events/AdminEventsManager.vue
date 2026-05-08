@@ -209,34 +209,9 @@ import DataTable from '@/components/DataTable.vue'
 import AdminFeaturedEventCard from './AdminFeaturedEventCard.vue'
 import type { EventTableRow } from './columns'
 import { createColumns } from './columns'
-
-function extractErrorMessage(error: object, fallback: string) {
-  if ('data' in error) {
-    const data = error.data
-    if (typeof data === 'object' && data !== null) {
-      if ('statusMessage' in data && typeof data.statusMessage === 'string') {
-        return data.statusMessage
-      }
-      if ('message' in data && typeof data.message === 'string') {
-        return data.message
-      }
-    }
-  }
-
-  if (error instanceof Error && error.message) {
-    return error.message
-  }
-
-  return fallback
-}
-
-function getCaughtErrorMessage(error: object | null, fallback: string) {
-  if (!error) {
-    return fallback
-  }
-
-  return extractErrorMessage(error, fallback)
-}
+import { apiRequest } from '@/utils/apiRequest'
+import { parseApiError } from '@/utils/apiError'
+import { apiRoutes } from '#shared/apiRoutes'
 
 const events = ref<Event[]>([])
 const venues = ref<Venue[]>([])
@@ -286,21 +261,21 @@ async function fetchEvents() {
   try {
     loading.value = true
     const [eventsResponse, venuesResponse, autosavesResponse] = await Promise.all([
-      $fetch('/api/admin/events'),
-      $fetch('/api/admin/venues'),
-      $fetch('/api/admin/events/autosaves'),
+      apiRequest(apiRoutes.ADMIN_EVENTS),
+      apiRequest(apiRoutes.ADMIN_VENUES),
+      apiRequest(apiRoutes.ADMIN_EVENT_AUTOSAVES),
     ])
 
-    if (!eventsResponse.success || !venuesResponse.success || !autosavesResponse.success) {
-      throw new Error('Unsuccessful response')
-    }
+    if (!eventsResponse.success) throw eventsResponse
+    if (!venuesResponse.success) throw venuesResponse
+    if (!autosavesResponse.success) throw autosavesResponse
 
     events.value = eventsResponse.data
     venues.value = venuesResponse.data
     unfinishedDraft.value = autosavesResponse.data
   }
   catch (error) {
-    toast.error(getCaughtErrorMessage(error && typeof error === 'object' ? error : null, 'Failed to load events'))
+    toast.error(parseApiError(error, 'Failed to load events').message)
   }
   finally {
     loading.value = false
@@ -326,7 +301,10 @@ function resumeAutosaveDraft(draftKey: string) {
 async function discardAutosaveDraft(draftKey: string) {
   try {
     loading.value = true
-    await $fetch(`/api/admin/events/autosaves/${draftKey}`, { method: 'DELETE' })
+    const response = await apiRequest(apiRoutes.adminEventAutosave(draftKey), { method: 'DELETE' })
+    if (!response.success) {
+      throw response
+    }
     if (import.meta.client && window.localStorage.getItem('ticketrush:event-create-autosave-key') === draftKey) {
       window.localStorage.removeItem('ticketrush:event-create-autosave-key')
     }
@@ -336,7 +314,7 @@ async function discardAutosaveDraft(draftKey: string) {
     toast.success('Autosave draft discarded')
   }
   catch (error) {
-    toast.error(getCaughtErrorMessage(error && typeof error === 'object' ? error : null, 'Failed to discard autosave draft'))
+    toast.error(parseApiError(error, 'Failed to discard autosave draft').message)
   }
   finally {
     loading.value = false
@@ -346,12 +324,15 @@ async function discardAutosaveDraft(draftKey: string) {
 async function publishEvent(eventId: number) {
   try {
     loading.value = true
-    await $fetch(`/api/admin/events/${eventId}/publish`, { method: 'POST' })
+    const response = await apiRequest(apiRoutes.adminEventPublish(eventId), { method: 'POST' })
+    if (!response.success) {
+      throw response
+    }
     toast.success('Event published')
     await fetchEvents()
   }
   catch (error) {
-    toast.error(getCaughtErrorMessage(error && typeof error === 'object' ? error : null, 'Failed to publish event'))
+    toast.error(parseApiError(error, 'Failed to publish event').message)
   }
   finally {
     loading.value = false
@@ -361,12 +342,15 @@ async function publishEvent(eventId: number) {
 async function unpublishEvent(eventId: number) {
   try {
     loading.value = true
-    await $fetch(`/api/admin/events/${eventId}/unpublish`, { method: 'POST' })
+    const response = await apiRequest(apiRoutes.adminEventUnpublish(eventId), { method: 'POST' })
+    if (!response.success) {
+      throw response
+    }
     toast.success('Event moved back to draft')
     await fetchEvents()
   }
   catch (error) {
-    toast.error(getCaughtErrorMessage(error && typeof error === 'object' ? error : null, 'Failed to unpublish event'))
+    toast.error(parseApiError(error, 'Failed to unpublish event').message)
   }
   finally {
     loading.value = false

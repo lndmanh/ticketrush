@@ -1,5 +1,4 @@
 import type { MaybeRefOrGetter } from 'vue'
-import type { PageBreadcrumbItem } from '@/utils/navigation'
 import { joinURL, withoutTrailingSlash } from 'ufo'
 
 export interface UseSeoOptions {
@@ -31,10 +30,6 @@ export interface UseSeoOptions {
    * Collection items for CollectionPage schema (e.g. blog listing)
    */
   collectionItems?: MaybeRefOrGetter<Array<{ name: string, url: string }> | undefined>
-  /**
-   * Breadcrumb items for BreadcrumbList schema
-   */
-  breadcrumbs?: MaybeRefOrGetter<PageBreadcrumbItem[] | undefined>
 }
 
 /**
@@ -57,7 +52,6 @@ export function useSeo(options: UseSeoOptions) {
   const publishedAt = computed(() => toValue(options.publishedAt))
   const modifiedAt = computed(() => toValue(options.modifiedAt))
   const collectionItems = computed(() => toValue(options.collectionItems))
-  const breadcrumbs = computed(() => toValue(options.breadcrumbs))
 
   // Build canonical URL
   const canonicalUrl = computed(() => {
@@ -210,26 +204,6 @@ export function useSeo(options: UseSeoOptions) {
           innerHTML: JSON.stringify(collectionSchema),
         })
       }
-
-      // BreadcrumbList schema for navigation
-      if (breadcrumbs.value && breadcrumbs.value.length > 0) {
-        const breadcrumbSchema = {
-          '@context': 'https://schema.org',
-          '@type': 'BreadcrumbList',
-          'itemListElement': breadcrumbs.value.map((item, index) => ({
-            '@type': 'ListItem',
-            'position': index + 1,
-            'name': item.title,
-            'item': joinURL(baseUrl.value, item.path),
-          })),
-        }
-
-        scripts.push({
-          type: 'application/ld+json',
-          innerHTML: JSON.stringify(breadcrumbSchema),
-        })
-      }
-
       return scripts
     }),
   })

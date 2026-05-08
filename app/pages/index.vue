@@ -17,8 +17,7 @@ import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/u
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Motion } from 'motion-v'
-import type { PaginatedApiResponse } from '~~/types/api'
-import type { EventCatalogItem, EventCatalogQueryOptions } from '~~/types/events'
+import type { EventCatalogQueryOptions } from '~~/types/events'
 
 const { t } = useI18n()
 
@@ -35,7 +34,7 @@ const {
   data: featuredEventsResponse,
   pending: featuredEventsPending,
   error: featuredEventsFetchError,
-} = await useFetch<PaginatedApiResponse<EventCatalogItem[]>>('/api/events', {
+} = await useAPI(() => '/api/events', {
   query: featuredEventsQuery,
 })
 

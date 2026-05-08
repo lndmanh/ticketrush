@@ -2,39 +2,18 @@ import userService from '~~/server/utils/database/user'
 import { apiRoutes } from '#shared/apiRoutes'
 import { loginSchema } from '#shared/schemas/userSchema'
 
-function wantsJsonResponse(event: H3Event) {
-  const accept = getHeader(event, 'accept') ?? ''
-  return accept.includes('application/json')
-}
-
-function authFailure(event: H3Event, redirectPath: string, message: string) {
-  if (wantsJsonResponse(event)) {
-    throw createError({ statusCode: 400, statusMessage: message })
-  }
-  return sendRedirect(event, redirectPath)
-}
-
-function authSuccess(event: H3Event, redirectPath: string) {
-  if (wantsJsonResponse(event)) {
-    return { redirectTo: redirectPath }
-  }
-  return sendRedirect(event, redirectPath)
-}
-
-function safeRedirectPath(value: string | undefined) {
-  if (typeof value !== 'string' || value.length === 0) {
-    return '/'
-  }
-  if (!value.startsWith('/') || value.startsWith('//')) {
+function safeRedirectPath(value: string | undefined, origin: string): string {
+  if (!value) {
     return '/'
   }
 
   try {
-    const url = new URL(value, 'http://localhost')
-    if (url.origin !== 'http://localhost') {
+    const parsed = new URL(value, origin)
+    if (parsed.origin !== origin) {
       return '/'
     }
-    return `${url.pathname}${url.search}${url.hash}` || '/'
+
+    return `${parsed.pathname}${parsed.search}${parsed.hash}`
   }
   catch {
     return '/'
@@ -43,37 +22,44 @@ function safeRedirectPath(value: string | undefined) {
 
 export default defineEventHandler(async (event) => {
   const result = await readValidatedBody(event, body => loginSchema.safeParse(body))
+  console.log(result)
   if (!result.success) {
-    return authFailure(event, apiRoutes.AUTH_LOGIN + '?error=validation', 'Please check your login details')
+    return sendRedirect(event, apiRoutes.AUTH_LOGIN + '?error=validation')
   }
 
   const { username, password, 'cf-turnstile-response': token } = result.data
-  const redirectToStr = safeRedirectPath(result.data['redirect-to'])
+  const redirectToStr = safeRedirectPath(result.data['redirect-to'], getRequestURL(event).origin)
 
   if (!token) {
-    return authFailure(event, apiRoutes.AUTH_LOGIN + '?error=captcha', 'Please complete the verification challenge')
+    return sendRedirect(event, apiRoutes.AUTH_LOGIN + '?error=captcha')
   }
 
   const tokenValidation = await verifyTurnstileToken(token)
   if (!tokenValidation.success) {
-    return authFailure(event, apiRoutes.AUTH_LOGIN + '?error=captcha', 'Verification failed. Please try again')
+    return sendRedirect(event, apiRoutes.AUTH_LOGIN + '?error=captcha')
   }
 
   // Find user by username
   const user = await userService.getByUsername(username)
   if (!user) {
-    return authFailure(event, apiRoutes.AUTH_LOGIN + '?error=invalid-credentials', 'Invalid username or password')
+    return sendRedirect(event, apiRoutes.AUTH_LOGIN + '?error=invalid-credentials')
   }
 
   // Verify password using nuxt-auth-utils
   const isValidPassword = await verifyPassword(user.password, password)
 
   if (!isValidPassword) {
-    return authFailure(event, apiRoutes.AUTH_LOGIN + '?error=invalid-credentials', 'Invalid username or password')
+    return sendRedirect(event, apiRoutes.AUTH_LOGIN + '?error=invalid-credentials')
+  }
+
+  // Check email verification
+  if (!user.emailVerified) {
+    return sendRedirect(event, apiRoutes.AUTH_VERIFY_EMAIL + '?email=' + encodeURIComponent(user.email) + '&redirectTo=' + encodeURIComponent(redirectToStr))
   }
 
   // Update last login
   await userService.update({ id: user.id, lastLoginAt: new Date() })
+  // Normal login (2FA off)
   await setUserSession(event, {
     user: {
       id: user.id,
@@ -83,5 +69,5 @@ export default defineEventHandler(async (event) => {
     },
   })
 
-  return authSuccess(event, redirectToStr)
+  return sendRedirect(event, redirectToStr)
 })

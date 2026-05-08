@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { apiRoutes } from '#shared/apiRoutes'
 import { CalendarRange, LayoutGrid, MapPinned, Users } from '@lucide/vue'
 import AdminFeaturedEventCard from '@/components/admin/events/AdminFeaturedEventCard.vue'
 
@@ -23,8 +24,8 @@ interface AdminDashboardVenue {
   updatedAt?: string | Date | null
 }
 
-const { data: eventsResponse } = await useFetch('/api/admin/events')
-const { data: venuesResponse } = await useFetch('/api/admin/venues')
+const { data: eventsResponse } = await useAPI(() => apiRoutes.ADMIN_EVENTS)
+const { data: venuesResponse } = await useAPI(() => apiRoutes.ADMIN_VENUES)
 
 const events = computed<AdminDashboardEvent[]>(() => eventsResponse.value?.success ? eventsResponse.value.data : [])
 const venues = computed<AdminDashboardVenue[]>(() => venuesResponse.value?.success ? venuesResponse.value.data : [])

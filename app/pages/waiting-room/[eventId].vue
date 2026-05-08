@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { toast } from 'vue-sonner'
-import type { ApiResponse } from '~~/types/api'
 import type { QueueState } from '~~/types/ticketing'
+import { apiRequest } from '@/utils/apiRequest'
+import { parseApiError } from '@/utils/apiError'
+import { apiRoutes } from '#shared/apiRoutes'
 
 const route = useRoute()
 const sessionPublicId = computed(() => route.params.eventId.toString())
@@ -57,9 +59,9 @@ async function refreshQueueStatus() {
   }
 
   try {
-    const response = await $fetch<ApiResponse<QueueState | null>>(`/api/event-sessions/${sessionPublicId.value}/queue/status`)
+    const response = await apiRequest(apiRoutes.eventSessionQueueStatus(sessionPublicId.value))
     if (!response.success) {
-      throw new Error(response.error.message)
+      throw response
     }
 
     queueState.value = response.data
@@ -69,8 +71,8 @@ async function refreshQueueStatus() {
       await navigateTo(`/events/${slug.value}/sessions/${sessionPublicId.value}/seats?pass=${queueState.value.entry.passToken}`)
     }
   }
-  catch {
-    queueError.value = 'We lost contact with the queue for a moment. We will keep retrying automatically.'
+  catch (error) {
+    queueError.value = parseApiError(error, 'We lost contact with the queue for a moment. We will keep retrying automatically.').message
   }
 }
 
@@ -82,7 +84,10 @@ async function leaveQueue() {
   isLeaving.value = true
 
   try {
-    await $fetch(`/api/event-sessions/${sessionPublicId.value}/queue/leave`, { method: 'POST' })
+    const response = await apiRequest(apiRoutes.eventSessionQueueLeave(sessionPublicId.value), { method: 'POST' })
+    if (!response.success) {
+      throw response
+    }
     toast.success('You left the queue')
 
     if (slug.value) {
@@ -92,8 +97,8 @@ async function leaveQueue() {
 
     await navigateTo('/events')
   }
-  catch {
-    toast.error('We could not leave the queue right now')
+  catch (error) {
+    toast.error(parseApiError(error, 'We could not leave the queue right now').message)
   }
   finally {
     isLeaving.value = false
@@ -102,11 +107,14 @@ async function leaveQueue() {
 
 onMounted(async () => {
   try {
-    await $fetch(`/api/event-sessions/${sessionPublicId.value}/queue/join`, { method: 'POST', body: {} })
+    const response = await apiRequest(apiRoutes.eventSessionQueueJoin(sessionPublicId.value), { method: 'POST', body: {} })
+    if (!response.success) {
+      throw response
+    }
     await refreshQueueStatus()
   }
-  catch {
-    queueError.value = 'We could not join the waiting room. Please try again.'
+  catch (error) {
+    queueError.value = parseApiError(error, 'We could not join the waiting room. Please try again.').message
   }
   finally {
     isJoining.value = false

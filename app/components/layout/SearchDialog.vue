@@ -148,6 +148,8 @@
 import { nextTick } from 'vue'
 import { ChevronRightIcon, FileIcon, SearchXIcon } from '@lucide/vue'
 import CtIcon from '@/components/content/CtIcon.vue'
+import { apiRequest } from '@/utils/apiRequest'
+import { apiRoutes } from '#shared/apiRoutes'
 import type { EventSearchApiItem } from '~~/types/events'
 import type { SidebarItem } from '~~/types/common'
 
@@ -215,7 +217,7 @@ const debouncedSearch = useDebounceFn(async () => {
   latestRequestId.value = requestId
 
   try {
-    const response = await $fetch('/api/events/search', {
+    const response = await apiRequest(apiRoutes.EVENT_SEARCH, {
       query: {
         query: term,
         limit: 10,
@@ -226,7 +228,11 @@ const debouncedSearch = useDebounceFn(async () => {
       return
     }
 
-    const items = response.success ? response.data : []
+    if (!response.success) {
+      throw response
+    }
+
+    const items = response.data
     searchResult.value = items.map(item => ({
       id: item.id,
       title: item.title,

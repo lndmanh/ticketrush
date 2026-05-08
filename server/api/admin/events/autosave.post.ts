@@ -1,13 +1,13 @@
 import { eventAutosaveDraftSchema } from '#shared/schemas/ticketingSchema'
 import type { AutosaveDraftSaveData } from '~~/types/admin-events'
 import eventDraftAutosaveService from '~~/server/utils/database/event-draft-autosave'
-import { success } from '~~/server/utils/apiResponse'
+import { apiError, success, zodErrorToFieldErrors } from '~~/server/utils/apiResponse'
 
 export default defineEventHandler(async (event) => {
   const session = await requireUserSession(event)
   const result = await readValidatedBody(event, body => eventAutosaveDraftSchema.safeParse(body))
   if (!result.success) {
-    throw createError({ statusCode: 400, statusMessage: 'Bad Request. Event autosave data is invalid.', data: result.error })
+    throw apiError({ status: 400, statusText: 'Bad Request', code: 'VALIDATION_ERROR', message: 'Invalid request.', fieldErrors: zodErrorToFieldErrors(result.error), cause: result.error })
   }
 
   const draft = await eventDraftAutosaveService.save(result.data, session.user.id)

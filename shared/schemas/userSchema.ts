@@ -62,6 +62,7 @@ export const createUserSchema = createInsertSchema(users, {
   email: emailSchema,
   name: z.string().min(1, 'Name is required'),
   password: z.string().min(1, 'Password hash is required'),
+  emailVerified: z.boolean().default(false),
   lastLoginAt: z.date().optional(),
   isAdmin: z.boolean().default(false),
 })
@@ -75,6 +76,7 @@ export const userUpdateSchema = createUpdateSchema(users, {
   email: emailSchema.optional(),
   name: z.string().min(1).optional(),
   password: z.string().min(1).optional(),
+  emailVerified: z.boolean().optional(),
   isAdmin: z.boolean().optional(),
 })
 

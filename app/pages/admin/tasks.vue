@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { toast } from 'vue-sonner'
 import { Clock, Database, Loader2, Play, Users } from '@lucide/vue'
-import type { ApiResponse } from '~~/types/api'
-import type { AdminTaskData, AdminTaskResult } from '~~/types/admin-tasks'
+import type { AdminTaskResult } from '~~/types/admin-tasks'
+import { apiRequest } from '@/utils/apiRequest'
+import { parseApiError } from '@/utils/apiError'
 
 interface TaskDefinition {
   id: string
@@ -50,34 +51,14 @@ const localizedTasks = computed(() => tasks.map(task => ({
   description: t(task.descriptionKey),
 })))
 
-function getTaskErrorMessage(error: unknown) {
-  if (typeof error === 'object' && error !== null) {
-    if ('data' in error && typeof error.data === 'object' && error.data !== null) {
-      if ('message' in error.data && typeof error.data.message === 'string') {
-        return error.data.message
-      }
-    }
-
-    if ('statusMessage' in error && typeof error.statusMessage === 'string') {
-      return error.statusMessage
-    }
-  }
-
-  if (error instanceof Error && error.message) {
-    return error.message
-  }
-
-  return t('admin.tasks.failed')
-}
-
 async function runTask(task: TaskDefinition) {
   if (runningTasks.value.has(task.id)) return
 
   runningTasks.value.add(task.id)
   try {
-    const response = await $fetch<ApiResponse<AdminTaskData>>(task.endpoint, { method: 'POST' })
+    const response = await apiRequest(task.endpoint, { method: 'POST' })
     if (!response.success) {
-      throw new Error(response.error.message)
+      throw response
     }
 
     taskResults.value[task.id] = {
@@ -88,7 +69,7 @@ async function runTask(task: TaskDefinition) {
     toast.success(t('admin.tasks.completed', { title: task.title }))
   }
   catch (err) {
-    const message = getTaskErrorMessage(err)
+    const message = parseApiError(err, 'Task failed').message
     taskResults.value[task.id] = {
       success: false,
       error: message,

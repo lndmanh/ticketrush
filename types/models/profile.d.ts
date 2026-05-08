@@ -18,3 +18,11 @@ export interface UserProfileModel {
   isAdmin: boolean
   linkedAccounts: LinkedAccount[]
 }
+
+export interface AdminUserModel {
+  id: number
+  username: string
+  name: string
+  email: string
+  isAdmin: boolean
+}
