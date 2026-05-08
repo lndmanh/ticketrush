@@ -416,13 +416,13 @@ definePageMeta({
               <div class="flex h-4 w-4 items-center justify-center">
                 <OAuthIcon :provider="provider.id" />
               </div>
-              Sign up with {{ provider.name }}
+              {{ $t('auth.sign_up_with', { provider: provider.name }) }}
             </Button>
           </template>
 
           <div class="flex items-center gap-2 py-1">
             <div class="h-px flex-1 bg-border" />
-            <span class="text-xs uppercase text-muted-foreground">Or sign up with email</span>
+            <span class="text-xs uppercase text-muted-foreground">{{ $t('auth.or_sign_up_email') }}</span>
             <div class="h-px flex-1 bg-border" />
           </div>
         </div>
@@ -455,7 +455,7 @@ definePageMeta({
                 for="username"
                 class="text-sm font-medium"
               >
-                Username
+                {{ $t('auth.username_label') }}
               </FieldLabel>
               <div class="relative">
                 <UserIcon class="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
@@ -465,7 +465,7 @@ definePageMeta({
                   :model-value="field.value"
                   type="text"
                   autocomplete="username"
-                  placeholder="Enter your username"
+                  :placeholder="$t('auth.username_placeholder')"
                   class="h-11 pl-9"
                   :aria-invalid="!!errors.length"
                   :disabled="isLoading"
@@ -491,7 +491,7 @@ definePageMeta({
                 for="name"
                 class="text-sm font-medium"
               >
-                Display Name
+                {{ $t('auth.display_name_label') }}
               </FieldLabel>
               <div class="relative">
                 <UserIcon class="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
@@ -501,7 +501,7 @@ definePageMeta({
                   :model-value="field.value"
                   type="text"
                   autocomplete="name"
-                  placeholder="Enter your display name"
+                  :placeholder="$t('auth.display_name_placeholder')"
                   class="h-11 pl-9"
                   :aria-invalid="!!errors.length"
                   :disabled="isLoading"
@@ -527,7 +527,7 @@ definePageMeta({
                 for="email"
                 class="text-sm font-medium"
               >
-                Email
+                {{ $t('auth.email_label') }}
               </FieldLabel>
               <div class="relative">
                 <Mail class="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
@@ -537,7 +537,7 @@ definePageMeta({
                   :model-value="field.value"
                   type="email"
                   autocomplete="email"
-                  placeholder="Enter your email"
+                  :placeholder="$t('auth.email_placeholder')"
                   class="h-11 pl-9"
                   :aria-invalid="!!errors.length"
                   :disabled="isLoading"
@@ -563,7 +563,7 @@ definePageMeta({
                 for="password"
                 class="text-sm font-medium"
               >
-                Password
+                {{ $t('auth.password_label') }}
               </FieldLabel>
               <div class="relative">
                 <Lock class="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
@@ -573,7 +573,7 @@ definePageMeta({
                   :model-value="field.value"
                   :type="showPassword ? 'text' : 'password'"
                   autocomplete="new-password"
-                  placeholder="Enter your password"
+                  :placeholder="$t('auth.password_placeholder')"
                   class="h-11 pl-9 pr-9"
                   :aria-invalid="!!errors.length"
                   :disabled="isLoading"
@@ -584,7 +584,7 @@ definePageMeta({
                   variant="ghost"
                   size="sm"
                   class="absolute right-1 top-1 h-9 w-9 p-0 hover:bg-transparent"
-                  :aria-label="showPassword ? 'Hide password' : 'Show password'"
+                  :aria-label="showPassword ? $t('auth.hide_password') : $t('auth.show_password')"
                   :aria-pressed="showPassword"
                   @click="showPassword = !showPassword"
                 >
@@ -622,7 +622,7 @@ definePageMeta({
                 for="confirmPassword"
                 class="text-sm font-medium"
               >
-                Confirm Password
+                {{ $t('auth.confirm_password_label') }}
               </FieldLabel>
               <div class="relative">
                 <Lock class="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
@@ -632,7 +632,7 @@ definePageMeta({
                   :model-value="field.value"
                   :type="showConfirmPassword ? 'text' : 'password'"
                   autocomplete="new-password"
-                  placeholder="Confirm your password"
+                  :placeholder="$t('auth.confirm_password_placeholder')"
                   class="h-11 pl-9 pr-9"
                   :aria-invalid="!!errors.length"
                   :disabled="isLoading"
@@ -643,7 +643,7 @@ definePageMeta({
                   variant="ghost"
                   size="sm"
                   class="absolute right-1 top-1 h-9 w-9 p-0 hover:bg-transparent"
-                  :aria-label="showConfirmPassword ? 'Hide password confirmation' : 'Show password confirmation'"
+                  :aria-label="showConfirmPassword ? $t('auth.hide_password_confirmation') : $t('auth.show_password_confirmation')"
                   :aria-pressed="showConfirmPassword"
                   @click="showConfirmPassword = !showConfirmPassword"
                 >
@@ -677,46 +677,46 @@ definePageMeta({
             <Lock
               class="h-4 w-4"
             />
-            Create Account
+            {{ $t('auth.create_account') }}
           </Button>
           <p
             v-if="values.password && passwordStrength.score < 80"
             class="text-center text-xs text-muted-foreground"
           >
-            Password must be strong to create an account
+            {{ $t('auth.password_weak_note') }}
           </p>
         </form>
 
         <div class="space-y-3 text-center">
           <p class="text-xs text-muted-foreground">
-            By creating an account, you agree to our
+            {{ $t('auth.agree_register_terms') }}
             <NuxtLink
               to="https://nnsvn.me/terms"
               class="underline underline-offset-4 hover:text-primary"
               target="_blank"
               rel="noopener noreferrer"
             >
-              Terms of Service
+              {{ $t('auth.terms_link') }}
             </NuxtLink>
-            and
+            {{ $t('auth.and') }}
             <NuxtLink
               to="https://nnsvn.me/privacy"
               class="underline underline-offset-4 hover:text-primary"
               target="_blank"
               rel="noopener noreferrer"
             >
-              Privacy Policy
+              {{ $t('auth.privacy_link') }}
             </NuxtLink>
             .
           </p>
 
           <p class="text-sm text-muted-foreground">
-            Already have an account?
+            {{ $t('auth.have_account') }}
             <NuxtLink
               to="/auth/login"
               class="font-medium text-primary hover:underline"
             >
-              Sign In
+              {{ $t('auth.sign_in_link') }}
             </NuxtLink>
           </p>
         </div>

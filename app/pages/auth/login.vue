@@ -437,7 +437,7 @@ definePageMeta({
                 for="username"
                 class="text-sm font-medium"
               >
-                Username
+                {{ $t('auth.username_label') }}
               </FieldLabel>
               <div class="relative">
                 <User class="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
@@ -447,7 +447,7 @@ definePageMeta({
                   name="username"
                   type="text"
                   autocomplete="username"
-                  placeholder="Enter your username"
+                  :placeholder="$t('auth.username_placeholder')"
                   class="h-11 pl-9"
                   :disabled="isLoading"
                   :aria-invalid="!!errors.length"
@@ -473,7 +473,7 @@ definePageMeta({
                 for="password"
                 class="text-sm font-medium"
               >
-                Password
+                {{ $t('auth.password_label') }}
               </FieldLabel>
               <div class="relative">
                 <Lock class="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
@@ -483,7 +483,7 @@ definePageMeta({
                   name="password"
                   :type="showPassword ? 'text' : 'password'"
                   autocomplete="current-password"
-                  placeholder="Enter your password"
+                  :placeholder="$t('auth.password_placeholder')"
                   class="h-11 pl-9 pr-9"
                   :disabled="isLoading"
                   :aria-invalid="!!errors.length"
@@ -494,7 +494,7 @@ definePageMeta({
                   variant="ghost"
                   size="sm"
                   class="absolute right-1 top-1 h-9 w-9 p-0 hover:bg-transparent"
-                  :aria-label="showPassword ? 'Hide password' : 'Show password'"
+                  :aria-label="showPassword ? $t('auth.hide_password') : $t('auth.show_password')"
                   :aria-pressed="showPassword"
                   @click="showPassword = !showPassword"
                 >
@@ -515,15 +515,6 @@ definePageMeta({
             </Field>
           </VeeField>
 
-          <div class="flex justify-end">
-            <NuxtLink
-              to="/auth/forgot-password"
-              class="text-xs text-primary hover:underline"
-            >
-              Forgot password?
-            </NuxtLink>
-          </div>
-
           <div class="space-y-3">
             <NuxtTurnstile
               :key="turnstileRenderKey"
@@ -535,12 +526,12 @@ definePageMeta({
               :is-loading="isLoading"
             >
               <Lock class="h-4 w-4" />
-              Sign In with Password
+              {{ $t('auth.sign_in_password') }}
             </Button>
 
             <div class="flex items-center gap-2 py-1">
               <div class="h-px flex-1 bg-border" />
-              <span class="text-xs uppercase text-muted-foreground">Or</span>
+              <span class="text-xs uppercase text-muted-foreground">{{ $t('auth.or') }}</span>
               <div class="h-px flex-1 bg-border" />
             </div>
 
@@ -553,12 +544,12 @@ definePageMeta({
               @click="signInWithPasskey"
             >
               <Fingerprint class="h-4 w-4" />
-              Sign In with a Passkey
+              {{ $t('auth.sign_in_passkey') }}
             </Button>
 
             <div class="flex items-center gap-2 py-1">
               <div class="h-px flex-1 bg-border" />
-              <span class="text-xs uppercase text-muted-foreground">Or</span>
+              <span class="text-xs uppercase text-muted-foreground">{{ $t('auth.or') }}</span>
               <div class="h-px flex-1 bg-border" />
             </div>
 
@@ -577,7 +568,7 @@ definePageMeta({
                 <div class="flex h-4 w-4 items-center justify-center">
                   <OAuthIcon :provider="provider.id" />
                 </div>
-                Continue with {{ provider.name }}
+                {{ $t('auth.continue_with', { provider: provider.name }) }}
               </Button>
             </template>
           </div>
@@ -588,34 +579,34 @@ definePageMeta({
           class="space-y-3 text-center"
         >
           <p class="text-xs text-muted-foreground">
-            By signing in, you agree to our
+            {{ $t('auth.agree_terms') }}
             <NuxtLink
               to="https://nnsvn.me/terms"
               class="underline underline-offset-4 hover:text-primary"
               target="_blank"
               rel="noopener noreferrer"
             >
-              Terms of Service
+              {{ $t('auth.terms_link') }}
             </NuxtLink>
-            and
+            {{ $t('auth.and') }}
             <NuxtLink
               to="https://nnsvn.me/privacy"
               class="underline underline-offset-4 hover:text-primary"
               target="_blank"
               rel="noopener noreferrer"
             >
-              Privacy Policy
+              {{ $t('auth.privacy_link') }}
             </NuxtLink>
             .
           </p>
 
           <p class="text-sm text-muted-foreground">
-            Don't have an account?
+            {{ $t('auth.no_account') }}
             <NuxtLink
               to="/auth/register"
               class="font-medium text-primary hover:underline"
             >
-              Sign Up
+              {{ $t('auth.sign_up') }}
             </NuxtLink>
           </p>
         </div>
