@@ -213,34 +213,6 @@ import { apiRequest } from '@/utils/apiRequest'
 import { parseApiError } from '@/utils/apiError'
 import { apiRoutes } from '#shared/apiRoutes'
 
-function extractErrorMessage(error: object, fallback: string) {
-  if ('data' in error) {
-    const data = error.data
-    if (typeof data === 'object' && data !== null) {
-      if ('statusMessage' in data && typeof data.statusMessage === 'string') {
-        return data.statusMessage
-      }
-      if ('message' in data && typeof data.message === 'string') {
-        return data.message
-      }
-    }
-  }
-
-  if (error instanceof Error && error.message) {
-    return error.message
-  }
-
-  return fallback
-}
-
-function getCaughtErrorMessage(error: object | null, fallback: string) {
-  if (!error) {
-    return fallback
-  }
-
-  return extractErrorMessage(error, fallback)
-}
-
 const events = ref<Event[]>([])
 const venues = ref<Venue[]>([])
 const unfinishedDraft = ref<AutosaveDraftSummary | null>(null)
