@@ -16,6 +16,8 @@ import {
 } from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
 
+const { t } = useI18n()
+
 const props = withDefaults(defineProps<{
   seats: SeatMapSeat[]
   ticketTypes: SeatMapTicketType[]
@@ -106,18 +108,18 @@ function onSeatPress(seat: SeatMapSeat, setActiveSeat: (seatId: number) => void)
 
 function getStatusLabel(status: SeatMapStatus) {
   if (status === 'available') {
-    return 'Available now'
+    return t('seatmap.status_available')
   }
 
   if (status === 'locked') {
-    return 'Temporarily held'
+    return t('seatmap.status_locked')
   }
 
   if (status === 'sold') {
-    return 'Already sold'
+    return t('seatmap.status_sold')
   }
 
-  return 'Not currently offered'
+  return t('seatmap.status_unavailable')
 }
 
 function getStatusBadgeClass(status: SeatMapStatus) {
@@ -138,18 +140,18 @@ function getStatusBadgeClass(status: SeatMapStatus) {
 
 function getStatusDescription(status: SeatMapStatus) {
   if (status === 'available') {
-    return props.interactive ? 'This seat can be added to the current checkout selection.' : 'This seat can still be secured once you enter live selection.'
+    return props.interactive ? t('seatmap.desc_available_interactive') : t('seatmap.desc_available')
   }
 
   if (status === 'locked') {
-    return 'Another buyer is holding this seat during an active checkout window.'
+    return t('seatmap.desc_locked')
   }
 
   if (status === 'sold') {
-    return 'This position has already been converted into a completed order.'
+    return t('seatmap.desc_sold')
   }
 
-  return 'This location is currently not being released for public purchase.'
+  return t('seatmap.desc_unavailable')
 }
 </script>
 
@@ -182,13 +184,13 @@ function getStatusDescription(status: SeatMapStatus) {
       <div class="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
         <div class="space-y-2">
           <p class="section-eyebrow">
-            Seat map
+            {{ $t('seatmap.title') }}
           </p>
           <h2 class="text-balance text-2xl font-semibold tracking-tight text-foreground md:text-3xl">
-            {{ mode === 'admin' ? 'Inspect the event seating snapshot.' : interactive ? 'Choose your exact seats.' : 'Preview the room before booking.' }}
+            {{ mode === 'admin' ? $t('seatmap.admin_title') : interactive ? $t('seatmap.interactive_title') : $t('seatmap.preview_title') }}
           </h2>
           <p class="max-w-[65ch] text-sm leading-7 text-muted-foreground">
-            {{ mode === 'admin' ? 'Shared layout data powers this map and the venue editor, keeping section structure consistent.' : interactive ? 'Focus sections, inspect seats, and keep your selection in one stable checkout flow.' : 'Review live availability and pricing before entering the reservation flow.' }}
+            {{ mode === 'admin' ? $t('seatmap.admin_desc') : interactive ? $t('seatmap.interactive_desc') : $t('seatmap.preview_desc') }}
           </p>
         </div>
 
@@ -202,7 +204,7 @@ function getStatusDescription(status: SeatMapStatus) {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">
-                All sections
+                {{ $t('common.all_sections') }}
               </SelectItem>
               <SelectItem
                 v-for="section in sectionOptions"
@@ -240,7 +242,7 @@ function getStatusDescription(status: SeatMapStatus) {
               class="px-3 text-xs"
               @click="resetZoom"
             >
-              Reset
+              {{ $t('common.reset') }}
             </Button>
           </div>
         </div>
@@ -265,36 +267,36 @@ function getStatusDescription(status: SeatMapStatus) {
             :style="stageStyle"
           >
             <p class="text-sm font-medium text-foreground">
-              Stage / focal line
+              {{ $t('seatmap.stage') }}
             </p>
             <p class="mt-1 text-xs uppercase tracking-[0.2em] text-muted-foreground">
-              Front-of-house preview
+              {{ $t('seatmap.front_of_house') }}
             </p>
           </div>
 
           <div class="mt-4 flex flex-wrap gap-2">
             <span class="inline-flex items-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1.5 text-xs text-emerald-700 dark:text-emerald-300">
               <Check class="size-3.5" />
-              Available
+              {{ $t('common.available') }}
             </span>
             <span
               v-if="interactive"
               class="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary px-3 py-1.5 text-xs text-primary-foreground"
             >
               <Ticket class="size-3.5" />
-              Selected
+              {{ $t('common.selected') }}
             </span>
             <span class="inline-flex items-center gap-2 rounded-full border border-amber-500/20 bg-amber-500/10 px-3 py-1.5 text-xs text-amber-700 dark:text-amber-300">
               <LockKeyhole class="size-3.5" />
-              Held
+              {{ $t('common.held') }}
             </span>
             <span class="inline-flex items-center gap-2 rounded-full border border-slate-950/10 bg-slate-950 px-3 py-1.5 text-xs text-white dark:border-white/10 dark:bg-white/10">
               <CircleSlash class="size-3.5" />
-              Sold
+              {{ $t('common.sold') }}
             </span>
             <span class="inline-flex items-center gap-2 rounded-full border border-border bg-background px-3 py-1.5 text-xs text-muted-foreground">
               <Search class="size-3.5" />
-              Click a seat to inspect it
+              {{ $t('seatmap.click_to_inspect') }}
             </span>
           </div>
 
@@ -327,7 +329,7 @@ function getStatusDescription(status: SeatMapStatus) {
                             {{ section.name }}
                           </h3>
                           <p class="text-sm text-muted-foreground">
-                            {{ section.metrics.total }} seats · {{ section.rows.length }} rows
+                            {{ $t('common.seats', section.metrics.total) }} · {{ $t('common.rows', section.rows.length) }}
                           </p>
                         </div>
                       </div>
@@ -384,7 +386,7 @@ function getStatusDescription(status: SeatMapStatus) {
                               class="flex h-10 w-10 items-center justify-center rounded-[0.9rem] border text-[10px] font-semibold transition-[transform,box-shadow,background-color,border-color] duration-200 ease-[cubic-bezier(0.32,0.72,0,1)] hover:-translate-y-0.5 active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
                               :style="getSeatStyle(section.color, seat, activeSeat?.id === seat.id, isSeatSelected(seat.id))"
                               :aria-pressed="isSeatSelected(seat.id) || activeSeat?.id === seat.id"
-                              :title="`${section.name} · Row ${row.label} · Seat ${seat.seatLabelSnapshot}`"
+                              :title="`${section.name} · ${$t('admin.event_session.row_label', { row: row.label, seat: seat.seatLabelSnapshot })}`"
                               @click="onSeatPress(seat, setActiveSeat)"
                             >
                               <span class="sr-only">
@@ -446,7 +448,7 @@ function getStatusDescription(status: SeatMapStatus) {
                 {{ getStatusLabel(activeSeat.status) }}
               </span>
               <h3 class="mt-3 text-xl font-semibold tracking-tight text-foreground">
-                Row {{ activeSeat.rowLabelSnapshot || 'GA' }} · Seat {{ activeSeat.seatLabelSnapshot }}
+                {{ $t('seatmap.row_label', { row: activeSeat.rowLabelSnapshot || 'GA', seat: activeSeat.seatLabelSnapshot }) }}
               </h3>
               <p class="mt-2 text-sm leading-6 text-muted-foreground">
                 {{ getStatusDescription(activeSeat.status) }}
@@ -455,7 +457,7 @@ function getStatusDescription(status: SeatMapStatus) {
                 {{ formatSeatMapCurrency(activeSeat.priceCents, activeSeat.currency) }}
               </p>
               <p class="mt-1 text-sm text-muted-foreground">
-                {{ activeSeatTicketType?.name || 'General seating release' }}
+                {{ activeSeatTicketType?.name || $t('seatmap.general_seating') }}
               </p>
               <Button
                 v-if="actionLabel"

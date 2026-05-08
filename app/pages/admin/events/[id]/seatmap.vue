@@ -3,6 +3,8 @@ import { Eye, LockKeyhole, Map, Ticket } from '@lucide/vue'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import AdminChartCard from '@/components/admin/charts/AdminChartCard.vue'
 
+const { t } = useI18n()
+
 const route = useRoute()
 const eventId = computed(() => Number(route.params.id))
 const { t } = useI18n()
@@ -82,7 +84,7 @@ definePageMeta({
           </div><p class="mt-4 text-2xl font-semibold tracking-[-0.05em] text-foreground">
             {{ dashboard.availableSeatsCount }}
           </p><p class="mt-2 text-sm text-muted-foreground">
-            {{ filteredSeats.length }} seats in the current view.
+            {{ $t('admin_event_seatmap.available_desc', { count: filteredSeats.length }) }}
           </p>
         </CardContent>
       </Card>
@@ -93,7 +95,7 @@ definePageMeta({
           </div><p class="mt-4 text-2xl font-semibold tracking-[-0.05em] text-foreground">
             {{ dashboard.activeHoldsCount }}
           </p><p class="mt-2 text-sm text-muted-foreground">
-            Checkout windows still holding inventory.
+            {{ $t('admin_event_seatmap.active_holds_desc') }}
           </p>
         </CardContent>
       </Card>
@@ -104,7 +106,7 @@ definePageMeta({
           </div><p class="mt-4 text-2xl font-semibold tracking-[-0.05em] text-foreground">
             {{ sectionCount }}
           </p><p class="mt-2 text-sm text-muted-foreground">
-            Visible seat clusters in this snapshot.
+            {{ $t('admin_event_seatmap.sections_desc') }}
           </p>
         </CardContent>
       </Card>
@@ -176,7 +178,7 @@ definePageMeta({
                 <p class="text-sm font-medium text-foreground">
                   {{ section }}
                 </p><p class="text-sm text-muted-foreground">
-                  {{ row.sold }} sold
+                  {{ row.sold }} {{ $t('common.sold') }}
                 </p>
               </div>
               <p class="text-sm font-medium text-foreground">
@@ -188,7 +190,7 @@ definePageMeta({
             v-if="topSections.length === 0"
             class="text-sm text-muted-foreground"
           >
-            No section movement yet.
+            {{ $t('admin_event_seatmap.no_section_movement') }}
           </p>
         </CardContent>
       </Card>
@@ -198,28 +200,28 @@ definePageMeta({
         <CardContent class="grid gap-3 sm:grid-cols-2">
           <div class="rounded-[1.25rem] border border-border bg-secondary/30 p-4">
             <p class="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-              Waiting
+              {{ $t('admin_event_seatmap.waiting') }}
             </p><p class="mt-2 text-2xl font-semibold tracking-[-0.05em] text-foreground">
               {{ dashboard.queueWaitingCount }}
             </p>
           </div>
           <div class="rounded-[1.25rem] border border-border bg-secondary/30 p-4">
             <p class="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-              Admitted
+              {{ $t('admin_event_seatmap.admitted') }}
             </p><p class="mt-2 text-2xl font-semibold tracking-[-0.05em] text-foreground">
               {{ dashboard.queueAdmittedCount }}
             </p>
           </div>
           <div class="rounded-[1.25rem] border border-border bg-secondary/30 p-4">
             <p class="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-              Sold seats
+              {{ $t('admin_event_seatmap.sold_seats') }}
             </p><p class="mt-2 text-2xl font-semibold tracking-[-0.05em] text-foreground">
               {{ dashboard.soldSeatsCount }}
             </p>
           </div>
           <div class="rounded-[1.25rem] border border-border bg-secondary/30 p-4">
             <p class="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-              Sections in view
+              {{ $t('admin_event_seatmap.sections_in_view') }}
             </p><p class="mt-2 text-2xl font-semibold tracking-[-0.05em] text-foreground">
               {{ sectionCount }}
             </p>

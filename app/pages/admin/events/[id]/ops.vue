@@ -2,6 +2,8 @@
 import { Activity, LockKeyhole, ShoppingCart, Tickets } from '@lucide/vue'
 import AdminChartCard from '@/components/admin/charts/AdminChartCard.vue'
 
+const { t } = useI18n()
+
 const route = useRoute()
 const eventId = computed(() => Number(route.params.id))
 
@@ -24,9 +26,9 @@ const operationsMixOption = computed(() => {
 
   return createDonutChartOption({
     data: [
-      { label: 'Orders', value: ops.value.totals.ordersCount },
-      { label: 'Tickets', value: ops.value.totals.ticketsCount },
-      { label: 'Holds', value: ops.value.totals.activeHoldsCount },
+      { label: t('admin_event_ops.orders_label'), value: ops.value.totals.ordersCount },
+      { label: t('admin_event_ops.tickets_label'), value: ops.value.totals.ticketsCount },
+      { label: t('admin_event_ops.active_holds_label'), value: ops.value.totals.activeHoldsCount },
       { label: 'Queue', value: ops.value.totals.queueEntriesCount },
     ],
   })
@@ -78,7 +80,7 @@ definePageMeta({
           </div><p class="mt-4 text-2xl font-semibold tracking-[-0.05em] text-foreground">
             {{ ops.totals.ordersCount }}
           </p><p class="mt-2 text-sm text-muted-foreground">
-            Recent commercial activity in this event.
+            {{ $t('admin_event_ops.orders_desc') }}
           </p>
         </CardContent>
       </Card>
@@ -89,7 +91,7 @@ definePageMeta({
           </div><p class="mt-4 text-2xl font-semibold tracking-[-0.05em] text-foreground">
             {{ ops.totals.ticketsCount }}
           </p><p class="mt-2 text-sm text-muted-foreground">
-            Issued tickets in the current feed.
+            {{ $t('admin_event_ops.tickets_desc') }}
           </p>
         </CardContent>
       </Card>
@@ -100,7 +102,7 @@ definePageMeta({
           </div><p class="mt-4 text-2xl font-semibold tracking-[-0.05em] text-foreground">
             {{ ops.totals.activeHoldsCount }}
           </p><p class="mt-2 text-sm text-muted-foreground">
-            Temporary inventory locks still open.
+            {{ $t('admin_event_ops.active_holds_desc') }}
           </p>
         </CardContent>
       </Card>
@@ -111,7 +113,7 @@ definePageMeta({
           </div><p class="mt-4 text-2xl font-semibold tracking-[-0.05em] text-foreground">
             {{ ops.totals.queueEntriesCount }}
           </p><p class="mt-2 text-sm text-muted-foreground">
-            Entries recorded in the queue feed.
+            {{ $t('admin_event_ops.queue_entries_desc') }}
           </p>
         </CardContent>
       </Card>
@@ -163,9 +165,9 @@ definePageMeta({
             <div class="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
               <div>
                 <p class="text-sm font-medium text-foreground">
-                  {{ order.customerName || 'Pending buyer' }}
+                  {{ order.customerName || $t('admin_event_ops.pending_buyer') }}
                 </p><p class="text-sm text-muted-foreground">
-                  {{ order.customerEmail || 'No email captured yet' }}
+                  {{ order.customerEmail || $t('admin_event_ops.no_email') }}
                 </p>
               </div>
               <p class="text-sm text-muted-foreground">
@@ -177,7 +179,7 @@ definePageMeta({
             v-if="orders.length === 0"
             class="text-sm text-muted-foreground"
           >
-            No orders yet.
+            {{ $t('admin_event_ops.no_orders') }}
           </p>
         </CardContent>
       </Card>
@@ -195,7 +197,7 @@ definePageMeta({
                 <p class="text-sm font-medium text-foreground">
                   {{ hold.publicId }}
                 </p><p class="text-sm text-muted-foreground">
-                  {{ hold.seatCount }} seat(s) · expires {{ new Date(hold.expiresAt).toLocaleTimeString() }}
+                  {{ hold.seatCount }} seat(s) · {{ $t('admin_event_ops.expires_label') }} {{ new Date(hold.expiresAt).toLocaleTimeString() }}
                 </p>
               </div>
               <p class="text-xs text-muted-foreground">
@@ -207,7 +209,7 @@ definePageMeta({
             v-if="holds.length === 0"
             class="text-sm text-muted-foreground"
           >
-            No active holds.
+            {{ $t('admin_event_ops.no_holds') }}
           </p>
         </CardContent>
       </Card>
@@ -224,14 +226,14 @@ definePageMeta({
               {{ ticket.attendeeName }}
             </p>
             <p class="mt-1 text-sm text-muted-foreground">
-              {{ ticket.sectionLabel || 'GA' }} · {{ ticket.rowLabel || '' }}{{ ticket.rowLabel ? '-' : '' }}{{ ticket.seatLabel || 'Open seating' }}
+              {{ ticket.sectionLabel || 'GA' }} · {{ ticket.rowLabel || '' }}{{ ticket.rowLabel ? '-' : '' }}{{ ticket.seatLabel || $t('admin_event_ops.open_seating') }}
             </p>
           </div>
           <p
             v-if="tickets.length === 0"
             class="text-sm text-muted-foreground sm:col-span-2"
           >
-            No tickets issued yet.
+            {{ $t('admin_event_ops.no_tickets') }}
           </p>
         </CardContent>
       </Card>
@@ -249,7 +251,7 @@ definePageMeta({
                 <p class="text-sm font-medium text-foreground">
                   {{ entry.customerKey }}
                 </p><p class="text-sm text-muted-foreground">
-                  Created {{ new Date(entry.createdAt).toLocaleString() }}
+                  {{ $t('admin_event_ops.created_label') }} {{ new Date(entry.createdAt).toLocaleString() }}
                 </p>
               </div>
               <p class="text-xs text-muted-foreground">
@@ -261,7 +263,7 @@ definePageMeta({
             v-if="queueFeed.length === 0"
             class="text-sm text-muted-foreground"
           >
-            No queue activity yet.
+            {{ $t('admin_event_ops.no_queue') }}
           </p>
         </CardContent>
       </Card>

@@ -72,25 +72,25 @@ function logout() {
           @click="navigateTo('/admin')"
         >
           <UsersIcon />
-          Admin
+          {{ $t('common.admin') }}
         </DropdownMenuItem>
         <DropdownMenuItem
           v-if="loggedIn"
           @click="navigateTo('/settings/account')"
         >
           <UserIcon />
-          Account
+          {{ $t('common.account') }}
         </DropdownMenuItem>
         <DropdownMenuItem
           v-else
           @click="navigateTo('/auth/login')"
         >
           <LogIn />
-          Sign In
+          {{ $t('common.sign_in') }}
         </DropdownMenuItem>
         <DropdownMenuItem @click="navigateTo('/settings')">
           <Settings />
-          Settings
+          {{ $t('common.settings') }}
         </DropdownMenuItem>
       </DropdownMenuGroup>
 
@@ -99,7 +99,7 @@ function logout() {
         <DropdownMenuSub>
           <DropdownMenuSubTrigger>
             <SunMoon />
-            Appearance
+            {{ $t('common.appearance') }}
           </DropdownMenuSubTrigger>
           <DropdownMenuPortal>
             <DropdownMenuSubContent>
@@ -115,7 +115,7 @@ function logout() {
         @click="logout"
       >
         <LogOut />
-        Log out
+        {{ $t('common.log_out') }}
       </DropdownMenuItem>
     </DropdownMenuContent>
   </DropdownMenu>

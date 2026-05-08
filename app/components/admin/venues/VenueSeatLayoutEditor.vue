@@ -7,6 +7,8 @@ import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
 import { Accessibility, ChevronDown, CopyPlus, Plus, Trash2 } from '@lucide/vue'
 
+const { t } = useI18n()
+
 const props = defineProps<{
   sections: VenueSectionDraftInput[]
 }>()
@@ -74,7 +76,7 @@ function createSectionCopy(section: VenueSectionDraftInput, index: number): Venu
   return {
     ...nextSection,
     code: createUniqueSectionCode(section.code),
-    name: `${section.name} Copy`,
+    name: `${section.name} ${t('admin.venues.copy')}`,
     color: section.color,
     rows: section.rows.map((row, rowIndex) => ({
       label: row.label,
@@ -250,7 +252,7 @@ function removeSeat(sectionIndex: number, rowIndex: number, seatIndex: number) {
     <div class="flex items-center justify-between gap-4">
       <div>
         <p class="text-base font-medium tracking-[-0.03em] text-foreground">
-          Seat layout editor
+          {{ $t('admin.venues.seat_layout_editor') }}
         </p>
       </div>
       <Button
@@ -471,7 +473,7 @@ function removeSeat(sectionIndex: number, rowIndex: number, seatIndex: number) {
             size="sm"
             @click="addRow(sectionIndex)"
           >
-            Add row
+            {{ $t('admin.venues.add_row') }}
           </Button>
         </AccordionContent>
       </AccordionItem>

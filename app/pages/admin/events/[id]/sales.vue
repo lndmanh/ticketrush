@@ -2,6 +2,8 @@
 import { CircleDollarSign, PieChart, Ticket, TrendingUp } from '@lucide/vue'
 import AdminChartCard from '@/components/admin/charts/AdminChartCard.vue'
 
+const { t } = useI18n()
+
 const route = useRoute()
 const eventId = computed(() => Number(route.params.id))
 
@@ -53,7 +55,7 @@ const audienceMixOption = computed(() => {
   return createDonutChartOption({
     data: audienceMix.value,
     centerValue: `${mappedBuyers}`,
-    centerLabel: 'Mapped buyers',
+    centerLabel: t('admin_event_sales.pending_buyer'),
   })
 })
 
@@ -91,7 +93,7 @@ definePageMeta({
           </div><p class="mt-4 text-2xl font-semibold tracking-[-0.05em] text-foreground">
             {{ Intl.NumberFormat('en-US').format((dashboard.revenueCents || 0) / 100) }} VND
           </p><p class="mt-2 text-sm text-muted-foreground">
-            Gross confirmed sales for this event.
+            {{ $t('admin_event_sales.revenue_desc') }}
           </p>
         </CardContent>
       </Card>
@@ -102,7 +104,7 @@ definePageMeta({
           </div><p class="mt-4 text-2xl font-semibold tracking-[-0.05em] text-foreground">
             {{ Math.round((dashboard.occupancyRate || 0) * 100) }}%
           </p><p class="mt-2 text-sm text-muted-foreground">
-            {{ dashboard.soldSeatsCount }} seats converted.
+            {{ $t('admin_event_sales.occupancy_desc', { count: dashboard.soldSeatsCount }) }}
           </p>
         </CardContent>
       </Card>
@@ -113,7 +115,7 @@ definePageMeta({
           </div><p class="mt-4 text-2xl font-semibold tracking-[-0.05em] text-foreground">
             {{ Intl.NumberFormat('en-US').format(revenuePerSeat / 100) }} VND
           </p><p class="mt-2 text-sm text-muted-foreground">
-            Average yield on sold seats.
+            {{ $t('admin_event_sales.revenue_per_seat_desc') }}
           </p>
         </CardContent>
       </Card>
@@ -124,7 +126,7 @@ definePageMeta({
           </div><p class="mt-4 text-2xl font-semibold tracking-[-0.05em] text-foreground">
             {{ dashboard.activeHoldsCount }}
           </p><p class="mt-2 text-sm text-muted-foreground">
-            Seats still waiting on checkout confirmation.
+            {{ $t('admin_event_sales.active_holds_desc') }}
           </p>
         </CardContent>
       </Card>
@@ -176,9 +178,9 @@ definePageMeta({
             <div class="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
               <div>
                 <p class="text-sm font-medium text-foreground">
-                  {{ order.customerName || 'Pending buyer' }}
+                  {{ order.customerName || $t('admin_event_sales.pending_buyer') }}
                 </p><p class="text-sm text-muted-foreground">
-                  {{ order.customerEmail || 'No email yet' }}
+                  {{ order.customerEmail || $t('admin_event_sales.no_email_yet') }}
                 </p>
               </div>
               <p class="text-sm text-muted-foreground">
@@ -190,7 +192,7 @@ definePageMeta({
             v-if="dashboard.recentOrders.length === 0"
             class="text-sm text-muted-foreground"
           >
-            No confirmed orders yet.
+            {{ $t('admin_event_sales.no_orders') }}
           </p>
         </CardContent>
       </Card>
@@ -200,28 +202,28 @@ definePageMeta({
         <CardContent class="grid gap-3 sm:grid-cols-2">
           <div class="rounded-[1.25rem] border border-border bg-secondary/30 p-4">
             <p class="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-              Waiting
+              {{ $t('admin_event_sales.waiting') }}
             </p><p class="mt-2 text-2xl font-semibold tracking-[-0.05em] text-foreground">
               {{ dashboard.queueWaitingCount }}
             </p>
           </div>
           <div class="rounded-[1.25rem] border border-border bg-secondary/30 p-4">
             <p class="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-              Admitted
+              {{ $t('admin_event_sales.admitted') }}
             </p><p class="mt-2 text-2xl font-semibold tracking-[-0.05em] text-foreground">
               {{ dashboard.queueAdmittedCount }}
             </p>
           </div>
           <div class="rounded-[1.25rem] border border-border bg-secondary/30 p-4">
             <p class="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-              Active holds
+              {{ $t('admin_event_sales.active_holds') }}
             </p><p class="mt-2 text-2xl font-semibold tracking-[-0.05em] text-foreground">
               {{ dashboard.activeHoldsCount }}
             </p>
           </div>
           <div class="rounded-[1.25rem] border border-border bg-secondary/30 p-4">
             <p class="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-              Available
+              {{ $t('admin_event_sales.available') }}
             </p><p class="mt-2 text-2xl font-semibold tracking-[-0.05em] text-foreground">
               {{ dashboard.availableSeatsCount }}
             </p>

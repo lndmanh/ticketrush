@@ -22,10 +22,11 @@ const { register } = useWebAuthn()
 const isLoading = ref(false)
 const error = ref('')
 const success = ref(false)
+const { t } = useI18n()
 
 async function createPasskey() {
   if (!props.username.trim()) {
-    error.value = 'Username is required'
+    error.value = t('passkey.username_required')
     return
   }
 
@@ -46,7 +47,7 @@ async function createPasskey() {
     }, 2000)
   }
   catch (err: unknown) {
-    const errorMessage = err instanceof Error ? err.message : 'Failed to create passkey'
+    const errorMessage = err instanceof Error ? err.message : t('passkey.failed')
     error.value = errorMessage
   }
   finally {
@@ -75,10 +76,10 @@ function closeDialog() {
     <DialogHeader>
       <DialogTitle class="flex items-center gap-2">
         <Shield class="h-5 w-5" />
-        Secure Your Account
+        {{ $t('passkey.dialog_title') }}
       </DialogTitle>
       <DialogDescription>
-        Create a passkey for faster and more secure authentication
+        {{ $t('passkey.dialog_desc') }}
       </DialogDescription>
     </DialogHeader>
 
@@ -109,11 +110,10 @@ function closeDialog() {
 
         <div class="space-y-2">
           <h3 class="font-medium">
-            What is a passkey?
+            {{ $t('passkey.what_is') }}
           </h3>
           <p class="text-sm text-muted-foreground">
-            A passkey is a secure, passwordless way to sign in using your device's biometric authentication
-            (fingerprint, face recognition) or security key.
+            {{ $t('passkey.what_is_desc') }}
           </p>
         </div>
 
@@ -123,7 +123,7 @@ function closeDialog() {
               <Shield class="h-4 w-4 text-green-600" />
             </div>
             <p class="text-center">
-              More Secure
+              {{ $t('passkey.more_secure') }}
             </p>
           </div>
           <div class="space-y-2">
@@ -131,7 +131,7 @@ function closeDialog() {
               <Smartphone class="h-4 w-4 text-blue-600" />
             </div>
             <p class="text-center">
-              Faster Login
+              {{ $t('passkey.faster_login') }}
             </p>
           </div>
         </div>
@@ -146,7 +146,7 @@ function closeDialog() {
           <Fingerprint
             class="h-4 w-4"
           />
-          Create Passkey
+          {{ $t('passkey.create') }}
         </Button>
 
         <Button
@@ -156,12 +156,12 @@ function closeDialog() {
           @click="skipPasskey"
         >
           <X class="h-4 w-4" />
-          Skip for Now
+          {{ $t('passkey.skip') }}
         </Button>
       </div>
 
       <p class="text-xs text-muted-foreground text-center">
-        You can create a passkey later in your account settings.
+        {{ $t('passkey.later_note') }}
       </p>
     </div>
   </ResponsiveDialog>
