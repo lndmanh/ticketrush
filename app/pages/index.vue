@@ -3,11 +3,23 @@ import {
   ArrowRight,
   CalendarCheck2,
   CircleAlert,
+  Clock3,
   Search,
   ShieldCheck,
   Sparkles,
+  Ticket,
+  UsersRound,
 } from '@lucide/vue'
-import type { EventCatalogQueryOptions } from '~~/types/events'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent } from '@/components/ui/card'
+import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import type { PaginatedApiResponse } from '~~/types/api'
+import type { EventCatalogItem, EventCatalogQueryOptions } from '~~/types/events'
+
+const { t } = useI18n()
 
 const FEATURED_EVENT_LIMIT = 3
 
@@ -22,7 +34,7 @@ const {
   data: featuredEventsResponse,
   pending: featuredEventsPending,
   error: featuredEventsFetchError,
-} = await useFetch('/api/events', {
+} = await useFetch<PaginatedApiResponse<EventCatalogItem[]>>('/api/events', {
   query: featuredEventsQuery,
 })
 
@@ -37,7 +49,7 @@ const featuredEvents = computed(() => {
 
 const featuredEventsError = computed(() => {
   if (featuredEventsFetchError.value) {
-    return 'Featured events are temporarily unavailable. Browse the full catalog to keep exploring.'
+    return t('home.featured_error')
   }
 
   const response = featuredEventsResponse.value
@@ -45,21 +57,35 @@ const featuredEventsError = computed(() => {
     return ''
   }
 
-  return 'Featured events are temporarily unavailable. Browse the full catalog to keep exploring.'
+  return t('home.featured_error')
 })
 
 const featuredEventsEmptyMessage = computed(() => {
   if (featuredEventsPending.value) {
-    return 'Curating the next drops for you.'
+    return t('home.featured_curating')
   }
 
-  return 'New events are being prepared. Browse the full catalog for the latest releases.'
+  return t('home.featured_empty')
 })
 
 const heroPreviewEvent = computed(() => featuredEvents.value[0] ?? null)
 
 const heroImage = computed(() => {
   return heroPreviewEvent.value?.coverImage || 'https://picsum.photos/seed/ticketrush-home/1200/900'
+})
+
+const heroDropDate = computed(() => {
+  const date = heroPreviewEvent.value?.salesStartAt || heroPreviewEvent.value?.startsAt
+  if (!date) {
+    return t('home.live_soon')
+  }
+
+  return new Date(date).toLocaleString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  })
 })
 
 async function searchEvents() {
@@ -74,126 +100,171 @@ async function searchEvents() {
 
 <template>
   <AppLayout
-    class="flex flex-1 flex-col min-h-full space-y-6"
+    class="relative flex min-h-full flex-1 flex-col overflow-hidden"
     :hide-header="true"
   >
-    <section class="grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(22rem,0.72fr)] lg:items-center">
-      <div class="space-y-8">
-        <div class="space-y-6">
-          <Badge
-            variant="outline"
-            class="w-fit rounded-full px-3 py-1 text-[11px] uppercase tracking-[0.22em]"
-          >
-            <Sparkles class="size-3.5" />
-            Live events, ready to book
-          </Badge>
+    <div class="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[44rem] bg-[radial-gradient(circle_at_18%_18%,hsl(var(--primary)/0.18),transparent_34%),radial-gradient(circle_at_78%_12%,hsl(var(--muted-foreground)/0.14),transparent_28%)]" />
 
-          <div class="space-y-5">
-            <h1 class="display-title max-w-5xl text-balance">
-              Find the show, choose the session, keep your seat.
-            </h1>
-            <p class="max-w-[44rem] text-base leading-8 text-muted-foreground md:text-lg">
-              Browse upcoming drops, compare dates, and move into checkout with protected seat holds and mobile tickets built for busy nights.
-            </p>
-          </div>
-        </div>
+    <section class="grid gap-8 pb-8 pt-4 lg:grid-cols-[minmax(0,1.05fr)_minmax(23rem,0.74fr)] lg:items-stretch lg:pb-12">
+      <div class="surface-shell overflow-hidden">
+        <div class="surface-core relative flex min-h-[34rem] flex-col justify-between overflow-hidden px-5 py-6 md:px-8 md:py-8">
+          <div class="pointer-events-none absolute -right-28 -top-28 size-72 rounded-full bg-primary/10 blur-3xl" />
+          <div class="pointer-events-none absolute bottom-10 left-10 h-px w-1/2 bg-linear-to-r from-primary/60 to-transparent" />
 
-        <form
-          class="grid gap-3 p-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center"
-          @submit.prevent="searchEvents"
-        >
-          <div class="space-y-2">
-            <Label
-              for="homepage-event-search"
-              class="sr-only"
+          <div class="relative space-y-8">
+            <Badge
+              variant="outline"
+              class="w-fit rounded-full border-primary/20 bg-primary/5 px-3 py-1 text-[11px] uppercase tracking-[0.22em] text-primary"
             >
-              Search events
-            </Label>
-            <div class="relative">
-              <Search class="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                id="homepage-event-search"
-                v-model="searchInput"
-                class="h-12 rounded-full pl-10"
-                placeholder="Search by event, venue, or city"
-              />
+              <Sparkles class="size-3.5" />
+              {{ $t('home.badge') }}
+            </Badge>
+
+            <div class="space-y-5">
+              <h1 class="display-title max-w-5xl text-balance md:text-7xl">
+                {{ $t('home.title') }}
+              </h1>
+              <p class="max-w-[48rem] text-base leading-8 text-muted-foreground md:text-lg">
+                {{ $t('home.subtitle') }}
+              </p>
+            </div>
+
+            <form
+              class="grid gap-3 rounded-[2rem] border border-border/70 bg-background/80 p-2 shadow-sm backdrop-blur md:grid-cols-[minmax(0,1fr)_auto] md:items-center"
+              @submit.prevent="searchEvents"
+            >
+              <div class="space-y-2">
+                <Label
+                  for="homepage-event-search"
+                  class="sr-only"
+                >
+                  {{ $t('home.search_label') }}
+                </Label>
+                <div class="relative">
+                  <Search class="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    id="homepage-event-search"
+                    v-model="searchInput"
+                    class="h-12 rounded-full border-0 bg-transparent pl-11 text-base shadow-none focus-visible:ring-0"
+                    :placeholder="$t('home.search_placeholder')"
+                  />
+                </div>
+              </div>
+
+              <Button
+                type="submit"
+                size="lg"
+                class="h-12 rounded-full px-6"
+              >
+                {{ $t('home.search_button') }}
+                <ArrowRight class="size-4" />
+              </Button>
+            </form>
+
+            <div class="flex flex-col gap-3 sm:flex-row">
+              <Button
+                as-child
+                variant="secondary"
+                class="rounded-full px-5"
+              >
+                <NuxtLink to="/events">
+                  {{ $t('home.browse_all') }}
+                  <ArrowRight class="size-4" />
+                </NuxtLink>
+              </Button>
+              <Button
+                as-child
+                variant="ghost"
+                class="rounded-full px-5 text-muted-foreground"
+              >
+                <NuxtLink to="/admin">
+                  {{ $t('home.organizer_cta') }}
+                </NuxtLink>
+              </Button>
             </div>
           </div>
 
-          <Button
-            type="submit"
-            size="lg"
-            class="h-12 rounded-full px-5"
-          >
-            Search events
-            <ArrowRight class="size-4" />
-          </Button>
-        </form>
-
-        <div class="flex flex-col gap-3 sm:flex-row">
-          <Button
-            as-child
-            size="lg"
-            class="rounded-full px-6"
-          >
-            <NuxtLink to="/events">
-              Browse all events
-              <ArrowRight class="size-4" />
-            </NuxtLink>
-          </Button>
-          <Button
-            as-child
-            variant="ghost"
-            size="lg"
-            class="rounded-full px-6 text-muted-foreground"
-          >
-            <NuxtLink to="/admin">
-              Organizer console
-            </NuxtLink>
-          </Button>
+          <div class="relative mt-8 grid gap-3 sm:grid-cols-3">
+            <div class="rounded-[1.5rem] border bg-background/70 p-4 backdrop-blur transition-colors hover:bg-background/90">
+              <Ticket class="mb-3 size-4 text-primary" />
+              <p class="font-mono text-2xl font-semibold tracking-[-0.06em]">
+                {{ featuredEvents.length || '—' }}
+              </p>
+              <p class="text-xs text-muted-foreground">
+                {{ $t('home.quick_stat_sessions_desc') }}
+              </p>
+            </div>
+            <div class="rounded-[1.5rem] border bg-background/70 p-4 backdrop-blur transition-colors hover:bg-background/90">
+              <Clock3 class="mb-3 size-4 text-primary" />
+              <p class="font-mono text-2xl font-semibold tracking-[-0.06em]">
+                {{ $t('home.quick_stat_live_title') }}
+              </p>
+              <p class="text-xs text-muted-foreground">
+                {{ $t('home.quick_stat_live_desc') }}
+              </p>
+            </div>
+            <div class="rounded-[1.5rem] border bg-background/70 p-4 backdrop-blur transition-colors hover:bg-background/90">
+              <UsersRound class="mb-3 size-4 text-primary" />
+              <p class="font-mono text-2xl font-semibold tracking-[-0.06em]">
+                {{ $t('home.quick_stat_safe_title') }}
+              </p>
+              <p class="text-xs text-muted-foreground">
+                {{ $t('home.quick_stat_safe_desc') }}
+              </p>
+            </div>
+          </div>
         </div>
       </div>
 
       <div class="surface-shell overflow-hidden">
-        <div class="surface-core relative min-h-[32rem] overflow-hidden p-0">
+        <div class="surface-core relative min-h-[34rem] overflow-hidden p-0">
           <img
             :src="heroImage"
-            :alt="heroPreviewEvent?.title || 'Audience waiting for a live event'"
-            class="absolute inset-0 h-full w-full object-cover grayscale"
+            :alt="heroPreviewEvent?.title || $t('home.hero_img_alt')"
+            class="absolute inset-0 h-full w-full object-cover grayscale transition-transform duration-700 hover:scale-[1.02]"
           >
-          <div class="absolute inset-0 bg-[linear-gradient(to_top,rgba(0,0,0,0.9),rgba(0,0,0,0.5),rgba(0,0,0,0.14))]" />
+          <div class="absolute inset-0 bg-[linear-gradient(160deg,rgba(0,0,0,0.1),rgba(0,0,0,0.72)_52%,rgba(0,0,0,0.94))]" />
+          <div class="absolute left-0 top-0 h-full w-1 bg-primary" />
 
-          <div class="relative z-10 flex min-h-[32rem] flex-col justify-between gap-8 p-5 text-white md:p-6">
+          <div class="relative z-10 flex min-h-[34rem] flex-col justify-between gap-8 p-5 text-white md:p-6">
             <div class="flex items-start justify-between gap-4">
               <span class="section-eyebrow border-white/10 bg-white/8 text-white">
-                Upcoming drop
+                {{ $t('home.upcoming_drop') }}
               </span>
               <span class="rounded-full border border-white/10 bg-black/35 px-3 py-1.5 font-mono text-[11px] uppercase tracking-[0.18em] text-white/76 backdrop-blur-sm">
-                Buyer preview
+                {{ heroDropDate }}
               </span>
             </div>
 
             <div class="space-y-5">
               <div class="max-w-2xl space-y-3">
                 <p class="text-sm font-medium uppercase tracking-[0.24em] text-white/64">
-                  {{ heroPreviewEvent?.venue?.city || 'Live soon' }}
+                  {{ heroPreviewEvent?.venue?.city || $t('home.live_soon') }}
                 </p>
                 <h2 class="text-balance text-4xl font-semibold leading-[1.02] tracking-[-0.07em] md:text-5xl">
-                  {{ heroPreviewEvent?.title || 'Your next night out starts here.' }}
+                  {{ heroPreviewEvent?.title || $t('home.hero_fallback_title') }}
                 </h2>
                 <p class="max-w-[34rem] text-sm leading-6 text-white/76 md:text-base md:leading-7">
-                  {{ heroPreviewEvent?.subtitle || 'Search the catalog, pick a session, and keep your seats protected while you check out.' }}
+                  {{ heroPreviewEvent?.subtitle || $t('home.hero_fallback_subtitle') }}
                 </p>
               </div>
 
               <div class="rounded-[1.75rem] border border-white/10 bg-black/35 p-4 backdrop-blur-sm">
+                <div class="mb-4 flex flex-wrap items-center gap-2 text-[11px] uppercase tracking-[0.18em] text-white/64">
+                  <span class="rounded-full border border-white/10 bg-white/8 px-3 py-1">
+                    {{ heroPreviewEvent?.status?.replaceAll('_', ' ') || $t('home.buyer_preview') }}
+                  </span>
+                  <span class="rounded-full border border-white/10 bg-white/8 px-3 py-1">
+                    {{ $t('home.quick_stat_live_title') }}
+                  </span>
+                </div>
                 <div class="grid gap-4 md:grid-cols-[1fr_auto] md:items-center">
                   <div class="space-y-1">
                     <p class="text-[11px] uppercase tracking-[0.18em] text-white/64">
-                      Venue
+                      {{ $t('common.venue') }}
                     </p>
                     <p class="text-sm leading-6 text-white/86 md:text-base">
-                      {{ heroPreviewEvent?.venue?.name || 'Browse the catalog for live venues' }}
+                      {{ heroPreviewEvent?.venue?.name || $t('home.browse_catalog_venues') }}
                     </p>
                   </div>
 
@@ -203,7 +274,7 @@ async function searchEvents() {
                     class="rounded-full"
                   >
                     <NuxtLink :to="heroPreviewEvent ? `/events/${heroPreviewEvent.slug}` : '/events'">
-                      {{ heroPreviewEvent ? 'View event' : 'Browse events' }}
+                      {{ heroPreviewEvent ? $t('home.view_event') : $t('home.browse_events_btn') }}
                     </NuxtLink>
                   </Button>
                 </div>
@@ -214,18 +285,65 @@ async function searchEvents() {
       </div>
     </section>
 
-    <section class="space-y-6">
+    <section class="grid gap-3 pb-8 md:grid-cols-4">
+      <div class="flex gap-3 rounded-[1.5rem] border bg-card/60 p-4">
+        <ShieldCheck class="mt-0.5 size-4 shrink-0 text-primary" />
+        <div>
+          <p class="text-sm font-medium">
+            {{ $t('home.trust_holds_title') }}
+          </p>
+          <p class="mt-1 text-xs leading-5 text-muted-foreground">
+            {{ $t('home.trust_holds_desc') }}
+          </p>
+        </div>
+      </div>
+      <div class="flex gap-3 rounded-[1.5rem] border bg-card/60 p-4">
+        <Clock3 class="mt-0.5 size-4 shrink-0 text-primary" />
+        <div>
+          <p class="text-sm font-medium">
+            {{ $t('home.trust_countdown_title') }}
+          </p>
+          <p class="mt-1 text-xs leading-5 text-muted-foreground">
+            {{ $t('home.trust_countdown_desc') }}
+          </p>
+        </div>
+      </div>
+      <div class="flex gap-3 rounded-[1.5rem] border bg-card/60 p-4">
+        <UsersRound class="mt-0.5 size-4 shrink-0 text-primary" />
+        <div>
+          <p class="text-sm font-medium">
+            {{ $t('home.trust_attendees_title') }}
+          </p>
+          <p class="mt-1 text-xs leading-5 text-muted-foreground">
+            {{ $t('home.trust_attendees_desc') }}
+          </p>
+        </div>
+      </div>
+      <div class="flex gap-3 rounded-[1.5rem] border bg-card/60 p-4">
+        <Ticket class="mt-0.5 size-4 shrink-0 text-primary" />
+        <div>
+          <p class="text-sm font-medium">
+            {{ $t('home.trust_reserved_title') }}
+          </p>
+          <p class="mt-1 text-xs leading-5 text-muted-foreground">
+            {{ $t('home.trust_reserved_desc') }}
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <section class="space-y-6 pb-8">
       <div class="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div class="space-y-3">
           <span class="section-eyebrow">
-            Featured releases
+            {{ $t('home.featured_eyebrow') }}
           </span>
           <div class="space-y-3">
-            <h2 class="text-3xl font-semibold tracking-[-0.05em] md:text-4xl">
-              Upcoming events worth checking first.
+            <h2 class="text-3xl font-semibold tracking-[-0.05em] md:text-5xl">
+              {{ $t('home.featured_title') }}
             </h2>
             <p class="max-w-[42rem] text-sm leading-6 text-muted-foreground md:text-base md:leading-7">
-              A small preview of the soonest live events. Use the catalog when you want filters, sorting, cities, and pagination.
+              {{ $t('home.featured_subtitle') }}
             </p>
           </div>
         </div>
@@ -236,7 +354,7 @@ async function searchEvents() {
           class="rounded-full"
         >
           <NuxtLink to="/events">
-            View all events
+            {{ $t('home.view_all_events') }}
             <ArrowRight class="size-4" />
           </NuxtLink>
         </Button>
@@ -271,7 +389,7 @@ async function searchEvents() {
           <div class="mx-auto mb-4 flex size-12 items-center justify-center rounded-full border bg-muted/40">
             <CalendarCheck2 class="size-5 text-muted-foreground" />
           </div>
-          <EmptyTitle>Featured events are warming up</EmptyTitle>
+          <EmptyTitle>{{ $t('home.featured_warming_up') }}</EmptyTitle>
           <EmptyDescription>
             {{ featuredEventsEmptyMessage }}
           </EmptyDescription>
@@ -282,10 +400,42 @@ async function searchEvents() {
           class="mt-5 rounded-full"
         >
           <NuxtLink to="/events">
-            Browse the full catalog
+            {{ $t('home.browse_full_catalog') }}
           </NuxtLink>
         </Button>
       </Empty>
     </section>
+
+    <Card class="overflow-hidden border-muted/70 bg-card/60 shadow-none backdrop-blur">
+      <CardContent class="relative grid gap-6 overflow-hidden p-6 md:grid-cols-[minmax(0,1fr)_auto] md:items-center md:p-8">
+        <div class="pointer-events-none absolute -right-16 -top-16 size-44 rounded-full bg-primary/10 blur-3xl" />
+        <div class="flex gap-4">
+          <div class="hidden size-12 items-center justify-center rounded-full border bg-secondary text-muted-foreground sm:flex">
+            <ShieldCheck class="size-5" />
+          </div>
+          <div class="space-y-2">
+            <p class="text-xs font-medium uppercase tracking-[0.22em] text-muted-foreground">
+              {{ $t('home.organizer_eyebrow') }}
+            </p>
+            <h2 class="text-2xl font-semibold tracking-[-0.05em] md:text-3xl">
+              {{ $t('home.organizer_title') }}
+            </h2>
+            <p class="max-w-[42rem] text-sm leading-6 text-muted-foreground md:text-base md:leading-7">
+              {{ $t('home.organizer_subtitle') }}
+            </p>
+          </div>
+        </div>
+
+        <Button
+          as-child
+          variant="outline"
+          class="rounded-full"
+        >
+          <NuxtLink to="/admin">
+            {{ $t('home.organizer_open_console') }}
+          </NuxtLink>
+        </Button>
+      </CardContent>
+    </Card>
   </AppLayout>
 </template>
