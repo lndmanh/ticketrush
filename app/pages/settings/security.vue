@@ -1,6 +1,5 @@
 <template>
   <div class="space-y-4">
-    <SecuritySettings />
     <Card>
       <CardHeader class="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
         <div class="space-y-1">
@@ -467,7 +466,6 @@
 </template>
 
 <script setup lang="ts">
-import SecuritySettings from '@/components/settings/SecuritySettings.vue'
 import {
   Plus,
   Smartphone,
@@ -488,7 +486,6 @@ import { Field, FieldLabel, FieldError } from '@/components/ui/field'
 import { changePasswordSchema } from '#shared/schemas/userSchema'
 import { calculatePasswordStrength } from '@/utils/passwordValidation'
 import { formatRelativeTime } from '@/lib/utils'
-import type { UserProfileModel } from '~~/types/models/profile'
 import { AUTH_ERROR_MESSAGES, AUTH_SUCCESS_MESSAGES } from '#shared/constants/authMessages'
 import { AVAILABLE_PROVIDERS } from '#shared/constants/oauthProviders'
 
