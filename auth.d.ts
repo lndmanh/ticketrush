@@ -10,9 +10,7 @@ declare module '#auth-utils' {
     loggedInAt?: Date
   }
 
-  interface SecureSessionData {
-    pending2faUserId?: number
-  }
+  interface SecureSessionData { }
 }
 
 /**
