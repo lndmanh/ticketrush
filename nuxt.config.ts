@@ -21,6 +21,7 @@ export default defineNuxtConfig({
     '@nuxtjs/color-mode',
     '@nuxtjs/turnstile',
     '@sentry/nuxt/module',
+    'motion-v/nuxt',
   ],
 
   $production: {
