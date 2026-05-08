@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ArrowRight, CalendarRange, MapPin, Ticket, UserRound } from '@lucide/vue'
 
-const { data: ticketsResponse } = await useFetch('/api/tickets')
+const { data: ticketsResponse } = await useAPI(() => '/api/tickets')
 const tickets = computed(() => ticketsResponse.value?.data ?? [])
 
 function formatIssuedAt(value: string | Date) {
