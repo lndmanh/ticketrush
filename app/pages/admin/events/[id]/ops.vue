@@ -123,7 +123,7 @@ definePageMeta({
       <AdminChartCard
         class="xl:col-span-4"
         eyebrow="Footprint"
-        title="Operations mix"
+        :title="$t('admin_event_ops.operations_mix')"
         description="Current operations footprint across orders, tickets, holds, and queue entries."
         :option="operationsMixOption"
         :height="320"
@@ -134,7 +134,7 @@ definePageMeta({
       <AdminChartCard
         class="xl:col-span-4"
         eyebrow="Queue"
-        title="Queue status"
+        :title="$t('admin_event_ops.queue_status')"
         description="Distribution of queue entry statuses in the current feed."
         :option="queueStatusOption"
         :height="320"
@@ -145,7 +145,7 @@ definePageMeta({
       <AdminChartCard
         class="xl:col-span-4"
         eyebrow="Sample"
-        title="Recent order sample"
+        :title="$t('admin_event_ops.recent_order_sample')"
         description="Latest order amounts shown as a recent-value sample, not a long-term trend."
         :option="recentOrderSampleOption"
         :height="320"

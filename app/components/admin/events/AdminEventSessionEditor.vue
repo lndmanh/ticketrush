@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-
-const { t } = useI18n()
 import { AlertCircle, CalendarClock, ChevronDown, CircleDollarSign, PlusIcon, Ticket, TrashIcon } from '@lucide/vue'
 
 interface EventSessionTicketTypeInput {
+  id?: number
   name: string
+  description?: string
   venueSectionId: number | null
   priceCents: number
   currency: string
@@ -16,8 +16,12 @@ interface EventSessionTicketTypeInput {
 }
 
 interface EventSessionEditorInput {
+  id?: number
+  publicId?: string
   label: string
   venueId: number
+  status?: string
+  queueEnabled: boolean
   startsAt: string
   endsAt: string
   salesStartAt: string
@@ -112,8 +116,12 @@ function getSessionErrorMessages(sessionIndex: number) {
 
 function addSession() {
   const newSession: EventSessionEditorInput = {
-    label: `${t('admin.event_session.session_label')} ${props.modelValue.length + 1}`,
+    id: undefined,
+    publicId: undefined,
+    label: `Session ${props.modelValue.length + 1}`,
     venueId: props.defaultVenueId && props.defaultVenueId > 0 ? props.defaultVenueId : (props.modelValue.find(session => session.venueId > 0)?.venueId ?? 0),
+    status: undefined,
+    queueEnabled: false,
     startsAt: '',
     endsAt: '',
     salesStartAt: '',
@@ -148,7 +156,9 @@ function addTicketType(sessionIndex: number) {
   }
 
   const newTicketType: EventSessionTicketTypeInput = {
+    id: undefined,
     name: 'General Admission',
+    description: undefined,
     venueSectionId: null,
     priceCents: 0,
     currency: 'VND',
@@ -183,18 +193,6 @@ function updateTicketType(sessionIndex: number, ticketIndex: number, updates: Pa
   nextTicketTypes[ticketIndex] = { ...ticketType, ...updates }
   updateSession(sessionIndex, { ticketTypes: nextTicketTypes })
 }
-
-function getSectionName(sectionId: number | null) {
-  if (!sectionId) {
-    return t('admin.event_session.general_admission')
-  }
-
-  return props.venueSections.find(section => section.id === sectionId)?.name ?? t('admin.event_session.unknown_section')
-}
-
-function formatCurrency(value: number, currency: string) {
-  return `${Intl.NumberFormat('en-US').format(value / 100)} ${currency}`
-}
 </script>
 
 <template>
@@ -202,10 +200,10 @@ function formatCurrency(value: number, currency: string) {
     <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
       <div>
         <h3 class="text-lg font-semibold tracking-[-0.03em] text-foreground">
-          {{ $t('admin.event_session.title') }}
+          Event sessions
         </h3>
         <p class="mt-1 text-sm text-muted-foreground">
-          {{ $t('admin.event_session.desc') }}
+          Configure the dates, demand controls, and ticket releases buyers can book.
         </p>
       </div>
 
@@ -249,10 +247,10 @@ function formatCurrency(value: number, currency: string) {
             <div class="min-w-0 space-y-1">
               <div class="flex flex-wrap items-center gap-2">
                 <CardTitle class="truncate text-xl tracking-[-0.04em]">
-                  {{ session.label || `${$t('admin.event_session.session_label')} ${sessionIndex + 1}` }}
+                  {{ session.label || $t('admin.event_session.session_label') + ` ${sessionIndex + 1}` }}
                 </CardTitle>
                 <Badge variant="outline">
-                  {{ $t('admin.event_session.release_count', session.ticketTypes.length) }}
+                  {{ $t('admin.event_session.release_count', { n: session.ticketTypes.length }) }}
                 </Badge>
                 <Badge
                   v-if="sessionHasErrors(sessionIndex)"

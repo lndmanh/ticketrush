@@ -1,6 +1,6 @@
 import { eq } from 'drizzle-orm'
 import type { SeedAdminTaskData } from '~~/types/admin-tasks'
-import { success } from '~~/server/utils/apiResponse'
+import { apiError, success } from '~~/server/utils/apiResponse'
 
 export default defineEventHandler(async () => {
   const db = useDB()
@@ -13,22 +13,23 @@ export default defineEventHandler(async () => {
     .get()
 
   if (existingAdmin) {
-    const response: SeedAdminTaskData = {
-      result: 'Admin account already exists',
-      admin: {
-        id: existingAdmin.id,
-        username: existingAdmin.username,
-        name: existingAdmin.name,
-        isAdmin: existingAdmin.isAdmin,
-      },
+    if (existingAdmin.isAdmin && !existingAdmin.emailVerified) {
+      const response: SeedAdminTaskData = {
+        result: 'Admin account already exists',
+        admin: {
+          id: existingAdmin.id,
+          username: existingAdmin.username,
+          name: existingAdmin.name,
+          isAdmin: existingAdmin.isAdmin,
+        },
+      }
+      return success(response)
     }
-
-    return success(response)
   }
 
   const defaultAdminPassword = useRuntimeConfig().defaultAdminPassword
   if (!defaultAdminPassword) {
-    throw createError({ statusCode: 500, statusMessage: 'Default admin password is not configured' })
+    throw apiError({ status: 500, statusText: 'Internal Server Error', code: 'ERROR', message: 'Default admin password is not configured' })
   }
 
   const adminPassword = defaultAdminPassword.toString()
@@ -42,6 +43,7 @@ export default defineEventHandler(async () => {
       name: 'Administrator',
       email: 'admin@nnsvn.me',
       password: hashedPassword,
+      emailVerified: true,
       isAdmin: true,
       createdAt: now,
       updatedAt: now,
@@ -50,7 +52,7 @@ export default defineEventHandler(async () => {
     .returning()
 
   if (!newAdmin) {
-    throw createError({ statusCode: 500, statusMessage: 'Failed to create admin account' })
+    throw apiError({ status: 500, statusText: 'Internal Server Error', code: 'ERROR', message: 'Failed to create admin account' })
   }
 
   const response: SeedAdminTaskData = {

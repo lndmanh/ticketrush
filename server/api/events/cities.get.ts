@@ -3,5 +3,6 @@ import { success } from '~~/server/utils/apiResponse'
 
 export default defineEventHandler(async () => {
   const cities = await eventService.getEventCatalogCities()
-  return success(cities)
+  const response: Awaited<ReturnType<typeof eventService.getEventCatalogCities>> = cities
+  return success(response)
 })

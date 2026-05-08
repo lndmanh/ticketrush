@@ -1,28 +1,13 @@
 <script setup lang="ts">
+import { apiRoutes } from '#shared/apiRoutes'
 import { Field as VeeField, useForm } from 'vee-validate'
 import type { SavedAttendeeFormInput, SavedAttendeeGender } from '#shared/schemas/savedAttendeeSchema'
 import { checkoutCustomerSchema } from '#shared/schemas/ticketingSchema'
 import type { CheckoutCustomerInput, CheckoutTicketHolderInput } from '#shared/schemas/ticketingSchema'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Switch } from '@/components/ui/switch'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import {
-  Field,
-  FieldDescription,
-  FieldError,
-  FieldGroup,
-  FieldLabel,
-} from '@/components/ui/field'
 import { toast } from 'vue-sonner'
+import { apiRequest } from '@/utils/apiRequest'
+import { parseApiError } from '@/utils/apiError'
 
-const { t } = useI18n()
 const route = useRoute()
 const orderId = computed(() => route.params.orderId.toString())
 const holdPublicId = computed(() => typeof route.query.hold === 'string' ? route.query.hold : '')
@@ -31,10 +16,10 @@ const currentTime = ref(Date.now())
 let holdClockIntervalId: number | null = null
 let checkoutRefreshIntervalId: number | null = null
 
-const { data: checkoutResponse, refresh } = await useFetch(() => `/api/checkout/${orderId.value}`)
+const { data: checkoutResponse, refresh } = await useAPI(() => `/api/checkout/${orderId.value}`)
 const checkout = computed(() => checkoutResponse.value?.data ?? null)
 
-const { data: savedAttendeesResponse } = await useFetch('/api/saved-attendees')
+const { data: savedAttendeesResponse } = await useAPI(() => '/api/saved-attendees')
 const savedAttendees = computed(() => savedAttendeesResponse.value?.data ?? [])
 
 type TicketHolderSource = 'account' | 'saved-attendee' | 'manual'
@@ -251,7 +236,7 @@ const isHoldExpired = computed(() => holdTimeRemainingMs.value === 0)
 const onSubmit = handleSubmit(
   async (values) => {
     if (!checkout.value?.order || !holdPublicId.value || isHoldExpired.value) {
-      toast.error(t('checkout.hold_expired_toast'))
+      toast.error('Your seat hold has expired. Please return to the event and choose seats again.')
       return
     }
 
@@ -264,7 +249,7 @@ const onSubmit = handleSubmit(
     isSubmitting.value = true
 
     try {
-      await $fetch('/api/checkout/confirm', {
+      const response = await apiRequest(apiRoutes.CHECKOUT_CONFIRM, {
         method: 'POST',
         body: {
           checkoutSessionId: checkout.value.order.checkoutSessionId,
@@ -274,21 +259,13 @@ const onSubmit = handleSubmit(
           ticketHolders: ticketHolderDrafts.value.map(toPayloadHolder),
         },
       })
+      if (!response.success) throw response
 
-      toast.success(t('checkout.order_confirmed_toast'))
+      toast.success('Order confirmed')
       await refresh()
     }
     catch (error) {
-      let message = t('checkout.order_confirm_error')
-
-      if (error && typeof error === 'object' && 'data' in error) {
-        const errorData = error.data
-        if (errorData && typeof errorData === 'object' && 'message' in errorData && typeof errorData.message === 'string') {
-          message = errorData.message
-        }
-      }
-
-      toast.error(message)
+      toast.error(parseApiError(error, 'We could not confirm the order').message)
     }
     finally {
       isSubmitting.value = false
@@ -337,10 +314,10 @@ definePageMeta({
       <div class="space-y-4">
         <div class="space-y-3">
           <h1 class="text-3xl font-semibold tracking-tight">
-            {{ checkout.order.status === 'confirmed' ? $t('checkout.order_confirmed') : $t('checkout.review_order') }}
+            {{ checkout.order.status === 'confirmed' ? 'Order confirmed.' : 'Review your order.' }}
           </h1>
           <p class="max-w-[40rem] text-base leading-8 text-muted-foreground">
-            {{ $t('checkout.demo_note') }}
+            This demo checkout does not connect to a live payment provider. Confirming the order finalizes your held seats and issues QR tickets immediately.
           </p>
         </div>
       </div>
@@ -357,13 +334,13 @@ definePageMeta({
             ]"
           >
             <p class="text-sm text-muted-foreground">
-              {{ $t('checkout.hold_timer') }}
+              Hold timer
             </p>
             <p class="mt-2 text-3xl font-semibold tracking-[-0.05em]">
               {{ holdCountdownLabel }}
             </p>
             <p class="mt-2 text-sm leading-7 text-muted-foreground">
-              {{ isHoldExpired ? $t('checkout.hold_expired_note') : $t('checkout.hold_active_note') }}
+              {{ isHoldExpired ? 'The hold expired. Return to the event and choose seats again.' : 'Seats remain reserved while this countdown is active.' }}
             </p>
           </div>
 
@@ -389,7 +366,7 @@ definePageMeta({
 
           <div class="rounded-[1.75rem] bg-accent px-5 py-5">
             <p class="text-sm text-muted-foreground">
-              {{ $t('checkout.order_total') }}
+              Order total
             </p>
             <p class="mt-2 text-4xl font-semibold tracking-[-0.06em]">
               {{ Intl.NumberFormat('en-US').format(checkout.order.amountCents / 100) }} VND
@@ -404,7 +381,7 @@ definePageMeta({
               {{ checkout.event.title }}
             </p>
             <p class="mt-1">
-              {{ checkoutSessionStartsAt ? new Date(checkoutSessionStartsAt).toLocaleString() : $t('checkout.session_time_tba') }}
+              {{ checkoutSessionStartsAt ? new Date(checkoutSessionStartsAt).toLocaleString() : 'Session time will be announced by the organizer.' }}
             </p>
           </div>
         </div>
@@ -422,10 +399,10 @@ definePageMeta({
         <div class="grid gap-8 lg:grid-cols-2">
           <div class="space-y-3">
             <h2 class="text-3xl font-semibold tracking-[-0.05em]">
-              {{ $t('checkout.finish_order_title') }}
+              Finish the order inside your hold window.
             </h2>
             <p class="text-sm leading-7 text-muted-foreground">
-              {{ $t('checkout.finish_order_desc') }}
+              We use this information for the digital ticket payload and dashboard demographics. You can keep optional fields minimal if you prefer.
             </p>
           </div>
 
@@ -442,7 +419,7 @@ definePageMeta({
                   <Input
                     id="checkout-customer-name"
                     :model-value="field.value"
-                    placeholder="Nguyen Minh Anh"
+                    :placeholder="$t('checkout.full_name')"
                     :aria-invalid="!!errors.length"
                     @update:model-value="field.onChange"
                   />
@@ -562,16 +539,16 @@ definePageMeta({
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="female">
-                          Female
+                          {{ $t('checkout.gender_female') }}
                         </SelectItem>
                         <SelectItem value="male">
-                          Male
+                          {{ $t('checkout.gender_male') }}
                         </SelectItem>
                         <SelectItem value="non-binary">
-                          Non-binary
+                          {{ $t('checkout.gender_non_binary') }}
                         </SelectItem>
                         <SelectItem value="prefer-not-to-say">
-                          Prefer not to say
+                          {{ $t('checkout.gender_prefer_not') }}
                         </SelectItem>
                       </SelectContent>
                     </Select>
@@ -678,7 +655,7 @@ definePageMeta({
                       :id="`name-${draft.eventSeatId}`"
                       v-model="draft.holder.legalName"
                       :readonly="draft.source === 'account'"
-                      placeholder="Legal name"
+                      :placeholder="$t('checkout.legal_name')"
                     />
                   </div>
 
@@ -691,7 +668,7 @@ definePageMeta({
                       v-model="draft.holder.email"
                       type="email"
                       :readonly="draft.source === 'account'"
-                      placeholder="Email"
+                      :placeholder="$t('checkout.email')"
                     />
                   </div>
 
@@ -703,7 +680,7 @@ definePageMeta({
                       :id="`phone-${draft.eventSeatId}`"
                       v-model="draft.holder.phone"
                       :readonly="draft.source === 'account'"
-                      placeholder="Phone"
+                      :placeholder="$t('checkout.phone')"
                     />
                   </div>
 
@@ -720,16 +697,16 @@ definePageMeta({
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="female">
-                          Female
+                          {{ $t('checkout.gender_female') }}
                         </SelectItem>
                         <SelectItem value="male">
-                          Male
+                          {{ $t('checkout.gender_male') }}
                         </SelectItem>
                         <SelectItem value="non-binary">
-                          Non-binary
+                          {{ $t('checkout.gender_non_binary') }}
                         </SelectItem>
                         <SelectItem value="prefer-not-to-say">
-                          Prefer not to say
+                          {{ $t('checkout.gender_prefer_not') }}
                         </SelectItem>
                       </SelectContent>
                     </Select>
@@ -743,7 +720,7 @@ definePageMeta({
                       :id="`birth-${draft.eventSeatId}`"
                       v-model="draft.holder.birthDate"
                       type="date"
-                      placeholder="Birth date"
+                      :placeholder="$t('checkout.birth_date')"
                     />
                   </div>
 
@@ -754,7 +731,7 @@ definePageMeta({
                     <Input
                       :id="`preferred-${draft.eventSeatId}`"
                       v-model="draft.holder.preferredName"
-                      placeholder="Preferred name"
+                      :placeholder="$t('checkout.preferred_name')"
                     />
                   </div>
 
@@ -765,7 +742,7 @@ definePageMeta({
                     <Input
                       :id="`guardian-name-${draft.eventSeatId}`"
                       v-model="draft.holder.guardianName"
-                      placeholder="Guardian name"
+                      :placeholder="$t('checkout.guardian_name')"
                     />
                   </div>
 
@@ -777,7 +754,7 @@ definePageMeta({
                       :id="`guardian-email-${draft.eventSeatId}`"
                       v-model="draft.holder.guardianEmail"
                       type="email"
-                      placeholder="Guardian email"
+                      :placeholder="$t('checkout.guardian_email')"
                     />
                   </div>
 
@@ -788,7 +765,7 @@ definePageMeta({
                     <Input
                       :id="`guardian-phone-${draft.eventSeatId}`"
                       v-model="draft.holder.guardianPhone"
-                      placeholder="Guardian phone"
+                      :placeholder="$t('checkout.guardian_phone')"
                     />
                   </div>
 
@@ -799,7 +776,7 @@ definePageMeta({
                     <Input
                       :id="`notes-${draft.eventSeatId}`"
                       v-model="draft.holder.notes"
-                      placeholder="Notes"
+                      :placeholder="$t('checkout.notes')"
                     />
                   </div>
 
@@ -810,7 +787,7 @@ definePageMeta({
                     <Input
                       :id="`access-${draft.eventSeatId}`"
                       v-model="draft.holder.accessibilityNeeds"
-                      placeholder="Accessibility needs"
+                      :placeholder="$t('checkout.accessibility_needs')"
                     />
                   </div>
 
@@ -847,7 +824,7 @@ definePageMeta({
           :is-loading="isSubmitting"
           :disabled="isHoldExpired"
         >
-          {{ $t('checkout.confirm_order') }}
+          Confirm order
         </Button>
       </form>
     </section>
@@ -868,7 +845,7 @@ definePageMeta({
         <div class="flex flex-col gap-4 p-6 md:flex-row md:items-center md:justify-between md:p-8">
           <div>
             <p class="mt-3 text-sm text-muted-foreground">
-              {{ $t('checkout.tickets_in_wallet') }}
+              Your issued tickets are now available in your account wallet.
             </p>
           </div>
 
@@ -877,7 +854,7 @@ definePageMeta({
             class="rounded-full"
           >
             <NuxtLink to="/tickets">
-              {{ $t('checkout.open_my_tickets') }}
+              Open my tickets
             </NuxtLink>
           </Button>
         </div>

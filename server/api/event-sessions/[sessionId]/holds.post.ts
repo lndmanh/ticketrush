@@ -2,25 +2,25 @@ import { createSeatHoldSchema } from '#shared/schemas/ticketingSchema'
 import type { HoldData } from '~~/types/ticketing'
 import eventSessionService from '~~/server/utils/database/event-session'
 import holdService from '~~/server/utils/ticketing/holds'
-import { success } from '~~/server/utils/apiResponse'
+import { apiError, success, zodErrorToFieldErrors } from '~~/server/utils/apiResponse'
 import { getTicketingSessionKey } from '~~/server/utils/ticketing/session'
 
 export default defineEventHandler(async (event) => {
   const sessionPublicId = getRouterParam(event, 'sessionId')
   if (!sessionPublicId) {
-    throw createError({ statusCode: 404, statusMessage: 'Event session not found.' })
+    throw apiError({ status: 404, statusText: 'Not Found', code: 'SESSION_NOT_FOUND', message: 'Event session not found.' })
   }
 
   const session = await eventSessionService.getByPublicId(sessionPublicId)
   if (!session) {
-    throw createError({ statusCode: 404, statusMessage: 'Event session not found.' })
+    throw apiError({ status: 404, statusText: 'Not Found', code: 'SESSION_NOT_FOUND', message: 'Event session not found.' })
   }
 
   const sessionKey = getTicketingSessionKey(event)
   const userSession = await requireUserSession(event)
   const result = await readValidatedBody(event, body => createSeatHoldSchema.safeParse({ ...body, eventSessionId: session.id }))
   if (!result.success) {
-    throw createError({ statusCode: 400, statusMessage: 'Bad Request. Hold request is invalid.', data: result.error })
+    throw apiError({ status: 400, statusText: 'Bad Request', code: 'VALIDATION_ERROR', message: 'Invalid request.', fieldErrors: zodErrorToFieldErrors(result.error), cause: result.error })
   }
 
   const holdBundle = await holdService.createHold({
@@ -28,7 +28,7 @@ export default defineEventHandler(async (event) => {
     sessionKey,
   }, userSession.user?.id)
   if (!holdBundle) {
-    throw createError({ statusCode: 500, statusMessage: 'Failed to create seat hold.' })
+    throw apiError({ status: 500, statusText: 'Internal Server Error', code: 'ERROR', message: 'Failed to create seat hold.' })
   }
 
   const response: HoldData = {

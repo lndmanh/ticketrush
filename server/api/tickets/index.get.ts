@@ -4,5 +4,6 @@ import { success } from '~~/server/utils/apiResponse'
 export default defineEventHandler(async (event) => {
   const session = await requireUserSession(event)
   const tickets = await checkoutService.listTicketsForUser(session.user.id)
-  return success(tickets)
+  const response: Awaited<ReturnType<typeof checkoutService.listTicketsForUser>> = tickets
+  return success(response)
 })

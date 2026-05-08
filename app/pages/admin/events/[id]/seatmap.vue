@@ -7,6 +7,7 @@ const { t } = useI18n()
 
 const route = useRoute()
 const eventId = computed(() => Number(route.params.id))
+const { t } = useI18n()
 const selectedStatus = ref<'all' | 'available' | 'locked' | 'sold'>('all')
 
 const { detail, dashboard } = await useAdminEventWorkspace(eventId, {
@@ -144,7 +145,7 @@ definePageMeta({
       <div class="grid gap-4 xl:col-span-5 xl:auto-rows-fr">
         <AdminChartCard
           eyebrow="Inventory"
-          title="Seat status mix"
+          :title="$t('admin.event_chart_seat_status')"
           description="Current inventory split across available, held, and sold seats."
           :option="seatStatusOption"
           :height="260"
@@ -154,7 +155,7 @@ definePageMeta({
         />
         <AdminChartCard
           eyebrow="Ranking"
-          title="Sections by sold seats"
+          :title="$t('admin_event_seatmap.sections_by_sold_seats')"
           description="Section ranking based on sold inventory."
           :option="sectionSoldOption"
           :height="260"

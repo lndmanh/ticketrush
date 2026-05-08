@@ -16,6 +16,7 @@ export const users = sqliteTable('users', {
   name: text('name').notNull(),
   password: text('password').notNull(),
   email: text('email').notNull().unique(),
+  emailVerified: integer('email_verified', { mode: 'boolean' }).notNull().default(false),
   isAdmin: integer('is_admin', { mode: 'boolean' }).notNull().default(false),
   lastLoginAt: integer('last_login_at', { mode: 'timestamp' }), // Can be null if never logged in
   phone: text('phone'),
@@ -23,6 +24,21 @@ export const users = sqliteTable('users', {
   gender: text('gender').$type<SavedAttendeeGender>(),
   ...timestampColumns,
 })
+
+export const authTokens = sqliteTable('auth_tokens', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  userId: integer('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  token: text('token').notNull().unique(),
+  type: text('type').$type<'email_verification' | 'password_reset'>().notNull(),
+  expiresAt: integer('expires_at', { mode: 'timestamp' }).notNull(),
+  usedAt: integer('used_at', { mode: 'timestamp' }),
+  ...timestampColumns,
+}, table => [
+  index('auth_tokens_user_idx').on(table.userId),
+  index('auth_tokens_token_idx').on(table.token),
+  index('auth_tokens_type_idx').on(table.type),
+  index('auth_tokens_expires_idx').on(table.expiresAt),
+])
 
 export const savedAttendees = sqliteTable('saved_attendees', {
   id: integer('id').primaryKey({ autoIncrement: true }),
@@ -678,6 +694,13 @@ export const usersRelations = relations(users, ({ many }) => ({
 export const credentialsRelations = relations(credentials, ({ one }) => ({
   user: one(users, {
     fields: [credentials.userId],
+    references: [users.id],
+  }),
+}))
+
+export const authTokensRelations = relations(authTokens, ({ one }) => ({
+  user: one(users, {
+    fields: [authTokens.userId],
     references: [users.id],
   }),
 }))

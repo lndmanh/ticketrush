@@ -1,35 +1,37 @@
 <script setup lang="ts">
-import CenteredAppLayout from '@/components/CenteredAppLayout.vue'
+import AuthPageLayout from '@/components/auth/AuthPageLayout.vue'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { UserIcon, Lock, Eye, EyeOff, Mail } from '@lucide/vue'
-import PasskeyRegistrationDialog from '@/components/PasskeyRegistrationDialog.vue'
+import { Eye, EyeOff, Lock, Mail, UserIcon } from '@lucide/vue'
 import PasswordStrengthIndicator from '@/components/PasswordStrengthIndicator.vue'
 import { registerUserSchema } from '#shared/schemas/userSchema'
 import { calculatePasswordStrength } from '@/utils/passwordValidation'
 import { getAuthErrorMessage } from '#shared/constants/authMessages'
 import { AVAILABLE_PROVIDERS } from '#shared/constants/oauthProviders'
 import { apiRoutes } from '#shared/apiRoutes'
+import { apiRequest } from '@/utils/apiRequest'
+import { parseApiError } from '@/utils/apiError'
 import { Field as VeeField, useForm } from 'vee-validate'
 import { Field, FieldLabel, FieldError } from '@/components/ui/field'
-import type { ApiResponse } from '~~/types/api'
-import type { OAuthPopupCompleteMessage } from '~~/types/auth'
+import { APP_MANIFEST } from '#shared/constants/manifest'
 
-const { t } = useI18n()
 const route = useRoute()
+const requestUrl = useRequestURL()
 const showPassword = ref(false)
 const showConfirmPassword = ref(false)
 const isLoading = ref(false)
 const error = ref('')
-const showPasskeyDialog = ref(false)
-const registeredUsername = ref('')
 const turnstileToken = ref('')
-const registrationFormElement = ref<HTMLFormElement | null>(null)
 const oauthLoadingProvider = ref<string | null>(null)
 const oauthPopup = ref<Window | null>(null)
 const oauthPopupTimeout = ref<ReturnType<typeof setTimeout> | null>(null)
 const oauthPopupCloseMonitor = ref<ReturnType<typeof setInterval> | null>(null)
+
+type OAuthPopupCompleteMessage = {
+  type: 'oauth:complete'
+  url: string
+}
 
 function getQueryString(value: string | string[] | null | undefined) {
   if (typeof value === 'string') {
@@ -42,6 +44,25 @@ function getQueryString(value: string | string[] | null | undefined) {
 
   return ''
 }
+
+const redirectTo = computed(() => {
+  const value = getQueryString(route.query.redirectTo)
+  if (!value) {
+    return '/'
+  }
+
+  try {
+    const parsed = new URL(value, requestUrl.origin)
+    if (parsed.origin !== requestUrl.origin) {
+      return '/'
+    }
+
+    return `${parsed.pathname}${parsed.search}${parsed.hash}`
+  }
+  catch {
+    return '/'
+  }
+})
 
 function stopOAuthPopupTimeout() {
   if (oauthPopupTimeout.value) {
@@ -72,7 +93,7 @@ function onOAuthPopupComplete(event: MessageEvent<OAuthPopupCompleteMessage>) {
     target = new URL(event.data.url)
   }
   catch {
-    error.value = t('auth.oauth_url_invalid')
+    error.value = 'Authentication completed but response URL was invalid. Please try again.'
     return
   }
 
@@ -94,7 +115,8 @@ const form = useForm({
 const { handleSubmit, values, meta, setFieldValue } = form
 
 const onSubmit = handleSubmit(async () => {
-  registrationFormElement.value?.submit()
+  const formEl = document.querySelector('form[action="/api/auth/register-password"]')
+  if (formEl instanceof HTMLFormElement) formEl.submit()
 })
 
 watch(turnstileToken, (val) => {
@@ -111,21 +133,13 @@ const isFormValid = computed(() => {
 watch(() => route.query.error, (queryValue) => {
   const errorCode = getQueryString(queryValue)
   if (errorCode) {
-    error.value = getAuthErrorMessage(errorCode) || t('auth.register_error_generic')
+    error.value = getAuthErrorMessage(errorCode) || 'An error occurred during registration'
   }
 }, { immediate: true })
 
 onMounted(() => {
   window.addEventListener('message', onOAuthPopupComplete)
 })
-
-function onPasskeyCreated() {
-  window.location.href = '/'
-}
-
-function onPasskeySkipped() {
-  window.location.href = '/'
-}
 
 async function signUpWithProvider(provider: string) {
   if (oauthLoadingProvider.value) return
@@ -134,12 +148,12 @@ async function signUpWithProvider(provider: string) {
   error.value = ''
 
   try {
-    const response = await $fetch<ApiResponse<{ url: string }>>(apiRoutes.AUTH_OAUTH_URL, {
+    const response = await apiRequest(apiRoutes.AUTH_OAUTH_URL, {
       method: 'POST',
       body: { provider, action: 'login' },
     })
     if (!response.success) {
-      throw new Error(response.error.message)
+      throw response
     }
 
     const popupWidth = Math.min(560, window.outerWidth - 40)
@@ -190,14 +204,14 @@ async function signUpWithProvider(provider: string) {
       stopOAuthPopupTimeout()
       oauthPopup.value = null
       oauthLoadingProvider.value = null
-      error.value = t('auth.oauth_timeout')
+      error.value = 'OAuth session timed out or popup was closed. Please try again.'
     }, 120000)
   }
-  catch {
+  catch (error) {
     stopOAuthPopupCloseMonitor()
     stopOAuthPopupTimeout()
     oauthPopup.value = null
-    error.value = t('auth.oauth_failed')
+    error.value = parseApiError(error, 'Unable to continue with provider right now. Please try again.').message
     oauthLoadingProvider.value = null
   }
 }
@@ -216,329 +230,333 @@ definePageMeta({
 </script>
 
 <template>
-  <CenteredAppLayout title="Register">
-    <Card class="w-full max-w-md mx-4">
-      <CardHeader class="text-center relative">
-        <CardTitle>
-          {{ $t('auth.register_heading') }}
-        </CardTitle>
-      </CardHeader>
+  <AuthPageLayout quote="Build a library that feels like yours from the first page.">
+    <div class="space-y-1">
+      <h1 class="text-2xl font-bold tracking-tight">
+        Create account
+      </h1>
+      <p class="text-base text-muted-foreground">
+        {{ APP_MANIFEST.description }}
+      </p>
+    </div>
 
-      <CardContent>
-        <Alert
-          v-if="error"
-          variant="destructive"
-          class="mb-4"
+    <Alert
+      v-if="error"
+      variant="destructive"
+    >
+      <AlertDescription>{{ error }}</AlertDescription>
+    </Alert>
+
+    <!-- OAuth Sign Up -->
+    <div class="space-y-3">
+      <template
+        v-for="provider in AVAILABLE_PROVIDERS"
+        :key="provider.id"
+      >
+        <Button
+          type="button"
+          variant="outline"
+          class="w-full active:scale-[0.98]"
+          :is-loading="oauthLoadingProvider === provider.id"
+          :disabled="isLoading || oauthLoadingProvider !== null"
+          @click="signUpWithProvider(provider.id)"
         >
-          <AlertDescription>{{ error }}</AlertDescription>
-        </Alert>
+          <div class="h-4 w-4 flex items-center justify-center">
+            <OAuthIcon :provider="provider.id" />
+          </div>
+          Sign up with {{ provider.name }}
+        </Button>
+      </template>
 
-        <!-- OAuth Sign Up -->
-        <div class="space-y-3 mb-6">
-          <template
-            v-for="provider in AVAILABLE_PROVIDERS"
-            :key="provider.id"
+      <div class="flex items-center gap-2 py-1">
+        <div class="h-px flex-1 bg-border" />
+        <span class="text-xs uppercase text-muted-foreground">Or sign up with email</span>
+        <div class="h-px flex-1 bg-border" />
+      </div>
+    </div>
+
+    <form
+      action="/api/auth/register-password"
+      method="POST"
+      class="space-y-4"
+      @submit.prevent="onSubmit"
+    >
+      <VeeField
+        v-slot="{ field, errors }"
+        name="username"
+      >
+        <Field
+          :data-invalid="!!errors.length"
+          class="space-y-2"
+        >
+          <FieldLabel
+            for="username"
+            class="text-sm font-medium"
           >
+            Username
+          </FieldLabel>
+          <div class="relative">
+            <UserIcon class="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+            <Input
+              id="username"
+              :model-value="field.value"
+              name="username"
+              type="text"
+              placeholder="Enter your username"
+              class="h-11 pl-9"
+              :aria-invalid="!!errors.length"
+              :disabled="isLoading"
+              @update:model-value="field.onChange"
+            />
+          </div>
+          <FieldError
+            v-if="errors.length"
+            :errors="errors"
+          />
+        </Field>
+      </VeeField>
+
+      <VeeField
+        v-slot="{ field, errors }"
+        name="name"
+      >
+        <Field
+          :data-invalid="!!errors.length"
+          class="space-y-2"
+        >
+          <FieldLabel
+            for="name"
+            class="text-sm font-medium"
+          >
+            Display Name
+          </FieldLabel>
+          <div class="relative">
+            <UserIcon class="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+            <Input
+              id="name"
+              :model-value="field.value"
+              name="name"
+              type="text"
+              placeholder="Enter your display name"
+              class="h-11 pl-9"
+              :aria-invalid="!!errors.length"
+              :disabled="isLoading"
+              @update:model-value="field.onChange"
+            />
+          </div>
+          <FieldError
+            v-if="errors.length"
+            :errors="errors"
+          />
+        </Field>
+      </VeeField>
+
+      <VeeField
+        v-slot="{ field, errors }"
+        name="email"
+      >
+        <Field
+          :data-invalid="!!errors.length"
+          class="space-y-2"
+        >
+          <FieldLabel
+            for="email"
+            class="text-sm font-medium"
+          >
+            Email
+          </FieldLabel>
+          <div class="relative">
+            <Mail class="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+            <Input
+              id="email"
+              :model-value="field.value"
+              name="email"
+              type="email"
+              placeholder="Enter your email"
+              class="h-11 pl-9"
+              :aria-invalid="!!errors.length"
+              :disabled="isLoading"
+              @update:model-value="field.onChange"
+            />
+          </div>
+          <FieldError
+            v-if="errors.length"
+            :errors="errors"
+          />
+        </Field>
+      </VeeField>
+
+      <VeeField
+        v-slot="{ field, errors }"
+        name="password"
+      >
+        <Field
+          :data-invalid="!!errors.length"
+          class="space-y-2"
+        >
+          <FieldLabel
+            for="password"
+            class="text-sm font-medium"
+          >
+            Password
+          </FieldLabel>
+          <div class="relative">
+            <Lock class="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+            <Input
+              id="password"
+              :model-value="field.value"
+              name="password"
+              :type="showPassword ? 'text' : 'password'"
+              placeholder="Enter your password"
+              class="h-11 pl-9 pr-9"
+              :aria-invalid="!!errors.length"
+              :disabled="isLoading"
+              @update:model-value="field.onChange"
+            />
             <Button
               type="button"
-              variant="outline"
-              class="w-full"
-              :is-loading="oauthLoadingProvider === provider.id"
-              :disabled="isLoading || oauthLoadingProvider !== null"
-              @click="signUpWithProvider(provider.id)"
+              variant="ghost"
+              size="sm"
+              class="absolute right-1 top-1 h-9 w-9 p-0 hover:bg-transparent"
+              :aria-label="showPassword ? 'Hide password' : 'Show password'"
+              :aria-pressed="showPassword"
+              @click="showPassword = !showPassword"
             >
-              <div class="h-4 w-4 flex items-center justify-center">
-                <OAuthIcon :provider="provider.id" />
-              </div>
-              {{ $t('auth.sign_up_with', { provider: provider.name }) }}
+              <Eye
+                v-if="!showPassword"
+                class="h-4 w-4"
+                aria-hidden="true"
+              />
+              <EyeOff
+                v-else
+                class="h-4 w-4"
+                aria-hidden="true"
+              />
             </Button>
-          </template>
-
-          <div class="relative">
-            <div class="absolute inset-0 flex items-center">
-              <span class="w-full border-t border-gray-200 dark:border-gray-700" />
-            </div>
-            <div class="relative flex justify-center text-xs uppercase">
-              <span class="bg-card/60 px-2 text-gray-500 dark:text-gray-400 rounded-xl">{{ $t('auth.or_sign_up_email') }}</span>
-            </div>
           </div>
-        </div>
+          <FieldError
+            v-if="errors.length"
+            :errors="errors"
+          />
+          <!-- Password Strength Indicator -->
+          <PasswordStrengthIndicator
+            :password="values.password || ''"
+            :strength="passwordStrength"
+          />
+        </Field>
+      </VeeField>
 
-        <form
-          ref="registrationFormElement"
-          action="/api/auth/register-password"
-          method="POST"
-          class="space-y-4"
-          @submit.prevent="onSubmit"
+      <VeeField
+        v-slot="{ field, errors }"
+        name="confirm-password"
+      >
+        <Field
+          :data-invalid="!!errors.length"
+          class="space-y-2"
         >
-          <VeeField
-            v-slot="{ field, errors }"
-            name="username"
+          <FieldLabel
+            for="confirmPassword"
+            class="text-sm font-medium"
           >
-            <Field
-              :data-invalid="!!errors.length"
-              class="space-y-2"
-            >
-              <FieldLabel
-                for="username"
-                class="text-sm font-medium"
-              >
-              {{ $t('auth.username_label') }}
-              </FieldLabel>
-              <div class="relative">
-                <UserIcon class="absolute left-3 top-3 h-4 w-4" />
-                <Input
-                  id="username"
-                  :model-value="field.value"
-                  type="text"
-                  :placeholder="$t('auth.username_placeholder')"
-                  class="pl-9 h-11"
-                  :aria-invalid="!!errors.length"
-                  :disabled="isLoading"
-                  @update:model-value="field.onChange"
-                />
-              </div>
-              <FieldError
-                v-if="errors.length"
-                :errors="errors"
-              />
-            </Field>
-          </VeeField>
-
-          <VeeField
-            v-slot="{ field, errors }"
-            name="name"
-          >
-            <Field
-              :data-invalid="!!errors.length"
-              class="space-y-2"
-            >
-              <FieldLabel
-                for="name"
-                class="text-sm font-medium"
-              >
-              {{ $t('auth.display_name_label') }}
-              </FieldLabel>
-              <div class="relative">
-                <UserIcon class="absolute left-3 top-3 h-4 w-4" />
-                <Input
-                  id="name"
-                  :model-value="field.value"
-                  type="text"
-                  :placeholder="$t('auth.display_name_placeholder')"
-                  class="pl-9 h-11"
-                  :aria-invalid="!!errors.length"
-                  :disabled="isLoading"
-                  @update:model-value="field.onChange"
-                />
-              </div>
-              <FieldError
-                v-if="errors.length"
-                :errors="errors"
-              />
-            </Field>
-          </VeeField>
-
-          <VeeField
-            v-slot="{ field, errors }"
-            name="email"
-          >
-            <Field
-              :data-invalid="!!errors.length"
-              class="space-y-2"
-            >
-              <FieldLabel
-                for="email"
-                class="text-sm font-medium"
-              >
-              {{ $t('auth.email_label') }}
-              </FieldLabel>
-              <div class="relative">
-                <Mail class="absolute left-3 top-3 h-4 w-4" />
-                <Input
-                  id="email"
-                  :model-value="field.value"
-                  type="email"
-                  :placeholder="$t('auth.email_placeholder')"
-                  class="pl-9 h-11"
-                  :aria-invalid="!!errors.length"
-                  :disabled="isLoading"
-                  @update:model-value="field.onChange"
-                />
-              </div>
-              <FieldError
-                v-if="errors.length"
-                :errors="errors"
-              />
-            </Field>
-          </VeeField>
-
-          <VeeField
-            v-slot="{ field, errors }"
-            name="password"
-          >
-            <Field
-              :data-invalid="!!errors.length"
-              class="space-y-2"
-            >
-              <FieldLabel
-                for="password"
-                class="text-sm font-medium"
-              >
-              {{ $t('auth.password_label') }}
-              </FieldLabel>
-              <div class="relative">
-                <Lock class="absolute left-3 top-3 h-4 w-4" />
-                <Input
-                  id="password"
-                  :model-value="field.value"
-                  :type="showPassword ? 'text' : 'password'"
-                  :placeholder="$t('auth.password_placeholder')"
-                  class="pl-9 pr-9 h-11"
-                  :aria-invalid="!!errors.length"
-                  :disabled="isLoading"
-                  @update:model-value="field.onChange"
-                />
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  class="absolute right-1 top-1 h-9 w-9 p-0 hover:bg-transparent"
-                  @click="showPassword = !showPassword"
-                >
-                  <Eye
-                    v-if="!showPassword"
-                    class="h-4 w-4"
-                  />
-                  <EyeOff
-                    v-else
-                    class="h-4 w-4"
-                  />
-                </Button>
-              </div>
-              <FieldError
-                v-if="errors.length"
-                :errors="errors"
-              />
-              <!-- Password Strength Indicator -->
-              <PasswordStrengthIndicator
-                :password="values.password || ''"
-                :strength="passwordStrength"
-              />
-            </Field>
-          </VeeField>
-
-          <VeeField
-            v-slot="{ field, errors }"
-            name="confirm-password"
-          >
-            <Field
-              :data-invalid="!!errors.length"
-              class="space-y-2"
-            >
-              <FieldLabel
-                for="confirmPassword"
-                class="text-sm font-medium"
-              >
-              {{ $t('auth.confirm_password_label') }}
-              </FieldLabel>
-              <div class="relative">
-                <Lock class="absolute left-3 top-3 h-4 w-4" />
-                <Input
-                  id="confirmPassword"
-                  :model-value="field.value"
-                  :type="showConfirmPassword ? 'text' : 'password'"
-                  :placeholder="$t('auth.confirm_password_placeholder')"
-                  class="pl-9 pr-9 h-11"
-                  :aria-invalid="!!errors.length"
-                  :disabled="isLoading"
-                  @update:model-value="field.onChange"
-                />
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  class="absolute right-1 top-1 h-9 w-9 p-0 hover:bg-transparent"
-                  @click="showConfirmPassword = !showConfirmPassword"
-                >
-                  <Eye
-                    v-if="!showConfirmPassword"
-                    class="h-4 w-4"
-                  />
-                  <EyeOff
-                    v-else
-                    class="h-4 w-4"
-                  />
-                </Button>
-              </div>
-              <FieldError
-                v-if="errors.length"
-                :errors="errors"
-              />
-            </Field>
-          </VeeField>
-
-          <NuxtTurnstile v-model="turnstileToken" />
-          <Button
-            type="submit"
-            class="w-full h-11"
-            :disabled="!isFormValid"
-            :is-loading="isLoading"
-          >
-            <Lock
-              class="h-4 w-4"
+            Confirm Password
+          </FieldLabel>
+          <div class="relative">
+            <Lock class="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+            <Input
+              id="confirmPassword"
+              :model-value="field.value"
+              name="confirm-password"
+              :type="showConfirmPassword ? 'text' : 'password'"
+              placeholder="Confirm your password"
+              class="h-11 pl-9 pr-9"
+              :aria-invalid="!!errors.length"
+              :disabled="isLoading"
+              @update:model-value="field.onChange"
             />
-            {{ $t('auth.create_account') }}
-          </Button>
-          <p
-            v-if="values.password && passwordStrength.score < 80"
-            class="text-xs text-center"
-          >
-            {{ $t('auth.password_weak_note') }}
-          </p>
-        </form>
-
-        <div class="text-center mt-6 space-y-3">
-          <div class="text-xs text-gray-500 dark:text-gray-400">
-            {{ $t('auth.agree_register_terms') }}
-            <NuxtLink
-              to="https://nnsvn.me/terms"
-              class="underline"
-              target="_blank"
-              rel="noopener noreferrer"
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              class="absolute right-1 top-1 h-9 w-9 p-0 hover:bg-transparent"
+              :aria-label="showConfirmPassword ? 'Hide password confirmation' : 'Show password confirmation'"
+              :aria-pressed="showConfirmPassword"
+              @click="showConfirmPassword = !showConfirmPassword"
             >
-              {{ $t('auth.terms_link') }}
-            </NuxtLink>
-            {{ $t('auth.and') }}
-            <NuxtLink
-              to="https://nnsvn.me/privacy"
-              class="underline"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              {{ $t('auth.privacy_link') }}
-            </NuxtLink>
+              <Eye
+                v-if="!showConfirmPassword"
+                class="h-4 w-4"
+                aria-hidden="true"
+              />
+              <EyeOff
+                v-else
+                class="h-4 w-4"
+                aria-hidden="true"
+              />
+            </Button>
           </div>
+          <FieldError
+            v-if="errors.length"
+            :errors="errors"
+          />
+        </Field>
+      </VeeField>
 
-          <div class="text-sm text-gray-600 dark:text-gray-300">
-            {{ $t('auth.have_account') }}
-            <NuxtLink
-              to="/auth/login"
-              class="text-primary hover:underline font-medium"
-            >
-              {{ $t('auth.sign_in_link') }}
-            </NuxtLink>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
+      <NuxtTurnstile v-model="turnstileToken" />
+      <input
+        type="hidden"
+        name="redirect-to"
+        :value="redirectTo"
+      >
+      <Button
+        type="submit"
+        class="h-11 w-full active:scale-[0.98]"
+        :disabled="!isFormValid"
+        :is-loading="isLoading"
+      >
+        <Lock
+          class="h-4 w-4"
+        />
+        Create Account
+      </Button>
+      <p
+        v-if="values.password && passwordStrength.score < 80"
+        class="text-center text-xs text-muted-foreground"
+      >
+        Password must be strong to create an account
+      </p>
+    </form>
 
-    <!-- Passkey Registration Dialog -->
-    <PasskeyRegistrationDialog
-      v-model:open="showPasskeyDialog"
-      :username="registeredUsername"
-      @passkey-created="onPasskeyCreated"
-      @skip-passkey="onPasskeySkipped"
-    />
-  </CenteredAppLayout>
+    <div class="space-y-3 text-center">
+      <div class="text-xs text-muted-foreground">
+        By creating an account, you agree to our
+        <NuxtLink
+          to="https://nnsvn.me/terms"
+          class="underline underline-offset-4 hover:text-primary"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Terms of Service
+        </NuxtLink>
+        and
+        <NuxtLink
+          to="https://nnsvn.me/privacy"
+          class="underline underline-offset-4 hover:text-primary"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Privacy Policy
+        </NuxtLink>
+      </div>
+
+      <div class="text-sm text-muted-foreground">
+        Already have an account?
+        <NuxtLink
+          to="/auth/login"
+          class="font-medium text-primary hover:underline"
+        >
+          Sign In
+        </NuxtLink>
+      </div>
+    </div>
+  </AuthPageLayout>
 </template>

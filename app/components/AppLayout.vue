@@ -106,7 +106,7 @@ const { loggedIn, user } = useUserSession()
           @click="navigateTo('/')"
         >
           <HomeIcon />
-          <span class="sr-only">{{ $t('common.toggle_menu') }}</span>
+          <span class="sr-only">{{ $t('common.toggle_sidebar') }}</span>
         </Button>
         <Separator
           orientation="vertical"
@@ -137,7 +137,7 @@ const { loggedIn, user } = useUserSession()
                   @click="navigateTo(parentBreadcrumb.href)"
                 >
                   <ChevronLeft class="size-4" />
-                  <span class="text-xs font-medium">Back</span>
+                  <span class="text-xs font-medium">{{ $t('common.back') }}</span>
                 </Button>
               </BreadcrumbItem>
               <BreadcrumbSeparator

@@ -21,8 +21,6 @@
       :columns="columns"
       :data="users"
       :loading="loading"
-      :toolbar-label="$t('admin.users.user_registry')"
-      :toolbar-description="$t('admin.users.registry_desc')"
       :search-placeholder="$t('admin.users.search_users')"
       :empty-title="$t('admin.users.no_match')"
       :empty-description="$t('admin.users.no_match_desc')"
@@ -256,13 +254,13 @@
               :disabled="loading"
               @click="closeDialog"
             >
-              {{ $t('common.cancel') }}
+              Cancel
             </Button>
             <Button
               type="submit"
               :is-loading="loading"
             >
-              {{ isEditing ? $t('admin.users.save_changes') : $t('admin.users.create_user') }}
+              {{ isEditing ? 'Save changes' : 'Create user' }}
             </Button>
           </DialogFooter>
         </form>
@@ -284,12 +282,12 @@ import type {
   AdminUserEditFormInput,
 } from '#shared/schemas/userSchema'
 import type { User } from '#shared/db'
-import type { ApiResponse } from '~~/types/api'
 import { InfoIcon, Trash2Icon, UserPlus } from '@lucide/vue'
 import DataTable from '@/components/DataTable.vue'
+import { apiRequest } from '@/utils/apiRequest'
+import { parseApiError } from '@/utils/apiError'
+import { apiRoutes } from '#shared/apiRoutes'
 import { createColumns } from './columns'
-
-const { t } = useI18n()
 
 type UserFormValues = AdminUserCreateFormInput & Pick<AdminUserEditFormInput, 'id'>
 
@@ -297,24 +295,85 @@ interface TableRowWithOriginal {
   original: User
 }
 
-function extractErrorMessage(error: unknown, fallback: string) {
-  if (typeof error === 'object' && error !== null && 'data' in error) {
-    const data = error.data
-    if (typeof data === 'object' && data !== null) {
-      if ('statusMessage' in data && typeof data.statusMessage === 'string') {
-        return data.statusMessage
-      }
-      if ('message' in data && typeof data.message === 'string') {
-        return data.message
-      }
+type UserFieldName = 'username' | 'email' | 'name' | 'password' | 'isAdmin'
+const userFieldNames: UserFieldName[] = ['username', 'email', 'name', 'password', 'isAdmin']
+
+function isUserFieldName(value: string): value is UserFieldName {
+  return userFieldNames.some(field => field === value)
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null
+}
+
+function isIssueRecord(value: unknown): value is Record<string, unknown> {
+  return isRecord(value) && ('message' in value || 'path' in value)
+}
+
+function getFieldFromPath(path: unknown): string | null {
+  if (typeof path === 'string') {
+    return path.split('.').filter(Boolean)[0] ?? null
+  }
+
+  if (Array.isArray(path)) {
+    const first = path[0]
+    return typeof first === 'string' ? first : null
+  }
+
+  return null
+}
+
+function getIssueList(error: unknown): unknown[] | null {
+  if (!isRecord(error) || !isRecord(error.data)) {
+    return null
+  }
+
+  const directIssues = error.data.issues
+  if (Array.isArray(directIssues)) {
+    return directIssues
+  }
+
+  if (isRecord(error.data.data) && Array.isArray(error.data.data.issues)) {
+    return error.data.data.issues
+  }
+
+  return null
+}
+
+function getIssueFieldAndMessage(error: unknown): { field: UserFieldName, message: string } | null {
+  const issues = getIssueList(error)
+  if (!issues) {
+    return null
+  }
+
+  for (const issue of issues) {
+    if (!isIssueRecord(issue)) {
+      continue
+    }
+
+    const field = getFieldFromPath(issue.path)
+    const message = typeof issue.message === 'string' && issue.message.trim() ? issue.message : null
+    if (field && isUserFieldName(field)) {
+      return message ? { field, message } : { field, message: 'Invalid value' }
     }
   }
 
-  if (error instanceof Error && error.message) {
-    return error.message
+  return null
+}
+
+function mapUserErrorToField(message: string): UserFieldName | null {
+  const lowerMessage = message.toLowerCase()
+  if (lowerMessage.includes('username')) {
+    return 'username'
+  }
+  if (lowerMessage.includes('password')) {
+    return 'password'
+  }
+  if (lowerMessage.includes('email')) {
+    return 'email'
   }
 
-  return fallback
+  return null
 }
 
 const dataTableRef = ref<{ table?: { getFilteredSelectedRowModel: () => { rows: TableRowWithOriginal[] }, resetRowSelection: () => void } }>()
@@ -362,10 +421,11 @@ const onSubmit = handleSubmit(
           isAdmin: values.isAdmin,
         }
 
-        await $fetch(`/api/admin/users/${editingUserId.value}`, {
+        const response = await apiRequest(apiRoutes.adminUser(editingUserId.value), {
           method: 'PUT',
           body: payload,
         })
+        if (!response.success) throw response
       }
       else {
         const payload: AdminUserCreateFormInput = {
@@ -376,23 +436,40 @@ const onSubmit = handleSubmit(
           isAdmin: values.isAdmin,
         }
 
-        await $fetch('/api/admin/users', {
+        const response = await apiRequest(apiRoutes.ADMIN_USERS, {
           method: 'POST',
           body: payload,
         })
+        if (!response.success) throw response
       }
 
-      toast.success(isEditing.value ? t('admin.users.user_updated') : t('admin.users.user_created'))
+      toast.success(isEditing.value ? 'User updated successfully' : 'User created successfully')
       closeDialog()
       await fetchUsers()
     }
     catch (error) {
-      const message = extractErrorMessage(error, t('admin.users.save_failed'))
-      setFieldError('email', message)
+      const message = parseApiError(error, 'Failed to save the user record').message
+      const structuredIssue = getIssueFieldAndMessage(error)
+      if (structuredIssue) {
+        setFieldError(structuredIssue.field, structuredIssue.message)
+      }
+      else {
+        const mappedField = mapUserErrorToField(message)
+        if (mappedField) {
+          setFieldError(mappedField, message)
+        }
+        else {
+          toast.error(message)
+        }
+      }
     }
     finally {
       loading.value = false
     }
+  },
+  ({ errors }) => {
+    const firstError = Object.values(errors).flat().filter(Boolean)[0] || 'Please fix the highlighted fields'
+    toast.error(firstError)
   },
 )
 
@@ -418,14 +495,14 @@ const columns = computed(() => createColumns(handleEdit, handleDeleteConfirm))
 async function fetchUsers() {
   try {
     loading.value = true
-    const res = await $fetch<ApiResponse<User[]>>('/api/admin/users')
+    const res = await apiRequest(apiRoutes.ADMIN_USERS)
     if (!res.success) {
-      throw new Error('Unsuccessful response')
+      throw res
     }
     users.value = res.data
   }
   catch (error) {
-    toast.error(extractErrorMessage(error, t('admin.users.load_failed')))
+    toast.error(parseApiError(error, 'Failed to load the user records').message)
   }
   finally {
     loading.value = false
@@ -491,14 +568,15 @@ async function confirmSingleDelete() {
 async function handleDelete(userId: number) {
   try {
     loading.value = true
-    await $fetch(`/api/admin/users/${userId}`, {
+    const response = await apiRequest(apiRoutes.adminUser(userId), {
       method: 'DELETE',
     })
-    toast.success(t('admin.users.user_deleted'))
+    if (!response.success) throw response
+    toast.success('User deleted successfully')
     await fetchUsers()
   }
   catch (error) {
-    toast.error(extractErrorMessage(error, t('admin.users.delete_failed')))
+    toast.error(parseApiError(error, 'Failed to delete the user record').message)
   }
   finally {
     loading.value = false
@@ -513,17 +591,18 @@ async function handleBatchDelete() {
   try {
     loading.value = true
     const count = selectedUserIds.value.length
-    await $fetch('/api/admin/users/delete', {
+    const response = await apiRequest(apiRoutes.ADMIN_USERS_DELETE, {
       method: 'POST',
       body: { userIds: selectedUserIds.value },
     })
-    toast.success(t('admin.users.batch_deleted', { count }))
+    if (!response.success) throw response
+    toast.success(`Successfully deleted ${count} user(s)`)
 
     dataTableRef.value?.table?.resetRowSelection()
     await fetchUsers()
   }
   catch (error) {
-    toast.error(extractErrorMessage(error, t('admin.users.batch_delete_failed')))
+    toast.error(parseApiError(error, 'Failed to delete the selected users').message)
   }
   finally {
     loading.value = false

@@ -3,8 +3,6 @@ import { Check, CircleSlash, LockKeyhole, Search, Ticket, ZoomIn, ZoomOut } from
 import type { SeatMapSeat, SeatMapStatus, SeatMapTicketType } from '~~/types/seatmap'
 import { colorToRgb, formatSeatMapCurrency } from '@/lib/seatmapLayout'
 import { Button } from '@/components/ui/button'
-
-const { t } = useI18n()
 import {
   ScrollArea,
   ScrollBar,
@@ -17,6 +15,8 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
+
+const { t } = useI18n()
 
 const props = withDefaults(defineProps<{
   seats: SeatMapSeat[]
@@ -153,20 +153,11 @@ function getStatusDescription(status: SeatMapStatus) {
 
   return t('seatmap.desc_unavailable')
 }
-
-function getStatusRatio(count: number, total: number) {
-  if (total === 0) {
-    return '0%'
-  }
-
-  return `${(count / total) * 100}%`
-}
 </script>
 
 <template>
   <TicketSeatMapLayoutProvider
     v-slot="{
-      sections,
       inventorySummary,
       sectionOptions,
       selectedSection,
@@ -229,7 +220,7 @@ function getStatusRatio(count: number, total: number) {
             <Button
               variant="ghost"
               size="icon-sm"
-              aria-label="Zoom out"
+              :aria-label="$t('common.zoom_out')"
               @click="decreaseZoom"
             >
               <ZoomOut class="size-4" />
@@ -240,7 +231,7 @@ function getStatusRatio(count: number, total: number) {
             <Button
               variant="ghost"
               size="icon-sm"
-              aria-label="Zoom in"
+              :aria-label="$t('common.zoom_in')"
               @click="increaseZoom"
             >
               <ZoomIn class="size-4" />

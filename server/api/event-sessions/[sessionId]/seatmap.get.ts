@@ -1,5 +1,5 @@
 import eventSessionService from '~~/server/utils/database/event-session'
-import { success } from '~~/server/utils/apiResponse'
+import { apiError, success } from '~~/server/utils/apiResponse'
 import { getTicketingSessionKey } from '~~/server/utils/ticketing/session'
 import type { SeatMapStatus, SessionSeatMapResponse } from '~~/types/seatmap'
 
@@ -48,20 +48,21 @@ function mapSeatMap(seatMap: Awaited<ReturnType<typeof eventSessionService.getSe
 export default defineEventHandler(async (event) => {
   const sessionPublicId = getRouterParam(event, 'sessionId')
   if (!sessionPublicId) {
-    throw createError({ statusCode: 400, statusMessage: 'Bad Request. Session ID is required.' })
+    throw apiError({ status: 400, statusText: 'Bad Request', code: 'INVALID_SESSION_ID', message: 'Session ID is required.' })
   }
 
   const session = await eventSessionService.getByPublicId(sessionPublicId)
   if (!session) {
-    throw createError({ statusCode: 404, statusMessage: 'Session not found.' })
+    throw apiError({ status: 404, statusText: 'Not Found', code: 'SESSION_NOT_FOUND', message: 'Session not found.' })
   }
 
   if (session.status === 'draft' || session.status === 'cancelled') {
-    throw createError({ statusCode: 404, statusMessage: 'Session not found.' })
+    throw apiError({ status: 404, statusText: 'Not Found', code: 'SESSION_NOT_FOUND', message: 'Session not found.' })
   }
 
   getTicketingSessionKey(event)
 
   const seatMap = await eventSessionService.getSeatMap(session.id)
-  return success(mapSeatMap(seatMap))
+  const response: SessionSeatMapResponse = mapSeatMap(seatMap)
+  return success(response)
 })

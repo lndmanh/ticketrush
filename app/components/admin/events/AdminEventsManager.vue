@@ -3,10 +3,10 @@
     <section class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
       <div class="space-y-1">
         <h2 class="text-2xl font-semibold text-foreground">
-          {{ $t('admin.events.title') }}
+          Events
         </h2>
         <p class="text-sm text-muted-foreground">
-          {{ $t('admin.events.desc') }}
+          Track drafts, publish state, and launch activity.
         </p>
       </div>
 
@@ -14,7 +14,7 @@
         <Button as-child>
           <NuxtLink to="/admin/events/create">
             <Rocket class="h-4 w-4" />
-            {{ $t('admin.events.create_event') }}
+            Create event
           </NuxtLink>
         </Button>
         <Button
@@ -22,7 +22,7 @@
           variant="outline"
           @click="openEvent(firstDraftEventId)"
         >
-          {{ $t('admin.events.open_latest_draft') }}
+          Open latest draft
         </Button>
       </div>
     </section>
@@ -33,10 +33,10 @@
           <CardContent class="flex h-full flex-col justify-between gap-5">
             <div class="flex items-center justify-between gap-3">
               <p class="text-[11px] font-medium uppercase tracking-[0.24em] text-background/70">
-                {{ $t('admin.events.tracked') }}
+                Tracked
               </p>
               <span class="rounded-full bg-background/12 px-2.5 py-1 text-xs font-medium text-background/90">
-                {{ $t('admin.events.registry') }}
+                Registry
               </span>
             </div>
             <div class="space-y-2">
@@ -44,7 +44,7 @@
                 {{ rows.length }}
               </p>
               <p class="text-sm leading-6 text-background/72">
-                {{ $t('admin.events.catalog_desc') }}
+                Events currently in the admin catalog.
               </p>
             </div>
           </CardContent>
@@ -54,10 +54,10 @@
           <CardContent class="flex h-full flex-col justify-between gap-5">
             <div class="flex items-center justify-between gap-3">
               <p class="text-[11px] font-medium uppercase tracking-[0.24em] text-white/70">
-                {{ $t('admin.events.drafts') }}
+                Drafts
               </p>
               <span class="rounded-full bg-white/15 px-2.5 py-1 text-xs font-medium text-white/90">
-                {{ $t('admin.events.in_progress') }}
+                In progress
               </span>
             </div>
             <div class="space-y-2">
@@ -65,7 +65,7 @@
                 {{ draftRows.length }}
               </p>
               <p class="text-sm leading-6 text-white/80">
-                {{ $t('admin.events.drafts_desc') }}
+                Events still being shaped before launch.
               </p>
             </div>
           </CardContent>
@@ -75,10 +75,10 @@
           <CardContent class="flex h-full flex-col justify-between gap-5">
             <div class="flex items-center justify-between gap-3">
               <p class="text-[11px] font-medium uppercase tracking-[0.24em] text-white/70">
-                {{ $t('admin.events.live_label') }}
+                Live
               </p>
               <span class="rounded-full bg-white/15 px-2.5 py-1 text-xs font-medium text-white/90">
-                {{ $t('admin.events.selling_now') }}
+                Selling now
               </span>
             </div>
             <div class="space-y-2">
@@ -86,7 +86,7 @@
                 {{ liveRows.length }}
               </p>
               <p class="text-sm leading-6 text-white/80">
-                {{ $t('admin.events.live_desc') }}
+                Public events that are available to buyers.
               </p>
             </div>
           </CardContent>
@@ -130,7 +130,7 @@
         v-else
         class="rounded-lg border border-dashed bg-card p-4 text-sm text-muted-foreground"
       >
-        No events to review.
+        {{ $t('admin.events.no_events') }}
       </p>
     </section>
 
@@ -155,7 +155,7 @@
                 {{ unfinishedDraft.titleSnapshot || $t('admin.events.untitled_event') }}
               </p>
               <Badge variant="outline">
-                Step {{ unfinishedDraft.lastSavedStep }}
+                {{ $t('common.step') }} {{ unfinishedDraft.lastSavedStep }}
               </Badge>
             </div>
             <p class="text-sm text-muted-foreground">
@@ -201,9 +201,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { toast } from 'vue-sonner'
 import type { Event, Venue } from '#shared/db'
-
-const { t } = useI18n()
-import type { ApiResponse } from '~~/types/api'
+import type { AutosaveDraftSummary } from '~~/types/admin-events'
 import { ArchiveIcon, Rocket } from '@lucide/vue'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -211,44 +209,9 @@ import DataTable from '@/components/DataTable.vue'
 import AdminFeaturedEventCard from './AdminFeaturedEventCard.vue'
 import type { EventTableRow } from './columns'
 import { createColumns } from './columns'
-
-interface AutosaveDraftSummary {
-  draftKey: string
-  titleSnapshot: string
-  slugSnapshot: string
-  venueId: number | null
-  lastSavedStep: number
-  updatedAt: string | Date
-  createdAt: string | Date
-}
-
-function extractErrorMessage(error: object, fallback: string) {
-  if ('data' in error) {
-    const data = error.data
-    if (typeof data === 'object' && data !== null) {
-      if ('statusMessage' in data && typeof data.statusMessage === 'string') {
-        return data.statusMessage
-      }
-      if ('message' in data && typeof data.message === 'string') {
-        return data.message
-      }
-    }
-  }
-
-  if (error instanceof Error && error.message) {
-    return error.message
-  }
-
-  return fallback
-}
-
-function getCaughtErrorMessage(error: object | null, fallback: string) {
-  if (!error) {
-    return fallback
-  }
-
-  return extractErrorMessage(error, fallback)
-}
+import { apiRequest } from '@/utils/apiRequest'
+import { parseApiError } from '@/utils/apiError'
+import { apiRoutes } from '#shared/apiRoutes'
 
 const events = ref<Event[]>([])
 const venues = ref<Venue[]>([])
@@ -264,7 +227,7 @@ const rows = computed<EventTableRow[]>(() => {
     subtitle: event.subtitle,
     status: event.status,
     venueId: event.venueId,
-    venueName: venueById.get(event.venueId) ?? t('admin.events.unknown_venue'),
+    venueName: venueById.get(event.venueId) ?? 'Unknown venue',
     startsAt: new Date(event.startsAt),
     salesStartAt: new Date(event.salesStartAt),
     updatedAt: event.updatedAt ? new Date(event.updatedAt) : null,
@@ -298,21 +261,21 @@ async function fetchEvents() {
   try {
     loading.value = true
     const [eventsResponse, venuesResponse, autosavesResponse] = await Promise.all([
-      $fetch<ApiResponse<Event[]>>('/api/admin/events'),
-      $fetch<ApiResponse<Venue[]>>('/api/admin/venues'),
-      $fetch<ApiResponse<AutosaveDraftSummary | null>>('/api/admin/events/autosaves'),
+      apiRequest(apiRoutes.ADMIN_EVENTS),
+      apiRequest(apiRoutes.ADMIN_VENUES),
+      apiRequest(apiRoutes.ADMIN_EVENT_AUTOSAVES),
     ])
 
-    if (!eventsResponse.success || !venuesResponse.success || !autosavesResponse.success) {
-      throw new Error('Unsuccessful response')
-    }
+    if (!eventsResponse.success) throw eventsResponse
+    if (!venuesResponse.success) throw venuesResponse
+    if (!autosavesResponse.success) throw autosavesResponse
 
     events.value = eventsResponse.data
     venues.value = venuesResponse.data
     unfinishedDraft.value = autosavesResponse.data
   }
   catch (error) {
-    toast.error(getCaughtErrorMessage(error && typeof error === 'object' ? error : null, t('admin.events.load_failed')))
+    toast.error(parseApiError(error, 'Failed to load events').message)
   }
   finally {
     loading.value = false
@@ -325,7 +288,7 @@ function openEvent(eventId: number) {
 
 function getAutosaveVenueName(venueId: number | null) {
   if (!venueId) {
-    return t('admin.events.no_venue')
+    return 'No venue selected'
   }
 
   return venues.value.find(venue => venue.id === venueId)?.name ?? 'Unknown venue'
@@ -338,17 +301,20 @@ function resumeAutosaveDraft(draftKey: string) {
 async function discardAutosaveDraft(draftKey: string) {
   try {
     loading.value = true
-    await $fetch(`/api/admin/events/autosaves/${draftKey}`, { method: 'DELETE' })
+    const response = await apiRequest(apiRoutes.adminEventAutosave(draftKey), { method: 'DELETE' })
+    if (!response.success) {
+      throw response
+    }
     if (import.meta.client && window.localStorage.getItem('ticketrush:event-create-autosave-key') === draftKey) {
       window.localStorage.removeItem('ticketrush:event-create-autosave-key')
     }
     if (unfinishedDraft.value?.draftKey === draftKey) {
       unfinishedDraft.value = null
     }
-    toast.success(t('admin.events.autosave_discarded'))
+    toast.success('Autosave draft discarded')
   }
   catch (error) {
-    toast.error(getCaughtErrorMessage(error && typeof error === 'object' ? error : null, t('admin.events.discard_failed')))
+    toast.error(parseApiError(error, 'Failed to discard autosave draft').message)
   }
   finally {
     loading.value = false
@@ -358,12 +324,15 @@ async function discardAutosaveDraft(draftKey: string) {
 async function publishEvent(eventId: number) {
   try {
     loading.value = true
-    await $fetch(`/api/admin/events/${eventId}/publish`, { method: 'POST' })
-    toast.success(t('admin.events.published'))
+    const response = await apiRequest(apiRoutes.adminEventPublish(eventId), { method: 'POST' })
+    if (!response.success) {
+      throw response
+    }
+    toast.success('Event published')
     await fetchEvents()
   }
   catch (error) {
-    toast.error(getCaughtErrorMessage(error && typeof error === 'object' ? error : null, t('admin.events.publish_failed')))
+    toast.error(parseApiError(error, 'Failed to publish event').message)
   }
   finally {
     loading.value = false
@@ -373,12 +342,15 @@ async function publishEvent(eventId: number) {
 async function unpublishEvent(eventId: number) {
   try {
     loading.value = true
-    await $fetch(`/api/admin/events/${eventId}/unpublish`, { method: 'POST' })
-    toast.success(t('admin.events.unpublished'))
+    const response = await apiRequest(apiRoutes.adminEventUnpublish(eventId), { method: 'POST' })
+    if (!response.success) {
+      throw response
+    }
+    toast.success('Event moved back to draft')
     await fetchEvents()
   }
   catch (error) {
-    toast.error(getCaughtErrorMessage(error && typeof error === 'object' ? error : null, t('admin.events.unpublish_failed')))
+    toast.error(parseApiError(error, 'Failed to unpublish event').message)
   }
   finally {
     loading.value = false

@@ -1,10 +1,9 @@
 <template>
   <footer class="text-muted-foreground py-6 md:px-8 md:py-0">
     <div class="container flex flex-col items-center justify-between gap-2 md:h-24 md:flex-row">
-      <CtMDC
-        :value="footer.credits"
+      <span
         class="flex items-center"
-      />
+      >{{ footer.credits }}</span>
       <span class="flex-1" />
       <div class="flex flex-wrap gap-2 justify-center md:justify-end">
         <NuxtLinkLocale

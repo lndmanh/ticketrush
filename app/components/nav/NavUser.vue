@@ -14,14 +14,11 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import {
-  SidebarMenu,
   SidebarMenuButton,
-  SidebarMenuItem,
 } from '@/components/ui/sidebar'
 import ThemeSwitcher from '@/components/ThemeSwitcher.vue'
 
 const { user, clear, loggedIn } = useUserSession()
-const { t } = useI18n()
 
 function getInitials(name: string) {
   return name.split(' ').map(n => n[0]).join('').toUpperCase()

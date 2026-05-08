@@ -4,8 +4,12 @@ import { Field as VeeField, useForm } from 'vee-validate'
 import { motion } from 'motion-v'
 import { toast } from 'vue-sonner'
 import { Check, Circle, Cloud, CloudAlert, Dot, Loader2 } from '@lucide/vue'
+import { apiRequest } from '@/utils/apiRequest'
+import { parseApiError } from '@/utils/apiError'
+import { apiRoutes } from '#shared/apiRoutes'
 import { eventComposerSchema, getEventSessionTimingIssues } from '#shared/schemas/ticketingSchema'
 import type { EventAutosaveDraftInput, EventComposerInput } from '#shared/schemas/ticketingSchema'
+import type { AutosaveDraftDetail } from '~~/types/admin-events'
 import type { VenueDetail } from '~~/types/venues'
 
 interface VenueOption {
@@ -19,22 +23,12 @@ interface EventCreationStep {
   description: string
 }
 
-interface AutosaveDraftDetail {
-  draftKey: string
-  payload: EventAutosaveDraftInput['payload']
-  lastSavedStep: number
-  updatedAt: string | Date | null
-  createdAt: string | Date | null
-}
-
-const { t } = useI18n()
-
-const steps = computed<EventCreationStep[]>(() => [
-  { step: 1, title: t('admin.event_create.step_basics'), description: t('admin.event_create.step_basics_desc') },
-  { step: 2, title: t('admin.event_create.step_venue'), description: t('admin.event_create.step_venue_desc') },
-  { step: 3, title: t('admin.event_create.step_sessions'), description: t('admin.event_create.step_sessions_desc') },
-  { step: 4, title: t('admin.event_create.step_review'), description: t('admin.event_create.step_review_desc') },
-])
+const steps: EventCreationStep[] = [
+  { step: 1, title: 'Basics', description: 'Event identity' },
+  { step: 2, title: 'Venue', description: 'Select venue' },
+  { step: 3, title: 'Sessions', description: 'Schedule and pricing' },
+  { step: 4, title: 'Review', description: 'Confirm and save' },
+]
 
 const stepSchemas = {
   1: eventComposerSchema.pick({
@@ -52,7 +46,7 @@ const stepSchemas = {
   }),
 }
 
-const { data: venuesResponse } = await useFetch('/api/admin/venues')
+const { data: venuesResponse } = await useAPI(() => apiRoutes.ADMIN_VENUES)
 const venues = computed<VenueOption[]>(() => venuesResponse.value?.data ?? [])
 const selectedVenueDetail = ref<VenueDetail | null>(null)
 const currentStep = ref(1)
@@ -109,18 +103,18 @@ const hasAutosavableContent = computed(() => {
 
 const autosaveLabel = computed(() => {
   if (autosaveStatus.value === 'saving') {
-    return t('admin.event_create.saving_draft')
+    return 'Saving draft…'
   }
 
   if (autosaveStatus.value === 'saved') {
-    return lastAutosavedAt.value ? t('admin.event_create.draft_saved_at', { time: lastAutosavedAt.value.toLocaleTimeString() }) : t('admin.event_create.draft_saved_generic')
+    return lastAutosavedAt.value ? `Saved ${lastAutosavedAt.value.toLocaleTimeString()}` : 'Draft saved'
   }
 
   if (autosaveStatus.value === 'error') {
-    return t('admin.event_create.autosave_failed')
+    return 'Autosave failed'
   }
 
-  return t('admin.event_create.autosave_idle')
+  return ''
 })
 
 const autosaveIcon = computed(() => {
@@ -147,6 +141,7 @@ function buildAutosavePayload() {
       label: session.label,
       venueId: session.venueId,
       status: session.status,
+      queueEnabled: session.queueEnabled,
       startsAt: session.startsAt,
       endsAt: session.endsAt,
       salesStartAt: session.salesStartAt,
@@ -177,6 +172,7 @@ function normalizeAutosavePayload(payload: EventAutosaveDraftInput['payload']) {
       label: session.label ?? `Session ${sessionIndex + 1}`,
       venueId: session.venueId ?? payload.venueId ?? 0,
       status: session.status ?? 'draft',
+      queueEnabled: session.queueEnabled ?? false,
       startsAt: session.startsAt ?? '',
       endsAt: session.endsAt ?? '',
       salesStartAt: session.salesStartAt ?? '',
@@ -200,7 +196,11 @@ function normalizeAutosavePayload(payload: EventAutosaveDraftInput['payload']) {
 async function loadAutosaveDraft(draftKey: string, restoreImmediately: boolean) {
   isLoadingAutosaveDraft.value = true
   try {
-    const response = await $fetch<{ data: AutosaveDraftDetail }>(`/api/admin/events/autosaves/${draftKey}`)
+    const response = await apiRequest(apiRoutes.adminEventAutosave(draftKey))
+    if (!response.success) {
+      throw response
+    }
+
     pendingAutosaveDraft.value = response.data
     if (restoreImmediately) {
       restoreAutosaveDraft()
@@ -210,8 +210,8 @@ async function loadAutosaveDraft(draftKey: string, restoreImmediately: boolean) 
     isAutosaveRestoreDialogOpen.value = true
     return true
   }
-  catch {
-    toast.error(t('admin.event_create.autosave_load_error'))
+  catch (error) {
+    toast.error(parseApiError(error, 'We could not load the autosave draft').message)
     return false
   }
   finally {
@@ -222,13 +222,17 @@ async function loadAutosaveDraft(draftKey: string, restoreImmediately: boolean) 
 async function loadCurrentAutosaveDraftPrompt() {
   isCheckingAutosaveDraft.value = true
   try {
-    const response = await $fetch<{ data: { draftKey: string } | null }>('/api/admin/events/autosaves')
+    const response = await apiRequest(apiRoutes.ADMIN_EVENT_AUTOSAVES)
+    if (!response.success) {
+      throw response
+    }
+
     if (response.data?.draftKey) {
       await loadAutosaveDraft(response.data.draftKey, false)
     }
   }
-  catch {
-    toast.error(t('admin.event_create.autosave_check_error'))
+  catch (error) {
+    toast.error(parseApiError(error, 'We could not check for autosave drafts').message)
   }
   finally {
     isCheckingAutosaveDraft.value = false
@@ -251,7 +255,7 @@ function restoreAutosaveDraft() {
   if (import.meta.client) {
     window.localStorage.setItem('ticketrush:event-create-autosave-key', draft.draftKey)
   }
-  toast.success(t('admin.event_create.autosave_restored'))
+  toast.success('Autosave draft restored')
 }
 
 function startFreshFromAutosaveDraft() {
@@ -264,14 +268,17 @@ function startFreshFromAutosaveDraft() {
   }
 }
 
-async function discardAutosaveDraft() {
+async function _discardAutosaveDraft() {
   const draft = pendingAutosaveDraft.value
   if (!draft) {
     return
   }
 
   try {
-    await $fetch(`/api/admin/events/autosaves/${draft.draftKey}`, { method: 'DELETE' })
+    const response = await apiRequest(apiRoutes.adminEventAutosave(draft.draftKey), { method: 'DELETE' })
+    if (!response.success) {
+      throw response
+    }
     if (import.meta.client) {
       window.localStorage.removeItem('ticketrush:event-create-autosave-key')
     }
@@ -280,10 +287,10 @@ async function discardAutosaveDraft() {
     }
     pendingAutosaveDraft.value = null
     isAutosaveRestoreDialogOpen.value = false
-    toast.success(t('admin.events.autosave_discarded'))
+    toast.success('Autosave draft discarded')
   }
-  catch {
-    toast.error(t('admin.events.discard_failed'))
+  catch (error) {
+    toast.error(parseApiError(error, 'Failed to discard autosave draft').message)
   }
 }
 
@@ -309,7 +316,7 @@ async function saveAutosaveDraft() {
   autosaveRequestId = requestId
 
   try {
-    const response = await $fetch<{ data: { draftKey: string, updatedAt: string | Date | null } }>('/api/admin/events/autosave', {
+    const response = await apiRequest(apiRoutes.ADMIN_EVENT_AUTOSAVE, {
       method: 'POST',
       body: {
         draftKey: autosaveDraftKey.value || undefined,
@@ -317,6 +324,9 @@ async function saveAutosaveDraft() {
         payload,
       },
     })
+    if (!response.success) {
+      throw response
+    }
 
     if (autosaveDisabled.value || requestId !== autosaveRequestId) {
       return
@@ -368,7 +378,13 @@ watch(() => values.venueId, async (venueId) => {
     return
   }
 
-  const detail = await $fetch<{ data: VenueDetail }>(`/api/admin/venues/${venueId}`)
+  const detail = await apiRequest(apiRoutes.adminVenue(venueId))
+  if (!detail.success) {
+    toast.error(parseApiError(detail).message)
+    selectedVenueDetail.value = null
+    return
+  }
+
   selectedVenueDetail.value = detail.data
 
   if (!values.sessions || values.sessions.length === 0) {
@@ -376,6 +392,7 @@ watch(() => values.venueId, async (venueId) => {
       label: 'Default session',
       venueId: venueId,
       status: 'draft',
+      queueEnabled: false,
       startsAt: '',
       endsAt: '',
       salesStartAt: '',
@@ -481,7 +498,7 @@ function showSessionValidationToast(errors: Record<string, string>) {
 
 function clearSessionValidationErrors() {
   for (const path of Object.keys(sessionValidationErrors.value)) {
-    setFieldError(path, undefined)
+    setFieldError(path, '')
   }
 }
 
@@ -580,7 +597,7 @@ function goToStep(step: number) {
   }
 
   if (!canReachStep(step)) {
-    toast.error(t('admin.event_create.jump_error'))
+    toast.error('Complete the current step before jumping ahead')
     return
   }
 
@@ -623,7 +640,7 @@ const onSubmit = handleSubmit(
     }
 
     try {
-      const response = await $fetch('/api/admin/events', {
+      const response = await apiRequest(apiRoutes.ADMIN_EVENTS, {
         method: 'POST',
         body: {
           slug: formValues.slug,
@@ -632,7 +649,7 @@ const onSubmit = handleSubmit(
           description: formValues.description,
           venueId: formValues.venueId,
           coverImage: formValues.coverImage,
-          sessions: formValues.sessions.map((session, index) => ({
+          sessions: formValues.sessions.map(session => ({
             ...session,
             startsAt: new Date(session.startsAt),
             endsAt: session.endsAt ? new Date(session.endsAt) : undefined,
@@ -646,19 +663,25 @@ const onSubmit = handleSubmit(
         },
       })
 
+      if (!response.success) {
+        throw response
+      }
+
       if (autosaveDraftKey.value) {
         try {
-          await $fetch(`/api/admin/events/autosaves/${autosaveDraftKey.value}/convert`, {
+          const convertResponse = await apiRequest(apiRoutes.adminEventAutosaveConvert(autosaveDraftKey.value), {
             method: 'POST',
-            body: { eventId: response.data.id },
           })
+          if (!convertResponse.success) {
+            throw convertResponse
+          }
         }
-        catch {
-          toast.warning(t('admin.event_create.autosave_convert_warning'))
+        catch (error) {
+          toast.warning(parseApiError(error, 'Event saved, but the autosave draft could not be marked as converted').message)
         }
       }
 
-      toast.success(t('admin.events.draft_saved'))
+      toast.success('Draft event saved')
       if (import.meta.client && autosaveDraftKey.value) {
         window.localStorage.removeItem('ticketrush:event-create-autosave-key')
       }
@@ -670,9 +693,9 @@ const onSubmit = handleSubmit(
       highestReachedStep.value = 1
       await navigateTo(`/admin/events/${response.data.id}`)
     }
-    catch {
+    catch (error) {
       autosaveDisabled.value = false
-      toast.error(t('admin.event_create.save_error'))
+      toast.error(parseApiError(error, 'We could not save the event draft').message)
     }
     finally {
       isSaving.value = false
@@ -686,14 +709,14 @@ const onSubmit = handleSubmit(
       }
     }
 
-    const firstError = Object.values(errors).flat().filter(Boolean)[0] || t('admin.event_create.fix_fields')
+    const firstError = Object.values(errors).flat().filter(Boolean)[0] || 'Please fix the highlighted fields'
     toast.error(firstError)
   },
 )
 
 definePageMeta({
-  title: t('admin.event_create.page_title'),
-  breadcrumb: t('admin.event_create.breadcrumb'),
+  title: 'Create Event',
+  breadcrumb: 'Create Event',
   middleware: ['auth', 'admin'],
   layout: 'dashboard',
 })
@@ -739,7 +762,7 @@ onUnmounted(() => {
         <AlertDialogHeader>
           <AlertDialogTitle>{{ $t('admin.event_create.restore_dialog_title') }}</AlertDialogTitle>
           <AlertDialogDescription>
-            {{ pendingAutosaveDraft?.payload.title || $t('admin.events.untitled_event') }} was autosaved at step {{ pendingAutosaveDraft?.lastSavedStep ?? 1 }}{{ pendingAutosaveDraft?.updatedAt ? ` on ${new Date(pendingAutosaveDraft.updatedAt).toLocaleString()}` : '' }}. Restoring will apply it now. Starting fresh will overwrite this autosave when you type.
+            {{ $t('admin.event_create.restore_dialog_desc', { title: pendingAutosaveDraft?.payload.title || $t('admin.events.untitled_event'), step: pendingAutosaveDraft?.lastSavedStep ?? 1, date: pendingAutosaveDraft?.updatedAt ? $t('admin.event_create.restore_dialog_date', { date: new Date(pendingAutosaveDraft.updatedAt).toLocaleString() }) : '' }) }}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
@@ -959,7 +982,7 @@ onUnmounted(() => {
         >
           <CardHeader>
             <CardTitle class="text-base">
-              {{ $t('admin.event_create.step_venue') }}
+              Venue
             </CardTitle>
           </CardHeader>
           <CardContent class="space-y-6">
@@ -969,14 +992,17 @@ onUnmounted(() => {
             >
               <Field :data-invalid="!!errors.length">
                 <FieldLabel for="event-create-venue">
-                  {{ $t('admin.event_create.venue_label') }}
+                  Venue
                 </FieldLabel>
                 <Select
                   :model-value="field.value ? String(field.value) : undefined"
                   @update:model-value="field.onChange(Number($event))"
                 >
-                  <SelectTrigger id="event-create-venue">
-                    <SelectValue :placeholder="field.value ? undefined : $t('admin.event_create.choose_venue')" />
+                  <SelectTrigger
+                    id="event-create-venue"
+                    :aria-invalid="!!errors.length"
+                  >
+                    <SelectValue :placeholder="field.value ? undefined : 'Choose venue blueprint'" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem
@@ -1002,7 +1028,7 @@ onUnmounted(() => {
               <div class="grid gap-3 sm:grid-cols-3">
                 <div class="rounded-2xl bg-muted/50 px-4 py-3">
                   <p class="text-xs text-muted-foreground">
-                    {{ $t('common.sections') }}
+                    Sections
                   </p>
                   <p class="text-lg font-semibold tabular-nums text-foreground">
                     {{ selectedVenueDetail.sections.length }}
@@ -1010,7 +1036,7 @@ onUnmounted(() => {
                 </div>
                 <div class="rounded-2xl bg-muted/50 px-4 py-3">
                   <p class="text-xs text-muted-foreground">
-                    {{ $t('common.rows') }}
+                    Rows
                   </p>
                   <p class="text-lg font-semibold tabular-nums text-foreground">
                     {{ totalRows }}
@@ -1018,7 +1044,7 @@ onUnmounted(() => {
                 </div>
                 <div class="rounded-2xl bg-muted/50 px-4 py-3">
                   <p class="text-xs text-muted-foreground">
-                    {{ $t('common.seats') }}
+                    Seats
                   </p>
                   <p class="text-lg font-semibold tabular-nums text-foreground">
                     {{ totalSeats }}
@@ -1042,7 +1068,7 @@ onUnmounted(() => {
                     </p>
                   </div>
                   <p class="shrink-0 text-sm tabular-nums text-muted-foreground">
-                    {{ section.rows.reduce((count, row) => count + row.seats.length, 0) }} {{ $t('common.seats') }}
+                    {{ section.rows.reduce((count, row) => count + row.seats.length, 0) }} seats
                   </p>
                 </div>
               </div>
@@ -1061,7 +1087,7 @@ onUnmounted(() => {
               v-else
               class="rounded-3xl border border-dashed px-5 py-10 text-center text-sm text-muted-foreground"
             >
-              {{ $t('admin.event_create.choose_venue_prompt') }}
+              Choose a venue to generate ticket releases and preview the layout.
             </div>
           </CardContent>
         </Card>
@@ -1081,7 +1107,7 @@ onUnmounted(() => {
         >
           <CardHeader>
             <CardTitle class="text-base">
-              {{ $t('admin.event_create.review_title') }}
+              Review and submit
             </CardTitle>
           </CardHeader>
           <CardContent class="space-y-4">
@@ -1089,7 +1115,7 @@ onUnmounted(() => {
               <Card class="rounded-2xl bg-muted/20 shadow-none">
                 <CardHeader class="flex flex-row items-center justify-between gap-3 pb-3">
                   <CardTitle class="text-sm">
-                    {{ $t('admin.event_create.step_sessions') }}
+                    Sessions
                   </CardTitle>
                   <Button
                     type="button"
@@ -1098,14 +1124,14 @@ onUnmounted(() => {
                     class="h-8 px-2"
                     @click="currentStep = 3"
                   >
-                    {{ $t('common.edit') }}
+                    Edit
                   </Button>
                 </CardHeader>
                 <CardContent>
                   <dl class="space-y-4 text-sm">
                     <div class="space-y-1">
                       <dt class="text-muted-foreground">
-                        {{ $t('admin.event_create.number_of_sessions') }}
+                        Number of sessions
                       </dt>
                       <dd class="font-medium">
                         {{ values.sessions.length }}
@@ -1141,7 +1167,7 @@ onUnmounted(() => {
               class="active:scale-[0.96]"
               @click="goPrevious"
             >
-              {{ $t('admin.event_create.back') }}
+              Back
             </Button>
             <Button
               v-if="currentStep < steps.length"
@@ -1149,7 +1175,7 @@ onUnmounted(() => {
               class="active:scale-[0.96]"
               @click="goNext"
             >
-              {{ $t('common.continue') }}
+              Continue
             </Button>
             <Button
               v-else
@@ -1157,7 +1183,7 @@ onUnmounted(() => {
               :is-loading="isSaving"
               class="active:scale-[0.96]"
             >
-              {{ $t('admin.event_create.save_draft') }}
+              Save draft
             </Button>
           </div>
         </div>

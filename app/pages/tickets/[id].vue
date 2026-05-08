@@ -4,7 +4,7 @@ import { CalendarRange, Mail, MapPin, Ticket, UserRound } from '@lucide/vue'
 
 const route = useRoute()
 const ticketId = computed(() => route.params.id.toString())
-const { data: ticketResponse } = await useFetch(() => `/api/tickets/${ticketId.value}`)
+const { data: ticketResponse } = await useAPI(() => `/api/tickets/${ticketId.value}`)
 
 const ticketBundle = computed(() => ticketResponse.value?.data ?? null)
 

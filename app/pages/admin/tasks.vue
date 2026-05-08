@@ -1,13 +1,14 @@
 <script setup lang="ts">
 import { toast } from 'vue-sonner'
 import { Clock, Database, Loader2, Play, Users } from '@lucide/vue'
-
-const { t } = useI18n()
+import type { AdminTaskResult } from '~~/types/admin-tasks'
+import { apiRequest } from '@/utils/apiRequest'
+import { parseApiError } from '@/utils/apiError'
 
 interface TaskDefinition {
   id: string
   titleKey: string
-  descKey: string
+  descriptionKey: string
   endpoint: string
   icon: typeof Play
   variant: 'default' | 'secondary' | 'outline'
@@ -17,7 +18,7 @@ const tasks: TaskDefinition[] = [
   {
     id: 'release-holds',
     titleKey: 'admin.tasks.release_holds_title',
-    descKey: 'admin.tasks.release_holds_desc',
+    descriptionKey: 'admin.tasks.release_holds_desc',
     endpoint: '/api/admin/tasks/release-holds',
     icon: Clock,
     variant: 'default',
@@ -25,7 +26,7 @@ const tasks: TaskDefinition[] = [
   {
     id: 'admit-queue',
     titleKey: 'admin.tasks.admit_queue_title',
-    descKey: 'admin.tasks.admit_queue_desc',
+    descriptionKey: 'admin.tasks.admit_queue_desc',
     endpoint: '/api/admin/tasks/admit-queue',
     icon: Users,
     variant: 'default',
@@ -33,7 +34,7 @@ const tasks: TaskDefinition[] = [
   {
     id: 'seed-admin',
     titleKey: 'admin.tasks.seed_admin_title',
-    descKey: 'admin.tasks.seed_admin_desc',
+    descriptionKey: 'admin.tasks.seed_admin_desc',
     endpoint: '/api/admin/tasks/seed-admin',
     icon: Database,
     variant: 'secondary',
@@ -41,30 +42,40 @@ const tasks: TaskDefinition[] = [
 ]
 
 const runningTasks = ref<Set<string>>(new Set())
-const taskResults = ref<Record<string, { success: boolean, data?: any, error?: string, ranAt: string }>>({})
+const taskResults = ref<Record<string, AdminTaskResult>>({})
+const { t } = useI18n()
+
+const localizedTasks = computed(() => tasks.map(task => ({
+  ...task,
+  title: t(task.titleKey),
+  description: t(task.descriptionKey),
+})))
 
 async function runTask(task: TaskDefinition) {
   if (runningTasks.value.has(task.id)) return
 
-  const taskTitle = t(task.titleKey)
   runningTasks.value.add(task.id)
   try {
-    const response = await $fetch<{ success: boolean, data: any }>(task.endpoint, { method: 'POST' })
+    const response = await apiRequest(task.endpoint, { method: 'POST' })
+    if (!response.success) {
+      throw response
+    }
+
     taskResults.value[task.id] = {
       success: true,
       data: response.data,
       ranAt: new Date().toLocaleTimeString(),
     }
-    toast.success(t('admin.tasks.completed', { title: taskTitle }))
+    toast.success(t('admin.tasks.completed', { title: task.title }))
   }
-  catch (err: any) {
-    const message = err?.data?.message || err?.statusMessage || t('admin.tasks.failed')
+  catch (err) {
+    const message = parseApiError(err, 'Task failed').message
     taskResults.value[task.id] = {
       success: false,
       error: message,
       ranAt: new Date().toLocaleTimeString(),
     }
-    toast.error(t('admin.tasks.task_failed', { title: taskTitle, message }))
+    toast.error(t('admin.tasks.task_failed', { title: task.title, message }))
   }
   finally {
     runningTasks.value.delete(task.id)
@@ -92,7 +103,7 @@ definePageMeta({
 
     <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
       <Card
-        v-for="task in tasks"
+        v-for="task in localizedTasks"
         :key="task.id"
         class="flex flex-col"
       >
@@ -106,12 +117,12 @@ definePageMeta({
             </div>
             <div class="min-w-0 flex-1">
               <CardTitle class="text-sm">
-                {{ $t(task.titleKey) }}
+                {{ task.title }}
               </CardTitle>
             </div>
           </div>
           <CardDescription class="text-xs">
-            {{ $t(task.descKey) }}
+            {{ task.description }}
           </CardDescription>
         </CardHeader>
 
@@ -119,18 +130,18 @@ definePageMeta({
           <div
             v-if="taskResults[task.id]"
             class="rounded-md border px-3 py-2 text-xs"
-            :class="taskResults[task.id]!.success ? 'border-emerald-500/20 bg-emerald-500/5 text-emerald-700 dark:text-emerald-400' : 'border-destructive/20 bg-destructive/5 text-destructive'"
+            :class="taskResults[task.id]?.success ? 'border-emerald-500/20 bg-emerald-500/5 text-emerald-700 dark:text-emerald-400' : 'border-destructive/20 bg-destructive/5 text-destructive'"
           >
             <p class="font-medium">
-              {{ taskResults[task.id]!.success ? $t('admin.tasks.success') : $t('admin.tasks.failed') }}
-              <span class="ml-1 font-normal text-muted-foreground">{{ $t('admin.tasks.at') }} {{ taskResults[task.id]!.ranAt }}</span>
+              {{ taskResults[task.id]?.success ? $t('admin.tasks.success') : $t('admin.tasks.failed') }}
+              <span class="ml-1 font-normal text-muted-foreground">{{ $t('admin.tasks.at') }} {{ taskResults[task.id]?.ranAt }}</span>
             </p>
             <pre
-              v-if="taskResults[task.id]!.data"
+              v-if="taskResults[task.id]?.data"
               class="mt-1 whitespace-pre-wrap break-all font-mono"
-            >{{ JSON.stringify(taskResults[task.id]!.data, null, 2) }}</pre>
-            <p v-if="taskResults[task.id]!.error">
-              {{ taskResults[task.id]!.error }}
+            >{{ JSON.stringify(taskResults[task.id]?.data, null, 2) }}</pre>
+            <p v-if="taskResults[task.id]?.error">
+              {{ taskResults[task.id]?.error }}
             </p>
           </div>
 

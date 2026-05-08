@@ -1,13 +1,14 @@
 <script setup lang="ts">
-import { CalendarClock, Layers3, LockKeyhole, Ticket } from '@lucide/vue'
+import { LockKeyhole } from '@lucide/vue'
 import { useForm } from 'vee-validate'
 import { toast } from 'vue-sonner'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { apiRequest } from '@/utils/apiRequest'
+import { parseApiError } from '@/utils/apiError'
+import { apiRoutes } from '#shared/apiRoutes'
 import { eventPricingFormSchema, getEventSessionTimingIssues } from '#shared/schemas/ticketingSchema'
 import type { EventPricingFormInput } from '#shared/schemas/ticketingSchema'
-
-const { t } = useI18n()
 
 const route = useRoute()
 const eventId = computed(() => Number(route.params.id))
@@ -75,38 +76,6 @@ const isLockedConfiguration = computed(() => detail.value?.event?.status !== 'dr
 
 function normalizeSessionErrorPath(path: string) {
   return path.replace(/\[(\d+)\]/g, '.$1')
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null
-}
-
-function getErrorMessage(errorValue: unknown, fallback: string) {
-  if (!isRecord(errorValue)) {
-    return fallback
-  }
-
-  const data = errorValue.data
-
-  if (isRecord(data)) {
-    if (isRecord(data.error) && typeof data.error.message === 'string' && data.error.message) {
-      return data.error.message
-    }
-
-    if (typeof data.message === 'string' && data.message) {
-      return data.message
-    }
-
-    if (typeof data.statusMessage === 'string' && data.statusMessage) {
-      return data.statusMessage
-    }
-  }
-
-  if (typeof errorValue.message === 'string' && errorValue.message) {
-    return errorValue.message
-  }
-
-  return fallback
 }
 
 interface ExistingPricingTicket {
@@ -247,7 +216,7 @@ const onSubmit = handleSubmit(
         throw new Error('Event details not loaded')
       }
 
-      await $fetch(`/api/admin/events/${eventId.value}`, {
+      const response = await apiRequest(apiRoutes.adminEvent(eventId.value), {
         method: 'PUT',
         body: {
           id: eventId.value,
@@ -265,12 +234,13 @@ const onSubmit = handleSubmit(
           sessions: buildSessionPayload(formValues.sessions),
         },
       })
+      if (!response.success) throw response
 
-      toast.success(t('admin_event_pricing.updated'))
+      toast.success('Event pricing updated')
       await refreshDetail()
     }
     catch (err) {
-      toast.error(getErrorMessage(err, t('admin_event_pricing.update_failed')))
+      toast.error(parseApiError(err, 'Failed to update pricing').message)
     }
     finally {
       isSaving.value = false
@@ -311,7 +281,7 @@ definePageMeta({
           <div>
             <CardTitle>{{ $t('admin_event_pricing.title') }}</CardTitle>
             <p class="mt-1 text-sm text-muted-foreground">
-              {{ $t('admin_event_pricing.desc') }}
+              Edit the event sessions buyers will see on the public event page.
             </p>
           </div>
           <Badge
@@ -338,7 +308,7 @@ definePageMeta({
             <ItemContent>
               <ItemTitle>{{ $t('admin_event_pricing.read_only_title') }}</ItemTitle>
               <ItemDescription>
-                {{ $t('admin_event_pricing.read_only_desc') }}
+                Switch the event back to draft if you need to make pricing or scheduling changes.
               </ItemDescription>
             </ItemContent>
           </Item>
@@ -354,7 +324,7 @@ definePageMeta({
 
           <div class="flex flex-col gap-3 border-t pt-5 sm:flex-row sm:items-center sm:justify-between">
             <p class="text-sm text-muted-foreground">
-              {{ $t('admin_event_pricing.changes_note') }}
+              Changes apply to every session listed above.
             </p>
             <Button
               type="submit"
@@ -362,7 +332,7 @@ definePageMeta({
               :disabled="isLockedConfiguration || isSaving"
               :is-loading="isSaving"
             >
-              {{ $t('admin_event_pricing.save_changes') }}
+              Save changes
             </Button>
           </div>
         </form>

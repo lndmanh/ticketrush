@@ -1,8 +1,7 @@
 <script setup lang="ts">
+import { apiRoutes } from '#shared/apiRoutes'
 import { CalendarRange, LayoutGrid, MapPinned, Users } from '@lucide/vue'
 import AdminFeaturedEventCard from '@/components/admin/events/AdminFeaturedEventCard.vue'
-
-const { t } = useI18n()
 
 interface AdminDashboardEvent {
   id: number
@@ -25,8 +24,8 @@ interface AdminDashboardVenue {
   updatedAt?: string | Date | null
 }
 
-const { data: eventsResponse } = await useFetch('/api/admin/events')
-const { data: venuesResponse } = await useFetch('/api/admin/venues')
+const { data: eventsResponse } = await useAPI(() => apiRoutes.ADMIN_EVENTS)
+const { data: venuesResponse } = await useAPI(() => apiRoutes.ADMIN_VENUES)
 
 const events = computed<AdminDashboardEvent[]>(() => eventsResponse.value?.success ? eventsResponse.value.data : [])
 const venues = computed<AdminDashboardVenue[]>(() => venuesResponse.value?.success ? venuesResponse.value.data : [])
@@ -64,39 +63,6 @@ const largestVenue = computed(() => {
   return [...venues.value].sort((left, right) => (right.capacity ?? 0) - (left.capacity ?? 0))[0] ?? null
 })
 
-const cockpitSignals = computed(() => {
-  return [
-    {
-      title: t('admin.cockpit_publish_backlog'),
-      value: draftEvents.value.length,
-      description: draftEvents.value.length > 0
-        ? t('admin.cockpit_publish_backlog_has')
-        : t('admin.cockpit_publish_backlog_none'),
-    },
-    {
-      title: t('admin.cockpit_live_programs'),
-      value: publishedEvents.value.length,
-      description: publishedEvents.value.length > 0
-        ? t('admin.cockpit_live_programs_has')
-        : t('admin.cockpit_live_programs_none'),
-    },
-    {
-      title: t('admin.cockpit_city_coverage'),
-      value: cityCoverage.value,
-      description: cityCoverage.value > 0
-        ? t('admin.cockpit_city_coverage_has')
-        : t('admin.cockpit_city_coverage_none'),
-    },
-  ]
-})
-
-const largestVenueDesc = computed(() => {
-  if (largestVenue.value) {
-    return t('admin.venue_largest_desc', { name: largestVenue.value.name, city: largestVenue.value.city })
-  }
-  return t('admin.venue_no_blueprints')
-})
-
 definePageMeta({
   title: 'Admin Dashboard',
   breadcrumb: 'Admin',
@@ -110,10 +76,10 @@ definePageMeta({
     <section class="space-y-4">
       <div class="space-y-1">
         <h1 class="text-2xl font-semibold text-foreground">
-          {{ $t('admin.dashboard_title') }}
+          Admin dashboard
         </h1>
         <p class="text-sm text-muted-foreground">
-          {{ $t('admin.dashboard_desc') }}
+          Events, venues, and account activity in one place.
         </p>
       </div>
 
@@ -122,7 +88,7 @@ definePageMeta({
           <CardContent class="flex h-full flex-col justify-between gap-5">
             <div class="flex items-center justify-between gap-3">
               <p class="text-[11px] font-medium uppercase tracking-[0.24em] text-background/70">
-                {{ $t('admin.stat_events') }}
+                Events
               </p>
               <CalendarRange class="size-4 text-background/80" />
             </div>
@@ -131,7 +97,7 @@ definePageMeta({
                 {{ events.length }}
               </p>
               <p class="text-sm leading-6 text-background/72">
-                {{ $t('admin.stat_events_desc') }}
+                Tracked launches in the admin catalog.
               </p>
             </div>
           </CardContent>
@@ -141,7 +107,7 @@ definePageMeta({
           <CardContent class="flex h-full flex-col justify-between gap-5">
             <div class="flex items-center justify-between gap-3">
               <p class="text-[11px] font-medium uppercase tracking-[0.24em] text-white/70">
-                {{ $t('admin.stat_venues') }}
+                Venues
               </p>
               <MapPinned class="size-4 text-white/80" />
             </div>
@@ -150,7 +116,7 @@ definePageMeta({
                 {{ venues.length }}
               </p>
               <p class="text-sm leading-6 text-white/80">
-                {{ $t('admin.stat_venues_desc') }}
+                Blueprint coverage across active rooms.
               </p>
             </div>
           </CardContent>
@@ -160,7 +126,7 @@ definePageMeta({
           <CardContent class="flex h-full flex-col justify-between gap-5">
             <div class="flex items-center justify-between gap-3">
               <p class="text-[11px] font-medium uppercase tracking-[0.24em] text-white/70">
-                {{ $t('admin.stat_drafts') }}
+                Drafts
               </p>
               <LayoutGrid class="size-4 text-white/80" />
             </div>
@@ -169,7 +135,7 @@ definePageMeta({
                 {{ draftEvents.length }}
               </p>
               <p class="text-sm leading-6 text-white/80">
-                {{ $t('admin.stat_drafts_desc') }}
+                Events still being prepared for launch.
               </p>
             </div>
           </CardContent>
@@ -179,7 +145,7 @@ definePageMeta({
           <CardContent class="flex h-full flex-col justify-between gap-5">
             <div class="flex items-center justify-between gap-3">
               <p class="text-[11px] font-medium uppercase tracking-[0.24em] text-white/70">
-                {{ $t('admin.stat_live') }}
+                Live
               </p>
               <Users class="size-4 text-white/80" />
             </div>
@@ -188,7 +154,7 @@ definePageMeta({
                 {{ publishedEvents.length }}
               </p>
               <p class="text-sm leading-6 text-white/80">
-                {{ $t('admin.stat_live_desc') }}
+                Programs currently visible to buyers.
               </p>
             </div>
           </CardContent>
@@ -199,14 +165,14 @@ definePageMeta({
     <section class="space-y-4">
       <AdminFeaturedEventCard
         v-if="featuredEvent"
-        :eyebrow="$t('admin.next_launch')"
+        eyebrow="Next launch"
         :title="featuredEvent.title"
-        :venue-name="featuredEvent.venue?.name || $t('admin.venue_pending')"
+        :venue-name="featuredEvent.venue?.name || 'Venue pending'"
         :starts-at="featuredEvent.startsAt"
         :status="featuredEvent.status"
         :href="`/admin/events/${featuredEvent.id}`"
-        :open-label="$t('admin.events.open_event')"
-        :secondary-label="$t('admin.events.view_all')"
+        open-label="Open event"
+        :secondary-label="$t('admin.events.event_registry')"
         secondary-href="/admin/events"
         :leading-icon="CalendarRange"
       />
@@ -288,7 +254,7 @@ definePageMeta({
             <CardContent class="flex h-full items-center justify-between gap-3 px-4">
               <div>
                 <p class="text-[11px] uppercase tracking-[0.24em] text-white/70">
-                  {{ $t('admin.venue_cities') }}
+                  Cities
                 </p>
                 <p class="text-lg font-semibold">
                   {{ cityCoverage }}
@@ -301,7 +267,7 @@ definePageMeta({
             <CardContent class="flex h-full items-center justify-between gap-3 px-4">
               <div>
                 <p class="text-[11px] uppercase tracking-[0.24em] text-white/70">
-                  {{ $t('admin.venue_largest_room') }}
+                  Largest room
                 </p>
                 <p class="text-lg font-semibold">
                   {{ largestVenue?.capacity || 0 }}
@@ -311,7 +277,7 @@ definePageMeta({
             </CardContent>
           </Card>
           <div class="md:col-span-2 rounded-lg border bg-card p-4 text-sm text-muted-foreground">
-            {{ largestVenueDesc }}
+            {{ largestVenue ? `${largestVenue.name} in ${largestVenue.city} is currently the largest venue.` : 'Add venue blueprints to start tracking coverage.' }}
           </div>
         </CardContent>
       </Card>

@@ -1,9 +1,13 @@
 <script setup lang="ts">
 import { CircleDollarSign, LayoutGrid, LockKeyhole, Ticket, TrendingUp, Users } from '@lucide/vue'
 import AdminChartCard from '@/components/admin/charts/AdminChartCard.vue'
+import { apiRequest } from '@/utils/apiRequest'
+import { parseApiError } from '@/utils/apiError'
+import { apiRoutes } from '#shared/apiRoutes'
 
 const route = useRoute()
 const eventId = computed(() => Number(route.params.id))
+const { t } = useI18n()
 
 const { detail, dashboard, refreshAll } = await useAdminEventWorkspace(eventId, {
   poll: true,
@@ -31,8 +35,6 @@ const heldSeats = computed(() => detail.value?.seats.filter(seat => seat.status 
 const soldSeats = computed(() => detail.value?.seats.filter(seat => seat.status === 'sold').length ?? 0)
 const totalTicketCapacity = computed(() => detail.value?.ticketTypes.reduce((total, ticketType) => total + ticketType.capacity, 0) ?? 0)
 const reservedReleases = computed(() => detail.value?.ticketTypes.filter(ticketType => ticketType.isReservedSeating).length ?? 0)
-
-const { t } = useI18n()
 
 const launchChecklist = computed(() => {
   if (!detail.value?.event) {
@@ -88,8 +90,12 @@ const seatStatusOption = computed(() => {
 async function publishEvent() {
   isPublishing.value = true
   try {
-    await $fetch(`/api/admin/events/${eventId.value}/publish`, { method: 'POST' })
+    const response = await apiRequest(apiRoutes.adminEventPublish(eventId.value), { method: 'POST' })
+    if (!response.success) throw response
     await refreshAll()
+  }
+  catch (error) {
+    toast.error(parseApiError(error, 'Failed to publish event').message)
   }
   finally {
     isPublishing.value = false
@@ -99,8 +105,12 @@ async function publishEvent() {
 async function unpublishEvent() {
   isUnpublishing.value = true
   try {
-    await $fetch(`/api/admin/events/${eventId.value}/unpublish`, { method: 'POST' })
+    const response = await apiRequest(apiRoutes.adminEventUnpublish(eventId.value), { method: 'POST' })
+    if (!response.success) throw response
     await refreshAll()
+  }
+  catch (error) {
+    toast.error(parseApiError(error, 'Failed to unpublish event').message)
   }
   finally {
     isUnpublishing.value = false
@@ -108,8 +118,8 @@ async function unpublishEvent() {
 }
 
 definePageMeta({
-  title: 'admin.event_dashboard_title',
-  breadcrumb: 'admin.event_dashboard_breadcrumb',
+  title: 'Event dashboard',
+  breadcrumb: 'Event dashboard',
   middleware: ['auth', 'admin'],
   layout: 'dashboard',
 })
@@ -148,7 +158,7 @@ definePageMeta({
               class="rounded-full"
               @click="publishEvent"
             >
-              {{ $t('admin.event_publish_btn') }}
+              Publish event
             </Button>
             <Button
               v-else
@@ -157,7 +167,7 @@ definePageMeta({
               class="rounded-full"
               @click="unpublishEvent"
             >
-              {{ $t('admin.event_move_to_draft_btn') }}
+              Move to draft
             </Button>
             <Button
               as-child
@@ -177,7 +187,7 @@ definePageMeta({
           </div><p class="mt-4 text-2xl font-semibold tracking-[-0.05em] text-foreground">
             {{ Intl.NumberFormat('en-US').format((dashboard.revenueCents || 0) / 100) }} VND
           </p><p class="mt-2 text-sm text-muted-foreground">
-            {{ $t('admin.event_stat_revenue_desc', { count: dashboard.soldSeatsCount }) }}
+            {{ dashboard.soldSeatsCount }} seats converted so far.
           </p>
         </CardContent>
       </Card>
@@ -188,7 +198,7 @@ definePageMeta({
           </div><p class="mt-4 text-2xl font-semibold tracking-[-0.05em] text-foreground">
             {{ Math.round((dashboard.occupancyRate || 0) * 100) }}%
           </p><p class="mt-2 text-sm text-muted-foreground">
-            {{ $t('admin.event_stat_occupancy_desc', { count: availableSeats }) }}
+            {{ availableSeats }} seats still open in the snapshot.
           </p>
         </CardContent>
       </Card>
@@ -202,7 +212,7 @@ definePageMeta({
           </div><p class="mt-4 text-2xl font-semibold tracking-[-0.05em] text-foreground">
             {{ detail.ticketTypes.length }}
           </p><p class="mt-2 text-sm text-muted-foreground">
-            {{ $t('admin.event_stat_releases_desc', { count: reservedReleases }) }}
+            {{ reservedReleases }} reserved release(s).
           </p>
         </CardContent>
       </Card>
@@ -213,7 +223,7 @@ definePageMeta({
           </div><p class="mt-4 text-2xl font-semibold tracking-[-0.05em] text-foreground">
             {{ totalTicketCapacity }}
           </p><p class="mt-2 text-sm text-muted-foreground">
-            {{ $t('admin.event_stat_ticket_capacity_desc') }}
+            Total tickets represented in pricing.
           </p>
         </CardContent>
       </Card>
@@ -224,7 +234,7 @@ definePageMeta({
           </div><p class="mt-4 text-2xl font-semibold tracking-[-0.05em] text-foreground">
             {{ availableSeats }}
           </p><p class="mt-2 text-sm text-muted-foreground">
-            {{ $t('admin.event_stat_seats_open_desc', { count: heldSeats }) }}
+            {{ heldSeats }} currently held in checkout.
           </p>
         </CardContent>
       </Card>
@@ -235,7 +245,7 @@ definePageMeta({
           </div><p class="mt-4 text-2xl font-semibold tracking-[-0.05em] text-foreground">
             {{ soldSeats }}
           </p><p class="mt-2 text-sm text-muted-foreground">
-            {{ $t('admin.event_stat_seats_sold_desc') }}
+            Snapshot seat inventory already converted.
           </p>
         </CardContent>
       </Card>
@@ -264,7 +274,7 @@ definePageMeta({
               <span
                 :class="item.value ? 'border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300' : 'border-border bg-background text-muted-foreground'"
                 class="rounded-full border px-3 py-1 text-xs font-medium"
-              >{{ item.value ? $t('admin.event_launch_ready') : $t('admin.event_launch_pending') }}</span>
+              >{{ item.value ? 'Ready' : 'Pending' }}</span>
             </div>
           </div>
         </CardContent>
@@ -272,25 +282,25 @@ definePageMeta({
 
       <AdminChartCard
         class="xl:col-span-4"
-        :eyebrow="$t('admin.event_chart_inventory')"
+        eyebrow="Inventory"
         :title="$t('admin.event_chart_seat_status')"
-        :description="$t('admin.event_chart_seat_status_desc')"
+        description="Current inventory split across available, held, and sold seats."
         :option="seatStatusOption"
         :height="320"
         tone="emerald"
         :stat="`${availableSeats}`"
-        :stat-label="$t('admin.event_chart_ready_now')"
+        stat-label="Ready now"
       />
       <AdminChartCard
         class="xl:col-span-3"
-        :eyebrow="$t('admin.event_chart_commercial')"
+        eyebrow="Commercial"
         :title="$t('admin.event_chart_revenue_section')"
-        :description="$t('admin.event_chart_revenue_section_desc')"
+        description="Top performing sections by confirmed revenue."
         :option="revenueBySectionOption"
         :height="320"
         tone="blue"
         :stat="`${topSections.length}`"
-        :stat-label="$t('admin.event_chart_tracked_sections')"
+        stat-label="Tracked sections"
       />
 
       <Card class="h-full xl:col-span-5">
@@ -298,28 +308,28 @@ definePageMeta({
         <CardContent class="grid gap-3 md:grid-cols-2">
           <div class="rounded-[1.25rem] border border-border bg-secondary/30 p-4">
             <p class="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-              {{ $t('admin.event_stat_sold_seats') }}
+              Sold seats
             </p><p class="mt-2 text-2xl font-semibold tracking-[-0.05em] text-foreground">
               {{ soldSeats }}
             </p>
           </div>
           <div class="rounded-[1.25rem] border border-border bg-secondary/30 p-4">
             <p class="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-              {{ $t('admin.event_stat_held_seats') }}
+              Held seats
             </p><p class="mt-2 text-2xl font-semibold tracking-[-0.05em] text-foreground">
               {{ heldSeats }}
             </p>
           </div>
           <div class="rounded-[1.25rem] border border-border bg-secondary/30 p-4">
             <p class="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-              {{ $t('admin.event_stat_queue_waiting') }}
+              Queue waiting
             </p><p class="mt-2 text-2xl font-semibold tracking-[-0.05em] text-foreground">
               {{ dashboard.queueWaitingCount }}
             </p>
           </div>
           <div class="rounded-[1.25rem] border border-border bg-secondary/30 p-4">
             <p class="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-              {{ $t('admin.event_stat_admitted') }}
+              Admitted
             </p><p class="mt-2 text-2xl font-semibold tracking-[-0.05em] text-foreground">
               {{ dashboard.queueAdmittedCount }}
             </p>
@@ -340,7 +350,7 @@ definePageMeta({
                 <p class="text-sm font-medium text-foreground">
                   {{ section }}
                 </p><p class="text-sm text-muted-foreground">
-                  {{ $t('admin.event_section_sold', { count: row.sold }) }}
+                  {{ row.sold }} sold
                 </p>
               </div>
               <p class="text-sm font-medium text-foreground">
@@ -352,7 +362,7 @@ definePageMeta({
             v-if="topSections.length === 0"
             class="text-sm text-muted-foreground"
           >
-            {{ $t('admin.event_no_section_sales') }}
+            No section sales yet.
           </p>
         </CardContent>
       </Card>
@@ -368,9 +378,9 @@ definePageMeta({
             <div class="flex flex-col gap-2">
               <div>
                 <p class="text-sm font-medium text-foreground">
-                  {{ order.customerName || $t('admin.event_pending_buyer') }}
+                  {{ order.customerName || 'Pending buyer' }}
                 </p><p class="text-sm text-muted-foreground">
-                  {{ order.customerEmail || $t('admin.event_no_email') }}
+                  {{ order.customerEmail || 'No email captured yet' }}
                 </p>
               </div>
               <p class="text-sm text-muted-foreground">
@@ -382,7 +392,7 @@ definePageMeta({
             v-if="recentOrders.length === 0"
             class="text-sm text-muted-foreground"
           >
-            {{ $t('admin.event_no_buyers') }}
+            No buyer activity yet.
           </p>
         </CardContent>
       </Card>

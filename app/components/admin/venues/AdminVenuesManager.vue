@@ -226,36 +226,94 @@ import { computed, onMounted, ref } from 'vue'
 import { Field as VeeField, useForm } from 'vee-validate'
 import { toast } from 'vue-sonner'
 import type { Venue } from '#shared/db'
-import type { ApiResponse } from '~~/types/api'
 import { venueBuilderSchema } from '#shared/schemas/ticketingSchema'
 import type { VenueBuilderInput } from '#shared/schemas/ticketingSchema'
 import { Rows3 } from '@lucide/vue'
 import DataTable from '@/components/DataTable.vue'
+import { apiRequest } from '@/utils/apiRequest'
+import { parseApiError } from '@/utils/apiError'
+import { apiRoutes } from '#shared/apiRoutes'
 import { createColumns } from './columns'
 
-const { t } = useI18n()
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null
+}
 
-function extractErrorMessage(error: unknown, fallback: string) {
-  if (typeof error === 'object' && error !== null && 'data' in error) {
-    const data = error.data
-    if (typeof data === 'object' && data !== null) {
-      if ('statusMessage' in data && typeof data.statusMessage === 'string') {
-        return data.statusMessage
-      }
-      if ('message' in data && typeof data.message === 'string') {
-        return data.message
-      }
+function isIssueRecord(value: unknown): value is Record<string, unknown> {
+  return isRecord(value) && ('message' in value || 'path' in value)
+}
+
+type VenueFieldName = 'slug' | 'name' | 'description' | 'city' | 'country' | 'address' | 'coverImage'
+const venueFieldNames: VenueFieldName[] = ['slug', 'name', 'description', 'city', 'country', 'address', 'coverImage']
+
+function isVenueFieldName(value: string): value is VenueFieldName {
+  return venueFieldNames.some(field => field === value)
+}
+
+function getFieldFromPath(path: unknown): string | null {
+  if (typeof path === 'string') {
+    return path.split('.').filter(Boolean)[0] ?? null
+  }
+
+  if (Array.isArray(path)) {
+    const first = path[0]
+    return typeof first === 'string' ? first : null
+  }
+
+  return null
+}
+
+function getIssueList(error: unknown): unknown[] | null {
+  if (!isRecord(error) || !isRecord(error.data)) {
+    return null
+  }
+
+  const directIssues = error.data.issues
+  if (Array.isArray(directIssues)) {
+    return directIssues
+  }
+
+  if (isRecord(error.data.data) && Array.isArray(error.data.data.issues)) {
+    return error.data.data.issues
+  }
+
+  return null
+}
+
+function getIssueFieldAndMessage(error: unknown): { field: VenueFieldName, message: string } | null {
+  const issues = getIssueList(error)
+  if (!issues) {
+    return null
+  }
+
+  for (const issue of issues) {
+    if (!isIssueRecord(issue)) {
+      continue
+    }
+
+    const field = getFieldFromPath(issue.path)
+    const message = typeof issue.message === 'string' && issue.message.trim() ? issue.message : null
+    if (field && isVenueFieldName(field) && message) {
+      return { field, message }
     }
   }
 
-  if (error instanceof Error && error.message) {
-    return error.message
-  }
-
-  return fallback
+  return null
 }
 
-const dataTableRef = ref()
+function mapVenueErrorToField(message: string): VenueFieldName | null {
+  const lowerMessage = message.toLowerCase()
+  if (lowerMessage.includes('slug')) {
+    return 'slug'
+  }
+  if (lowerMessage.includes('name')) {
+    return 'name'
+  }
+
+  return null
+}
+
+const dataTableRef = ref<InstanceType<typeof DataTable> | null>(null)
 const venues = ref<Venue[]>([])
 const tableLoading = ref(false)
 const dialogLoading = ref(false)
@@ -278,6 +336,7 @@ const defaultValues: VenueBuilderInput = {
 const {
   handleSubmit,
   resetForm,
+  setFieldError,
 } = useForm({
   initialValues: { ...defaultValues },
   validationSchema: venueBuilderSchema,
@@ -312,24 +371,38 @@ const onSubmit = handleSubmit(
   async (formValues) => {
     try {
       dialogLoading.value = true
-      await $fetch('/api/admin/venues', {
+      const response = await apiRequest(apiRoutes.ADMIN_VENUES, {
         method: 'POST',
         body: buildVenuePayload(formValues),
       })
+      if (!response.success) throw response
 
-      toast.success(t('admin.venues.created'))
+      toast.success('Venue created successfully')
       closeDialog()
       await fetchVenues()
     }
     catch (error) {
-      toast.error(extractErrorMessage(error, t('admin.venues.create_failed')))
+      const message = parseApiError(error, 'Failed to save the venue blueprint').message
+      const structuredIssue = getIssueFieldAndMessage(error)
+      if (structuredIssue) {
+        setFieldError(structuredIssue.field, structuredIssue.message)
+      }
+      else {
+        const mappedField = mapVenueErrorToField(message)
+        if (mappedField) {
+          setFieldError(mappedField, message)
+        }
+        else {
+          toast.error(message)
+        }
+      }
     }
     finally {
       dialogLoading.value = false
     }
   },
   ({ errors }) => {
-    const firstError = Object.values(errors).flat().filter(Boolean)[0] || t('admin.venues.fix_errors')
+    const firstError = Object.values(errors).flat().filter(Boolean)[0] || 'Please fix the errors above'
     toast.error(firstError)
   },
 )
@@ -337,14 +410,14 @@ const onSubmit = handleSubmit(
 async function fetchVenues() {
   try {
     tableLoading.value = true
-    const response = await $fetch<ApiResponse<Venue[]>>('/api/admin/venues')
+    const response = await apiRequest(apiRoutes.ADMIN_VENUES)
     if (!response.success) {
-      throw new Error('Unsuccessful response')
+      throw response
     }
     venues.value = response.data
   }
   catch (error) {
-    toast.error(extractErrorMessage(error, t('admin.venues.load_failed')))
+    toast.error(parseApiError(error).message)
   }
   finally {
     tableLoading.value = false

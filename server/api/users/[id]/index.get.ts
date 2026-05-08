@@ -1,6 +1,6 @@
 import { getAuthorizedUserId } from '~~/server/utils/authorization'
 import userService from '~~/server/utils/database/user'
-import { success } from '~~/server/utils/apiResponse'
+import { apiError, success } from '~~/server/utils/apiResponse'
 import type { UserProfileModel } from '~~/types/models/profile'
 
 export default defineEventHandler(async (event) => {
@@ -8,10 +8,7 @@ export default defineEventHandler(async (event) => {
   const dbUser = await userService.getById(userId)
 
   if (!dbUser) {
-    throw createError({
-      statusCode: 404,
-      statusMessage: 'User not found',
-    })
+    throw apiError({ status: 404, statusText: 'Not Found', code: 'USER_NOT_FOUND', message: 'User not found.' })
   }
 
   const userProfile: UserProfileModel = {
@@ -25,5 +22,6 @@ export default defineEventHandler(async (event) => {
     isAdmin: dbUser.isAdmin,
   }
 
-  return success(userProfile)
+  const response: UserProfileModel = userProfile
+  return success(response)
 })

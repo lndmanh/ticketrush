@@ -1,11 +1,11 @@
 import type { AdminEventWorkspaceOps } from '~~/types/admin-events'
 import analyticsService from '~~/server/utils/ticketing/analytics'
-import { success } from '~~/server/utils/apiResponse'
+import { apiError, success } from '~~/server/utils/apiResponse'
 
 export default defineEventHandler(async (event) => {
   const eventId = Number(getRouterParam(event, 'id'))
   if (Number.isNaN(eventId)) {
-    throw createError({ statusCode: 400, statusMessage: 'Bad Request. Event ID is invalid.' })
+    throw apiError({ status: 400, statusText: 'Bad Request', code: 'INVALID_EVENT_ID', message: 'Event ID is invalid.' })
   }
 
   const overview = await analyticsService.getAdminOps(eventId)

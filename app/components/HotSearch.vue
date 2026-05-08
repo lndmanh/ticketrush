@@ -7,7 +7,6 @@ import { useHotSearch } from '@/composables/useHotSearch'
 
 const { isOpen: hotSearchOpen, toggleIsOpen, setIsOpen } = useHotSearch()
 const searchQuery = ref('')
-const { t } = useI18n()
 
 const features = getAllSidebarItems()
 

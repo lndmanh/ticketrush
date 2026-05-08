@@ -1,5 +1,6 @@
 import { eq } from 'drizzle-orm'
 import { useKV } from '~~/server/utils/kv'
+import { apiError } from '~~/server/utils/apiResponse'
 
 export default defineWebAuthnAuthenticateEventHandler({
   async storeChallenge(event, challenge, attemptId) {
@@ -8,10 +9,7 @@ export default defineWebAuthnAuthenticateEventHandler({
   async getChallenge(event, attemptId) {
     const challenge = await useKV().get<string>(`auth:challenge:${attemptId}`)
     if (!challenge) {
-      throw createError({
-        statusCode: 400,
-        statusMessage: 'Bad Request. The authentication challenge has expired or was not found. Please try again.',
-      })
+      throw apiError({ status: 400, statusText: 'Bad Request', code: 'WEBAUTHN_CHALLENGE_EXPIRED', message: 'The authentication challenge has expired or was not found. Please try again.' })
     }
     await useKV().del(`auth:challenge:${attemptId}`)
     return challenge
@@ -37,10 +35,7 @@ export default defineWebAuthnAuthenticateEventHandler({
     })
 
     if (!credential) {
-      throw createError({
-        statusCode: 404,
-        statusMessage: 'Not Found. The specified passkey credential was not found.',
-      })
+      throw apiError({ status: 404, statusText: 'Not Found', code: 'WEBAUTHN_CREDENTIAL_NOT_FOUND', message: 'The specified passkey credential was not found.' })
     }
 
     return credential

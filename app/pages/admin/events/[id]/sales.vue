@@ -136,7 +136,7 @@ definePageMeta({
       <AdminChartCard
         class="xl:col-span-5"
         eyebrow="Ranking"
-        title="Section revenue"
+        :title="$t('admin_event_sales.section_revenue')"
         description="Top sections ranked by confirmed revenue."
         :option="sectionRevenueOption"
         :height="320"
@@ -147,7 +147,7 @@ definePageMeta({
       <AdminChartCard
         class="xl:col-span-4"
         eyebrow="Audience"
-        title="Audience mix"
+        :title="$t('admin_event_sales.audience_mix')"
         description="Current age distribution of buyers captured in the dashboard snapshot."
         :option="audienceMixOption"
         :height="320"
@@ -158,7 +158,7 @@ definePageMeta({
       <AdminChartCard
         class="xl:col-span-3"
         eyebrow="Sample"
-        title="Recent order sample"
+        :title="$t('admin_event_sales.recent_order_sample')"
         description="Latest order amounts shown as a recent-value sample, not a long-term trend."
         :option="recentOrderSampleOption"
         :height="320"

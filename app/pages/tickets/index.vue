@@ -1,72 +1,142 @@
 <script setup lang="ts">
-const { data: ticketsResponse } = await useFetch('/api/tickets')
+import { ArrowRight, CalendarRange, MapPin, Ticket, UserRound } from '@lucide/vue'
+
+const { data: ticketsResponse } = await useAPI(() => '/api/tickets')
 const tickets = computed(() => ticketsResponse.value?.data ?? [])
-const { t } = useI18n()
+
+function formatIssuedAt(value: string | Date) {
+  return new Date(value).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  })
+}
+
+function formatEventTime(value: string | Date | null | undefined) {
+  if (!value) {
+    return 'Time to be announced'
+  }
+
+  return new Date(value).toLocaleString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  })
+}
+
+function getShortTicketId(value: string) {
+  return value.length > 10 ? value.slice(-10) : value
+}
 
 definePageMeta({
-  title: t('tickets.page_title'),
-  breadcrumb: t('tickets.breadcrumb'),
+  title: 'My tickets',
+  breadcrumb: 'Tickets',
+  layout: 'dashboard',
   middleware: ['auth'],
 })
 </script>
 
 <template>
-  <main class="space-y-8 pb-16 pt-6 md:space-y-12 md:pb-24">
+  <main class="space-y-6 pb-8 pt-6">
     <section class="space-y-4">
-      <span class="section-eyebrow">
-        {{ $t('tickets.eyebrow') }}
-      </span>
       <div class="space-y-3">
-        <h1 class="display-title md:text-5xl">
-          {{ $t('tickets.title') }}
+        <h1 class="text-3xl font-semibold tracking-tight">
+          Your issued passes, ready whenever doors open.
         </h1>
         <p class="max-w-[40rem] text-base leading-8 text-muted-foreground">
-          {{ $t('tickets.subtitle') }}
+          Every confirmed order lands here with its digital QR token and purchase metadata.
         </p>
       </div>
     </section>
 
     <section
       v-if="tickets.length > 0"
-      class="soft-grid lg:grid-cols-2"
+      class="grid gap-5 sm:grid-cols-2 xl:grid-cols-3"
     >
       <NuxtLink
         v-for="ticket in tickets"
         :key="ticket.id"
         :to="`/tickets/${ticket.publicId}`"
-        class="surface-shell block"
+        class="group relative block overflow-hidden rounded-2xl border bg-card text-card-foreground shadow-sm outline-none transition-all duration-300 hover:-translate-y-1 hover:border-primary/50 hover:shadow-md focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
       >
-        <div class="surface-core space-y-5 transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] hover:-translate-y-1">
+        <div class="h-1.5 bg-gradient-to-r from-primary via-primary/55 to-transparent" />
+
+        <div class="space-y-5 p-5">
           <div class="flex items-start justify-between gap-4">
-            <div class="space-y-2">
-              <p class="section-eyebrow">
+            <div class="min-w-0 space-y-3">
+              <Badge
+                variant="secondary"
+                class="w-fit capitalize"
+              >
                 {{ ticket.status }}
-              </p>
-              <h2 class="text-2xl font-semibold tracking-[-0.05em]">
+              </Badge>
+              <h2 class="line-clamp-2 text-xl font-semibold tracking-tight">
                 {{ ticket.event?.title || ticket.publicId }}
               </h2>
-              <p class="text-sm text-muted-foreground">
-                {{ ticket.attendeeEmail }}
+              <p class="flex items-center gap-2 truncate text-sm text-muted-foreground">
+                <UserRound class="size-3.5 shrink-0" />
+                <span class="truncate">{{ ticket.attendeeEmail }}</span>
               </p>
             </div>
-            <div class="font-mono text-xs text-muted-foreground">
-              {{ new Date(ticket.issuedAt).toLocaleString() }}
+
+            <div class="rounded-lg border bg-muted/30 px-2.5 py-2 text-right">
+              <p class="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+                {{ $t('tickets.detail_issued') }}
+              </p>
+              <p class="mt-1 whitespace-nowrap font-mono text-xs">
+                {{ formatIssuedAt(ticket.issuedAt) }}
+              </p>
             </div>
           </div>
 
-          <div class="grid gap-4 sm:grid-cols-3">
-            <TicketSummaryMetric
-              :label="$t('tickets.ticket_label')"
-              :value="ticket.publicId"
-            />
-            <TicketSummaryMetric
-              :label="$t('tickets.seat_label')"
-              :value="ticket.orderItem?.seatLabel || $t('tickets.ga')"
-            />
-            <TicketSummaryMetric
-              :label="$t('tickets.event_time')"
-              :value="ticket.event?.startsAt ? new Date(ticket.event.startsAt).toLocaleDateString() : $t('common.tba')"
-            />
+          <div class="relative border-t border-dashed pt-5">
+            <span class="absolute -left-8 -top-3 size-6 rounded-full border bg-background transition-colors duration-300 group-hover:border-primary/50" />
+            <span class="absolute -right-8 -top-3 size-6 rounded-full border bg-background transition-colors duration-300 group-hover:border-primary/50" />
+
+            <div class="grid gap-3 text-sm">
+              <div class="flex items-start gap-3 rounded-xl bg-muted/30 p-3">
+                <CalendarRange class="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+                <div class="min-w-0">
+                  <p class="text-xs text-muted-foreground">{{ $t('tickets.event_time') }}</p>
+                  <p class="truncate font-medium">
+                    {{ formatEventTime(ticket.event?.startsAt) }}
+                  </p>
+                </div>
+              </div>
+
+              <div class="grid gap-3 sm:grid-cols-2">
+                <div class="flex items-start gap-3 rounded-xl bg-muted/30 p-3">
+                  <MapPin class="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+                  <div class="min-w-0">
+                    <p class="text-xs text-muted-foreground">{{ $t('tickets.seat_label') }}</p>
+                    <p class="truncate font-medium">
+                      {{ ticket.orderItem?.sectionLabel || $t('tickets.detail_general_admission') }} · {{ ticket.orderItem?.seatLabel || $t('tickets.ga') }}
+                    </p>
+                  </div>
+                </div>
+
+                <div class="flex items-start gap-3 rounded-xl bg-muted/30 p-3">
+                  <Ticket class="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+                  <div class="min-w-0">
+                    <p class="text-xs text-muted-foreground">{{ $t('tickets.ticket_label') }}</p>
+                    <p class="truncate font-mono text-xs font-medium">
+                      #{{ getShortTicketId(ticket.publicId) }}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="mt-5 flex items-center justify-between gap-3 text-sm">
+              <span class="text-muted-foreground">
+                {{ $t('tickets.open_digital_pass') }}
+              </span>
+              <span class="inline-flex items-center gap-1 font-medium text-primary transition-transform duration-300 group-hover:translate-x-1">
+                {{ $t('tickets.view_pass') }}
+                <ArrowRight class="size-4" />
+              </span>
+            </div>
           </div>
         </div>
       </NuxtLink>
@@ -74,18 +144,15 @@ definePageMeta({
 
     <section
       v-else
-      class="surface-shell"
+      class="rounded-xl border border-dashed p-8 text-center"
     >
-      <div class="surface-core flex flex-col gap-6 py-10 md:flex-row md:items-center md:justify-between">
+      <div class="space-y-4 p-5">
         <div class="space-y-3">
-          <span class="section-eyebrow">
-            {{ $t('tickets.empty_eyebrow') }}
-          </span>
           <h2 class="text-3xl font-semibold tracking-[-0.05em]">
-            {{ $t('tickets.empty_title') }}
+            Your first issued ticket will appear here.
           </h2>
           <p class="max-w-[36rem] text-sm leading-7 text-muted-foreground">
-            {{ $t('tickets.empty_subtitle') }}
+            Once you confirm a checkout, TicketRush stores the QR pass, seat assignment, and event timing in this wallet automatically.
           </p>
         </div>
 
@@ -94,7 +161,7 @@ definePageMeta({
           class="rounded-full"
         >
           <NuxtLink to="/events">
-            {{ $t('tickets.browse_events') }}
+            Browse events
           </NuxtLink>
         </Button>
       </div>

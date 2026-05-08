@@ -1,17 +1,18 @@
 import checkoutService from '~~/server/utils/ticketing/checkout'
-import { success } from '~~/server/utils/apiResponse'
+import { apiError, success } from '~~/server/utils/apiResponse'
 
 export default defineEventHandler(async (event) => {
   const userSession = await requireUserSession(event)
   const orderId = getRouterParam(event, 'orderId')
   if (!orderId) {
-    throw createError({ statusCode: 400, statusMessage: 'Bad Request. Order ID is required.' })
+    throw apiError({ status: 400, statusText: 'Bad Request', code: 'INVALID_ORDER_ID', message: 'Order ID is required.' })
   }
 
   const checkout = await checkoutService.getCheckoutByPublicId(orderId)
   if (!checkout || checkout.order.userId !== userSession.user.id) {
-    throw createError({ statusCode: 404, statusMessage: 'Checkout not found.' })
+    throw apiError({ status: 404, statusText: 'Not Found', code: 'CHECKOUT_NOT_FOUND', message: 'Checkout not found.' })
   }
 
-  return success(checkout)
+  const response: Awaited<ReturnType<typeof checkoutService.getCheckoutByPublicId>> = checkout
+  return success(response)
 })

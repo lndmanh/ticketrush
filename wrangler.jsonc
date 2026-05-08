@@ -1,6 +1,6 @@
 {
 	"$schema": "node_modules/wrangler/config-schema.json",
-	"name": "no-name-studio-vn-homepage",
+	"name": "ticketrush",
 	"main": "./.output/server/index.mjs",
 	"compatibility_date": "2026-02-19",
 	"assets": {
@@ -8,30 +8,34 @@
 		"binding": "ASSETS"
 	},
 	"observability": {
-		"enabled": true,
-		"logs": {
-			"enabled": true
-		}
+		"enabled": true
 	},
 	"d1_databases": [
 		{
 			"binding": "DB",
-		},
+			"database_id": "bca493b3-f335-40b4-98de-09b9db5b8626",
+			"migrations_dir": "./.output/server/db/migrations/sqlite",
+		}
 	],
 	"kv_namespaces": [
 		{
 			"binding": "CACHE",
+			"id": "13a0d35be8884ed387ebc38dd0ab88b9"
 		},
 		{
 			"binding": "KV",
+			"id": "be57997cfb324ec493b0474406c52575"
 		}
 	],
 	"routes": [
 		{
-			"pattern": "nnsvn.me",
+			"pattern": "ticket.nnsvn.me",
 			"zone_name": "nnsvn.me",
 			"custom_domain": true
 		}
+	],
+	"compatibility_flags": [
+		"nodejs_compat"
 	],
 	"workers_dev": false,
 	"preview_urls": false

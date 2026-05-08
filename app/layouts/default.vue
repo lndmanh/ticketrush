@@ -7,8 +7,8 @@
         :class="cn(
           'rounded-full border px-8 transition-all',
           isScrolled
-            ? 'border-border bg-background/40 shadow-lg backdrop-blur-xs shadow-black/8 py-3'
-            : 'border-border/20 bg-background/60 py-4 backdrop-blur-xs',
+            ? 'border-border/40 bg-background/30 shadow-[0_8px_30px_rgb(0,0,0,0.12)] backdrop-blur-md py-3'
+            : 'border-border/10 bg-background/40 py-4 backdrop-blur-sm',
         )"
       >
         <div class="flex h-full items-center justify-between">
@@ -56,7 +56,7 @@
                 >
                   <SunIcon class="h-3.5 w-3.5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
                   <MoonIcon class="absolute h-3.5 w-3.5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
-                  <span class="sr-only">Toggle theme</span>
+                  <span class="sr-only">{{ $t('common.toggle_theme') }}</span>
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent
@@ -106,7 +106,7 @@
                 >
                   <SunIcon class="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
                   <MoonIcon class="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
-                  <span class="sr-only">Toggle theme</span>
+                  <span class="sr-only">{{ $t('common.toggle_theme') }}</span>
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent
@@ -120,7 +120,7 @@
             <Button
               variant="ghost"
               size="icon"
-              aria-label="Toggle menu"
+              :aria-label="$t('common.toggle_menu')"
               @click="isMobileMenuOpen = !isMobileMenuOpen"
             >
               <X
@@ -424,8 +424,10 @@
             </div>
             <div class="flex items-center gap-5">
               <NuxtLink
-                to="/privacy"
+                to="https://nnsvn.me/privacy"
                 class="text-xs text-muted-foreground/60 transition-colors duration-200 hover:text-foreground"
+                target="_blank"
+                rel="noopener noreferrer"
               >
                 {{ $t('common.privacy') }}
               </NuxtLink>
@@ -434,8 +436,10 @@
                 aria-hidden="true"
               />
               <NuxtLink
-                to="/terms"
+                to="https://nnsvn.me/terms"
                 class="text-xs text-muted-foreground/60 transition-colors duration-200 hover:text-foreground"
+                target="_blank"
+                rel="noopener noreferrer"
               >
                 {{ $t('common.terms') }}
               </NuxtLink>

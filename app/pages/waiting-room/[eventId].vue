@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { toast } from 'vue-sonner'
-import type { ApiResponse } from '~~/types/api'
 import type { QueueState } from '~~/types/ticketing'
-
-const { t } = useI18n()
+import { apiRequest } from '@/utils/apiRequest'
+import { parseApiError } from '@/utils/apiError'
+import { apiRoutes } from '#shared/apiRoutes'
 
 const route = useRoute()
+const { t } = useI18n()
 const sessionPublicId = computed(() => route.params.eventId.toString())
 const slug = computed(() => typeof route.query.slug === 'string' ? route.query.slug : '')
 
@@ -53,15 +54,23 @@ const queueProgress = computed(() => {
   return Math.max(0, Math.min(100, Math.round(((queueState.value.waitingCount - queueState.value.position + 1) / queueState.value.waitingCount) * 100)))
 })
 
+const queueStatusLabel = computed(() => {
+  if (isJoining.value) {
+    return t('waiting_room.joining')
+  }
+
+  return queueState.value?.entry?.status || t('waiting_room.waiting_for_admission')
+})
+
 async function refreshQueueStatus() {
   if (!sessionPublicId.value) {
     return
   }
 
   try {
-    const response = await $fetch<ApiResponse<QueueState | null>>(`/api/event-sessions/${sessionPublicId.value}/queue/status`)
+    const response = await apiRequest(apiRoutes.eventSessionQueueStatus(sessionPublicId.value))
     if (!response.success) {
-      throw new Error(response.error.message)
+      throw response
     }
 
     queueState.value = response.data
@@ -71,8 +80,8 @@ async function refreshQueueStatus() {
       await navigateTo(`/events/${slug.value}/sessions/${sessionPublicId.value}/seats?pass=${queueState.value.entry.passToken}`)
     }
   }
-  catch {
-    queueError.value = t('waiting_room.lost_contact')
+  catch (error) {
+    queueError.value = parseApiError(error, t('waiting_room.lost_contact')).message
   }
 }
 
@@ -84,7 +93,10 @@ async function leaveQueue() {
   isLeaving.value = true
 
   try {
-    await $fetch(`/api/event-sessions/${sessionPublicId.value}/queue/leave`, { method: 'POST' })
+    const response = await apiRequest(apiRoutes.eventSessionQueueLeave(sessionPublicId.value), { method: 'POST' })
+    if (!response.success) {
+      throw response
+    }
     toast.success(t('waiting_room.left_queue'))
 
     if (slug.value) {
@@ -94,8 +106,8 @@ async function leaveQueue() {
 
     await navigateTo('/events')
   }
-  catch {
-    toast.error(t('waiting_room.leave_failed'))
+  catch (error) {
+    toast.error(parseApiError(error, t('waiting_room.leave_failed')).message)
   }
   finally {
     isLeaving.value = false
@@ -104,11 +116,14 @@ async function leaveQueue() {
 
 onMounted(async () => {
   try {
-    await $fetch(`/api/event-sessions/${sessionPublicId.value}/queue/join`, { method: 'POST', body: {} })
+    const response = await apiRequest(apiRoutes.eventSessionQueueJoin(sessionPublicId.value), { method: 'POST', body: {} })
+    if (!response.success) {
+      throw response
+    }
     await refreshQueueStatus()
   }
-  catch {
-    queueError.value = t('waiting_room.join_failed')
+  catch (error) {
+    queueError.value = parseApiError(error, t('waiting_room.join_failed')).message
   }
   finally {
     isJoining.value = false
@@ -207,7 +222,7 @@ definePageMeta({
             {{ $t('waiting_room.status_label') }}
           </p>
           <p class="mt-2 text-xl font-semibold tracking-[-0.04em]">
-            {{ isJoining ? $t('waiting_room.joining') : queueState?.entry?.status || $t('waiting_room.waiting_for_admission') }}
+            {{ queueStatusLabel }}
           </p>
           <p class="mt-3 text-sm leading-7 text-muted-foreground">
             {{ $t('waiting_room.keep_page_open') }}

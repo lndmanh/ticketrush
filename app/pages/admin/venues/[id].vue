@@ -4,10 +4,12 @@ import { Field as VeeField, useForm } from 'vee-validate'
 import { toast } from 'vue-sonner'
 import { createVenueSchema } from '#shared/schemas/ticketingSchema'
 import type { VenueSectionDraftInput } from '#shared/schemas/ticketingSchema'
-import type { ApiResponse } from '~~/types/api'
 import type { VenueDetail } from '~~/types/venues'
-import { ArrowLeft, Building2, CalendarRange, LayoutGrid, LayoutDashboardIcon, Rows3, Save, Settings2, Users } from '@lucide/vue'
+import { ArrowLeft, Building2, CalendarRange, LayoutGrid, LayoutDashboardIcon, Rows3, Save, Users } from '@lucide/vue'
 import AdminVenuesVenueSeatLayoutEditor from '@/components/admin/venues/VenueSeatLayoutEditor.vue'
+import { apiRequest } from '@/utils/apiRequest'
+import { parseApiError } from '@/utils/apiError'
+import { apiRoutes } from '#shared/apiRoutes'
 
 interface AdminEventListItem {
   id: number
@@ -55,8 +57,8 @@ interface VenueBlueprintPreset {
 const route = useRoute()
 const venueId = computed(() => Number(route.params.id))
 
-const { data: venueResponse, refresh: refreshVenue } = await useFetch<ApiResponse<VenueDetail>>(() => `/api/admin/venues/${venueId.value}`)
-const { data: eventsResponse } = await useFetch('/api/admin/events')
+const { data: venueResponse, refresh: refreshVenue } = await useAPI(() => apiRoutes.adminVenue(venueId.value))
+const { data: eventsResponse } = await useAPI(() => apiRoutes.ADMIN_EVENTS)
 
 const venueDetail = computed<VenueDetail | null>(() => venueResponse.value?.success ? venueResponse.value.data : null)
 const linkedEvents = computed<AdminEventListItem[]>(() => {
@@ -495,17 +497,18 @@ const onSubmit = handleSubmit(
 
     isSaving.value = true
     try {
-      await $fetch(`/api/admin/venues/${venueId.value}`, {
+      const response = await apiRequest(apiRoutes.adminVenue(venueId.value), {
         method: 'PUT',
         body: validation.data,
       })
+      if (!response.success) throw response
 
-      toast.success(t('admin_venue_detail.updated'))
+      toast.success('Venue updated')
       savedVenueSnapshot.value = currentVenueSnapshot.value
       await refreshVenue()
     }
-    catch {
-      toast.error(t('admin_venue_detail.update_failed'))
+    catch (error) {
+      toast.error(parseApiError(error, 'We could not update the venue blueprint').message)
     }
     finally {
       isSaving.value = false
@@ -536,8 +539,6 @@ definePageMeta({
   middleware: ['auth', 'admin'],
   layout: 'empty',
 })
-
-const { t } = useI18n()
 </script>
 
 <template>
@@ -555,7 +556,7 @@ const { t } = useI18n()
           >
             <NuxtLink
               to="/admin/venues"
-              aria-label="Back to venues"
+              :aria-label="$t('admin_venue_detail.back_to_venues')"
             >
               <ArrowLeft />
             </NuxtLink>
@@ -603,7 +604,7 @@ const { t } = useI18n()
             :is-loading="isSaving"
           >
             <Save />
-            Save
+            {{ $t('common.save') }}
           </Button>
         </div>
       </div>
@@ -626,7 +627,7 @@ const { t } = useI18n()
                 @click="selectedVisualizationSection = 'all'"
               >
                 <LayoutDashboardIcon class="size-4" />
-                All
+                {{ $t('admin_venue_detail.all') }}
               </Button>
               <Button
                 v-for="section in visualizationFilterOptions"
@@ -665,7 +666,7 @@ const { t } = useI18n()
                     {{ $t('admin_venue_detail.focus_label') }}
                   </p>
                   <p class="text-sm font-medium">
-                    {{ highlightedSection?.label ?? 'All sections' }}
+                    {{ highlightedSection?.label ?? $t('common.all_sections') }}
                   </p>
                 </CardContent>
               </Card>
@@ -675,7 +676,7 @@ const { t } = useI18n()
                     {{ $t('admin_venue_detail.largest_label') }}
                   </p>
                   <p class="text-sm font-medium">
-                    {{ largestSection?.name ?? 'Not set' }}
+                    {{ largestSection?.name ?? $t('common.not_set') }}
                   </p>
                 </CardContent>
               </Card>
@@ -713,12 +714,12 @@ const { t } = useI18n()
                           {{ section.name }}
                         </p>
                         <p class="text-xs text-muted-foreground">
-                          {{ section.capacity }} seats · {{ section.rowCount }} rows
+                          {{ $t('admin_venue_detail.capacity_seats', { count: section.capacity }) }} · {{ section.rowCount }} {{ $t('admin_venue_detail.rows_stat') }}
                         </p>
                       </div>
                     </div>
                     <p class="text-xs text-muted-foreground">
-                      {{ section.accessibleSeats }} accessible
+                      {{ $t('admin_venue_detail.accessible_count', { count: section.accessibleSeats }) }}
                     </p>
                   </div>
 
@@ -817,12 +818,12 @@ const { t } = useI18n()
                 >
                   <Field :data-invalid="!!errors.length">
                     <FieldLabel for="edit-venue-name">
-                    {{ $t('admin_venue_detail.venue_name_label') }}
+                      {{ $t('admin_venue_detail.venue_name_label') }}
                     </FieldLabel>
                     <Input
                       id="edit-venue-name"
                       :model-value="field.value"
-                      placeholder="Saigon Sound Hall"
+                      :placeholder="$t('admin.venues.venue_name_placeholder')"
                       :aria-invalid="!!errors.length"
                       @update:model-value="field.onChange"
                     />
@@ -839,12 +840,12 @@ const { t } = useI18n()
                 >
                   <Field :data-invalid="!!errors.length">
                     <FieldLabel for="edit-venue-slug">
-                      Slug
+                      {{ $t('admin.venues.slug') }}
                     </FieldLabel>
                     <Input
                       id="edit-venue-slug"
                       :model-value="field.value"
-                      placeholder="saigon-sound-hall"
+                      :placeholder="$t('admin.venues.slug_placeholder')"
                       :aria-invalid="!!errors.length"
                       @update:model-value="field.onChange"
                     />
@@ -861,12 +862,12 @@ const { t } = useI18n()
                 >
                   <Field :data-invalid="!!errors.length">
                     <FieldLabel for="edit-venue-address">
-                      Address
+                      {{ $t('admin.venues.address') }}
                     </FieldLabel>
                     <Input
                       id="edit-venue-address"
                       :model-value="field.value"
-                      placeholder="District 1, Ho Chi Minh City"
+                      :placeholder="$t('admin.venues.address_placeholder')"
                       :aria-invalid="!!errors.length"
                       @update:model-value="field.onChange"
                     />
@@ -884,7 +885,7 @@ const { t } = useI18n()
                   >
                     <Field :data-invalid="!!errors.length">
                       <FieldLabel for="edit-venue-city">
-                        City
+                        {{ $t('admin.venues.city') }}
                       </FieldLabel>
                       <Input
                         id="edit-venue-city"
@@ -905,7 +906,7 @@ const { t } = useI18n()
                   >
                     <Field :data-invalid="!!errors.length">
                       <FieldLabel for="edit-venue-country">
-                        Country
+                        {{ $t('admin.venues.country') }}
                       </FieldLabel>
                       <Input
                         id="edit-venue-country"
@@ -927,12 +928,12 @@ const { t } = useI18n()
                 >
                   <Field :data-invalid="!!errors.length">
                     <FieldLabel for="edit-venue-description">
-                      Description
+                      {{ $t('admin.venues.description') }}
                     </FieldLabel>
                     <Textarea
                       id="edit-venue-description"
                       :model-value="field.value"
-                      placeholder="Optional notes"
+                      :placeholder="$t('admin_venue_detail.optional_notes_placeholder')"
                       :aria-invalid="!!errors.length"
                       @update:model-value="field.onChange"
                     />
@@ -949,16 +950,16 @@ const { t } = useI18n()
                 >
                   <Field :data-invalid="!!errors.length">
                     <FieldLabel for="edit-venue-cover-image">
-                    {{ $t('admin_venue_detail.cover_image_label') }}
+                      {{ $t('admin_venue_detail.cover_image_label') }}
                     </FieldLabel>
                     <Input
                       id="edit-venue-cover-image"
                       :model-value="field.value"
-                      placeholder="https://example.com/venue.jpg"
+                      :placeholder="$t('admin.venues.cover_image_placeholder')"
                       :aria-invalid="!!errors.length"
                       @update:model-value="field.onChange"
                     />
-                    <FieldDescription>{{ $t('admin_venue_detail.optional') }}</FieldDescription>
+                    <FieldDescription>{{ $t('common.optional') }}</FieldDescription>
                     <FieldError
                       v-if="errors.length"
                       :errors="errors"
@@ -993,7 +994,7 @@ const { t } = useI18n()
                       size="sm"
                       @click="applyBlueprintPreset(preset)"
                     >
-                      {{ $t('admin_venue_detail.apply_preset') }}
+                      Apply
                     </Button>
                   </CardContent>
                 </Card>
@@ -1012,20 +1013,20 @@ const { t } = useI18n()
                 <Card class="gap-2 py-3">
                   <CardContent class="px-4">
                     <p class="text-xs text-muted-foreground">
-                    {{ $t('admin_venue_detail.dependencies_label') }}
+                      Dependencies
                     </p>
                     <p class="text-sm font-medium">
-                      {{ $t('admin_venue_detail.linked_events_count', { count: linkedEvents.length }) }}
+                      {{ linkedEvents.length }} linked events
                     </p>
                   </CardContent>
                 </Card>
                 <Card class="gap-2 py-3">
                   <CardContent class="px-4">
                     <p class="text-xs text-muted-foreground">
-                    {{ $t('admin_venue_detail.rule_label') }}
+                      Rule
                     </p>
                     <p class="text-sm font-medium">
-                      {{ $t('admin_venue_detail.future_launches_only') }}
+                      Future launches only
                     </p>
                   </CardContent>
                 </Card>
@@ -1035,15 +1036,15 @@ const { t } = useI18n()
                 <CardContent class="grid gap-3 px-4 md:grid-cols-3">
                   <div>
                     <p class="text-xs text-muted-foreground">
-                    {{ $t('admin_venue_detail.capacity_label') }}
+                      Capacity
                     </p>
                     <p class="text-sm font-medium">
-                      {{ $t('admin_venue_detail.capacity_seats', { count: totalCapacity }) }}
+                      {{ totalCapacity }} seats
                     </p>
                   </div>
                   <div>
                     <p class="text-xs text-muted-foreground">
-                    {{ $t('admin_venue_detail.largest_label') }}
+                      Largest
                     </p>
                     <p class="text-sm font-medium">
                       {{ largestSection?.name ?? 'Not set' }}
@@ -1051,10 +1052,10 @@ const { t } = useI18n()
                   </div>
                   <div>
                     <p class="text-xs text-muted-foreground">
-                    {{ $t('admin_venue_detail.snapshot_label') }}
+                      Snapshot
                     </p>
                     <p class="text-sm font-medium">
-                      {{ $t('admin_venue_detail.snapshot_desc') }}
+                      Existing seats stay frozen
                     </p>
                   </div>
                 </CardContent>
@@ -1064,7 +1065,7 @@ const { t } = useI18n()
 
               <div class="space-y-3">
                 <p class="text-sm font-medium">
-                  {{ $t('admin_venue_detail.linked_events_title') }}
+                  Linked events
                 </p>
 
                 <div
@@ -1096,7 +1097,7 @@ const { t } = useI18n()
                   class="py-6"
                 >
                   <CardContent class="px-4 text-sm text-muted-foreground">
-                    {{ $t('admin_venue_detail.no_linked_events') }}
+                    No linked events.
                   </CardContent>
                 </Card>
               </div>

@@ -2,13 +2,12 @@
 import { CalendarRange, MapPin, Ticket } from '@lucide/vue'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import type { ApiResponse } from '~~/types/api'
-import type { EventDetailResponse } from '~~/types/events'
+import { apiRoutes } from '#shared/apiRoutes'
 
 const route = useRoute()
 const slug = computed(() => route.params.slug.toString())
 
-const { data: detailResponse } = await useFetch<ApiResponse<EventDetailResponse>>(() => `/api/events/${slug.value}`)
+const { data: detailResponse } = await useAPI(() => apiRoutes.event(slug.value))
 
 const detail = computed(() => detailResponse.value?.success ? detailResponse.value.data : null)
 const event = computed(() => detail.value?.event ?? null)
@@ -62,22 +61,25 @@ definePageMeta({
 <template>
   <main
     v-if="detail && event"
-    class="space-y-12 pb-16 pt-6 md:space-y-16 md:pb-24"
+    class="relative space-y-10 overflow-hidden pb-16 pt-6 md:space-y-14 md:pb-24"
   >
-    <section class="grid gap-6 lg:grid-cols-[1fr_24rem] lg:items-start">
-      <Card class="overflow-hidden py-0">
-        <div class="relative min-h-[20rem] overflow-hidden bg-secondary">
+    <div class="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[32rem] bg-[radial-gradient(circle_at_18%_12%,hsl(var(--primary)/0.18),transparent_34%),radial-gradient(circle_at_88%_4%,hsl(var(--muted-foreground)/0.14),transparent_30%)]" />
+
+    <section class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_24rem] lg:items-stretch">
+      <div class="surface-shell overflow-hidden">
+        <div class="surface-core relative min-h-[26rem] overflow-hidden p-0">
           <img
             :src="event.coverImage || `https://picsum.photos/seed/${event.slug}/1600/1100`"
             :alt="event.title"
-            class="absolute inset-0 h-full w-full object-cover"
+            class="absolute inset-0 h-full w-full object-cover grayscale"
           >
-          <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
-          <div class="absolute bottom-0 left-0 right-0 p-6 md:p-8">
+          <div class="absolute inset-0 bg-[linear-gradient(160deg,rgba(0,0,0,0.08),rgba(0,0,0,0.62)_48%,rgba(0,0,0,0.94))]" />
+          <div class="absolute left-0 top-0 h-full w-1 bg-primary" />
+          <div class="absolute bottom-0 left-0 right-0 p-6 text-white md:p-8">
             <div class="mb-4 flex flex-wrap items-center gap-2">
               <Badge
-                variant="secondary"
-                class="bg-white/20 text-white hover:bg-white/30 border-none backdrop-blur-md"
+                variant="outline"
+                class="border-white/10 bg-white/8 text-white backdrop-blur-md"
               >
                 {{ event.status.replaceAll('_', ' ') }}
               </Badge>
@@ -88,24 +90,26 @@ definePageMeta({
                 {{ venueLabel }}
               </Badge>
             </div>
-            <h1 class="text-3xl font-bold tracking-tight text-white md:text-5xl">
+            <h1 class="text-balance text-4xl font-semibold leading-[1.02] tracking-[-0.07em] text-white md:text-6xl">
               {{ event.title }}
             </h1>
-            <p class="mt-3 max-w-2xl text-sm leading-relaxed text-white/80 md:text-base">
+            <p class="mt-4 max-w-2xl text-sm leading-6 text-white/76 md:text-base md:leading-7">
               {{ event.subtitle || event.description }}
             </p>
           </div>
         </div>
-      </Card>
+      </div>
 
       <div class="space-y-6">
-        <Card>
+        <Card class="h-full border-muted/70 bg-card/70 shadow-none backdrop-blur">
           <CardHeader>
-            <CardTitle>{{ $t('event_detail.card_title') }}</CardTitle>
+            <CardTitle class="tracking-[-0.04em]">
+              {{ $t('event_detail.card_title') }}
+            </CardTitle>
           </CardHeader>
           <CardContent class="grid gap-4">
-            <div class="flex items-start gap-4">
-              <CalendarRange class="mt-0.5 size-4 text-muted-foreground" />
+            <div class="flex items-start gap-4 rounded-[1.25rem] border bg-background/70 p-4">
+              <CalendarRange class="mt-0.5 size-4 text-primary" />
               <div>
                 <p class="text-sm font-medium leading-none">
                   {{ $t('event_detail.date_range_label') }}
@@ -115,8 +119,8 @@ definePageMeta({
                 </p>
               </div>
             </div>
-            <div class="flex items-start gap-4">
-              <MapPin class="mt-0.5 size-4 text-muted-foreground" />
+            <div class="flex items-start gap-4 rounded-[1.25rem] border bg-background/70 p-4">
+              <MapPin class="mt-0.5 size-4 text-primary" />
               <div>
                 <p class="text-sm font-medium leading-none">
                   {{ $t('event_detail.location_label') }}
@@ -126,8 +130,8 @@ definePageMeta({
                 </p>
               </div>
             </div>
-            <div class="flex items-start gap-4">
-              <Ticket class="mt-0.5 size-4 text-muted-foreground" />
+            <div class="flex items-start gap-4 rounded-[1.25rem] border bg-background/70 p-4">
+              <Ticket class="mt-0.5 size-4 text-primary" />
               <div>
                 <p class="text-sm font-medium leading-none">
                   {{ $t('event_detail.ticket_releases_label') }}
@@ -143,13 +147,26 @@ definePageMeta({
     </section>
 
     <section class="space-y-6">
-      <div class="flex flex-col gap-2">
-        <h2 class="text-2xl font-semibold tracking-tight">
-          {{ $t('event_detail.select_session_title') }}
-        </h2>
-        <p class="text-sm text-muted-foreground">
-          {{ $t('event_detail.select_session_desc') }}
-        </p>
+      <div class="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+        <div class="space-y-3">
+          <span class="section-eyebrow">
+            {{ $t('common.sessions') }}
+          </span>
+          <div class="space-y-2">
+            <h2 class="text-3xl font-semibold tracking-[-0.05em] md:text-4xl">
+              {{ $t('event_detail.select_session_title') }}
+            </h2>
+            <p class="max-w-[42rem] text-sm leading-6 text-muted-foreground md:text-base md:leading-7">
+              {{ $t('event_detail.select_session_desc') }}
+            </p>
+          </div>
+        </div>
+        <Badge
+          variant="secondary"
+          class="w-fit rounded-full"
+        >
+          {{ releaseCount }} {{ $t('event_detail.ticket_releases_label') }}
+        </Badge>
       </div>
 
       <div class="grid gap-4 lg:grid-cols-2">

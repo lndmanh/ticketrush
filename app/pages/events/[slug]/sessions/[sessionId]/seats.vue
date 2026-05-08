@@ -4,23 +4,20 @@ import { Clock3, RefreshCw, ShoppingBag, Users } from '@lucide/vue'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
-import type { ApiResponse } from '~~/types/api'
-import type { EventSessionDetailResponse } from '~~/types/events'
-import type { SessionSeatMapResponse } from '~~/types/seatmap'
-import type { EventSessionGateResponse, HoldData } from '~~/types/ticketing'
+import { parseApiError } from '@/utils/apiError'
+import { apiRoutes } from '#shared/apiRoutes'
 
-const { t } = useI18n()
 const route = useRoute()
 const slug = computed(() => route.params.slug.toString())
 const sessionPublicId = computed(() => route.params.sessionId.toString())
 const passToken = computed(() => typeof route.query.pass === 'string' ? route.query.pass : undefined)
 
-const { data: detailResponse } = await useFetch<ApiResponse<EventSessionDetailResponse>>(() => `/api/event-sessions/${sessionPublicId.value}`)
+const { data: detailResponse } = await useAPI(() => apiRoutes.eventSession(sessionPublicId.value))
 const detail = computed(() => detailResponse.value?.success ? detailResponse.value.data : null)
 const event = computed(() => detail.value?.event ?? null)
 const session = computed(() => detail.value?.session ?? null)
 
-const { data: gateResponse } = await useFetch<ApiResponse<EventSessionGateResponse>>(() => `/api/event-sessions/${sessionPublicId.value}/gate`, {
+const { data: gateResponse } = await useAPI(() => apiRoutes.eventSessionGate(sessionPublicId.value), {
   query: computed(() => passToken.value ? { pass: passToken.value } : {}),
 })
 
@@ -31,7 +28,7 @@ if (gateResponse.value?.success && gateResponse.value.data.shouldQueue) {
   })
 }
 
-const { data: seatMapResponse, refresh: refreshSeatMap } = await useFetch<ApiResponse<SessionSeatMapResponse>>(() => `/api/event-sessions/${sessionPublicId.value}/seatmap`)
+const { data: seatMapResponse, refresh: refreshSeatMap } = await useAPI(() => apiRoutes.eventSessionSeatmap(sessionPublicId.value))
 const seatMap = computed(() => seatMapResponse.value?.success ? seatMapResponse.value.data : null)
 const selectedSeatIds = ref<number[]>([])
 const isSubmitting = ref(false)
@@ -90,23 +87,6 @@ function getErrorStatusCode(error: object) {
   return null
 }
 
-function getErrorMessage(error: object, fallback: string) {
-  const data = getErrorData(error)
-  if (data && 'statusMessage' in data && typeof data.statusMessage === 'string') {
-    return data.statusMessage
-  }
-
-  if (data && 'message' in data && typeof data.message === 'string') {
-    return data.message
-  }
-
-  if ('message' in error && typeof error.message === 'string') {
-    return error.message
-  }
-
-  return fallback
-}
-
 function formatCurrency(value: number, currency = 'VND') {
   return `${Intl.NumberFormat('en-US').format(value / 100)} ${currency}`
 }
@@ -132,7 +112,7 @@ async function reserveSeats() {
   isSubmitting.value = true
 
   try {
-    const holdResponse = await $fetch<ApiResponse<HoldData>>(`/api/event-sessions/${sessionPublicId.value}/holds`, {
+    const holdResponse = await apiRequest(apiRoutes.eventSessionHolds(sessionPublicId.value), {
       method: 'POST',
       body: {
         eventSeatIds: selectedSeatIds.value,
@@ -141,18 +121,18 @@ async function reserveSeats() {
       },
     })
     if (!holdResponse.success) {
-      throw new Error(holdResponse.error.message)
+      throw holdResponse
     }
 
     const holdPublicId = holdResponse.data.hold.publicId
-    const checkoutResponse = await $fetch('/api/checkout/start', {
+    const checkoutResponse = await apiRequest(apiRoutes.CHECKOUT_START, {
       method: 'POST',
       body: {
         holdPublicId,
       },
     })
     if (!checkoutResponse.success) {
-      throw new Error(checkoutResponse.error.message)
+      throw checkoutResponse
     }
 
     await navigateTo(`/checkout/${checkoutResponse.data.publicId}?hold=${holdPublicId}`)
@@ -160,10 +140,10 @@ async function reserveSeats() {
   catch (error) {
     if (error && typeof error === 'object') {
       const statusCode = getErrorStatusCode(error)
-      const message = getErrorMessage(error, t('seats_toast.checkout_failed'))
+      const message = parseApiError(error, 'We could not open checkout. Please try again.').message
 
       if (statusCode === 409) {
-        toast.error(t('seats_toast.seats_taken'))
+        toast.error('Some of the selected seats are no longer available. We refreshed the map for you.')
         return
       }
 
@@ -180,7 +160,7 @@ async function reserveSeats() {
       return
     }
 
-    toast.error(t('seats_toast.checkout_failed'))
+    toast.error('We could not open checkout. Please try again.')
   }
   finally {
     isSubmitting.value = false
@@ -198,7 +178,7 @@ watch(seatMap, (value) => {
   const nextSelectedSeatIds = selectedSeatIds.value.filter(seatId => availableSeatIds.has(seatId))
   if (nextSelectedSeatIds.length !== selectedSeatIds.value.length) {
     selectedSeatIds.value = nextSelectedSeatIds
-    toast.error(t('seats_toast.seats_taken_by_other'))
+    toast.error('One or more selected seats were taken by another customer.')
   }
 }, { deep: true })
 
@@ -323,7 +303,7 @@ definePageMeta({
                 <RefreshCw class="mt-0.5 size-4 text-muted-foreground" />
                 <div>
                   <p class="text-xs text-muted-foreground">
-                    {{ $t('common.inventory') }}
+                    {{ $t('seats.inventory') }}
                   </p>
                   <p class="text-sm font-medium text-foreground">
                     {{ $t('seats.live_updating') }}

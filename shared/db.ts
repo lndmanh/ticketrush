@@ -2,7 +2,6 @@ import type { tables } from '~~/server/utils/db'
 
 export type User = typeof tables.users.$inferSelect
 export type DBPasskey = typeof tables.credentials.$inferSelect
-export type DBOAuthAccount = typeof tables.oauthAccounts.$inferSelect
 export type Venue = typeof tables.venues.$inferSelect
 export type EventSession = typeof tables.eventSessions.$inferSelect
 export type VenueSection = typeof tables.venueSections.$inferSelect
@@ -19,3 +18,5 @@ export type OrderItem = typeof tables.orderItems.$inferSelect
 export type Ticket = typeof tables.tickets.$inferSelect
 export type QueueEntry = typeof tables.queueEntries.$inferSelect
 export type EventMetricBucket = typeof tables.eventMetricBuckets.$inferSelect
+export type DBAuthToken = typeof tables.authTokens.$inferSelect
+export type DBOAuthAccount = typeof tables.oauthAccounts.$inferSelect

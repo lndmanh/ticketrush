@@ -26,7 +26,6 @@ const props = withDefaults(defineProps<SidebarProps>(), {
 const { toggleIsOpen } = useHotSearch()
 const { open } = useSidebar()
 const { activeContext, primarySections, secondarySections, showBack, isContextView } = useSidebarContext()
-const { t } = useI18n()
 </script>
 
 <template>

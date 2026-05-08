@@ -7,7 +7,10 @@ import type { PaginationMeta } from '~~/types/models/pagination'
 const eventCatalogQuerySchema = z.object({
   q: z.string().trim().default('').catch(''),
   status: z.enum(['all', 'published', 'on_sale', 'sold_out', 'ended']).default('all').catch('all'),
+  country: z.string().trim().default('all').catch('all'),
   city: z.string().trim().default('all').catch('all'),
+  area: z.string().trim().default('').catch(''),
+  venue: z.string().trim().default('all').catch('all'),
   date: z.enum(['all', 'today', 'week', 'month']).default('all').catch('all'),
   sort: z.enum(['soonest', 'newest', 'ending_soon']).default('soonest').catch('soonest'),
   page: z.coerce.number().int().min(1).catch(1),
@@ -32,7 +35,10 @@ export default defineEventHandler(async (event) => {
   const options: EventCatalogQueryOptions = {
     q: query.q,
     status: query.status,
+    country: query.country || 'all',
     city: query.city || 'all',
+    area: query.area,
+    venue: query.venue || 'all',
     date: query.date,
     sort: query.sort,
     page: query.page,
