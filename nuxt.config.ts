@@ -10,8 +10,6 @@ export default defineNuxtConfig({
     '@vueuse/nuxt',
     '@nuxtjs/seo',
     '@nuxtjs/i18n',
-    '@nuxt/content',
-    'nuxt-content-git', // this adds createdAt and updatedAt dates based on the git history.
     '@nuxt/eslint',
     '@nuxt/fonts',
     '@nuxt/image',
@@ -67,31 +65,6 @@ export default defineNuxtConfig({
     storage: 'cookie',
     disableTransition: true,
   },
-
-  content: {
-    build: {
-      markdown: {
-        highlight: {
-          theme: {
-            default: 'github-light',
-            dark: 'github-dark',
-          },
-          preload: ['json', 'js', 'ts', 'html', 'css', 'vue', 'diff', 'shell', 'markdown', 'mdc', 'yaml', 'bash', 'ini', 'dotenv'],
-        },
-      },
-    },
-  },
-
-  mdc: {
-    highlight: {
-      theme: {
-        default: 'github-light',
-        dark: 'github-dark',
-      },
-      langs: ['json', 'js', 'ts', 'html', 'css', 'vue', 'diff', 'shell', 'markdown', 'mdc', 'yaml', 'bash', 'ini', 'dotenv'],
-    },
-  },
-
   runtimeConfig: {
     public: {
       version: process.env.npm_package_version || '0.0.0',
@@ -179,40 +152,8 @@ export default defineNuxtConfig({
     },
   },
 
-  hooks: {
-    'content:file:beforeParse': function (ctx) {
-      // Modify raw content before parsing
-      if (ctx.file.id.endsWith('.md')) {
-        ctx.file.body = ctx.file.body.replace(/oldTerm/gi, 'newTerm')
-      }
-    },
-    'content:file:afterParse': function (ctx) {
-      // Add computed fields after parsing
-      const wordCount = ctx.file.body?.split(/\s+/).length || 0
-      ctx.content.readingTime = Math.ceil(wordCount / 180)
-    },
-  },
-
   auth: {
     webAuthn: true,
-  },
-
-  componentMeta: {
-    // Exclude problematic paths that cause Windows path resolution issues
-    exclude: [
-      /node_modules/,
-      /\.nuxt/,
-      /\.output/,
-      /dist/,
-      /\.component-meta/,
-    ],
-    // Only scan components from our local directories
-    // Components in /components/content are automatically available in Nuxt Studio
-    componentDirs: [
-      {
-        path: './app/components/content',
-      },
-    ],
   },
 
   eslint: {
