@@ -4,9 +4,11 @@ import { Field as VeeField, useForm } from 'vee-validate'
 import { motion } from 'motion-v'
 import { toast } from 'vue-sonner'
 import { Check, Circle, Cloud, CloudAlert, Dot, Loader2 } from '@lucide/vue'
+import { apiRequest } from '@/utils/apiRequest'
+import { parseApiError } from '@/utils/apiError'
+import { apiRoutes } from '#shared/apiRoutes'
 import { eventComposerSchema, getEventSessionTimingIssues } from '#shared/schemas/ticketingSchema'
 import type { EventAutosaveDraftInput, EventComposerInput } from '#shared/schemas/ticketingSchema'
-import type { ApiResponse } from '~~/types/api'
 import type { AutosaveDraftDetail } from '~~/types/admin-events'
 import type { VenueDetail } from '~~/types/venues'
 
@@ -44,7 +46,7 @@ const stepSchemas = {
   }),
 }
 
-const { data: venuesResponse } = await useFetch('/api/admin/venues')
+const { data: venuesResponse } = await useAPI(() => apiRoutes.ADMIN_VENUES)
 const venues = computed<VenueOption[]>(() => venuesResponse.value?.data ?? [])
 const selectedVenueDetail = ref<VenueDetail | null>(null)
 const currentStep = ref(1)
@@ -112,7 +114,7 @@ const autosaveLabel = computed(() => {
     return 'Autosave failed'
   }
 
-  return 'Autosave starts after you type'
+  return ''
 })
 
 const autosaveIcon = computed(() => {
@@ -194,9 +196,9 @@ function normalizeAutosavePayload(payload: EventAutosaveDraftInput['payload']) {
 async function loadAutosaveDraft(draftKey: string, restoreImmediately: boolean) {
   isLoadingAutosaveDraft.value = true
   try {
-    const response = await $fetch<ApiResponse<AutosaveDraftDetail>>(`/api/admin/events/autosaves/${draftKey}`)
+    const response = await apiRequest(apiRoutes.adminEventAutosave(draftKey))
     if (!response.success) {
-      throw new Error(response.error.message)
+      throw response
     }
 
     pendingAutosaveDraft.value = response.data
@@ -208,8 +210,8 @@ async function loadAutosaveDraft(draftKey: string, restoreImmediately: boolean) 
     isAutosaveRestoreDialogOpen.value = true
     return true
   }
-  catch {
-    toast.error('We could not load the autosave draft')
+  catch (error) {
+    toast.error(parseApiError(error, 'We could not load the autosave draft').message)
     return false
   }
   finally {
@@ -220,17 +222,17 @@ async function loadAutosaveDraft(draftKey: string, restoreImmediately: boolean) 
 async function loadCurrentAutosaveDraftPrompt() {
   isCheckingAutosaveDraft.value = true
   try {
-    const response = await $fetch('/api/admin/events/autosaves')
+    const response = await apiRequest(apiRoutes.ADMIN_EVENT_AUTOSAVES)
     if (!response.success) {
-      throw new Error(response.error.message)
+      throw response
     }
 
     if (response.data?.draftKey) {
       await loadAutosaveDraft(response.data.draftKey, false)
     }
   }
-  catch {
-    toast.error('We could not check for autosave drafts')
+  catch (error) {
+    toast.error(parseApiError(error, 'We could not check for autosave drafts').message)
   }
   finally {
     isCheckingAutosaveDraft.value = false
@@ -273,7 +275,10 @@ async function discardAutosaveDraft() {
   }
 
   try {
-    await $fetch(`/api/admin/events/autosaves/${draft.draftKey}`, { method: 'DELETE' })
+    const response = await apiRequest(apiRoutes.adminEventAutosave(draft.draftKey), { method: 'DELETE' })
+    if (!response.success) {
+      throw response
+    }
     if (import.meta.client) {
       window.localStorage.removeItem('ticketrush:event-create-autosave-key')
     }
@@ -284,8 +289,8 @@ async function discardAutosaveDraft() {
     isAutosaveRestoreDialogOpen.value = false
     toast.success('Autosave draft discarded')
   }
-  catch {
-    toast.error('Failed to discard autosave draft')
+  catch (error) {
+    toast.error(parseApiError(error, 'Failed to discard autosave draft').message)
   }
 }
 
@@ -311,7 +316,7 @@ async function saveAutosaveDraft() {
   autosaveRequestId = requestId
 
   try {
-    const response = await $fetch('/api/admin/events/autosave', {
+    const response = await apiRequest(apiRoutes.ADMIN_EVENT_AUTOSAVE, {
       method: 'POST',
       body: {
         draftKey: autosaveDraftKey.value || undefined,
@@ -320,7 +325,7 @@ async function saveAutosaveDraft() {
       },
     })
     if (!response.success) {
-      throw new Error(response.error.message)
+      throw response
     }
 
     if (autosaveDisabled.value || requestId !== autosaveRequestId) {
@@ -373,9 +378,9 @@ watch(() => values.venueId, async (venueId) => {
     return
   }
 
-  const detail = await $fetch<ApiResponse<VenueDetail>>(`/api/admin/venues/${venueId}`)
+  const detail = await apiRequest(apiRoutes.adminVenue(venueId))
   if (!detail.success) {
-    toast.error(detail.error.message)
+    toast.error(parseApiError(detail).message)
     selectedVenueDetail.value = null
     return
   }
@@ -635,7 +640,7 @@ const onSubmit = handleSubmit(
     }
 
     try {
-      const response = await $fetch('/api/admin/events', {
+      const response = await apiRequest(apiRoutes.ADMIN_EVENTS, {
         method: 'POST',
         body: {
           slug: formValues.slug,
@@ -658,15 +663,21 @@ const onSubmit = handleSubmit(
         },
       })
 
+      if (!response.success) {
+        throw response
+      }
+
       if (autosaveDraftKey.value) {
         try {
-          await $fetch(`/api/admin/events/autosaves/${autosaveDraftKey.value}/convert`, {
+          const convertResponse = await apiRequest(apiRoutes.adminEventAutosaveConvert(autosaveDraftKey.value), {
             method: 'POST',
-            body: { eventId: response.data.id },
           })
+          if (!convertResponse.success) {
+            throw convertResponse
+          }
         }
-        catch {
-          toast.warning('Event saved, but the autosave draft could not be marked as converted')
+        catch (error) {
+          toast.warning(parseApiError(error, 'Event saved, but the autosave draft could not be marked as converted').message)
         }
       }
 
@@ -682,9 +693,9 @@ const onSubmit = handleSubmit(
       highestReachedStep.value = 1
       await navigateTo(`/admin/events/${response.data.id}`)
     }
-    catch {
+    catch (error) {
       autosaveDisabled.value = false
-      toast.error('We could not save the event draft')
+      toast.error(parseApiError(error, 'We could not save the event draft').message)
     }
     finally {
       isSaving.value = false
