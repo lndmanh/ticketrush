@@ -70,6 +70,44 @@ const featuredEventsEmptyMessage = computed(() => {
 
 const heroPreviewEvent = computed(() => featuredEvents.value[0] ?? null)
 
+const featuredUniqueCities = computed(() => {
+  const citySet = new Set(
+    featuredEvents.value
+      .map(event => event.venue?.city?.trim())
+      .filter((city): city is string => Boolean(city)),
+  )
+
+  return citySet.size
+})
+
+const featuredSessionCount = computed(() => {
+  return featuredEvents.value.reduce((count, event) => count + (event.sessions?.length ?? 0), 0)
+})
+
+const quickStatItems = computed(() => [
+  {
+    key: 'featured-drops',
+    icon: Ticket,
+    value: featuredEvents.value.length,
+    title: t('home.quick_stat_sessions_desc'),
+    hint: t('home.featured_eyebrow'),
+  },
+  {
+    key: 'active-sessions',
+    icon: Clock3,
+    value: featuredSessionCount.value,
+    title: t('home.quick_stat_live_title'),
+    hint: t('home.quick_stat_live_desc'),
+  },
+  {
+    key: 'active-cities',
+    icon: UsersRound,
+    value: featuredUniqueCities.value,
+    title: t('home.quick_stat_safe_title'),
+    hint: t('home.quick_stat_safe_desc'),
+  },
+])
+
 const heroImage = computed(() => {
   return heroPreviewEvent.value?.coverImage || 'https://picsum.photos/seed/ticketrush-home/1200/900'
 })
@@ -105,7 +143,7 @@ async function searchEvents() {
   >
     <div class="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[44rem] bg-[radial-gradient(circle_at_18%_18%,hsl(var(--primary)/0.18),transparent_34%),radial-gradient(circle_at_78%_12%,hsl(var(--muted-foreground)/0.14),transparent_28%)]" />
 
-    <section class="grid gap-8 pb-8 pt-4 lg:grid-cols-[minmax(0,1.05fr)_minmax(23rem,0.74fr)] lg:items-stretch lg:pb-12">
+    <section class="grid gap-8 pb-10 pt-4 lg:grid-cols-[minmax(0,1.05fr)_minmax(23rem,0.74fr)] lg:items-stretch lg:pb-14">
       <div class="surface-shell overflow-hidden">
         <div class="surface-core relative flex min-h-[34rem] flex-col justify-between overflow-hidden px-5 py-6 md:px-8 md:py-8">
           <div class="pointer-events-none absolute -right-28 -top-28 size-72 rounded-full bg-primary/10 blur-3xl" />
@@ -185,31 +223,25 @@ async function searchEvents() {
           </div>
 
           <div class="relative mt-8 grid gap-3 sm:grid-cols-3">
-            <div class="rounded-[1.5rem] border bg-background/70 p-4 backdrop-blur transition-colors hover:bg-background/90">
-              <Ticket class="mb-3 size-4 text-primary" />
-              <p class="font-mono text-2xl font-semibold tracking-[-0.06em]">
-                {{ featuredEvents.length || '—' }}
+            <div
+              v-for="item in quickStatItems"
+              :key="item.key"
+              class="rounded-[1.5rem] border bg-background/75 p-4 backdrop-blur transition-all hover:-translate-y-0.5 hover:bg-background/95"
+            >
+              <div class="mb-3 flex items-center justify-between gap-2">
+                <component
+                  :is="item.icon"
+                  class="size-4 text-primary"
+                />
+                <span class="rounded-full border bg-background/90 px-2.5 py-1 font-mono text-[11px] font-medium text-foreground/80">
+                  {{ item.value || 0 }}
+                </span>
+              </div>
+              <p class="text-base font-semibold leading-5 tracking-[-0.03em] text-foreground">
+                {{ item.title }}
               </p>
-              <p class="text-xs text-muted-foreground">
-                {{ $t('home.quick_stat_sessions_desc') }}
-              </p>
-            </div>
-            <div class="rounded-[1.5rem] border bg-background/70 p-4 backdrop-blur transition-colors hover:bg-background/90">
-              <Clock3 class="mb-3 size-4 text-primary" />
-              <p class="font-mono text-2xl font-semibold tracking-[-0.06em]">
-                {{ $t('home.quick_stat_live_title') }}
-              </p>
-              <p class="text-xs text-muted-foreground">
-                {{ $t('home.quick_stat_live_desc') }}
-              </p>
-            </div>
-            <div class="rounded-[1.5rem] border bg-background/70 p-4 backdrop-blur transition-colors hover:bg-background/90">
-              <UsersRound class="mb-3 size-4 text-primary" />
-              <p class="font-mono text-2xl font-semibold tracking-[-0.06em]">
-                {{ $t('home.quick_stat_safe_title') }}
-              </p>
-              <p class="text-xs text-muted-foreground">
-                {{ $t('home.quick_stat_safe_desc') }}
+              <p class="mt-1 line-clamp-1 text-xs text-muted-foreground">
+                {{ item.hint }}
               </p>
             </div>
           </div>
@@ -285,47 +317,55 @@ async function searchEvents() {
       </div>
     </section>
 
-    <section class="grid gap-3 pb-8 md:grid-cols-4">
-      <div class="flex gap-3 rounded-[1.5rem] border bg-card/60 p-4">
-        <ShieldCheck class="mt-0.5 size-4 shrink-0 text-primary" />
-        <div>
-          <p class="text-sm font-medium">
+    <section class="grid gap-3 pb-10 md:grid-cols-2 xl:grid-cols-4">
+      <div class="group flex min-h-28 gap-4 rounded-[1.75rem] border bg-card/70 p-5 transition-all hover:-translate-y-0.5 hover:bg-card/95">
+        <div class="flex size-10 shrink-0 items-center justify-center rounded-2xl border bg-background text-primary shadow-sm transition-colors group-hover:border-primary/25 group-hover:bg-primary/5">
+          <ShieldCheck class="size-4" />
+        </div>
+        <div class="min-w-0 space-y-1.5">
+          <p class="text-base font-semibold tracking-[-0.03em]">
             {{ $t('home.trust_holds_title') }}
           </p>
-          <p class="mt-1 text-xs leading-5 text-muted-foreground">
+          <p class="text-sm leading-6 text-muted-foreground">
             {{ $t('home.trust_holds_desc') }}
           </p>
         </div>
       </div>
-      <div class="flex gap-3 rounded-[1.5rem] border bg-card/60 p-4">
-        <Clock3 class="mt-0.5 size-4 shrink-0 text-primary" />
-        <div>
-          <p class="text-sm font-medium">
+      <div class="group flex min-h-28 gap-4 rounded-[1.75rem] border bg-card/70 p-5 transition-all hover:-translate-y-0.5 hover:bg-card/95">
+        <div class="flex size-10 shrink-0 items-center justify-center rounded-2xl border bg-background text-primary shadow-sm transition-colors group-hover:border-primary/25 group-hover:bg-primary/5">
+          <Clock3 class="size-4" />
+        </div>
+        <div class="min-w-0 space-y-1.5">
+          <p class="text-base font-semibold tracking-[-0.03em]">
             {{ $t('home.trust_countdown_title') }}
           </p>
-          <p class="mt-1 text-xs leading-5 text-muted-foreground">
+          <p class="text-sm leading-6 text-muted-foreground">
             {{ $t('home.trust_countdown_desc') }}
           </p>
         </div>
       </div>
-      <div class="flex gap-3 rounded-[1.5rem] border bg-card/60 p-4">
-        <UsersRound class="mt-0.5 size-4 shrink-0 text-primary" />
-        <div>
-          <p class="text-sm font-medium">
+      <div class="group flex min-h-28 gap-4 rounded-[1.75rem] border bg-card/70 p-5 transition-all hover:-translate-y-0.5 hover:bg-card/95">
+        <div class="flex size-10 shrink-0 items-center justify-center rounded-2xl border bg-background text-primary shadow-sm transition-colors group-hover:border-primary/25 group-hover:bg-primary/5">
+          <UsersRound class="size-4" />
+        </div>
+        <div class="min-w-0 space-y-1.5">
+          <p class="text-base font-semibold tracking-[-0.03em]">
             {{ $t('home.trust_attendees_title') }}
           </p>
-          <p class="mt-1 text-xs leading-5 text-muted-foreground">
+          <p class="text-sm leading-6 text-muted-foreground">
             {{ $t('home.trust_attendees_desc') }}
           </p>
         </div>
       </div>
-      <div class="flex gap-3 rounded-[1.5rem] border bg-card/60 p-4">
-        <Ticket class="mt-0.5 size-4 shrink-0 text-primary" />
-        <div>
-          <p class="text-sm font-medium">
+      <div class="group flex min-h-28 gap-4 rounded-[1.75rem] border bg-card/70 p-5 transition-all hover:-translate-y-0.5 hover:bg-card/95">
+        <div class="flex size-10 shrink-0 items-center justify-center rounded-2xl border bg-background text-primary shadow-sm transition-colors group-hover:border-primary/25 group-hover:bg-primary/5">
+          <Ticket class="size-4" />
+        </div>
+        <div class="min-w-0 space-y-1.5">
+          <p class="text-base font-semibold tracking-[-0.03em]">
             {{ $t('home.trust_reserved_title') }}
           </p>
-          <p class="mt-1 text-xs leading-5 text-muted-foreground">
+          <p class="text-sm leading-6 text-muted-foreground">
             {{ $t('home.trust_reserved_desc') }}
           </p>
         </div>
