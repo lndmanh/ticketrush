@@ -38,3 +38,12 @@ export interface BreadcrumbItemType {
   title: string
   href: string
 }
+
+export interface MessagePayload {
+  message: string
+}
+
+export interface StatusPayload {
+  status: string
+  timestamp: number
+}
