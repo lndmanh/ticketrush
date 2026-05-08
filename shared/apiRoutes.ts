@@ -24,6 +24,7 @@ export const apiRoutes = {
   AUTH_GOOGLE: '/api/auth/google',
   AUTH_OAUTH_URL: '/api/auth/oauth/url',
   AUTH_OAUTH_UNLINK: '/api/auth/oauth/unlink',
+  MY_PASSKEYS: '/api/users/me/passkeys',
 
   MY_PROFILE: '/api/users/me',
   SAVED_ATTENDEES: '/api/saved-attendees',
