@@ -1,11 +1,11 @@
 import { defaultLocale } from '../../i18n-constants'
 
 export const APP_MANIFEST = {
-  name: 'Nuxt Starter Kit',
-  short_name: 'Nuxt Template',
-  description: 'A Nuxt 4 starter template with NuxtHub, Auth, and PWA support',
-  start_url: '/pwa',
-  display: 'standalone',
+  name: 'TicketRush - Event Ticketing Platform',
+  short_name: 'TicketRush',
+  description: 'A modern event ticketing platform with real-time booking, secure payments, and digital check-in',
+  start_url: '/',
+  display: 'browser',
   display_override: ['window-controls-overlay', 'standalone'],
   background_color: '#ffffff',
   theme_color: '#8b5cf6',
@@ -13,7 +13,7 @@ export const APP_MANIFEST = {
   lang: defaultLocale,
   orientation: 'any',
   scope: '/',
-  categories: ['education', 'productivity', 'technology', 'business'],
+  categories: ['entertainment', 'events', 'lifestyle', 'business'],
   iarc_rating_id: '',
   icons: [
     {
@@ -68,10 +68,10 @@ export const APP_MANIFEST = {
       ],
     },
     {
-      name: 'Dashboard',
+      name: 'Admin Dashboard',
       short_name: 'Dashboard',
-      description: 'Sample shortcut to dashboard',
-      url: '/dashboard',
+      description: 'Manage your events and ticket sales',
+      url: '/admin',
     },
   ],
   scope_extensions: [
@@ -83,8 +83,8 @@ export const APP_MANIFEST = {
 
 // SEO-related constants
 export const SEO_CONFIG = {
-  author: 'No Name Studio',
-  keywords: 'nuxt, template, pwa, starter, vue, javascript',
+  author: 'Team 3',
+  keywords: 'event ticketing, ticket booking, concert tickets, online events, festival tickets, seat reservation, digital check-in, TicketRush',
   ogImage: '/pwa-512x512.png',
   twitterCard: 'summary_large_image' as const,
   robots: 'index, follow',
