@@ -150,6 +150,7 @@ export const eventSessions = sqliteTable('event_sessions', {
   salesStartAt: integer('sales_start_at', { mode: 'timestamp' }).notNull(),
   salesEndAt: integer('sales_end_at', { mode: 'timestamp' }).notNull(),
   queueEnabled: integer('queue_enabled', { mode: 'boolean' }).notNull().default(false),
+  seatmapVersion: integer('seatmap_version').notNull().default(0),
   publishedAt: integer('published_at', { mode: 'timestamp' }),
   ...timestampColumns,
 }, table => [

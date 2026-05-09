@@ -15,8 +15,12 @@ function toSeatMapStatus(status: string): SeatMapStatus {
   }
 }
 
-function mapSeatMap(seatMap: Awaited<ReturnType<typeof eventSessionService.getSeatMap>>): SessionSeatMapResponse {
+function mapSeatMap(
+  seatMap: Awaited<ReturnType<typeof eventSessionService.getSeatMap>>,
+  version: number,
+): SessionSeatMapResponse {
   return {
+    version,
     seats: seatMap.seats.map(seat => ({
       id: seat.id,
       venueSectionId: seat.venueSectionId,
@@ -63,6 +67,6 @@ export default defineEventHandler(async (event) => {
   getTicketingSessionKey(event)
 
   const seatMap = await eventSessionService.getSeatMap(session.id)
-  const response: SessionSeatMapResponse = mapSeatMap(seatMap)
+  const response: SessionSeatMapResponse = mapSeatMap(seatMap, session.seatmapVersion)
   return success(response)
 })

@@ -1,5 +1,6 @@
 import eventService from '~~/server/utils/database/event'
 import analyticsService from '~~/server/utils/ticketing/analytics'
+import { getSeatmapRealtimeEnv } from '~~/server/utils/ticketing/seatmap-realtime'
 import { apiError, success } from '~~/server/utils/apiResponse'
 
 export default defineEventHandler(async (event) => {
@@ -13,7 +14,8 @@ export default defineEventHandler(async (event) => {
     throw apiError({ status: 404, statusText: 'Not Found', code: 'EVENT_NOT_FOUND', message: 'Event not found.' })
   }
 
-  const published = await eventService.publish(eventId)
+  const realtimeEnv = getSeatmapRealtimeEnv(event)
+  const published = await eventService.publish(eventId, realtimeEnv.SEATMAP_REALTIME_ROOM)
   try {
     await analyticsService.recomputeDailyBucket(eventId)
   }

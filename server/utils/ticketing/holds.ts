@@ -3,6 +3,8 @@ import type { CreateSeatHoldInput } from '#shared/schemas/ticketingSchema'
 import { createPublicHoldId } from '~~/server/utils/ticketing/ids'
 import queueService from '~~/server/utils/ticketing/queue'
 import eventSessionService from '~~/server/utils/database/event-session'
+import { broadcastSeatStatusDelta, createSeatStatusChanges } from '~~/server/utils/ticketing/seatmap-realtime'
+import type { SeatmapRealtimeNamespace } from '~~/server/utils/ticketing/seatmap-realtime'
 
 const HOLD_DURATION_MS = 10 * 60 * 1000
 
@@ -37,7 +39,7 @@ class HoldService {
     }
   }
 
-  async createHold(input: CreateSeatHoldInput & { sessionKey: string }, userId?: number) {
+  async createHold(input: CreateSeatHoldInput & { sessionKey: string }, userId?: number, realtimeNamespace?: SeatmapRealtimeNamespace) {
     const session = await eventSessionService.getById(input.eventSessionId)
 
     if (!session) {
@@ -94,6 +96,8 @@ class HoldService {
     }
 
     const expiresAt = new Date(Date.now() + HOLD_DURATION_MS)
+    let holdPublicId: string | undefined
+    let lockedSeatIds: number[] | undefined
 
     try {
       const db = this.db
@@ -119,6 +123,10 @@ class HoldService {
       if (!hold) {
         throw createError({ statusCode: 500, statusMessage: 'Failed to create seat hold.' })
       }
+
+      holdPublicId = hold.publicId
+
+      const nextLockedSeatIds: number[] = []
 
       const availableSeats = await db
         .select()
@@ -154,11 +162,13 @@ class HoldService {
         if (!lockedSeat) {
           throw createError({ statusCode: 409, statusMessage: 'One or more selected seats are no longer available.' })
         }
+
+        nextLockedSeatIds.push(lockedSeat.id)
       }
 
       await queueService.completeEntry(input.eventSessionId, input.sessionKey)
 
-      return this.getHoldWithSeats(created.publicId)
+      lockedSeatIds = nextLockedSeatIds
     }
     catch (error) {
       const scopedExistingHold = await this.db
@@ -177,9 +187,20 @@ class HoldService {
 
       throw error
     }
+
+    if (!holdPublicId || !lockedSeatIds) {
+      throw createError({ statusCode: 500, statusMessage: 'Failed to create seat hold.' })
+    }
+
+    await broadcastSeatStatusDelta(realtimeNamespace, {
+      eventSessionId: session.id,
+      sessionPublicId: session.publicId,
+    }, createSeatStatusChanges(lockedSeatIds, 'locked'))
+
+    return this.getHoldWithSeats(holdPublicId)
   }
 
-  async releaseHold(holdPublicId: string, sessionKey: string) {
+  async releaseHold(holdPublicId: string, sessionKey: string, realtimeNamespace?: SeatmapRealtimeNamespace) {
     const hold = await this.db
       .select()
       .from(tables.seatHolds)
@@ -195,9 +216,25 @@ class HoldService {
     }
 
     const now = new Date()
+    const releasedHold = await this.db
+      .update(tables.seatHolds)
+      .set({
+        status: 'released',
+        releasedAt: now,
+        updatedAt: now,
+      })
+      .where(and(
+        eq(tables.seatHolds.id, hold.id),
+        eq(tables.seatHolds.status, 'active'),
+      ))
+      .returning()
+      .get()
 
-    const db = this.db
-    await db
+    if (!releasedHold) {
+      return (await this.getHoldByPublicId(holdPublicId)) ?? hold
+    }
+
+    const releasedSeats = await this.db
       .update(tables.eventSeats)
       .set({
         status: 'available',
@@ -205,16 +242,21 @@ class HoldService {
         lockedAt: null,
         updatedAt: now,
       })
-      .where(eq(tables.eventSeats.holdId, hold.id))
+      .where(and(
+        eq(tables.eventSeats.holdId, hold.id),
+        eq(tables.eventSeats.status, 'locked'),
+      ))
+      .returning({ id: tables.eventSeats.id })
 
-    await db
-      .update(tables.seatHolds)
-      .set({
-        status: 'released',
-        releasedAt: now,
-        updatedAt: now,
-      })
-      .where(eq(tables.seatHolds.id, hold.id))
+    if (hold.eventSessionId && releasedSeats.length > 0) {
+      const session = await eventSessionService.getById(hold.eventSessionId)
+      if (session) {
+        await broadcastSeatStatusDelta(realtimeNamespace, {
+          eventSessionId: session.id,
+          sessionPublicId: session.publicId,
+        }, createSeatStatusChanges(releasedSeats.map(seat => seat.id), 'available'))
+      }
+    }
 
     return this.getHoldByPublicId(holdPublicId)
   }
@@ -231,7 +273,7 @@ class HoldService {
       .get()
   }
 
-  async expireStaleHolds() {
+  async expireStaleHolds(realtimeNamespace?: SeatmapRealtimeNamespace) {
     const now = new Date()
     const holds = await this.db
       .select()
@@ -239,10 +281,42 @@ class HoldService {
       .all()
 
     const expiredHolds = holds.filter(hold => hold.status === 'active' && hold.expiresAt.getTime() <= now.getTime())
+    const sessionIds = Array.from(new Set(expiredHolds.map(hold => hold.eventSessionId).filter((eventSessionId): eventSessionId is number => eventSessionId !== null)))
+    const sessionsById = new Map<number, { id: number, publicId: string }>()
+
+    for (const eventSessionId of sessionIds) {
+      const session = await eventSessionService.getById(eventSessionId)
+      if (session) {
+        sessionsById.set(session.id, {
+          id: session.id,
+          publicId: session.publicId,
+        })
+      }
+    }
+
+    const releasedSeatIdsBySessionPublicId = new Map<string, { seatIds: number[], sessionId: number }>()
 
     for (const hold of expiredHolds) {
-      const db = this.db
-      await db
+      const releasedHold = await this.db
+        .update(tables.seatHolds)
+        .set({
+          status: 'expired',
+          releasedAt: now,
+          updatedAt: now,
+        })
+        .where(and(
+          eq(tables.seatHolds.id, hold.id),
+          eq(tables.seatHolds.status, 'active'),
+          eq(tables.seatHolds.expiresAt, hold.expiresAt),
+        ))
+        .returning()
+        .get()
+
+      if (!releasedHold) {
+        continue
+      }
+
+      const releasedSeats = await this.db
         .update(tables.eventSeats)
         .set({
           status: 'available',
@@ -250,16 +324,31 @@ class HoldService {
           lockedAt: null,
           updatedAt: now,
         })
-        .where(eq(tables.eventSeats.holdId, hold.id))
+        .where(and(
+          eq(tables.eventSeats.holdId, hold.id),
+          eq(tables.eventSeats.status, 'locked'),
+        ))
+        .returning({ id: tables.eventSeats.id })
 
-      await db
-        .update(tables.seatHolds)
-        .set({
-          status: 'expired',
-          releasedAt: now,
-          updatedAt: now,
-        })
-        .where(eq(tables.seatHolds.id, hold.id))
+      if (hold.eventSessionId && releasedSeats.length > 0) {
+        const session = sessionsById.get(hold.eventSessionId)
+        if (session) {
+          const existing = releasedSeatIdsBySessionPublicId.get(session.publicId)
+          const nextSeatIds = existing ? existing.seatIds : []
+          nextSeatIds.push(...releasedSeats.map(seat => seat.id))
+          releasedSeatIdsBySessionPublicId.set(session.publicId, {
+            seatIds: nextSeatIds,
+            sessionId: session.id,
+          })
+        }
+      }
+    }
+
+    for (const [sessionPublicId, value] of releasedSeatIdsBySessionPublicId.entries()) {
+      await broadcastSeatStatusDelta(realtimeNamespace, {
+        eventSessionId: value.sessionId,
+        sessionPublicId,
+      }, createSeatStatusChanges(value.seatIds, 'available'))
     }
 
     return expiredHolds.length

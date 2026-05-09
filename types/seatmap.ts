@@ -75,6 +75,7 @@ export interface SessionSeatMapSeat extends SeatMapSeat {
 export type SessionSeatMapTicketType = PublicTicketTypeSummary
 
 export interface SessionSeatMapResponse {
+  version: number
   seats: SessionSeatMapSeat[]
   ticketTypes: SessionSeatMapTicketType[]
 }
