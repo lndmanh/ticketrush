@@ -2,25 +2,23 @@
 import {
   ArrowRight,
   CalendarCheck2,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   CircleAlert,
   Clock3,
-  Search,
+  MapPin,
   ShieldCheck,
-  Sparkles,
   Ticket,
   UsersRound,
 } from '@lucide/vue'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
-import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
+import { Motion, motion } from 'motion-v'
 import type { EventCatalogQueryOptions } from '~~/types/events'
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 
-const FEATURED_EVENT_LIMIT = 3
+const FEATURED_EVENT_LIMIT = 8
+const STADIUM_IMAGE = 'https://images.pexels.com/photos/31007653/pexels-photo-31007653.jpeg'
 
 const featuredEventsQuery: Pick<EventCatalogQueryOptions, 'page' | 'pageSize' | 'sort'> = {
   page: 1,
@@ -28,7 +26,11 @@ const featuredEventsQuery: Pick<EventCatalogQueryOptions, 'page' | 'pageSize' | 
   sort: 'soonest',
 }
 
-const searchInput = ref('')
+const featuredSectionRef = ref<HTMLElement | null>(null)
+const carouselRef = ref<HTMLElement | null>(null)
+const canScrollLeft = ref(false)
+const canScrollRight = ref(false)
+
 const {
   data: featuredEventsResponse,
   pending: featuredEventsPending,
@@ -45,6 +47,9 @@ const featuredEvents = computed(() => {
 
   return response.data
 })
+
+const heroPreviewEvent = computed(() => featuredEvents.value[0] ?? null)
+const upcomingEvents = computed(() => featuredEvents.value.slice(1))
 
 const featuredEventsError = computed(() => {
   if (featuredEventsFetchError.value) {
@@ -67,8 +72,6 @@ const featuredEventsEmptyMessage = computed(() => {
   return t('home.featured_empty')
 })
 
-const heroPreviewEvent = computed(() => featuredEvents.value[0] ?? null)
-
 const featuredUniqueCities = computed(() => {
   const citySet = new Set(
     featuredEvents.value
@@ -89,128 +92,135 @@ const quickStatItems = computed(() => [
     icon: Ticket,
     value: featuredEvents.value.length,
     title: t('home.quick_stat_featured_title'),
-    hint: t('home.featured_eyebrow'),
   },
   {
     key: 'active-sessions',
     icon: Clock3,
     value: featuredSessionCount.value,
     title: t('home.quick_stat_sessions_title'),
-    hint: t('home.quick_stat_sessions_desc'),
   },
   {
     key: 'active-cities',
     icon: UsersRound,
     value: featuredUniqueCities.value,
     title: t('home.quick_stat_cities_title'),
-    hint: t('home.quick_stat_cities_desc'),
   },
 ])
 
-const heroImage = computed(() => {
-  return heroPreviewEvent.value?.coverImage || 'https://picsum.photos/seed/ticketrush-home/1200/900'
+const heroBackgroundImage = computed(() => {
+  return STADIUM_IMAGE
 })
 
 const heroDropDate = computed(() => {
-  const date = heroPreviewEvent.value?.salesStartAt || heroPreviewEvent.value?.startsAt
+  return formatEventDate(heroPreviewEvent.value?.salesStartAt || heroPreviewEvent.value?.startsAt)
+})
+
+function formatEventDate(date: string | Date | null | undefined) {
   if (!date) {
     return t('home.live_soon')
   }
 
-  return new Date(date).toLocaleString('en-US', {
+  return new Date(date).toLocaleString(locale.value, {
     month: 'short',
     day: 'numeric',
     hour: 'numeric',
     minute: '2-digit',
   })
-})
+}
 
-async function searchEvents() {
-  const trimmedSearch = searchInput.value.trim()
-
-  await navigateTo({
-    path: '/events',
-    query: trimmedSearch ? { q: trimmedSearch } : {},
+function scrollToFeatured() {
+  featuredSectionRef.value?.scrollIntoView({
+    behavior: 'smooth',
+    block: 'start',
   })
 }
+
+function scrollUpcomingEvents(direction: 'left' | 'right') {
+  const carousel = carouselRef.value
+  if (!carousel) {
+    return
+  }
+
+  carousel.scrollBy({
+    left: direction === 'left' ? -360 : 360,
+    behavior: 'smooth',
+  })
+
+  window.setTimeout(updateCarouselState, 320)
+}
+
+function updateCarouselState() {
+  const carousel = carouselRef.value
+  if (!carousel) {
+    canScrollLeft.value = false
+    canScrollRight.value = false
+    return
+  }
+
+  canScrollLeft.value = carousel.scrollLeft > 4
+  canScrollRight.value = carousel.scrollLeft + carousel.clientWidth < carousel.scrollWidth - 4
+}
+
+onMounted(() => updateCarouselState())
+
+watch(upcomingEvents, async () => {
+  await nextTick()
+  updateCarouselState()
+})
 </script>
 
 <template>
   <AppLayout
-    class="relative flex min-h-full flex-1 flex-col overflow-hidden"
+    class="relative min-h-full overflow-hidden"
     :hide-header="true"
   >
-    <!-- Enhanced hero background with multiple layers -->
-    <div class="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[52rem] overflow-hidden">
-      <!-- Primary radial glow -->
-      <div class="absolute inset-0 bg-[radial-gradient(ellipse_80%_60%_at_10%_-10%,oklch(0.47_0.27_277_/_0.20),transparent_60%),radial-gradient(ellipse_60%_50%_at_85%_5%,oklch(0.64_0.22_290_/_0.14),transparent_50%),radial-gradient(ellipse_40%_40%_at_50%_100%,oklch(0.47_0.27_277_/_0.08),transparent_60%)]" />
-      <!-- Noise texture overlay for depth -->
-      <div class="absolute inset-0 opacity-[0.015] [background-image:url(&quot;data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E&quot;)]" />
-    </div>
+    <SmoothScroll>
+      <section class="relative -mx-4 -mt-4 min-h-[100dvh] overflow-hidden bg-zinc-950 text-white md:-mx-6 md:-mt-6 lg:-mx-10">
+        <motion.div
+          :initial="{ scale: 1.08 }"
+          :animate="{ scale: 1.02 }"
+          :transition="{ duration: 8, ease: 'easeOut' }"
+          class="absolute inset-0"
+        >
+          <NuxtImg
+            :src="heroBackgroundImage"
+            alt=""
+            class="absolute inset-0 h-full w-full object-cover opacity-85 motion-safe:animate-[stadium-drift_18s_ease-in-out_infinite_alternate]"
+            loading="eager"
+            preload
+          />
+        </motion.div>
+        <motion.div
+          :initial="{ opacity: 0 }"
+          :animate="{ opacity: 1 }"
+          :transition="{ duration: 1.8 }"
+          class="absolute inset-0 bg-gradient-to-r from-slate-950/78 via-blue-950/52 to-sky-950/18 md:from-slate-950/72 md:via-blue-950/38 md:to-transparent"
+        />
+        <div class="absolute inset-x-0 bottom-0 h-56 bg-gradient-to-t from-background via-background/70 to-transparent" />
+        <div class="pointer-events-none absolute left-[12%] top-[18%] h-64 w-64 rounded-full bg-sky-400/12 blur-3xl" />
 
-    <section class="grid gap-8 pb-10 pt-4 lg:grid-cols-[minmax(0,1.05fr)_minmax(23rem,0.74fr)] lg:items-stretch lg:pb-14">
-      <div class="surface-shell overflow-hidden">
-        <div class="surface-core relative flex min-h-[34rem] flex-col justify-between overflow-hidden px-5 py-6 md:px-8 md:py-8">
-          <div class="pointer-events-none absolute -right-28 -top-28 size-72 rounded-full bg-primary/10 blur-3xl" />
-          <div class="pointer-events-none absolute bottom-10 left-10 h-px w-1/2 bg-linear-to-r from-primary/60 to-transparent" />
-
-          <div class="relative space-y-8">
-            <div>
-              <Badge
-                variant="outline"
-                class="w-fit rounded-full border-primary/30 bg-primary/8 px-3 py-1 text-[11px] uppercase tracking-[0.22em] text-primary shadow-sm"
-              >
-                <Sparkles class="size-3.5" />
-                {{ $t('home.badge') }}
-              </Badge>
-            </div>
-
+        <div class="relative mx-auto flex min-h-[100dvh] w-full max-w-7xl flex-col justify-end px-4 pb-28 pt-28 sm:px-6 lg:px-8 lg:pb-32">
+          <Motion
+            as="div"
+            :initial="{ opacity: 0, y: 26 }"
+            :animate="{ opacity: 1, y: 0 }"
+            :transition="{ duration: 0.72, ease: 'easeOut' }"
+            class="max-w-4xl space-y-8"
+          >
             <div class="space-y-5">
-              <h1 class="display-title max-w-5xl text-balance md:text-7xl">
-                <span class="gradient-text">{{ $t('home.title') }}</span>
+              <h1 class="max-w-5xl text-balance text-5xl font-semibold leading-[0.94] tracking-[-0.075em] text-white sm:text-6xl lg:text-8xl">
+                {{ $t('home.title') }}
               </h1>
-              <p class="max-w-[48rem] text-base leading-8 text-muted-foreground md:text-lg">
+              <p class="max-w-2xl text-base leading-8 text-white/76 md:text-lg">
                 {{ $t('home.subtitle') }}
               </p>
             </div>
 
-            <form
-              class="grid gap-3 rounded-[2rem] border border-border/70 bg-background/80 p-2 shadow-sm backdrop-blur md:grid-cols-[minmax(0,1fr)_auto] md:items-center"
-              @submit.prevent="searchEvents"
-            >
-              <div class="space-y-2">
-                <Label
-                  for="homepage-event-search"
-                  class="sr-only"
-                >
-                  {{ $t('home.search_label') }}
-                </Label>
-                <div class="relative">
-                  <Search class="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    id="homepage-event-search"
-                    v-model="searchInput"
-                    class="h-12 rounded-full border-0 bg-transparent pl-11 text-base shadow-none focus-visible:ring-0"
-                    :placeholder="$t('home.search_placeholder')"
-                  />
-                </div>
-              </div>
-
-              <Button
-                type="submit"
-                size="lg"
-                class="h-12 rounded-full px-6 transition-all duration-300 hover:shadow-lg hover:shadow-primary/30 hover:-translate-y-0.5"
-              >
-                {{ $t('home.search_button') }}
-                <ArrowRight class="size-4" />
-              </Button>
-            </form>
-
             <div class="flex flex-col gap-3 sm:flex-row">
               <Button
                 as-child
-                variant="secondary"
-                class="rounded-full px-5 transition-all duration-300 hover:-translate-y-0.5"
+                size="lg"
+                class="rounded-full bg-primary px-6 text-primary-foreground transition-all duration-300 hover:-translate-y-0.5 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950 active:translate-y-0"
               >
                 <NuxtLink to="/events">
                   {{ $t('home.browse_all') }}
@@ -219,246 +229,281 @@ async function searchEvents() {
               </Button>
               <Button
                 as-child
-                variant="ghost"
-                class="rounded-full px-5 text-muted-foreground hover:text-foreground"
+                variant="outline"
+                size="lg"
+                class="rounded-full border-white/18 bg-white/8 px-6 text-white backdrop-blur-xl transition-all duration-300 hover:-translate-y-0.5 hover:bg-white/14 hover:text-white focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950 active:translate-y-0"
               >
                 <NuxtLink to="/admin">
                   {{ $t('home.organizer_cta') }}
                 </NuxtLink>
               </Button>
             </div>
-          </div>
+          </Motion>
 
-          <div class="relative mt-8 grid gap-3 sm:grid-cols-3">
-            <div
-              v-for="item in quickStatItems"
-              :key="item.key"
-              class="rounded-[1.5rem] border bg-background/80 p-4 backdrop-blur transition-all hover:-translate-y-1 hover:bg-background/95 hover:shadow-md hover:shadow-primary/10 hover:border-primary/20"
-            >
-              <div class="mb-3 flex items-center justify-between gap-2">
-                <div class="flex size-8 items-center justify-center rounded-xl bg-primary/10">
-                  <component
-                    :is="item.icon"
-                    class="size-4 text-primary"
-                  />
-                </div>
-                <span class="rounded-full border border-primary/20 bg-primary/8 px-2.5 py-1 font-mono text-[13px] font-bold text-primary">
-                  {{ item.value || 0 }}
-                </span>
-              </div>
-              <p class="text-sm font-semibold leading-5 tracking-[-0.02em] text-foreground">
-                {{ item.title }}
-              </p>
-              <p class="mt-1 line-clamp-1 text-xs text-muted-foreground">
-                {{ item.hint }}
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="surface-shell overflow-hidden">
-        <div class="surface-core relative min-h-[34rem] overflow-hidden p-0">
-          <img
-            :src="heroImage"
-            :alt="heroPreviewEvent?.title || $t('home.hero_img_alt')"
-            class="absolute inset-0 h-full w-full object-cover transition-transform duration-700 hover:scale-[1.02]"
+          <motion.div
+            :initial="{ opacity: 0, y: 18 }"
+            :animate="{ opacity: 1, y: 0 }"
+            :transition="{ type: 'spring', stiffness: 100, damping: 20, delay: 1.4 }"
+            class="absolute bottom-8 left-1/2 z-10 -translate-x-1/2"
           >
-          <!-- Richer gradient overlay with color tint -->
-          <div class="absolute inset-0 bg-[linear-gradient(160deg,oklch(0.47_0.27_277_/_0.08),rgba(0,0,0,0.55)_40%,rgba(0,0,0,0.92))]" />
-          <div class="absolute left-0 top-0 h-full w-1 bg-gradient-to-b from-primary via-primary/70 to-transparent" />
+            <motion.button
+              type="button"
+              :while-hover="{ y: 4, scale: 1.15 }"
+              :transition="{ type: 'spring', stiffness: 300 }"
+              class="cursor-pointer text-primary/40 transition-colors hover:text-primary/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
+              @click="scrollToFeatured"
+            >
+              <ChevronDown class="h-5 w-5" />
+            </motion.button>
+          </motion.div>
+        </div>
+      </section>
 
-          <div class="relative z-10 flex min-h-[34rem] flex-col justify-between gap-8 p-5 text-white md:p-6">
-            <div class="flex items-start justify-between gap-4">
-              <span class="section-eyebrow border-white/10 bg-white/8 text-white">
-                {{ $t('home.upcoming_drop') }}
-              </span>
-              <span class="rounded-full border border-white/10 bg-black/35 px-3 py-1.5 font-mono text-[11px] uppercase tracking-[0.18em] text-white/76 backdrop-blur-sm">
-                {{ heroDropDate }}
-              </span>
+      <section
+        ref="featuredSectionRef"
+        class="relative -mx-4 bg-background px-4 py-16 md:-mx-6 md:px-6 md:py-24 lg:-mx-10 lg:px-10"
+      >
+        <div class="mx-auto max-w-7xl space-y-10">
+          <Motion
+            as="div"
+            :initial="{ opacity: 0, y: 24 }"
+            :while-in-view="{ opacity: 1, y: 0 }"
+            :viewport="{ once: true, margin: '-120px' }"
+            :transition="{ duration: 0.62, ease: 'easeOut' }"
+            class="flex flex-col gap-4 md:flex-row md:items-end md:justify-between"
+          >
+            <div class="space-y-3">
+              <h2 class="text-balance text-4xl font-semibold leading-none tracking-[-0.06em]">
+                {{ $t('home.featured_title') }}
+              </h2>
             </div>
 
-            <div class="space-y-5">
-              <div class="max-w-2xl space-y-3">
-                <p class="text-sm font-medium uppercase tracking-[0.24em] text-white/64">
-                  {{ heroPreviewEvent?.venue?.city || $t('home.live_soon') }}
-                </p>
-                <h2 class="text-balance text-4xl font-semibold leading-[1.02] tracking-[-0.07em] md:text-5xl">
-                  {{ heroPreviewEvent?.title || $t('home.hero_fallback_title') }}
-                </h2>
-                <p class="max-w-[34rem] text-sm leading-6 text-white/76 md:text-base md:leading-7">
-                  {{ heroPreviewEvent?.subtitle || $t('home.hero_fallback_subtitle') }}
-                </p>
-              </div>
+            <Button
+              as-child
+              variant="ghost"
+              class="rounded-full"
+            >
+              <NuxtLink to="/events">
+                {{ $t('home.view_all_events') }}
+                <ArrowRight class="size-4" />
+              </NuxtLink>
+            </Button>
+          </Motion>
 
-              <div class="rounded-[1.75rem] border border-white/10 bg-black/35 p-4 backdrop-blur-sm">
-                <div class="mb-4 flex flex-wrap items-center gap-2 text-[11px] uppercase tracking-[0.18em] text-white/64">
-                  <span class="rounded-full border border-white/10 bg-white/8 px-3 py-1">
-                    {{ heroPreviewEvent?.status?.replaceAll('_', ' ') || $t('home.buyer_preview') }}
+          <Card
+            v-if="featuredEventsError"
+            class="border-destructive/30 bg-destructive/5 shadow-none"
+          >
+            <CardContent class="flex gap-3 p-5 text-sm text-destructive">
+              <CircleAlert class="mt-0.5 size-4 shrink-0" />
+              <p>{{ featuredEventsError }}</p>
+            </CardContent>
+          </Card>
+
+          <div
+            v-else-if="featuredEventsPending"
+            class="grid gap-4 lg:grid-cols-[minmax(0,1.1fr)_minmax(20rem,0.9fr)]"
+          >
+            <div class="min-h-[30rem] animate-pulse rounded-[2.5rem] bg-muted/60" />
+            <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-1">
+              <div class="min-h-60 animate-pulse rounded-[2rem] bg-muted/50" />
+              <div class="min-h-60 animate-pulse rounded-[2rem] bg-muted/50" />
+            </div>
+          </div>
+
+          <template v-else-if="heroPreviewEvent">
+            <Motion
+              as="article"
+              :initial="{ opacity: 0, y: 28 }"
+              :while-in-view="{ opacity: 1, y: 0 }"
+              :viewport="{ once: true, margin: '-120px' }"
+              :transition="{ duration: 0.68, ease: 'easeOut' }"
+              class="grid overflow-hidden rounded-[2.5rem] border bg-card shadow-[0_28px_80px_-42px_rgba(24,24,27,0.42)] lg:grid-cols-[minmax(0,1.05fr)_minmax(22rem,0.78fr)]"
+            >
+              <div class="relative min-h-[28rem] overflow-hidden lg:min-h-[36rem]">
+                <img
+                  :src="heroPreviewEvent.coverImage || STADIUM_IMAGE"
+                  :alt="heroPreviewEvent.title"
+                  class="absolute inset-0 h-full w-full object-cover transition-transform duration-700 hover:scale-[1.02]"
+                >
+                <div class="absolute inset-0 bg-gradient-to-t from-zinc-950/76 via-zinc-950/18 to-transparent" />
+                <div class="absolute bottom-5 left-5 right-5 flex flex-wrap items-center gap-2 text-[11px] font-medium uppercase tracking-[0.18em] text-white/80">
+                  <span class="rounded-full border border-white/14 bg-white/10 px-3 py-1.5 backdrop-blur-xl">
+                    {{ $t('home.big_event') }}
                   </span>
-                  <span class="rounded-full border border-white/10 bg-white/8 px-3 py-1">
-                    {{ $t('home.quick_stat_featured_title') }}
+                  <span class="rounded-full border border-white/14 bg-zinc-950/34 px-3 py-1.5 backdrop-blur-xl">
+                    {{ heroDropDate }}
                   </span>
                 </div>
-                <div class="grid gap-4 md:grid-cols-[1fr_auto] md:items-center">
-                  <div class="space-y-1">
-                    <p class="text-[11px] uppercase tracking-[0.18em] text-white/64">
-                      {{ $t('common.venue') }}
+              </div>
+
+              <div class="flex flex-col justify-between gap-10 p-6 md:p-8 lg:p-10">
+                <div class="space-y-6">
+                  <div class="space-y-3">
+                    <p class="flex items-center gap-2 text-xs font-medium uppercase tracking-[0.22em] text-muted-foreground">
+                      <MapPin class="size-4" />
+                      {{ heroPreviewEvent.venue?.city || $t('home.live_soon') }}
                     </p>
-                    <p class="text-sm leading-6 text-white/86 md:text-base">
-                      {{ heroPreviewEvent?.venue?.name || $t('home.browse_catalog_venues') }}
+                    <h3 class="text-balance text-4xl font-semibold leading-[1.02] tracking-[-0.06em] md:text-5xl">
+                      {{ heroPreviewEvent.title }}
+                    </h3>
+                    <p class="text-sm leading-6 text-muted-foreground md:text-base md:leading-7">
+                      {{ heroPreviewEvent.subtitle || $t('home.default_event_subtitle') }}
                     </p>
                   </div>
 
+                  <div class="grid gap-3 sm:grid-cols-3 lg:grid-cols-1 xl:grid-cols-3">
+                    <div
+                      v-for="item in quickStatItems"
+                      :key="item.key"
+                      class="rounded-[1.5rem] border bg-background/70 p-4"
+                    >
+                      <div class="mb-3 flex size-9 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+                        <component
+                          :is="item.icon"
+                          class="size-4"
+                        />
+                      </div>
+                      <p class="font-mono text-2xl font-semibold tracking-[-0.06em]">
+                        {{ item.value || 0 }}
+                      </p>
+                      <p class="mt-1 text-xs text-muted-foreground">
+                        {{ item.title }}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="flex flex-col gap-3 sm:flex-row">
                   <Button
                     as-child
-                    variant="secondary"
+                    size="lg"
                     class="rounded-full"
                   >
-                    <NuxtLink :to="heroPreviewEvent ? `/events/${heroPreviewEvent.slug}` : '/events'">
-                      {{ heroPreviewEvent ? $t('home.view_event') : $t('home.browse_events_btn') }}
+                    <NuxtLink :to="`/events/${heroPreviewEvent.slug}`">
+                      {{ $t('home.view_event') }}
+                      <ArrowRight class="size-4" />
+                    </NuxtLink>
+                  </Button>
+                  <Button
+                    as-child
+                    variant="outline"
+                    size="lg"
+                    class="rounded-full"
+                  >
+                    <NuxtLink to="/events">
+                      {{ $t('home.browse_events_btn') }}
                     </NuxtLink>
                   </Button>
                 </div>
               </div>
-            </div>
-          </div>
+            </Motion>
+
+            <section class="space-y-5">
+              <div class="flex items-center justify-between gap-4">
+                <div>
+                  <p class="section-eyebrow">
+                    {{ $t('home.upcoming_carousel_eyebrow') }}
+                  </p>
+                  <h3 class="mt-2 text-2xl font-semibold tracking-[-0.04em] md:text-3xl">
+                    {{ $t('home.upcoming_carousel_title') }}
+                  </h3>
+                </div>
+
+                <div class="hidden items-center gap-2 sm:flex">
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    class="rounded-full"
+                    :disabled="!canScrollLeft"
+                    :aria-label="$t('home.carousel_previous')"
+                    @click="scrollUpcomingEvents('left')"
+                  >
+                    <ChevronLeft class="size-4" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    class="rounded-full"
+                    :disabled="!canScrollRight"
+                    :aria-label="$t('home.carousel_next')"
+                    @click="scrollUpcomingEvents('right')"
+                  >
+                    <ChevronRight class="size-4" />
+                  </Button>
+                </div>
+              </div>
+
+              <div
+                v-if="upcomingEvents.length > 0"
+                ref="carouselRef"
+                class="-mx-4 flex snap-x gap-4 overflow-x-auto px-4 pb-4 [scrollbar-width:none] sm:mx-0 sm:px-0"
+                data-lenis-prevent
+                @scroll="updateCarouselState"
+              >
+                <Motion
+                  v-for="(event, index) in upcomingEvents"
+                  :key="event.id"
+                  as="div"
+                  :initial="{ opacity: 0, y: 22 }"
+                  :while-in-view="{ opacity: 1, y: 0 }"
+                  :viewport="{ once: true, margin: '-80px' }"
+                  :transition="{ duration: 0.48, delay: index * 0.06, ease: 'easeOut' }"
+                  class="w-[82vw] shrink-0 snap-start sm:w-[25rem]"
+                >
+                  <TicketEventCard :event="event" />
+                </Motion>
+              </div>
+
+              <Card
+                v-else
+                class="rounded-[2rem] border-dashed bg-card/50 shadow-none"
+              >
+                <CardContent class="flex items-center gap-3 p-5 text-sm text-muted-foreground">
+                  <CalendarCheck2 class="size-5 shrink-0" />
+                  <p>{{ $t('home.upcoming_carousel_empty') }}</p>
+                </CardContent>
+              </Card>
+            </section>
+          </template>
+
+          <Empty
+            v-else
+            class="rounded-[2rem] border bg-card/60 py-14"
+          >
+            <EmptyHeader>
+              <div class="mx-auto mb-4 flex size-12 items-center justify-center rounded-full border bg-muted/40">
+                <CalendarCheck2 class="size-5 text-muted-foreground" />
+              </div>
+              <EmptyTitle>{{ $t('home.featured_warming_up') }}</EmptyTitle>
+              <EmptyDescription>
+                {{ featuredEventsEmptyMessage }}
+              </EmptyDescription>
+            </EmptyHeader>
+            <Button
+              as-child
+              variant="outline"
+              class="mt-5 rounded-full"
+            >
+              <NuxtLink to="/events">
+                {{ $t('home.browse_full_catalog') }}
+              </NuxtLink>
+            </Button>
+          </Empty>
         </div>
-      </div>
-    </section>
-
-    <section class="grid gap-3 pb-10 md:grid-cols-2 xl:grid-cols-4">
-      <div
-        v-for="(item, idx) in [
-          { icon: ShieldCheck, titleKey: 'home.trust_holds_title', descKey: 'home.trust_holds_desc' },
-          { icon: Clock3, titleKey: 'home.trust_countdown_title', descKey: 'home.trust_countdown_desc' },
-          { icon: UsersRound, titleKey: 'home.trust_attendees_title', descKey: 'home.trust_attendees_desc' },
-          { icon: Ticket, titleKey: 'home.trust_reserved_title', descKey: 'home.trust_reserved_desc' },
-        ]"
-        :key="idx"
-        class="group flex min-h-28 gap-4 rounded-[1.75rem] border bg-card/70 p-5 transition-all duration-300 hover:-translate-y-0.5 hover:bg-card/95 hover:border-primary/20 hover:shadow-sm"
-      >
-        <div class="flex size-10 shrink-0 items-center justify-center rounded-2xl border bg-background text-primary shadow-sm transition-all duration-300 group-hover:border-primary/30 group-hover:bg-primary/8 group-hover:shadow-primary/10">
-          <component
-            :is="item.icon"
-            class="size-4 transition-transform duration-300 group-hover:scale-110"
-          />
-        </div>
-        <div class="min-w-0 space-y-1.5">
-          <p class="text-base font-semibold tracking-[-0.03em]">
-            {{ $t(item.titleKey) }}
-          </p>
-          <p class="text-sm leading-6 text-muted-foreground">
-            {{ $t(item.descKey) }}
-          </p>
-        </div>
-      </div>
-    </section>
-
-    <section class="space-y-6 pb-8">
-      <div class="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-        <div class="space-y-3">
-          <span class="section-eyebrow">
-            {{ $t('home.featured_eyebrow') }}
-          </span>
-          <div class="space-y-3">
-            <h2 class="text-3xl font-semibold tracking-[-0.05em] md:text-5xl">
-              {{ $t('home.featured_title') }}
-            </h2>
-            <p class="max-w-[42rem] text-sm leading-6 text-muted-foreground md:text-base md:leading-7">
-              {{ $t('home.featured_subtitle') }}
-            </p>
-          </div>
-        </div>
-
-        <Button
-          as-child
-          variant="ghost"
-          class="rounded-full"
-        >
-          <NuxtLink to="/events">
-            {{ $t('home.view_all_events') }}
-            <ArrowRight class="size-4" />
-          </NuxtLink>
-        </Button>
-      </div>
-
-      <Card
-        v-if="featuredEventsError"
-        class="border-destructive/30 bg-destructive/5 shadow-none"
-      >
-        <CardContent class="flex gap-3 p-5 text-sm text-destructive">
-          <CircleAlert class="mt-0.5 size-4 shrink-0" />
-          <p>{{ featuredEventsError }}</p>
-        </CardContent>
-      </Card>
-
-      <section
-        v-if="featuredEvents.length > 0"
-        class="soft-grid lg:grid-cols-3"
-      >
-        <TicketEventCard
-          v-for="event in featuredEvents"
-          :key="event.id"
-          :event="event"
-        />
       </section>
-
-      <Empty
-        v-else-if="!featuredEventsError"
-        class="rounded-[2rem] border bg-card/60 py-14"
-      >
-        <EmptyHeader>
-          <div class="mx-auto mb-4 flex size-12 items-center justify-center rounded-full border bg-muted/40">
-            <CalendarCheck2 class="size-5 text-muted-foreground" />
-          </div>
-          <EmptyTitle>{{ $t('home.featured_warming_up') }}</EmptyTitle>
-          <EmptyDescription>
-            {{ featuredEventsEmptyMessage }}
-          </EmptyDescription>
-        </EmptyHeader>
-        <Button
-          as-child
-          variant="outline"
-          class="mt-5 rounded-full"
-        >
-          <NuxtLink to="/events">
-            {{ $t('home.browse_full_catalog') }}
-          </NuxtLink>
-        </Button>
-      </Empty>
-    </section>
-
-    <Card class="overflow-hidden border-muted/70 bg-card/60 shadow-none backdrop-blur">
-      <CardContent class="relative grid gap-6 overflow-hidden p-6 md:grid-cols-[minmax(0,1fr)_auto] md:items-center md:p-8">
-        <div class="pointer-events-none absolute -right-16 -top-16 size-44 rounded-full bg-primary/10 blur-3xl" />
-        <div class="flex gap-4">
-          <div class="hidden size-12 items-center justify-center rounded-full border bg-secondary text-muted-foreground sm:flex">
-            <ShieldCheck class="size-5" />
-          </div>
-          <div class="space-y-2">
-            <p class="text-xs font-medium uppercase tracking-[0.22em] text-muted-foreground">
-              {{ $t('home.organizer_eyebrow') }}
-            </p>
-            <h2 class="text-2xl font-semibold tracking-[-0.05em] md:text-3xl">
-              {{ $t('home.organizer_title') }}
-            </h2>
-            <p class="max-w-[42rem] text-sm leading-6 text-muted-foreground md:text-base md:leading-7">
-              {{ $t('home.organizer_subtitle') }}
-            </p>
-          </div>
-        </div>
-
-        <Button
-          as-child
-          variant="outline"
-          class="rounded-full"
-        >
-          <NuxtLink to="/admin">
-            {{ $t('home.organizer_open_console') }}
-          </NuxtLink>
-        </Button>
-      </CardContent>
-    </Card>
+    </SmoothScroll>
   </AppLayout>
 </template>
+
+<style scoped>
+@keyframes stadium-drift {
+  from {
+    transform: scale(1.05) translate3d(0, 0, 0);
+  }
+
+  to {
+    transform: scale(1.11) translate3d(-1.4rem, -0.8rem, 0);
+  }
+}
+</style>
