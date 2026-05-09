@@ -16,7 +16,6 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Motion } from 'motion-v'
 import type { EventCatalogQueryOptions } from '~~/types/events'
 
 const { t } = useI18n()
@@ -156,12 +155,7 @@ async function searchEvents() {
           <div class="pointer-events-none absolute bottom-10 left-10 h-px w-1/2 bg-linear-to-r from-primary/60 to-transparent" />
 
           <div class="relative space-y-8">
-            <Motion
-              tag="div"
-              :initial="{ opacity: 0, y: -12 }"
-              :animate="{ opacity: 1, y: 0 }"
-              :transition="{ duration: 0.5, ease: 'easeOut' }"
-            >
+            <div>
               <Badge
                 variant="outline"
                 class="w-fit rounded-full border-primary/30 bg-primary/8 px-3 py-1 text-[11px] uppercase tracking-[0.22em] text-primary shadow-sm"
@@ -169,35 +163,19 @@ async function searchEvents() {
                 <Sparkles class="size-3.5" />
                 {{ $t('home.badge') }}
               </Badge>
-            </Motion>
-
-            <div class="space-y-5">
-              <Motion
-                tag="h1"
-                class="display-title max-w-5xl text-balance md:text-7xl"
-                :initial="{ opacity: 0, y: 24 }"
-                :animate="{ opacity: 1, y: 0 }"
-                :transition="{ duration: 0.6, delay: 0.1, ease: [0.22, 1, 0.36, 1] }"
-              >
-                <span class="gradient-text">{{ $t('home.title') }}</span>
-              </Motion>
-              <Motion
-                tag="p"
-                class="max-w-[48rem] text-base leading-8 text-muted-foreground md:text-lg"
-                :initial="{ opacity: 0, y: 16 }"
-                :animate="{ opacity: 1, y: 0 }"
-                :transition="{ duration: 0.5, delay: 0.22, ease: 'easeOut' }"
-              >
-                {{ $t('home.subtitle') }}
-              </Motion>
             </div>
 
-            <Motion
-              tag="form"
+            <div class="space-y-5">
+              <h1 class="display-title max-w-5xl text-balance md:text-7xl">
+                <span class="gradient-text">{{ $t('home.title') }}</span>
+              </h1>
+              <p class="max-w-[48rem] text-base leading-8 text-muted-foreground md:text-lg">
+                {{ $t('home.subtitle') }}
+              </p>
+            </div>
+
+            <form
               class="grid gap-3 rounded-[2rem] border border-border/70 bg-background/80 p-2 shadow-sm backdrop-blur md:grid-cols-[minmax(0,1fr)_auto] md:items-center"
-              :initial="{ opacity: 0, y: 16 }"
-              :animate="{ opacity: 1, y: 0 }"
-              :transition="{ duration: 0.5, delay: 0.34, ease: 'easeOut' }"
               @submit.prevent="searchEvents"
             >
               <div class="space-y-2">
@@ -226,15 +204,9 @@ async function searchEvents() {
                 {{ $t('home.search_button') }}
                 <ArrowRight class="size-4" />
               </Button>
-            </Motion>
+            </form>
 
-            <Motion
-              tag="div"
-              class="flex flex-col gap-3 sm:flex-row"
-              :initial="{ opacity: 0, y: 12 }"
-              :animate="{ opacity: 1, y: 0 }"
-              :transition="{ duration: 0.5, delay: 0.46, ease: 'easeOut' }"
-            >
+            <div class="flex flex-col gap-3 sm:flex-row">
               <Button
                 as-child
                 variant="secondary"
@@ -254,18 +226,14 @@ async function searchEvents() {
                   {{ $t('home.organizer_cta') }}
                 </NuxtLink>
               </Button>
-            </Motion>
+            </div>
           </div>
 
           <div class="relative mt-8 grid gap-3 sm:grid-cols-3">
-            <Motion
-              v-for="(item, idx) in quickStatItems"
+            <div
+              v-for="item in quickStatItems"
               :key="item.key"
-              tag="div"
               class="rounded-[1.5rem] border bg-background/80 p-4 backdrop-blur transition-all hover:-translate-y-1 hover:bg-background/95 hover:shadow-md hover:shadow-primary/10 hover:border-primary/20"
-              :initial="{ opacity: 0, y: 20 }"
-              :animate="{ opacity: 1, y: 0 }"
-              :transition="{ duration: 0.45, delay: 0.55 + idx * 0.1, ease: 'easeOut' }"
             >
               <div class="mb-3 flex items-center justify-between gap-2">
                 <div class="flex size-8 items-center justify-center rounded-xl bg-primary/10">
@@ -284,7 +252,7 @@ async function searchEvents() {
               <p class="mt-1 line-clamp-1 text-xs text-muted-foreground">
                 {{ item.hint }}
               </p>
-            </Motion>
+            </div>
           </div>
         </div>
       </div>
