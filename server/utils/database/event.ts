@@ -26,10 +26,38 @@ type Transaction = ReturnType<typeof useDB>
 
 const publicEventStatuses: EventCatalogPublicStatus[] = ['published', 'on_sale', 'sold_out', 'ended']
 
-function getDateWindowBounds(dateFilter: EventCatalogDateFilter) {
+function getSearchTokens(value: string) {
+  return value
+    .trim()
+    .toLowerCase()
+    .split(/\s+/)
+    .filter(token => token.length > 0)
+}
+
+function valuesContainEveryToken(values: string[], tokens: string[]) {
+  if (tokens.length === 0) {
+    return true
+  }
+
+  return tokens.every(token => values.some(value => value.toLowerCase().includes(token)))
+}
+
+function getDateWindowBounds(dateFilter: EventCatalogDateFilter | string) {
   const now = new Date()
   const startOfToday = new Date(now)
   startOfToday.setHours(0, 0, 0, 0)
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dateFilter)) {
+    const [year, month, day] = dateFilter.split('-').map(Number)
+    const start = new Date(year, month - 1, day)
+    const end = new Date(start)
+    end.setDate(end.getDate() + 1)
+
+    return {
+      start: start.getTime(),
+      end: end.getTime(),
+    }
+  }
 
   if (dateFilter === 'today') {
     const endOfToday = new Date(startOfToday)
@@ -257,8 +285,8 @@ class EventService extends IDatabaseService<Event> {
     }
   }
 
-  private matchesCatalogSearch(item: EventCatalogItem, normalizedSearchTerm: string) {
-    if (!normalizedSearchTerm) {
+  private matchesCatalogSearch(item: EventCatalogItem, searchTokens: string[]) {
+    if (searchTokens.length === 0) {
       return true
     }
 
@@ -273,11 +301,11 @@ class EventService extends IDatabaseService<Event> {
       item.venue?.address,
     ].filter((value): value is string => typeof value === 'string' && value.length > 0)
 
-    return values.some(value => value.toLowerCase().includes(normalizedSearchTerm))
+    return valuesContainEveryToken(values, searchTokens)
   }
 
-  private matchesLocationText(item: EventCatalogItem, normalizedArea: string) {
-    if (!normalizedArea) {
+  private matchesCatalogLocation(item: EventCatalogItem, locationTokens: string[]) {
+    if (locationTokens.length === 0) {
       return true
     }
 
@@ -288,7 +316,7 @@ class EventService extends IDatabaseService<Event> {
       item.venue?.country,
     ].filter((value): value is string => typeof value === 'string' && value.length > 0)
 
-    return values.some(value => value.toLowerCase().includes(normalizedArea))
+    return valuesContainEveryToken(values, locationTokens)
   }
 
   private getAddressAreas(address: string, city: string, country: string) {
@@ -303,14 +331,21 @@ class EventService extends IDatabaseService<Event> {
       })
   }
 
-  private matchesCatalogDate(item: EventCatalogItem, dateFilter: EventCatalogDateFilter) {
+  private matchesCatalogDate(item: EventCatalogItem, dateFilter: EventCatalogDateFilter | string) {
     const bounds = getDateWindowBounds(dateFilter)
     if (!bounds) {
       return true
     }
 
-    const startsAt = new Date(item.startsAt).getTime()
-    return startsAt >= bounds.start && startsAt < bounds.end
+    const eventStartsAt = new Date(item.startsAt).getTime()
+    if (eventStartsAt >= bounds.start && eventStartsAt < bounds.end) {
+      return true
+    }
+
+    return item.sessions.some(session => {
+      const sessionStartsAt = new Date(session.startsAt).getTime()
+      return sessionStartsAt >= bounds.start && sessionStartsAt < bounds.end
+    })
   }
 
   private sortCatalogItems(items: EventCatalogItem[], sort: EventCatalogSort) {
@@ -371,11 +406,11 @@ class EventService extends IDatabaseService<Event> {
   }
 
   async getEventCatalog(options: EventCatalogQueryOptions): Promise<EventCatalogResult> {
-    const normalizedSearchTerm = options.q.trim().toLowerCase()
     const normalizedCountry = options.country.trim().toLowerCase()
     const normalizedCity = options.city.trim().toLowerCase()
-    const normalizedArea = options.area.trim().toLowerCase()
     const normalizedVenue = options.venue.trim().toLowerCase()
+    const searchTokens = getSearchTokens(options.q)
+    const locationTokens = getSearchTokens(options.location || options.area)
     const items = await this.getPublicEventCatalogItems()
 
     const filteredItems = items.filter((item) => {
@@ -388,9 +423,9 @@ class EventService extends IDatabaseService<Event> {
         && countryMatches
         && cityMatches
         && venueMatches
-        && this.matchesLocationText(item, normalizedArea)
+        && this.matchesCatalogLocation(item, locationTokens)
         && this.matchesCatalogDate(item, options.date)
-        && this.matchesCatalogSearch(item, normalizedSearchTerm)
+        && this.matchesCatalogSearch(item, searchTokens)
     })
 
     const sortedItems = this.sortCatalogItems(filteredItems, options.sort)

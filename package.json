@@ -23,6 +23,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@internationalized/date": "^3.12.1",
     "@libsql/client": "^0.17.3",
     "@lucide/vue": "^1.14.0",
     "@nuxt/fonts": "^0.14.0",

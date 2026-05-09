@@ -289,7 +289,14 @@
     "result_showing": "Hiển thị {start}-{end} trong {total} sự kiện",
     "result_no_events": "Không tìm thấy sự kiện",
     "result_one_event": "Hiển thị 1 sự kiện",
-    "page_info": "Trang {page} / {total}"
+    "page_info": "Trang {page} / {total}",
+    "search_location_label": "Địa điểm",
+    "search_location_placeholder": "Thành phố, địa điểm hoặc địa chỉ",
+    "search_date_label": "Ngày",
+    "search_date_placeholder": "Chọn ngày",
+    "search_keyword_label": "Nghệ sĩ, sự kiện hoặc địa điểm",
+    "search_keyword_placeholder": "Tìm nghệ sĩ, sự kiện hoặc địa điểm",
+    "clear_date": "Xóa ngày"
   },
   "event_detail": {
     "card_title": "Chi tiết sự kiện",

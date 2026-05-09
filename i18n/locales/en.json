@@ -289,7 +289,14 @@
     "result_showing": "Showing {start}-{end} of {total} events",
     "result_no_events": "No events found",
     "result_one_event": "Showing 1 event",
-    "page_info": "Page {page} of {total}"
+    "page_info": "Page {page} of {total}",
+    "search_location_label": "Location",
+    "search_location_placeholder": "City, venue, or address",
+    "search_date_label": "Date",
+    "search_date_placeholder": "Choose date",
+    "search_keyword_label": "Artist, event, or venue",
+    "search_keyword_placeholder": "Search artist, event, or venue",
+    "clear_date": "Clear date"
   },
   "event_detail": {
     "card_title": "Event Details",
