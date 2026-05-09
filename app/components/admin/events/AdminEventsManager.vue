@@ -125,13 +125,6 @@
           </Button>
         </template>
       </AdminFeaturedEventCard>
-
-      <p
-        v-else
-        class="rounded-lg border border-dashed bg-card p-4 text-sm text-muted-foreground"
-      >
-        No events to review.
-      </p>
     </section>
 
     <section
