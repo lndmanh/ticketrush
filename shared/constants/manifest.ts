@@ -1,10 +1,10 @@
 import { defaultLocale } from '../../i18n-constants'
 
 export const APP_MANIFEST = {
-  name: 'Nuxt Starter Kit',
-  short_name: 'Nuxt Template',
-  description: 'A Nuxt 4 starter template with NuxtHub, Auth, and PWA support',
-  start_url: '/pwa',
+  name: 'TicketRush',
+  short_name: 'TicketRush',
+  description: 'A ticket-selling platform for organizers to publish events, manage guests, and streamline check-in.',
+  start_url: '/',
   display: 'standalone',
   display_override: ['window-controls-overlay', 'standalone'],
   background_color: '#ffffff',
@@ -13,7 +13,7 @@ export const APP_MANIFEST = {
   lang: defaultLocale,
   orientation: 'any',
   scope: '/',
-  categories: ['education', 'productivity', 'technology', 'business'],
+  categories: ['business', 'events', 'productivity', 'utilities'],
   iarc_rating_id: '',
   icons: [
     {
@@ -68,10 +68,10 @@ export const APP_MANIFEST = {
       ],
     },
     {
-      name: 'Dashboard',
-      short_name: 'Dashboard',
-      description: 'Sample shortcut to dashboard',
-      url: '/dashboard',
+      name: 'Organizer Console',
+      short_name: 'Console',
+      description: 'Open the organizer console',
+      url: '/admin',
     },
   ],
   scope_extensions: [
@@ -83,8 +83,8 @@ export const APP_MANIFEST = {
 
 // SEO-related constants
 export const SEO_CONFIG = {
-  author: 'No Name Studio',
-  keywords: 'nuxt, template, pwa, starter, vue, javascript',
+  author: 'TicketRush',
+  keywords: 'ticket selling, event tickets, event management, organizer console, guest check-in, Vietnam events',
   ogImage: '/pwa-512x512.png',
   twitterCard: 'summary_large_image' as const,
   robots: 'index, follow',
