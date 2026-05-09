@@ -5,6 +5,7 @@ import { ArrowLeft, SearchIcon } from '@lucide/vue'
 import NavMain from '@/components/nav/NavMain.vue'
 import NavSecondary from '@/components/nav/NavSecondary.vue'
 import NavUser from '@/components/nav/NavUser.vue'
+import { APP_MANIFEST } from '#shared/constants/manifest'
 import type { SidebarProps } from '@/components/ui/sidebar'
 import {
   Sidebar,
@@ -24,6 +25,7 @@ const props = withDefaults(defineProps<SidebarProps>(), {
 })
 
 const { toggleIsOpen } = useHotSearch()
+const { public: publicConfig } = useRuntimeConfig()
 const { open } = useSidebar()
 const { activeContext, primarySections, secondarySections, showBack, isContextView } = useSidebarContext()
 </script>
@@ -108,7 +110,7 @@ const { activeContext, primarySections, secondarySections, showBack, isContextVi
         v-show="open"
         class="text-sm text-muted-foreground"
       >
-        © {{ new Date().getFullYear() }} {{ useConfig().value.footer.credits }}
+        {{ APP_MANIFEST.short_name }} v{{ publicConfig.version }}
       </span>
     </SidebarFooter>
   </Sidebar>
