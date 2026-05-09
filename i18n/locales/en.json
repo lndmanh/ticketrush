@@ -2,7 +2,7 @@
   "common": {
     "privacy": "Privacy",
     "terms": "Terms",
-    "required": "required",
+    "required": "Required",
     "locale": {
       "prompt": "Choose your language"
     },
@@ -104,7 +104,7 @@
     }
   },
   "cta": {
-    "primary": "Console",
+    "primary": "Login",
     "start_writing": "Start writing in {fileLink} to see this page taking shape.",
     "read_more": "Read more at",
     "search_pages": "Try searching for pages",

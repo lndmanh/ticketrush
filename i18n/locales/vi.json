@@ -3,7 +3,9 @@
     "privacy": "Quyền riêng tư",
     "terms": "Điều khoản",
     "required": "bắt buộc",
-    "locale": { "prompt": "Chọn ngôn ngữ của bạn" },
+    "locale": {
+      "prompt": "Chọn ngôn ngữ của bạn"
+    },
     "lang": "Ngôn ngữ",
     "collapse": "Thu gọn",
     "expand": "Mở rộng",
@@ -12,7 +14,9 @@
     "system": "Hệ thống",
     "theme": "Giao diện",
     "color": "Màu sắc",
-    "copy": { "success": "Đã sao chép vào clipboard" },
+    "copy": {
+      "success": "Đã sao chép vào clipboard"
+    },
     "sign_in": "Đăng nhập",
     "log_out": "Đăng xuất",
     "back": "Quay lại",
@@ -64,12 +68,14 @@
     "refresh": "Làm mới",
     "inventory": "Tồn kho",
     "step": "Bước"
-  }
-  ,
+  },
   "errors": {
     "adblock": "Vui lòng hỗ trợ chúng tôi bằng cách tắt trình chặn quảng cáo.",
     "no_result": "Không tìm thấy kết quả.",
-    "not_found": { "title": "Không tìm thấy", "description": "Trang bạn đang tìm không tồn tại. Hãy thử tìm kiếm bên dưới." },
+    "not_found": {
+      "title": "Không tìm thấy",
+      "description": "Trang bạn đang tìm không tồn tại. Hãy thử tìm kiếm bên dưới."
+    },
     "empty_page": "Trang trống",
     "whoops": "Ôi không!",
     "error_404": "Trang bạn đang tìm không tồn tại hoặc đã bị di chuyển.",
@@ -87,9 +93,15 @@
     "prompt": "Chọn phong cách và màu sắc cho tài liệu."
   },
   "docs": {
-    "toc": { "title": "Trên trang này" },
-    "editlink": { "title": "Chỉnh sửa trang này" },
-    "issuelink": { "title": "Tạo vấn đề" }
+    "toc": {
+      "title": "Trên trang này"
+    },
+    "editlink": {
+      "title": "Chỉnh sửa trang này"
+    },
+    "issuelink": {
+      "title": "Tạo vấn đề"
+    }
   },
   "cta": {
     "primary": "Bắt đầu",
@@ -120,8 +132,7 @@
     "copyright": "© {year} No Name Studio. Bảo lưu mọi quyền.",
     "made_in": "Sản xuất tại Việt Nam",
     "centered_copyright": "© {year} Phát triển bởi No Name Studio. Bảo lưu mọi quyền."
-  }
-  ,
+  },
   "blog": {
     "badge": "Blog",
     "title": "Câu chuyện & Góc nhìn",
@@ -271,9 +282,6 @@
     "venue_all": "Tất cả địa điểm",
     "date_label": "Ngày",
     "sort_label": "Sắp xếp",
-    "sort_soonest": "Sớm nhất trước",
-    "sort_newest_releases": "Phát hành mới nhất",
-    "sort_ending_soon": "Sắp kết thúc bán",
     "badge_loading": "Đang tải",
     "no_match_title": "Không có sự kiện nào phù hợp với bộ lọc của bạn",
     "no_match_desc": "Thử tìm kiếm rộng hơn, thành phố khác, hoặc đặt lại bộ lọc để xem tất cả sự kiện.",
@@ -282,8 +290,7 @@
     "result_no_events": "Không tìm thấy sự kiện",
     "result_one_event": "Hiển thị 1 sự kiện",
     "page_info": "Trang {page} / {total}"
-  }
-  ,
+  },
   "event_detail": {
     "card_title": "Chi tiết sự kiện",
     "date_range_label": "Khoảng ngày",
@@ -302,7 +309,7 @@
     "sessions_eyebrow": "Suất diễn",
     "sessions_title": "Chọn suất diễn để đặt vé.",
     "sessions_subtitle": "Mỗi suất diễn có giờ bắt đầu, đợt bán vé và sơ đồ chỗ ngồi riêng.",
-    "sessions_empty": "Suất diễn sẽ hiển thị khi ban tổ chức công bố lịch trình.",
+    "session_empty": "Suất diễn sẽ hiển thị khi ban tổ chức công bố lịch trình.",
     "bookable_dates": "Ngày đặt vé",
     "ticket_options": "Tùy chọn vé",
     "host_city": "Thành phố tổ chức",
@@ -332,18 +339,18 @@
     "seat_map": "Sơ đồ chỗ ngồi",
     "selection_summary": "Tóm tắt lựa chọn",
     "selection_summary_desc": "Chọn tối đa 10 ghế rồi tiếp tục thanh toán.",
-    "selected_seats": "{count} ghế",
-    "hold_window": "Thời gian giữ chỗ",
-    "hold_minutes": "10 phút",
     "inventory": "Tồn kho",
     "live_updating": "Đang cập nhật trực tiếp",
     "reserved_for_checkout": "Đã đặt trước cho thanh toán sau khi bạn tiếp tục.",
-    "pick_seats_prompt": "Chọn ghế từ bản đồ để tạo đơn hàng.",
-    "continue_to_checkout": "Tiếp tục thanh toán",
     "refresh_map": "Làm mới bản đồ",
     "seats_taken_error": "Một hoặc nhiều ghế đã chọn đã được khách hàng khác đặt.",
     "seats_conflict_error": "Một số ghế đã chọn không còn khả dụng. Chúng tôi đã làm mới bản đồ cho bạn.",
-    "checkout_error": "Không thể mở thanh toán. Vui lòng thử lại."
+    "checkout_error": "Không thể mở thanh toán. Vui lòng thử lại.",
+    "selected_seats": "{count} chỗ",
+    "hold_window": "Thời gian giữ chỗ",
+    "hold_minutes": "10 phút",
+    "pick_seats_prompt": "Chọn chỗ ngồi trên bản đồ để tạo đơn hàng.",
+    "continue_to_checkout": "Tiến hành thanh toán"
   },
   "seatmap": {
     "title": "Sơ đồ chỗ ngồi",
@@ -422,8 +429,7 @@
     "order_confirmed_toast": "Đơn hàng đã xác nhận",
     "hold_expired_toast": "Thời gian giữ chỗ đã hết. Vui lòng quay lại sự kiện và chọn lại chỗ ngồi.",
     "order_confirm_error": "Chúng tôi không thể xác nhận đơn hàng"
-  }
-  ,
+  },
   "tickets": {
     "page_title": "Vé của tôi",
     "breadcrumb": "Vé",
@@ -465,31 +471,6 @@
     "missing_title": "Chúng tôi không tìm thấy vé đó.",
     "missing_subtitle": "Vé có thể đã bị xóa hoặc liên kết này không thuộc tài khoản của bạn.",
     "return_to_wallet": "Quay lại ví vé"
-  },
-  "waiting_room": {
-    "page_title": "Phòng chờ",
-    "breadcrumb": "Hàng đợi",
-    "eyebrow": "Phòng chờ",
-    "title": "Ở đây trong khi chúng tôi điều tiết truy cập vào sơ đồ chỗ ngồi.",
-    "subtitle": "TicketRush đang cho phép khách hàng vào theo từng nhóm nhỏ để tồn kho chính xác và quy trình mua hàng ổn định.",
-    "position": "Vị trí",
-    "position_hint": "Vị trí trực tiếp của bạn trong hàng",
-    "waiting": "Đang chờ",
-    "waiting_hint": "Khách hàng đang chờ",
-    "admitted": "Đã được vào",
-    "admitted_hint": "Khách hàng đang vào",
-    "estimated_wait": "Thời gian chờ ước tính",
-    "any_moment": "Bất kỳ lúc nào",
-    "admission_window": "Cửa sổ vào cửa",
-    "status_joining": "Đang tham gia hàng đợi…",
-    "status_waiting": "Đang chờ được vào",
-    "status_note": "Vui lòng giữ trang này mở. Chúng tôi tự động làm mới trạng thái và sẽ đưa bạn vào sơ đồ chỗ ngồi khi đến lượt.",
-    "refresh_status": "Làm mới trạng thái",
-    "leave_room": "Rời phòng chờ",
-    "left_queue": "Bạn đã rời hàng đợi",
-    "leave_error": "Chúng tôi không thể rời hàng đợi ngay bây giờ",
-    "join_error": "Chúng tôi không thể tham gia phòng chờ. Vui lòng thử lại.",
-    "connection_error": "Chúng tôi mất liên lạc với hàng đợi một lúc. Chúng tôi sẽ tiếp tục thử lại tự động."
   },
   "auth": {
     "login_title": "Đăng nhập",
@@ -565,8 +546,7 @@
     "lowercase": "Một chữ thường (a-z)",
     "number": "Một chữ số (0-9)",
     "special": "Một ký tự đặc biệt (ví dụ: !, #, $...)"
-  }
-  ,
+  },
   "admin": {
     "dashboard_title": "Quản trị",
     "dashboard_breadcrumb": "Quản trị",
@@ -925,19 +905,6 @@
       "row_label": "Hàng {row} · Ghế {seat}"
     }
   },
-  "seats": {
-    "seat_map": "Bản đồ chỗ ngồi",
-    "selection_summary": "Tóm tắt lựa chọn",
-    "selection_summary_desc": "Chọn tối đa 10 chỗ, sau đó tiến thẳng đến thanh toán.",
-    "selected_seats": "{count} chỗ",
-    "hold_window": "Thời gian giữ chỗ",
-    "hold_minutes": "10 phút",
-    "live_updating": "Cập nhật trực tiếp",
-    "reserved_for_checkout": "Được giữ để thanh toán sau khi bạn tiếp tục.",
-    "pick_seats_prompt": "Chọn chỗ ngồi trên bản đồ để tạo đơn hàng.",
-    "continue_to_checkout": "Tiến hành thanh toán",
-    "refresh_map": "Làm mới bản đồ"
-  },
   "admin_event_seatmap": {
     "available_label": "Còn trống",
     "available_desc": "{count} ghế trong chế độ xem hiện tại.",
@@ -1118,10 +1085,8 @@
   },
   "waiting_room": {
     "eyebrow": "Phòng chờ",
-    "title": "Hãy ở đây trong khi chúng tôi điều tiết quyền truy cập bản đồ chỗ ngồi.",
     "desc": "TicketRush đang cho phép khách hàng vào theo từng đợt nhỏ để tồn kho luôn chính xác và quy trình mua vé ổn định.",
     "position_label": "Vị trí",
-    "position_hint": "Vị trí trực tiếp của bạn trong hàng",
     "waiting_label": "Đang chờ",
     "waiting_hint": "Khách hàng đang chờ",
     "admitted_label": "Đã được vào",
@@ -1138,7 +1103,22 @@
     "left_queue": "Bạn đã rời hàng đợi",
     "leave_failed": "Chúng tôi không thể rời hàng đợi ngay bây giờ",
     "join_failed": "Chúng tôi không thể tham gia phòng chờ. Vui lòng thử lại.",
-    "lost_contact": "Chúng tôi mất kết nối với hàng đợi trong giây lát. Chúng tôi sẽ tiếp tục thử lại tự động."
+    "lost_contact": "Chúng tôi mất kết nối với hàng đợi trong giây lát. Chúng tôi sẽ tiếp tục thử lại tự động.",
+    "page_title": "Phòng chờ",
+    "breadcrumb": "Hàng đợi",
+    "title": "Ở đây trong khi chúng tôi điều tiết truy cập vào sơ đồ chỗ ngồi.",
+    "subtitle": "TicketRush đang cho phép khách hàng vào theo từng nhóm nhỏ để tồn kho chính xác và quy trình mua hàng ổn định.",
+    "position": "Vị trí",
+    "position_hint": "Vị trí của bạn trong hàng đợi",
+    "waiting": "Đang chờ",
+    "admitted": "Đã được vào",
+    "status_joining": "Đang tham gia hàng đợi…",
+    "status_waiting": "Đang chờ được vào",
+    "status_note": "Vui lòng giữ trang này mở. Chúng tôi tự động làm mới trạng thái và sẽ đưa bạn vào sơ đồ chỗ ngồi khi đến lượt.",
+    "leave_room": "Rời phòng chờ",
+    "leave_error": "Chúng tôi không thể rời hàng đợi ngay bây giờ",
+    "join_error": "Chúng tôi không thể tham gia phòng chờ. Vui lòng thử lại.",
+    "connection_error": "Chúng tôi mất liên lạc với hàng đợi một lúc. Chúng tôi sẽ tiếp tục thử lại tự động."
   },
   "seats_toast": {
     "seats_taken": "Một số chỗ ngồi đã chọn không còn trống. Chúng tôi đã làm mới bản đồ cho bạn.",
