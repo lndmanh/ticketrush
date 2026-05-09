@@ -40,7 +40,7 @@ const { activeContext, primarySections, secondarySections, showBack, isContextVi
         <SidebarMenuItem>
           <SidebarMenuButton
             as-child
-            tooltip="Quick Search"
+            :tooltip="$t('nav.quick_search')"
             class="flex items-center"
             @click="toggleIsOpen()"
           >
@@ -50,7 +50,7 @@ const { activeContext, primarySections, secondarySections, showBack, isContextVi
               size="lg"
             >
               <SearchIcon />
-              <span>Quick Search</span>
+              <span>{{ $t('nav.quick_search') }}</span>
               <KbdGroup class="ml-auto">
                 <Kbd>Ctrl</Kbd>
                 <span>+</span>
@@ -78,12 +78,12 @@ const { activeContext, primarySections, secondarySections, showBack, isContextVi
               <SidebarMenuItem>
                 <SidebarMenuButton
                   as-child
-                  tooltip="Back"
+                  :tooltip="$t('common.back')"
                   class="flex items-center"
                 >
                   <nuxt-link to="/">
                     <ArrowLeft />
-                    <span>Back</span>
+                    <span>{{ $t('common.back') }}</span>
                   </nuxt-link>
                 </SidebarMenuButton>
               </SidebarMenuItem>

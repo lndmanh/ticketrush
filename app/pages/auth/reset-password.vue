@@ -118,7 +118,7 @@ definePageMeta({
         <AlertDescription>
           Invalid reset link. Please
           <NuxtLink
-            to="/auth/forgot-password"
+            :to="{ path: '/auth/forgot-password' }"
             class="underline font-medium"
           >
             request a new one

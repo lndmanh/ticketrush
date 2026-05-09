@@ -6,6 +6,7 @@ import { parseApiError } from '@/utils/apiError'
 import { apiRoutes } from '#shared/apiRoutes'
 
 const route = useRoute()
+const { t } = useI18n()
 const sessionPublicId = computed(() => route.params.eventId.toString())
 const slug = computed(() => typeof route.query.slug === 'string' ? route.query.slug : '')
 
@@ -20,7 +21,7 @@ let queueClockIntervalId: number | null = null
 const estimatedWaitLabel = computed(() => {
   const totalSeconds = queueState.value?.estimatedWaitSeconds ?? 0
   if (totalSeconds <= 0) {
-    return 'Any moment now'
+    return t('waiting_room.any_moment')
   }
 
   const minutes = Math.floor(totalSeconds / 60)
@@ -53,6 +54,14 @@ const queueProgress = computed(() => {
   return Math.max(0, Math.min(100, Math.round(((queueState.value.waitingCount - queueState.value.position + 1) / queueState.value.waitingCount) * 100)))
 })
 
+const queueStatusLabel = computed(() => {
+  if (isJoining.value) {
+    return t('waiting_room.joining')
+  }
+
+  return queueState.value?.entry?.status || t('waiting_room.waiting_for_admission')
+})
+
 async function refreshQueueStatus() {
   if (!sessionPublicId.value) {
     return
@@ -72,7 +81,7 @@ async function refreshQueueStatus() {
     }
   }
   catch (error) {
-    queueError.value = parseApiError(error, 'We lost contact with the queue for a moment. We will keep retrying automatically.').message
+    queueError.value = parseApiError(error, t('waiting_room.lost_contact')).message
   }
 }
 
@@ -88,7 +97,7 @@ async function leaveQueue() {
     if (!response.success) {
       throw response
     }
-    toast.success('You left the queue')
+    toast.success(t('waiting_room.left_queue'))
 
     if (slug.value) {
       await navigateTo(`/events/${slug.value}`)
@@ -98,7 +107,7 @@ async function leaveQueue() {
     await navigateTo('/events')
   }
   catch (error) {
-    toast.error(parseApiError(error, 'We could not leave the queue right now').message)
+    toast.error(parseApiError(error, t('waiting_room.leave_failed')).message)
   }
   finally {
     isLeaving.value = false
@@ -114,7 +123,7 @@ onMounted(async () => {
     await refreshQueueStatus()
   }
   catch (error) {
-    queueError.value = parseApiError(error, 'We could not join the waiting room. Please try again.').message
+    queueError.value = parseApiError(error, t('waiting_room.join_failed')).message
   }
   finally {
     isJoining.value = false
@@ -147,33 +156,33 @@ definePageMeta({
     <section class="surface-shell w-full max-w-3xl">
       <div class="surface-core space-y-8 px-6 py-8 text-center md:px-10 md:py-12">
         <span class="section-eyebrow mx-auto">
-          Waiting room
+          {{ $t('waiting_room.eyebrow') }}
         </span>
 
         <div class="space-y-4">
           <h1 class="display-title mx-auto max-w-2xl text-balance md:text-5xl">
-            Stay here while we pace access to the seat map.
+            {{ $t('waiting_room.title') }}
           </h1>
           <p class="mx-auto max-w-[34rem] text-base leading-8 text-muted-foreground">
-            TicketRush is admitting customers in small batches so the inventory stays correct and the purchase flow feels stable.
+            {{ $t('waiting_room.desc') }}
           </p>
         </div>
 
         <div class="grid gap-4 md:grid-cols-3">
           <TicketSummaryMetric
-            label="Position"
+            :label="$t('waiting_room.position_label')"
             :value="queueState?.position || '—'"
-            hint="Your live place in line"
+            :hint="$t('waiting_room.position_hint')"
           />
           <TicketSummaryMetric
-            label="Waiting"
+            :label="$t('waiting_room.waiting_label')"
             :value="queueState?.waitingCount || 0"
-            hint="Customers still waiting"
+            :hint="$t('waiting_room.waiting_hint')"
           />
           <TicketSummaryMetric
-            label="Admitted"
+            :label="$t('waiting_room.admitted_label')"
             :value="queueState?.admittedCount || 0"
-            hint="Customers currently entering"
+            :hint="$t('waiting_room.admitted_hint')"
           />
         </div>
 
@@ -182,7 +191,7 @@ definePageMeta({
             <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
               <div>
                 <p class="text-sm text-muted-foreground">
-                  Estimated wait
+                  {{ $t('waiting_room.estimated_wait') }}
                 </p>
                 <p class="mt-2 text-3xl font-semibold tracking-[-0.04em]">
                   {{ estimatedWaitLabel }}
@@ -193,7 +202,7 @@ definePageMeta({
                 v-if="passWindowLabel"
                 class="rounded-full bg-primary px-4 py-2 text-sm text-primary-foreground"
               >
-                Admission window · {{ passWindowLabel }}
+                {{ $t('waiting_room.admission_window') }} · {{ passWindowLabel }}
               </div>
             </div>
 
@@ -210,13 +219,13 @@ definePageMeta({
 
         <div class="rounded-[1.75rem] bg-accent px-5 py-5 text-left">
           <p class="text-sm text-muted-foreground">
-            Status
+            {{ $t('waiting_room.status_label') }}
           </p>
           <p class="mt-2 text-xl font-semibold tracking-[-0.04em]">
-            {{ isJoining ? 'Joining queue…' : queueState?.entry?.status || 'Waiting for admission' }}
+            {{ queueStatusLabel }}
           </p>
           <p class="mt-3 text-sm leading-7 text-muted-foreground">
-            Please keep this page open. We refresh your status automatically and will move you into the seat map once your window opens.
+            {{ $t('waiting_room.keep_page_open') }}
           </p>
         </div>
 
@@ -234,7 +243,7 @@ definePageMeta({
             :disabled="isJoining"
             @click="refreshQueueStatus"
           >
-            Refresh status
+            {{ $t('waiting_room.refresh_status') }}
           </Button>
           <Button
             variant="ghost"
@@ -243,7 +252,7 @@ definePageMeta({
             :disabled="isJoining"
             @click="leaveQueue"
           >
-            Leave waiting room
+            {{ $t('waiting_room.leave') }}
           </Button>
         </div>
       </div>

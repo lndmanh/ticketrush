@@ -7,8 +7,8 @@
         :class="cn(
           'rounded-full border px-8 transition-all',
           isScrolled
-            ? 'border-border bg-background/40 shadow-lg backdrop-blur-xs shadow-black/8 py-3'
-            : 'border-border/20 bg-background/60 py-4 backdrop-blur-xs',
+            ? 'border-border/40 bg-background/30 shadow-[0_8px_30px_rgb(0,0,0,0.12)] backdrop-blur-md py-3'
+            : 'border-border/10 bg-background/40 py-4 backdrop-blur-sm',
         )"
       >
         <div class="flex h-full items-center justify-between">
@@ -56,7 +56,7 @@
                 >
                   <SunIcon class="h-3.5 w-3.5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
                   <MoonIcon class="absolute h-3.5 w-3.5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
-                  <span class="sr-only">Toggle theme</span>
+                  <span class="sr-only">{{ $t('common.toggle_theme') }}</span>
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent
@@ -71,19 +71,13 @@
               orientation="vertical"
               class="mx-3 h-4 bg-border/60"
             />
-            <Motion
-              :initial="{ opacity: 0, scale: 0.9 }"
-              :animate="{ opacity: 1, scale: 1 }"
-              :transition="{ duration: 0.5, delay: 0.3 }"
+            <Button
+              size="sm"
+              @click="handleHeaderCtaClick"
             >
-              <Button
-                size="sm"
-                @click="handleHeaderCtaClick"
-              >
-                {{ headerCtaLabel }}
-                <ArrowRight class="ml-1.5 h-3.5 w-3.5 transition-transform duration-300 group-hover:translate-x-0.5" />
-              </Button>
-            </Motion>
+              {{ headerCtaLabel }}
+              <ArrowRight class="ml-1.5 h-3.5 w-3.5 transition-transform duration-300 group-hover:translate-x-0.5" />
+            </Button>
           </nav>
 
           <!-- Mobile Controls -->
@@ -106,7 +100,7 @@
                 >
                   <SunIcon class="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
                   <MoonIcon class="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
-                  <span class="sr-only">Toggle theme</span>
+                  <span class="sr-only">{{ $t('common.toggle_theme') }}</span>
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent
@@ -120,7 +114,7 @@
             <Button
               variant="ghost"
               size="icon"
-              aria-label="Toggle menu"
+              :aria-label="$t('common.toggle_menu')"
               @click="isMobileMenuOpen = !isMobileMenuOpen"
             >
               <X
@@ -316,7 +310,7 @@
                     :to="localeSectionLink('showcase')"
                     class="text-[13px] text-muted-foreground transition-colors duration-200 hover:text-foreground"
                   >
-                    {{ $t('footer.our_work') }}
+                    {{ $t('footer.events') }}
                   </NuxtLink>
                 </li>
                 <li>
@@ -332,36 +326,36 @@
                     :to="localeSectionLink('contact')"
                     class="text-[13px] text-muted-foreground transition-colors duration-200 hover:text-foreground"
                   >
-                    {{ $t('footer.contact') }}
+                    {{ $t('footer.support') }}
                   </NuxtLink>
                 </li>
               </ul>
             </div>
 
-            <!-- Services -->
+            <!-- Platform -->
             <div>
               <h3 class="text-xs font-semibold uppercase tracking-[0.1em] text-foreground/80">
-                {{ $t('footer.services') }}
+                {{ $t('footer.platform') }}
               </h3>
               <ul class="mt-4 space-y-3">
                 <li>
                   <span class="text-[13px] text-muted-foreground">
-                    {{ $t('footer.web_development') }}
+                    {{ $t('footer.sell_tickets') }}
                   </span>
                 </li>
                 <li>
                   <span class="text-[13px] text-muted-foreground">
-                    {{ $t('footer.consulting') }}
+                    {{ $t('footer.event_dashboard') }}
                   </span>
                 </li>
                 <li>
                   <span class="text-[13px] text-muted-foreground">
-                    {{ $t('footer.ui_design') }}
+                    {{ $t('footer.check_in_tools') }}
                   </span>
                 </li>
                 <li>
                   <span class="text-[13px] text-muted-foreground">
-                    {{ $t('footer.maintenance') }}
+                    {{ $t('footer.payout_support') }}
                   </span>
                 </li>
               </ul>
@@ -375,34 +369,29 @@
               <ul class="mt-4 space-y-3">
                 <li>
                   <a
-                    href="mailto:contact@nnsvn.me"
+                    href="mailto:support@ticketrush.app"
                     class="text-[13px] text-muted-foreground transition-colors duration-200 hover:text-foreground"
                   >
                     <MailIcon class="mr-2 inline-block size-4" />
-                    Email
+                    {{ $t('footer.support_email') }}
                   </a>
                 </li>
                 <li>
-                  <a
-                    href="https://github.com/No-Name-Studio-VN"
-                    target="_blank"
-                    rel="noopener noreferrer"
+                  <NuxtLink
+                    to="/admin"
                     class="text-[13px] text-muted-foreground transition-colors duration-200 hover:text-foreground"
                   >
-                    <GitHubIcon class="mr-2 inline-block size-4" />
-                    GitHub
-                  </a>
+                    <ArrowRight class="mr-2 inline-block size-4" />
+                    {{ $t('footer.organizer_login') }}
+                  </NuxtLink>
                 </li>
                 <li>
-                  <a
-                    href="https://x.com/nn_myt"
-                    target="_blank"
-                    rel="noopener noreferrer"
+                  <NuxtLink
+                    :to="localeSectionLink('faq')"
                     class="text-[13px] text-muted-foreground transition-colors duration-200 hover:text-foreground"
                   >
-                    <XIcon class="mr-2 inline-block size-4" />
-                    X (Twitter)
-                  </a>
+                    {{ $t('footer.help_center') }}
+                  </NuxtLink>
                 </li>
               </ul>
             </div>
@@ -412,7 +401,7 @@
 
       <!-- Legal Bar -->
       <div class="border-t border-border/30">
-        <div class="mx-auto max-w-5xl px-6 py-5 lg:px-8">
+        <div class="mx-auto py-3 px-8">
           <div class="flex flex-col-reverse items-center gap-4 sm:flex-row sm:justify-between">
             <div class="flex flex-col items-center gap-0.5 sm:items-start">
               <p class="text-xs text-muted-foreground/60">
@@ -424,8 +413,10 @@
             </div>
             <div class="flex items-center gap-5">
               <NuxtLink
-                to="/privacy"
+                to="https://nnsvn.me/privacy"
                 class="text-xs text-muted-foreground/60 transition-colors duration-200 hover:text-foreground"
+                target="_blank"
+                rel="noopener noreferrer"
               >
                 {{ $t('common.privacy') }}
               </NuxtLink>
@@ -434,8 +425,10 @@
                 aria-hidden="true"
               />
               <NuxtLink
-                to="/terms"
+                to="https://nnsvn.me/terms"
                 class="text-xs text-muted-foreground/60 transition-colors duration-200 hover:text-foreground"
+                target="_blank"
+                rel="noopener noreferrer"
               >
                 {{ $t('common.terms') }}
               </NuxtLink>
@@ -452,17 +445,8 @@
 <script lang="ts" setup>
 import { computed, ref, watch, onMounted, onUnmounted } from 'vue'
 import { useWindowScroll } from '@vueuse/core'
-import { Button } from '@/components/ui/button'
-import { Separator } from '@/components/ui/separator'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-import { GitHubIcon, XIcon } from 'vue3-simple-icons'
 import { Menu, X, ChevronLeft, ChevronRight, ArrowRight, SunIcon, MoonIcon, MailIcon } from '@lucide/vue'
 import { cn } from '@/lib/utils'
-import { Motion } from 'motion-v'
 import { defaultLocale } from '~~/i18n-constants'
 import { APP_MANIFEST } from '#shared/constants/manifest'
 

@@ -17,7 +17,7 @@ const defaultValues: WaitingRoomSettingsInput = {
   queueWindowSeconds: 180,
 }
 
-const { handleSubmit, resetForm, values } = useForm({
+const { handleSubmit, resetForm } = useForm({
   initialValues: { ...defaultValues },
   validationSchema: waitingRoomSettingsSchema,
 })
@@ -107,7 +107,7 @@ definePageMeta({
             >
               <Field :data-invalid="!!errors.length">
                 <FieldLabel for="waiting-room-threshold">
-                  Activation threshold
+                  {{ $t('admin.waiting_room_settings.threshold_label') }}
                 </FieldLabel>
                 <Input
                   id="waiting-room-threshold"
@@ -117,7 +117,7 @@ definePageMeta({
                   :aria-invalid="!!errors.length"
                   @update:model-value="updatePositiveNumber(field.onChange, $event)"
                 />
-                <FieldDescription>Active queue passes plus active holds before buyers are paced.</FieldDescription>
+                <FieldDescription>{{ $t('admin.waiting_room_settings.threshold_desc') }}</FieldDescription>
                 <FieldError
                   v-if="errors.length"
                   :errors="errors"
@@ -131,7 +131,7 @@ definePageMeta({
             >
               <Field :data-invalid="!!errors.length">
                 <FieldLabel for="waiting-room-batch-size">
-                  Batch size
+                  {{ $t('admin.waiting_room_settings.batch_size_label') }}
                 </FieldLabel>
                 <Input
                   id="waiting-room-batch-size"
@@ -141,7 +141,7 @@ definePageMeta({
                   :aria-invalid="!!errors.length"
                   @update:model-value="updatePositiveNumber(field.onChange, $event)"
                 />
-                <FieldDescription>Number of buyers admitted on each queue cycle.</FieldDescription>
+                <FieldDescription>{{ $t('admin.waiting_room_settings.batch_size_desc') }}</FieldDescription>
                 <FieldError
                   v-if="errors.length"
                   :errors="errors"
@@ -155,7 +155,7 @@ definePageMeta({
             >
               <Field :data-invalid="!!errors.length">
                 <FieldLabel for="waiting-room-window">
-                  Window seconds
+                  {{ $t('admin.waiting_room_settings.window_seconds_label') }}
                 </FieldLabel>
                 <Input
                   id="waiting-room-window"
@@ -165,7 +165,7 @@ definePageMeta({
                   :aria-invalid="!!errors.length"
                   @update:model-value="updatePositiveNumber(field.onChange, $event)"
                 />
-                <FieldDescription>How long an admitted pass remains valid.</FieldDescription>
+                <FieldDescription>{{ $t('admin.waiting_room_settings.window_seconds_desc') }}</FieldDescription>
                 <FieldError
                   v-if="errors.length"
                   :errors="errors"

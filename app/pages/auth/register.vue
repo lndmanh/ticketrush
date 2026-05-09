@@ -14,7 +14,6 @@ import { apiRequest } from '@/utils/apiRequest'
 import { parseApiError } from '@/utils/apiError'
 import { Field as VeeField, useForm } from 'vee-validate'
 import { Field, FieldLabel, FieldError } from '@/components/ui/field'
-import { APP_MANIFEST } from '#shared/constants/manifest'
 
 const route = useRoute()
 const requestUrl = useRequestURL()
@@ -223,13 +222,13 @@ definePageMeta({
 </script>
 
 <template>
-  <AuthPageLayout quote="Build a library that feels like yours from the first page.">
+  <AuthPageLayout quote="Create one account for faster drops, saved attendees, and protected checkout.">
     <div class="space-y-1">
       <h1 class="text-2xl font-bold tracking-tight">
-        Create account
+        Create your TicketRush account
       </h1>
       <p class="text-base text-muted-foreground">
-        {{ APP_MANIFEST.description }}
+        Join TicketRush to book live events faster when demand peaks.
       </p>
     </div>
 
@@ -495,6 +494,11 @@ definePageMeta({
       </VeeField>
 
       <NuxtTurnstile v-model="turnstileToken" />
+      <input
+        type="hidden"
+        name="cf-turnstile-response"
+        :value="turnstileToken"
+      >
       <input
         type="hidden"
         name="redirect-to"

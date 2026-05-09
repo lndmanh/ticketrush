@@ -268,7 +268,7 @@ function startFreshFromAutosaveDraft() {
   }
 }
 
-async function discardAutosaveDraft() {
+async function _discardAutosaveDraft() {
   const draft = pendingAutosaveDraft.value
   if (!draft) {
     return
@@ -649,7 +649,7 @@ const onSubmit = handleSubmit(
           description: formValues.description,
           venueId: formValues.venueId,
           coverImage: formValues.coverImage,
-          sessions: formValues.sessions.map((session, index) => ({
+          sessions: formValues.sessions.map(session => ({
             ...session,
             startsAt: new Date(session.startsAt),
             endsAt: session.endsAt ? new Date(session.endsAt) : undefined,
@@ -760,17 +760,17 @@ onUnmounted(() => {
     <AlertDialog v-model:open="isAutosaveRestoreDialogOpen">
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Restore unfinished event draft?</AlertDialogTitle>
+          <AlertDialogTitle>{{ $t('admin.event_create.restore_dialog_title') }}</AlertDialogTitle>
           <AlertDialogDescription>
-            {{ pendingAutosaveDraft?.payload.title || 'Untitled event' }} was autosaved at step {{ pendingAutosaveDraft?.lastSavedStep ?? 1 }}{{ pendingAutosaveDraft?.updatedAt ? ` on ${new Date(pendingAutosaveDraft.updatedAt).toLocaleString()}` : '' }}. Restoring will apply it now. Starting fresh will overwrite this autosave when you type.
+            {{ $t('admin.event_create.restore_dialog_desc', { title: pendingAutosaveDraft?.payload.title || $t('admin.events.untitled_event'), step: pendingAutosaveDraft?.lastSavedStep ?? 1, date: pendingAutosaveDraft?.updatedAt ? $t('admin.event_create.restore_dialog_date', { date: new Date(pendingAutosaveDraft.updatedAt).toLocaleString() }) : '' }) }}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel @click="startFreshFromAutosaveDraft">
-            Start fresh
+            {{ $t('admin.event_create.start_fresh') }}
           </AlertDialogCancel>
           <AlertDialogAction @click="restoreAutosaveDraft">
-            Restore draft
+            {{ $t('admin.event_create.restore_draft') }}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
@@ -782,7 +782,7 @@ onUnmounted(() => {
     >
       <CardContent class="flex items-center gap-3 py-4 text-sm text-muted-foreground">
         <Loader2 class="size-4 animate-spin" />
-        Loading autosave draft…
+        {{ $t('admin.event_create.loading_draft') }}
       </CardContent>
     </Card>
 
@@ -854,12 +854,12 @@ onUnmounted(() => {
         >
           <CardHeader>
             <CardTitle class="text-base">
-              Identity
+              {{ $t('admin.event_create.identity') }}
             </CardTitle>
           </CardHeader>
           <CardContent>
             <FieldSet>
-              <FieldLegend>Event basics</FieldLegend>
+              <FieldLegend>{{ $t('admin.event_create.event_basics') }}</FieldLegend>
               <FieldGroup>
                 <VeeField
                   v-slot="{ field, errors }"
@@ -867,12 +867,12 @@ onUnmounted(() => {
                 >
                   <Field :data-invalid="!!errors.length">
                     <FieldLabel for="event-create-title">
-                      Title
+                      {{ $t('admin.event_create.title_label') }}
                     </FieldLabel>
                     <Input
                       id="event-create-title"
                       :model-value="field.value"
-                      placeholder="Midnight Skyline Live"
+                      :placeholder="$t('admin.event_create.title_placeholder')"
                       :aria-invalid="!!errors.length"
                       @update:model-value="field.onChange"
                     />
@@ -889,12 +889,12 @@ onUnmounted(() => {
                 >
                   <Field :data-invalid="!!errors.length">
                     <FieldLabel for="event-create-slug">
-                      Slug
+                      {{ $t('admin.event_create.slug_label') }}
                     </FieldLabel>
                     <Input
                       id="event-create-slug"
                       :model-value="field.value"
-                      placeholder="midnight-skyline-live"
+                      :placeholder="$t('admin.event_create.slug_placeholder')"
                       :aria-invalid="!!errors.length"
                       @update:model-value="field.onChange"
                     />
@@ -911,12 +911,12 @@ onUnmounted(() => {
                 >
                   <Field :data-invalid="!!errors.length">
                     <FieldLabel for="event-create-subtitle">
-                      Subtitle
+                      {{ $t('admin.event_create.subtitle_label') }}
                     </FieldLabel>
                     <Input
                       id="event-create-subtitle"
                       :model-value="field.value"
-                      placeholder="A premium electronic pop night in Saigon."
+                      :placeholder="$t('admin.event_create.subtitle_placeholder')"
                       :aria-invalid="!!errors.length"
                       @update:model-value="field.onChange"
                     />
@@ -933,12 +933,12 @@ onUnmounted(() => {
                 >
                   <Field :data-invalid="!!errors.length">
                     <FieldLabel for="event-create-description">
-                      Description
+                      {{ $t('admin.event_create.description_label') }}
                     </FieldLabel>
                     <Textarea
                       id="event-create-description"
                       :model-value="field.value"
-                      placeholder="Describe the event."
+                      :placeholder="$t('admin.event_create.description_placeholder')"
                       :aria-invalid="!!errors.length"
                       @update:model-value="field.onChange"
                     />
@@ -955,16 +955,16 @@ onUnmounted(() => {
                 >
                   <Field :data-invalid="!!errors.length">
                     <FieldLabel for="event-create-cover-image">
-                      Cover image URL
+                      {{ $t('admin.event_create.cover_image_label') }}
                     </FieldLabel>
                     <Input
                       id="event-create-cover-image"
                       :model-value="field.value"
-                      placeholder="https://example.com/event-cover.jpg"
+                      :placeholder="$t('admin.event_create.cover_image_placeholder')"
                       :aria-invalid="!!errors.length"
                       @update:model-value="field.onChange"
                     />
-                    <FieldDescription>Optional</FieldDescription>
+                    <FieldDescription>{{ $t('common.optional') }}</FieldDescription>
                     <FieldError
                       v-if="errors.length"
                       :errors="errors"

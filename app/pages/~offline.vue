@@ -15,15 +15,15 @@ function reload() {
       <WifiOff class="h-16 w-16 text-foreground/40" />
     </div>
     <h1 class="text-3xl font-bold tracking-tight text-foreground sm:text-4xl text-center">
-      You're offline
+      {{ $t('errors.offline_title') }}
     </h1>
     <p class="text-lg text-muted-foreground text-center max-w-md">
-      No internet connection detected. Connect to the internet and try again, or reload to retry.
+      {{ $t('errors.offline_description') }}
     </p>
     <div class="mt-4 flex items-center justify-center gap-4">
       <Button @click="reload">
         <RefreshCw class="h-4 w-4" />
-        Try Again
+        {{ $t('errors.try_again') }}
       </Button>
     </div>
   </MaxWidthWrapper>

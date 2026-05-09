@@ -71,7 +71,7 @@ definePageMeta({
 
             <div class="rounded-lg border bg-muted/30 px-2.5 py-2 text-right">
               <p class="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-                Issued
+                {{ $t('tickets.detail_issued') }}
               </p>
               <p class="mt-1 whitespace-nowrap font-mono text-xs">
                 {{ formatIssuedAt(ticket.issuedAt) }}
@@ -87,7 +87,7 @@ definePageMeta({
               <div class="flex items-start gap-3 rounded-xl bg-muted/30 p-3">
                 <CalendarRange class="mt-0.5 size-4 shrink-0 text-muted-foreground" />
                 <div class="min-w-0">
-                  <p class="text-xs text-muted-foreground">Event time</p>
+                  <p class="text-xs text-muted-foreground">{{ $t('tickets.event_time') }}</p>
                   <p class="truncate font-medium">
                     {{ formatEventTime(ticket.event?.startsAt) }}
                   </p>
@@ -98,9 +98,9 @@ definePageMeta({
                 <div class="flex items-start gap-3 rounded-xl bg-muted/30 p-3">
                   <MapPin class="mt-0.5 size-4 shrink-0 text-muted-foreground" />
                   <div class="min-w-0">
-                    <p class="text-xs text-muted-foreground">Seat</p>
+                    <p class="text-xs text-muted-foreground">{{ $t('tickets.seat_label') }}</p>
                     <p class="truncate font-medium">
-                      {{ ticket.orderItem?.sectionLabel || 'General admission' }} · {{ ticket.orderItem?.seatLabel || 'GA' }}
+                      {{ ticket.orderItem?.sectionLabel || $t('tickets.detail_general_admission') }} · {{ ticket.orderItem?.seatLabel || $t('tickets.ga') }}
                     </p>
                   </div>
                 </div>
@@ -108,7 +108,7 @@ definePageMeta({
                 <div class="flex items-start gap-3 rounded-xl bg-muted/30 p-3">
                   <Ticket class="mt-0.5 size-4 shrink-0 text-muted-foreground" />
                   <div class="min-w-0">
-                    <p class="text-xs text-muted-foreground">Ticket</p>
+                    <p class="text-xs text-muted-foreground">{{ $t('tickets.ticket_label') }}</p>
                     <p class="truncate font-mono text-xs font-medium">
                       #{{ getShortTicketId(ticket.publicId) }}
                     </p>
@@ -119,10 +119,10 @@ definePageMeta({
 
             <div class="mt-5 flex items-center justify-between gap-3 text-sm">
               <span class="text-muted-foreground">
-                Open digital pass
+                {{ $t('tickets.open_digital_pass') }}
               </span>
               <span class="inline-flex items-center gap-1 font-medium text-primary transition-transform duration-300 group-hover:translate-x-1">
-                View pass
+                {{ $t('tickets.view_pass') }}
                 <ArrowRight class="size-4" />
               </span>
             </div>

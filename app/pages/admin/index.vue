@@ -54,16 +54,6 @@ const sessionCountsByDate = computed(() => {
   }, {})
 })
 
-const nextSession = computed(() => {
-  const now = Date.now()
-  return sortedSessions.value.find(session => new Date(session.startsAt).getTime() >= now) ?? null
-})
-
-const nextSessionLabel = computed(() => {
-  if (!nextSession.value) return 'No upcoming sessions'
-  return `${nextSession.value.eventTitle} · ${formatDateTime(nextSession.value.startsAt)}`
-})
-
 const occupancyLabel = computed(() => `${formatPercent(summary.value.occupancyRate)} occupied`)
 
 const revenueChartOption = computed<EChartsOption>(() => {
@@ -226,15 +216,6 @@ function formatPercent(value: number) {
     style: 'percent',
     maximumFractionDigits: 0,
   }).format(value)
-}
-
-function formatDateTime(value: string | Date) {
-  return new Date(value).toLocaleString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-  })
 }
 
 definePageMeta({

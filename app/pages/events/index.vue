@@ -1,46 +1,25 @@
 <script setup lang="ts">
-import { CalendarDays, ChevronLeft, ChevronRight, Search, SlidersHorizontal, X } from '@lucide/vue'
-import type {
-  EventCatalogDateFilter,
-  EventCatalogSort,
-  EventCatalogStatusFilter,
-} from '~~/types/events'
+import { CalendarDays, ChevronLeft, ChevronRight, Search, SlidersHorizontal, X, MapPin, Calendar as CalendarIcon } from '@lucide/vue'
+import { DateFormatter, getLocalTimeZone, parseDate } from '@internationalized/date'
+import type { DateValue } from '@internationalized/date'
+import type { EventCatalogLocationOptions, EventCatalogSort } from '~~/types/events'
 
 const EVENTS_PAGE_SIZE = 9
 
-const statusOptions: Array<{ label: string, value: EventCatalogStatusFilter }> = [
-  { label: 'All statuses', value: 'all' },
-  { label: 'Upcoming', value: 'published' },
-  { label: 'On sale', value: 'on_sale' },
-  { label: 'Sold out', value: 'sold_out' },
-  { label: 'Ended', value: 'ended' },
-]
+const { t, locale } = useI18n()
 
-const dateOptions: Array<{ label: string, value: EventCatalogDateFilter }> = [
-  { label: 'Any date', value: 'all' },
-  { label: 'Today', value: 'today' },
-  { label: 'Next 7 days', value: 'week' },
-  { label: 'Next 30 days', value: 'month' },
-]
-
-const sortOptions: Array<{ label: string, value: EventCatalogSort }> = [
-  { label: 'Soonest first', value: 'soonest' },
-  { label: 'Newest releases', value: 'newest' },
-  { label: 'Sales ending soon', value: 'ending_soon' },
-]
+const sortOptions = computed<Array<{ label: string, value: EventCatalogSort }>>(() => [
+  { label: t('events.sort_soonest'), value: 'soonest' },
+  { label: t('events.sort_newest_releases'), value: 'newest' },
+  { label: t('events.sort_ending_soon'), value: 'ending_soon' },
+])
 
 const router = useRouter()
 const route = useRoute()
 
 function getQueryString(value: string | string[] | null | undefined) {
-  if (typeof value === 'string') {
-    return value
-  }
-
-  if (Array.isArray(value)) {
-    return value[0] || ''
-  }
-
+  if (typeof value === 'string') return value
+  if (Array.isArray(value)) return value[0] || ''
   return ''
 }
 
@@ -49,26 +28,8 @@ function getPositiveQueryNumber(value: string | string[] | null | undefined, fal
   return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : fallback
 }
 
-function isStatusFilter(value: string): value is EventCatalogStatusFilter {
-  return statusOptions.some(option => option.value === value)
-}
-
-function isDateFilter(value: string): value is EventCatalogDateFilter {
-  return dateOptions.some(option => option.value === value)
-}
-
 function isCatalogSort(value: string): value is EventCatalogSort {
-  return sortOptions.some(option => option.value === value)
-}
-
-function getStatusFilterFromRoute() {
-  const value = getQueryString(route.query.status)
-  return isStatusFilter(value) ? value : 'all'
-}
-
-function getDateFilterFromRoute() {
-  const value = getQueryString(route.query.date)
-  return isDateFilter(value) ? value : 'all'
+  return sortOptions.value.some(option => option.value === value)
 }
 
 function getSortFromRoute() {
@@ -76,65 +37,58 @@ function getSortFromRoute() {
   return isCatalogSort(value) ? value : 'soonest'
 }
 
-const searchInput = ref(getQueryString(route.query.q))
-const activeSearch = ref(getQueryString(route.query.q))
-const activeStatus = ref<EventCatalogStatusFilter>(getStatusFilterFromRoute())
-const activeCity = ref(getQueryString(route.query.city) || 'all')
-const activeDate = ref<EventCatalogDateFilter>(getDateFilterFromRoute())
+const keywordInput = ref(getQueryString(route.query.q))
+const locationInput = ref(getQueryString(route.query.location))
+const selectedDate = ref(getQueryString(route.query.date))
+const activeKeyword = ref(getQueryString(route.query.q))
+const activeLocation = ref(getQueryString(route.query.location))
+const activeDate = ref(getQueryString(route.query.date))
 const activeSort = ref<EventCatalogSort>(getSortFromRoute())
 const activePage = ref(getPositiveQueryNumber(route.query.page, 1))
-const filterDialogOpen = ref(false)
-const draftStatus = ref<EventCatalogStatusFilter>(activeStatus.value)
-const draftCity = ref(activeCity.value)
-const draftDate = ref<EventCatalogDateFilter>(activeDate.value)
-const draftSort = ref<EventCatalogSort>(activeSort.value)
 
-function syncDraftFiltersFromActive() {
-  draftStatus.value = activeStatus.value
-  draftCity.value = activeCity.value
-  draftDate.value = activeDate.value
-  draftSort.value = activeSort.value
-}
+const dateFormatter = computed(() => new DateFormatter(locale.value, { dateStyle: 'long' }))
+
+const calendarValue = computed({
+  get: () => {
+    if (!selectedDate.value) return undefined
+    try {
+      return parseDate(selectedDate.value)
+    }
+    catch {
+      return undefined
+    }
+  },
+  set: (val: DateValue | undefined) => {
+    selectedDate.value = val ? val.toString() : ''
+  },
+})
 
 function syncStateFromRoute() {
-  const routeSearch = getQueryString(route.query.q)
-  searchInput.value = routeSearch
-  activeSearch.value = routeSearch
-  activeStatus.value = getStatusFilterFromRoute()
-  activeCity.value = getQueryString(route.query.city) || 'all'
-  activeDate.value = getDateFilterFromRoute()
+  keywordInput.value = getQueryString(route.query.q)
+  locationInput.value = getQueryString(route.query.location)
+  selectedDate.value = getQueryString(route.query.date)
+
+  activeKeyword.value = getQueryString(route.query.q)
+  activeLocation.value = getQueryString(route.query.location)
+  activeDate.value = getQueryString(route.query.date)
   activeSort.value = getSortFromRoute()
   activePage.value = getPositiveQueryNumber(route.query.page, 1)
-  syncDraftFiltersFromActive()
 }
 
 function buildCatalogQuery(page: number) {
   const query: Record<string, string> = {}
-  const trimmedSearch = searchInput.value.trim()
 
-  if (trimmedSearch) {
-    query.q = trimmedSearch
-  }
+  const trimmedKeyword = keywordInput.value.trim()
+  if (trimmedKeyword) query.q = trimmedKeyword
 
-  if (activeStatus.value !== 'all') {
-    query.status = activeStatus.value
-  }
+  const trimmedLocation = locationInput.value.trim()
+  if (trimmedLocation) query.location = trimmedLocation
 
-  if (activeCity.value !== 'all') {
-    query.city = activeCity.value
-  }
+  const trimmedDate = selectedDate.value.trim()
+  if (trimmedDate) query.date = trimmedDate
 
-  if (activeDate.value !== 'all') {
-    query.date = activeDate.value
-  }
-
-  if (activeSort.value !== 'soonest') {
-    query.sort = activeSort.value
-  }
-
-  if (page > 1) {
-    query.page = String(page)
-  }
+  if (activeSort.value !== 'soonest') query.sort = activeSort.value
+  if (page > 1) query.page = String(page)
 
   return query
 }
@@ -150,68 +104,32 @@ async function applySearch() {
   await replaceCatalogQuery(1)
 }
 
-async function applyFilters() {
-  activeStatus.value = draftStatus.value
-  activeCity.value = draftCity.value
-  activeDate.value = draftDate.value
-  activeSort.value = draftSort.value
-  filterDialogOpen.value = false
-  await replaceCatalogQuery(1)
-}
-
-async function resetDialogFilters() {
-  activeStatus.value = 'all'
-  activeCity.value = 'all'
-  activeDate.value = 'all'
-  activeSort.value = 'soonest'
-  draftStatus.value = 'all'
-  draftCity.value = 'all'
-  draftDate.value = 'all'
-  draftSort.value = 'soonest'
-  filterDialogOpen.value = false
-  await replaceCatalogQuery(1)
-}
-
-async function clearSearch() {
-  searchInput.value = ''
-  await replaceCatalogQuery(1)
-}
-
 async function resetFilters() {
-  searchInput.value = ''
-  activeStatus.value = 'all'
-  activeCity.value = 'all'
-  activeDate.value = 'all'
+  keywordInput.value = ''
+  locationInput.value = ''
+  selectedDate.value = ''
   activeSort.value = 'soonest'
-  draftStatus.value = 'all'
-  draftCity.value = 'all'
-  draftDate.value = 'all'
-  draftSort.value = 'soonest'
-  filterDialogOpen.value = false
+  await replaceCatalogQuery(1)
+}
+
+async function clearFilter(key: string) {
+  if (key === 'q') keywordInput.value = ''
+  if (key === 'location') locationInput.value = ''
+  if (key === 'date') selectedDate.value = ''
   await replaceCatalogQuery(1)
 }
 
 async function goToPage(page: number) {
-  if (page < 1) {
-    return
-  }
-
+  if (page < 1) return
   await replaceCatalogQuery(page)
 }
 
 watch(() => route.query, syncStateFromRoute, { deep: true })
 
-watch(filterDialogOpen, (open) => {
-  if (open) {
-    syncDraftFiltersFromActive()
-  }
-})
-
 const catalogQuery = computed(() => ({
-  q: activeSearch.value || undefined,
-  status: activeStatus.value === 'all' ? undefined : activeStatus.value,
-  city: activeCity.value === 'all' ? undefined : activeCity.value,
-  date: activeDate.value === 'all' ? undefined : activeDate.value,
+  q: activeKeyword.value || undefined,
+  location: activeLocation.value || undefined,
+  date: activeDate.value || undefined,
   sort: activeSort.value === 'soonest' ? undefined : activeSort.value,
   page: activePage.value,
   pageSize: EVENTS_PAGE_SIZE,
@@ -221,27 +139,18 @@ const { data: catalogResponse, pending, error: catalogFetchError } = await useAP
   query: catalogQuery,
 })
 
-const { data: cityResponse } = await useAPI(() => '/api/events/cities')
+const { data: locationResponse } = await useAPI(() => '/api/events/locations')
 
 const catalog = computed(() => {
   const response = catalogResponse.value
-  if (!response || !response.success) {
-    return null
-  }
-
+  if (!response || !response.success) return null
   return response
 })
 
 const catalogError = computed(() => {
-  if (catalogFetchError.value) {
-    return catalogFetchError.value.message
-  }
-
+  if (catalogFetchError.value) return catalogFetchError.value.message
   const response = catalogResponse.value
-  if (!response || response.success) {
-    return ''
-  }
-
+  if (!response || response.success) return ''
   return response.error.message
 })
 
@@ -254,39 +163,66 @@ const pagination = computed(() => catalog.value?.pagination ?? {
   hasNextPage: false,
   hasPreviousPage: false,
 })
-const cityOptions = computed(() => {
-  const response = cityResponse.value
+
+const locationOptions = computed<string[]>(() => {
+  const response = locationResponse.value
   if (!response || !response.success) {
     return []
   }
 
-  return response.data
-})
-const activeDialogFilterCount = computed(() => {
-  let count = 0
-  if (activeStatus.value !== 'all') count += 1
-  if (activeCity.value !== 'all') count += 1
-  if (activeDate.value !== 'all') count += 1
-  if (activeSort.value !== 'soonest') count += 1
-  return count
-})
-const draftDialogFilterCount = computed(() => {
-  let count = 0
-  if (draftStatus.value !== 'all') count += 1
-  if (draftCity.value !== 'all') count += 1
-  if (draftDate.value !== 'all') count += 1
-  if (draftSort.value !== 'soonest') count += 1
-  return count
-})
-const resultSummary = computed(() => {
-  const total = pagination.value.totalItems
-  if (total === 0) {
-    return 'No events found'
+  const locations = new Set<string>()
+  const data: EventCatalogLocationOptions = response.data
+
+  for (const country of data.countries) {
+    locations.add(country)
   }
 
+  for (const city of data.cities) {
+    locations.add(city)
+  }
+
+  for (const area of data.areas) {
+    locations.add(area)
+  }
+
+  for (const venue of data.venues) {
+    locations.add(venue.name)
+    locations.add(venue.address)
+  }
+
+  return Array.from(locations)
+    .filter(Boolean)
+    .sort((left, right) => left.localeCompare(right))
+})
+
+const activeFilterCount = computed(() => {
+  let count = 0
+  if (activeKeyword.value) count += 1
+  if (activeLocation.value) count += 1
+  if (activeDate.value) count += 1
+  return count
+})
+
+const activeFilterChips = computed(() => {
+  const chips: Array<{ key: string, label: string, value: string }> = []
+  if (activeKeyword.value) {
+    chips.push({ key: 'q', label: t('events.search_keyword_label'), value: activeKeyword.value })
+  }
+  if (activeLocation.value) {
+    chips.push({ key: 'location', label: t('events.search_location_label'), value: activeLocation.value })
+  }
+  if (activeDate.value) {
+    chips.push({ key: 'date', label: t('events.search_date_label'), value: activeDate.value })
+  }
+  return chips
+})
+
+const resultSummary = computed(() => {
+  const total = pagination.value.totalItems
+  if (total === 0) return t('events.result_no_events')
   const start = (pagination.value.page - 1) * pagination.value.pageSize + 1
   const end = Math.min(pagination.value.page * pagination.value.pageSize, total)
-  return `Showing ${start}-${end} of ${total} event${total === 1 ? '' : 's'}`
+  return t('events.result_showing', { start, end, total })
 })
 
 definePageMeta({
@@ -298,204 +234,186 @@ definePageMeta({
 <template>
   <AppLayout
     :hide-header="true"
-    class-name="gap-8 py-6 md:gap-10 md:py-10 mt-20"
+    class-name="relative gap-8 overflow-hidden py-6 md:gap-10 md:py-10"
   >
-    <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-      <h1 class="text-3xl font-bold tracking-tight">
-        Browse Events
-      </h1>
+    <div class="relative space-y-5 py-3">
       <form
-        class="w-full sm:w-auto sm:max-w-md"
+        class="space-y-3"
         @submit.prevent="applySearch"
       >
-        <ButtonGroup class="w-full">
-          <ButtonGroup class="overflow-visible">
-            <ResponsiveDialog
-              v-model:open="filterDialogOpen"
-              content-class="sm:max-w-2xl"
+        <div class="sr-only">
+          <Label for="event-location">{{ $t('events.search_location_label') }}</Label>
+          <Label for="event-date">{{ $t('events.search_date_label') }}</Label>
+          <Label for="event-keyword">{{ $t('events.search_keyword_label') }}</Label>
+        </div>
+
+        <ButtonGroup class="w-full flex-col gap-2 md:flex-row md:gap-0 [&>*]:max-md:rounded-full [&>*]:max-md:border-l">
+          <InputGroup class="h-12 bg-background/80 md:flex-[1.1] md:rounded-r-none md:border-r-0">
+            <InputGroupAddon>
+              <MapPin class="size-4 text-muted-foreground" />
+            </InputGroupAddon>
+            <InputGroupInput
+              id="event-location"
+              v-model="locationInput"
+              class="h-12 text-sm"
+              :aria-label="$t('events.search_location_label')"
+              :placeholder="$t('events.search_location_placeholder')"
+              list="location-options"
+            />
+            <datalist id="location-options">
+              <option
+                v-for="loc in locationOptions"
+                :key="loc"
+                :value="loc"
+              />
+            </datalist>
+          </InputGroup>
+
+          <Popover>
+            <PopoverTrigger as-child>
+              <Button
+                id="event-date"
+                type="button"
+                variant="outline"
+                class="h-12 w-full justify-start bg-background/80 px-4 text-left font-normal md:flex-1 md:rounded-none md:border-r-0"
+                :class="!selectedDate && 'text-muted-foreground'"
+                :aria-label="$t('events.search_date_label')"
+              >
+                <CalendarIcon class="mr-2 size-4 shrink-0" />
+                <span class="truncate">
+                  {{ calendarValue ? dateFormatter.format(calendarValue.toDate(getLocalTimeZone())) : $t('events.search_date_placeholder') }}
+                </span>
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent
+              class="w-auto rounded-[1.5rem] p-0"
+              align="start"
             >
-              <template #trigger>
+              <Calendar
+                v-model="calendarValue"
+                initial-focus
+              />
+              <div
+                v-if="selectedDate"
+                class="border-t p-3"
+              >
                 <Button
                   type="button"
-                  size="icon"
-                  class="relative overflow-visible"
-                  aria-label="Open event filters"
+                  variant="ghost"
+                  class="h-9 w-full rounded-full text-xs"
+                  @click="selectedDate = ''"
                 >
-                  <SlidersHorizontal class="size-4" />
-                  <span
-                    v-if="activeDialogFilterCount > 0"
-                    class="absolute -right-1.5 -top-1.5 flex size-4 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground"
-                  >
-                    {{ activeDialogFilterCount }}
-                  </span>
+                  {{ $t('events.clear_date') }}
                 </Button>
-              </template>
-
-              <div class="space-y-6 py-4 md:py-0">
-                <DialogHeader>
-                  <DialogTitle>Filter events</DialogTitle>
-                  <DialogDescription>
-                    Narrow the catalog by status, city, date, and sort order.
-                  </DialogDescription>
-                </DialogHeader>
-
-                <div class="grid gap-4 sm:grid-cols-2">
-                  <div class="space-y-2">
-                    <Label for="event-status-filter">Status</Label>
-                    <Select v-model="draftStatus">
-                      <SelectTrigger
-                        id="event-status-filter"
-                        class="h-11 rounded-full"
-                      >
-                        <SelectValue placeholder="All statuses" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem
-                          v-for="option in statusOptions"
-                          :key="option.value"
-                          :value="option.value"
-                        >
-                          {{ option.label }}
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div class="space-y-2">
-                    <Label for="event-city-filter">City</Label>
-                    <Select v-model="draftCity">
-                      <SelectTrigger
-                        id="event-city-filter"
-                        class="h-11 rounded-full"
-                      >
-                        <SelectValue placeholder="All cities" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">
-                          All cities
-                        </SelectItem>
-                        <SelectItem
-                          v-for="city in cityOptions"
-                          :key="city"
-                          :value="city"
-                        >
-                          {{ city }}
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div class="space-y-2">
-                    <Label for="event-date-filter">Date</Label>
-                    <Select v-model="draftDate">
-                      <SelectTrigger
-                        id="event-date-filter"
-                        class="h-11 rounded-full"
-                      >
-                        <SelectValue placeholder="Any date" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem
-                          v-for="option in dateOptions"
-                          :key="option.value"
-                          :value="option.value"
-                        >
-                          {{ option.label }}
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div class="space-y-2">
-                    <Label for="event-sort-filter">Sort</Label>
-                    <Select v-model="draftSort">
-                      <SelectTrigger
-                        id="event-sort-filter"
-                        class="h-11 rounded-full"
-                      >
-                        <SelectValue placeholder="Soonest first" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem
-                          v-for="option in sortOptions"
-                          :key="option.value"
-                          :value="option.value"
-                        >
-                          {{ option.label }}
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
-                <div class="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    class="rounded-full"
-                    :disabled="activeDialogFilterCount === 0 && draftDialogFilterCount === 0"
-                    @click="resetDialogFilters"
-                  >
-                    Reset filters
-                  </Button>
-                  <Button
-                    type="button"
-                    class="rounded-full"
-                    @click="applyFilters"
-                  >
-                    Apply filters
-                  </Button>
-                </div>
               </div>
-            </ResponsiveDialog>
-          </ButtonGroup>
+            </PopoverContent>
+          </Popover>
 
-          <ButtonGroup class="min-w-0 flex-1">
-            <InputGroup>
-              <InputGroupInput
-                id="main-search"
-                v-model="searchInput"
-                aria-label="Search events"
-                placeholder="Search by event, venue, or city"
-                :disabled="pending"
-              />
-              <InputGroupAddon align="inline-end">
-                <Tooltip>
-                  <TooltipTrigger as-child>
-                    <InputGroupButton
-                      type="button"
-                      class="hover:bg-orange-100 hover:text-orange-700 dark:hover:bg-orange-800 dark:hover:text-orange-100"
-                      size="icon-xs"
-                      aria-label="Clear search"
-                      :disabled="pending || !searchInput"
-                      @click="clearSearch"
-                    >
-                      <X class="size-4" />
-                    </InputGroupButton>
-                  </TooltipTrigger>
-                  <TooltipContent>Clear</TooltipContent>
-                </Tooltip>
-              </InputGroupAddon>
-            </InputGroup>
-          </ButtonGroup>
+          <InputGroup class="h-12 bg-background/80 md:flex-[1.45] md:rounded-none md:border-r-0">
+            <InputGroupAddon>
+              <Search class="size-4 text-muted-foreground" />
+            </InputGroupAddon>
+            <InputGroupInput
+              id="event-keyword"
+              v-model="keywordInput"
+              class="h-12 text-sm"
+              :aria-label="$t('events.search_keyword_label')"
+              :placeholder="$t('events.search_keyword_placeholder')"
+            />
+          </InputGroup>
 
-          <ButtonGroup>
-            <Button
-              type="submit"
-              variant="ghost"
-              size="icon"
-              class="rounded-full"
-              aria-label="Search events"
-              :disabled="pending"
-            >
-              <Search class="size-4" />
-            </Button>
-          </ButtonGroup>
+          <Button
+            type="submit"
+            class="h-12 px-5 md:rounded-none"
+          >
+            <Search class="size-4" />
+            {{ $t('events.search_btn') }}
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            class="h-12 px-5 md:rounded-l-none"
+            :disabled="activeFilterCount === 0"
+            @click="resetFilters"
+          >
+            <X class="size-4" />
+            {{ $t('events.reset_btn') }}
+          </Button>
         </ButtonGroup>
       </form>
+
+      <div
+        v-if="activeFilterChips.length > 0"
+        class="flex flex-wrap items-center gap-2 rounded-[1.25rem] border bg-background/70 p-3"
+      >
+        <span class="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+          {{ $t('events.active_filters_label') }}
+        </span>
+        <button
+          v-for="chip in activeFilterChips"
+          :key="chip.key"
+          type="button"
+          class="inline-flex max-w-full items-center gap-1.5 rounded-full border bg-card px-3 py-1.5 text-xs text-foreground transition-colors hover:border-primary/30 hover:bg-primary/8"
+          @click="clearFilter(chip.key)"
+        >
+          <span class="text-muted-foreground">{{ chip.label }}:</span>
+          <span class="truncate font-medium">{{ chip.value }}</span>
+          <X class="size-3.5 text-muted-foreground" />
+        </button>
+      </div>
     </div>
 
-    <section class="space-y-6">
+    <section class="space-y-5">
+      <div
+        v-if="events.length > 0"
+        class="flex flex-col gap-3 rounded-[1.5rem] border bg-card/60 p-3 md:flex-row md:items-center md:justify-between"
+      >
+        <div class="flex flex-wrap items-center gap-2">
+          <Badge
+            variant="secondary"
+            class="rounded-full"
+          >
+            <SlidersHorizontal class="size-3.5" />
+            {{ resultSummary }}
+          </Badge>
+          <Badge
+            v-if="pending"
+            variant="outline"
+            class="rounded-full"
+          >
+            {{ $t('events.badge_loading') }}
+          </Badge>
+        </div>
+        <div class="flex items-center gap-3">
+          <div class="flex items-center gap-2">
+            <Label
+              for="event-sort-filter"
+              class="text-sm text-muted-foreground whitespace-nowrap"
+            >{{ $t('events.sort_label') }}</Label>
+            <Select
+              v-model="activeSort"
+              @update:model-value="replaceCatalogQuery(1)"
+            >
+              <SelectTrigger
+                id="event-sort-filter"
+                class="h-9 rounded-full text-xs"
+              >
+                <SelectValue :placeholder="$t('events.sort_soonest')" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem
+                  v-for="option in sortOptions"
+                  :key="option.value"
+                  :value="option.value"
+                >
+                  {{ option.label }}
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+      </div>
+
       <Card
         v-if="catalogError"
         class="border-destructive/30 bg-destructive/5 shadow-none"
@@ -507,7 +425,7 @@ definePageMeta({
 
       <section
         v-if="events.length > 0"
-        class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3"
+        class="soft-grid lg:grid-cols-2 xl:grid-cols-3"
       >
         <TicketEventCard
           v-for="event in events"
@@ -518,15 +436,15 @@ definePageMeta({
 
       <Empty
         v-else
-        class="rounded-[2rem] border bg-card/60 py-16"
+        class="border py-16"
       >
         <EmptyHeader>
           <div class="mx-auto mb-4 flex size-12 items-center justify-center rounded-full border bg-muted/40">
             <CalendarDays class="size-5 text-muted-foreground" />
           </div>
-          <EmptyTitle>No events match your filters</EmptyTitle>
+          <EmptyTitle>{{ $t('events.no_match_title') }}</EmptyTitle>
           <EmptyDescription>
-            Try a broader search, another city, or reset filters to see every live event.
+            {{ $t('events.no_match_desc') }}
           </EmptyDescription>
         </EmptyHeader>
         <Button
@@ -534,13 +452,13 @@ definePageMeta({
           class="mt-5 rounded-full"
           @click="resetFilters"
         >
-          Reset filters
+          {{ $t('events.reset_filters') }}
         </Button>
       </Empty>
 
       <div class="flex flex-col gap-3 border-t pt-5 sm:flex-row sm:items-center sm:justify-between">
         <p class="text-sm text-muted-foreground">
-          {{ resultSummary }}
+          {{ resultSummary }} · {{ $t('events.page_info', { page: pagination.page, total: pagination.totalPages || 1 }) }}
         </p>
         <div class="flex items-center justify-center gap-2">
           <Button
@@ -548,21 +466,21 @@ definePageMeta({
             variant="outline"
             class="rounded-full"
             :disabled="!pagination.hasPreviousPage"
-            aria-label="Go to previous events page"
+            :aria-label="$t('events.prev_page')"
             @click="goToPage(pagination.page - 1)"
           >
             <ChevronLeft class="size-4" />
-            Previous
+            {{ $t('events.prev_page') }}
           </Button>
           <Button
             type="button"
             variant="outline"
             class="rounded-full"
             :disabled="!pagination.hasNextPage"
-            aria-label="Go to next events page"
+            :aria-label="$t('events.next_page')"
             @click="goToPage(pagination.page + 1)"
           >
-            Next
+            {{ $t('events.next_page') }}
             <ChevronRight class="size-4" />
           </Button>
         </div>

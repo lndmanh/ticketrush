@@ -193,18 +193,6 @@ function updateTicketType(sessionIndex: number, ticketIndex: number, updates: Pa
   nextTicketTypes[ticketIndex] = { ...ticketType, ...updates }
   updateSession(sessionIndex, { ticketTypes: nextTicketTypes })
 }
-
-function getSectionName(sectionId: number | null) {
-  if (!sectionId) {
-    return 'General admission'
-  }
-
-  return props.venueSections.find(section => section.id === sectionId)?.name ?? 'Unknown section'
-}
-
-function formatCurrency(value: number, currency: string) {
-  return `${Intl.NumberFormat('en-US').format(value / 100)} ${currency}`
-}
 </script>
 
 <template>
@@ -228,7 +216,7 @@ function formatCurrency(value: number, currency: string) {
         @click="addSession"
       >
         <PlusIcon class="mr-2 size-4" />
-        Add session
+        {{ $t('admin.event_session.add_session') }}
       </Button>
     </div>
 
@@ -240,9 +228,9 @@ function formatCurrency(value: number, currency: string) {
         <EmptyMedia variant="icon">
           <CalendarClock />
         </EmptyMedia>
-        <EmptyTitle>No sessions configured</EmptyTitle>
+        <EmptyTitle>{{ $t('admin.event_session.empty_title') }}</EmptyTitle>
         <EmptyDescription>
-          Add one session to define when this event can be booked.
+          {{ $t('admin.event_session.empty_desc') }}
         </EmptyDescription>
       </EmptyHeader>
     </Empty>
@@ -259,10 +247,10 @@ function formatCurrency(value: number, currency: string) {
             <div class="min-w-0 space-y-1">
               <div class="flex flex-wrap items-center gap-2">
                 <CardTitle class="truncate text-xl tracking-[-0.04em]">
-                  {{ session.label || `Session ${sessionIndex + 1}` }}
+                  {{ session.label || $t('admin.event_session.session_label') + ` ${sessionIndex + 1}` }}
                 </CardTitle>
                 <Badge variant="outline">
-                  {{ session.ticketTypes.length }} release{{ session.ticketTypes.length === 1 ? '' : 's' }}
+                  {{ $t('admin.event_session.release_count', { n: session.ticketTypes.length }) }}
                 </Badge>
                 <Badge
                   v-if="sessionHasErrors(sessionIndex)"
@@ -270,11 +258,11 @@ function formatCurrency(value: number, currency: string) {
                   class="gap-1"
                 >
                   <AlertCircle class="size-3" />
-                  Needs attention
+                  {{ $t('admin.event_session.needs_attention') }}
                 </Badge>
               </div>
               <p class="text-sm text-muted-foreground">
-                Session {{ sessionIndex + 1 }} controls its own schedule, access pacing, and prices.
+                {{ $t('admin.event_session.session_controls', { index: sessionIndex + 1 }) }}
               </p>
               <ul
                 v-if="sessionHasErrors(sessionIndex)"
@@ -296,7 +284,7 @@ function formatCurrency(value: number, currency: string) {
                 size="icon"
                 class="text-muted-foreground"
                 :aria-expanded="isSessionOpen(sessionIndex)"
-                :aria-label="isSessionOpen(sessionIndex) ? 'Collapse session' : 'Expand session'"
+                :aria-label="isSessionOpen(sessionIndex) ? $t('admin.event_session.collapse') : $t('admin.event_session.expand')"
                 @click="toggleSession(sessionIndex)"
               >
                 <ChevronDown
@@ -310,7 +298,7 @@ function formatCurrency(value: number, currency: string) {
                 size="icon"
                 class="text-muted-foreground hover:text-destructive"
                 :disabled="locked || modelValue.length === 1"
-                aria-label="Remove session"
+                :aria-label="$t('admin.event_session.remove_session')"
                 @click="removeSession(sessionIndex)"
               >
                 <TrashIcon class="size-4" />
@@ -330,18 +318,18 @@ function formatCurrency(value: number, currency: string) {
               </ItemMedia>
               <ItemContent class="space-y-4">
                 <div>
-                  <ItemTitle>Schedule</ItemTitle>
-                  <ItemDescription>Set the public session name and time window.</ItemDescription>
+                  <ItemTitle>{{ $t('admin.event_session.schedule') }}</ItemTitle>
+                  <ItemDescription>{{ $t('admin.event_session.schedule_desc') }}</ItemDescription>
                 </div>
 
                 <div class="grid gap-4 md:grid-cols-2">
                   <div class="space-y-2 md:col-span-2">
-                    <Label :for="`session-${sessionIndex}-label`">Label</Label>
+                    <Label :for="`session-${sessionIndex}-label`">{{ $t('admin.event_session.label') }}</Label>
                     <Input
                       :id="`session-${sessionIndex}-label`"
                       :model-value="session.label"
                       :disabled="locked"
-                      placeholder="Friday night, matinee, closing show"
+                      :placeholder="$t('admin.event_session.label_placeholder')"
                       :aria-invalid="!!getSessionError(sessionIndex, 'label')"
                       @update:model-value="value => updateSession(sessionIndex, { label: String(value) })"
                     />
@@ -354,7 +342,7 @@ function formatCurrency(value: number, currency: string) {
                   </div>
 
                   <div class="space-y-2">
-                    <Label :for="`session-${sessionIndex}-starts-at`">Starts at</Label>
+                    <Label :for="`session-${sessionIndex}-starts-at`">{{ $t('admin.event_session.starts_at') }}</Label>
                     <Input
                       :id="`session-${sessionIndex}-starts-at`"
                       type="datetime-local"
@@ -372,7 +360,7 @@ function formatCurrency(value: number, currency: string) {
                   </div>
 
                   <div class="space-y-2">
-                    <Label :for="`session-${sessionIndex}-ends-at`">Ends at</Label>
+                    <Label :for="`session-${sessionIndex}-ends-at`">{{ $t('admin.event_session.ends_at') }}</Label>
                     <Input
                       :id="`session-${sessionIndex}-ends-at`"
                       type="datetime-local"
@@ -398,13 +386,13 @@ function formatCurrency(value: number, currency: string) {
               </ItemMedia>
               <ItemContent class="space-y-4">
                 <div>
-                  <ItemTitle>Sales window</ItemTitle>
-                  <ItemDescription>Bookings are only accepted during this range.</ItemDescription>
+                  <ItemTitle>{{ $t('admin.event_session.sales_window') }}</ItemTitle>
+                  <ItemDescription>{{ $t('admin.event_session.sales_window_desc') }}</ItemDescription>
                 </div>
 
                 <div class="grid gap-4 md:grid-cols-2">
                   <div class="space-y-2">
-                    <Label :for="`session-${sessionIndex}-sales-start-at`">Sales start</Label>
+                    <Label :for="`session-${sessionIndex}-sales-start-at`">{{ $t('admin.event_session.sales_start') }}</Label>
                     <Input
                       :id="`session-${sessionIndex}-sales-start-at`"
                       type="datetime-local"
@@ -422,7 +410,7 @@ function formatCurrency(value: number, currency: string) {
                   </div>
 
                   <div class="space-y-2">
-                    <Label :for="`session-${sessionIndex}-sales-end-at`">Sales end</Label>
+                    <Label :for="`session-${sessionIndex}-sales-end-at`">{{ $t('admin.event_session.sales_end') }}</Label>
                     <Input
                       :id="`session-${sessionIndex}-sales-end-at`"
                       type="datetime-local"
@@ -447,7 +435,7 @@ function formatCurrency(value: number, currency: string) {
             <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <h4 class="text-sm font-medium text-foreground">
-                  Ticket releases
+                  {{ $t('admin.event_session.ticket_releases') }}
                 </h4>
               </div>
               <Button
@@ -458,7 +446,7 @@ function formatCurrency(value: number, currency: string) {
                 @click="addTicketType(sessionIndex)"
               >
                 <PlusIcon class="mr-2 size-4" />
-                Add ticket release
+                {{ $t('admin.event_session.add_ticket_release') }}
               </Button>
             </div>
 
@@ -471,9 +459,9 @@ function formatCurrency(value: number, currency: string) {
                 <EmptyMedia variant="icon">
                   <Ticket />
                 </EmptyMedia>
-                <EmptyTitle>No ticket releases</EmptyTitle>
+                <EmptyTitle>{{ $t('admin.event_session.no_releases') }}</EmptyTitle>
                 <EmptyDescription>
-                  {{ getSessionError(sessionIndex, 'ticketTypes') || 'Add at least one ticket release before publishing.' }}
+                  {{ getSessionError(sessionIndex, 'ticketTypes') || $t('admin.event_session.no_releases_desc') }}
                 </EmptyDescription>
               </EmptyHeader>
             </Empty>
@@ -492,7 +480,7 @@ function formatCurrency(value: number, currency: string) {
                 <ItemContent class="space-y-4">
                   <div class="grid gap-3 lg:grid-cols-12">
                     <div class="space-y-2 lg:col-span-3">
-                      <Label :for="`session-${sessionIndex}-ticket-${ticketIndex}-name`">Name</Label>
+                      <Label :for="`session-${sessionIndex}-ticket-${ticketIndex}-name`">{{ $t('admin.event_session.ticket_name') }}</Label>
                       <Input
                         :id="`session-${sessionIndex}-ticket-${ticketIndex}-name`"
                         :model-value="ticketType.name"
@@ -509,7 +497,7 @@ function formatCurrency(value: number, currency: string) {
                     </div>
 
                     <div class="space-y-2 lg:col-span-3">
-                      <Label :for="`session-${sessionIndex}-ticket-${ticketIndex}-section`">Section</Label>
+                      <Label :for="`session-${sessionIndex}-ticket-${ticketIndex}-section`">{{ $t('admin.event_session.section') }}</Label>
                       <Select
                         :model-value="ticketType.venueSectionId ? String(ticketType.venueSectionId) : 'none'"
                         :disabled="locked"
@@ -519,11 +507,11 @@ function formatCurrency(value: number, currency: string) {
                           :id="`session-${sessionIndex}-ticket-${ticketIndex}-section`"
                           :aria-invalid="!!getTicketError(sessionIndex, ticketIndex, 'venueSectionId')"
                         >
-                          <SelectValue placeholder="General admission" />
+                          <SelectValue :placeholder="$t('admin.event_session.general_admission')" />
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="none">
-                            General admission
+                            {{ $t('admin.event_session.general_admission') }}
                           </SelectItem>
                           <SelectItem
                             v-for="section in venueSections"
@@ -543,7 +531,7 @@ function formatCurrency(value: number, currency: string) {
                     </div>
 
                     <div class="space-y-2 lg:col-span-2">
-                      <Label :for="`session-${sessionIndex}-ticket-${ticketIndex}-price`">Price cents</Label>
+                      <Label :for="`session-${sessionIndex}-ticket-${ticketIndex}-price`">{{ $t('admin.event_session.price_cents') }}</Label>
                       <Input
                         :id="`session-${sessionIndex}-ticket-${ticketIndex}-price`"
                         type="number"
@@ -562,7 +550,7 @@ function formatCurrency(value: number, currency: string) {
                     </div>
 
                     <div class="space-y-2 lg:col-span-2">
-                      <Label :for="`session-${sessionIndex}-ticket-${ticketIndex}-capacity`">Capacity</Label>
+                      <Label :for="`session-${sessionIndex}-ticket-${ticketIndex}-capacity`">{{ $t('admin.event_session.capacity') }}</Label>
                       <Input
                         :id="`session-${sessionIndex}-ticket-${ticketIndex}-capacity`"
                         type="number"
@@ -587,7 +575,7 @@ function formatCurrency(value: number, currency: string) {
                           :disabled="locked"
                           @update:model-value="value => updateTicketType(sessionIndex, ticketIndex, { isReservedSeating: Boolean(value) })"
                         />
-                        <Label class="text-xs text-muted-foreground">Reserved</Label>
+                        <Label class="text-xs text-muted-foreground">{{ $t('admin.event_session.reserved') }}</Label>
                       </div>
                     </div>
                   </div>
@@ -600,7 +588,7 @@ function formatCurrency(value: number, currency: string) {
                     size="icon"
                     class="text-muted-foreground hover:text-destructive"
                     :disabled="locked"
-                    aria-label="Remove ticket release"
+                    :aria-label="$t('admin.event_session.remove_ticket_release')"
                     @click="removeTicketType(sessionIndex, ticketIndex)"
                   >
                     <TrashIcon class="size-4" />
