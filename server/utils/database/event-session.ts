@@ -1,7 +1,9 @@
-import { asc, eq, inArray } from 'drizzle-orm'
+import { asc, eq, inArray, sql } from 'drizzle-orm'
 import type { EventSession } from '#shared/db'
 import type { EventSessionDraftInput } from '#shared/schemas/ticketingSchema'
 import { IDatabaseService } from '~~/types/db/database-service'
+import type { SeatmapRealtimeNamespace } from '~~/server/utils/ticketing/seatmap-realtime'
+import { broadcastSeatmapResyncRequiredWithKnownVersion } from '~~/server/utils/ticketing/seatmap-realtime'
 import { createPublicEventSessionId } from '~~/server/utils/ticketing/ids'
 
 const D1_INSERT_BATCH_SIZE = 5
@@ -11,6 +13,11 @@ type Transaction = ReturnType<typeof useDB>
 type EventSessionSeatMap = {
   seats: typeof tables.eventSeats.$inferSelect[]
   ticketTypes: typeof tables.ticketTypes.$inferSelect[]
+}
+
+type PublishSessionResult = {
+  session: typeof tables.eventSessions.$inferSelect
+  rebuilt: boolean
 }
 
 class EventSessionService extends IDatabaseService<typeof tables.eventSessions.$inferSelect> {
@@ -198,18 +205,28 @@ class EventSessionService extends IDatabaseService<typeof tables.eventSessions.$
     return session
   }
 
-  async publishSession(eventSessionId: number) {
-    return this.publishSessionInTransaction(this.db, eventSessionId)
+  async publishSession(eventSessionId: number, realtimeNamespace?: SeatmapRealtimeNamespace) {
+    const result = await this.publishSessionInTransaction(this.db, eventSessionId)
+    const publishedSession = result.session
+
+    if (result.rebuilt) {
+      await broadcastSeatmapResyncRequiredWithKnownVersion(realtimeNamespace, {
+        eventSessionId: publishedSession.id,
+        sessionPublicId: publishedSession.publicId,
+      }, publishedSession.seatmapVersion, 'layout-rebuilt')
+    }
+
+    return publishedSession
   }
 
-  async publishSessionInTransaction(tx: Transaction, eventSessionId: number, now = new Date()) {
+  async publishSessionInTransaction(tx: Transaction, eventSessionId: number, now = new Date()): Promise<PublishSessionResult> {
     const session = await tx.select().from(tables.eventSessions).where(eq(tables.eventSessions.id, eventSessionId)).get()
     if (!session) {
       throw new Error('Event session not found')
     }
 
     if (session.status !== 'draft') {
-      return session
+      return { session, rebuilt: false }
     }
 
     await this.assertCanPublishSessionInTransaction(tx, eventSessionId)
@@ -278,13 +295,14 @@ class EventSessionService extends IDatabaseService<typeof tables.eventSessions.$
       status: 'published',
       publishedAt: now,
       updatedAt: now,
+      seatmapVersion: sql`${tables.eventSessions.seatmapVersion} + 1`,
     }).where(eq(tables.eventSessions.id, eventSessionId)).returning().get()
 
     if (!publishedSession) {
       throw new Error('Failed to publish event session')
     }
 
-    return publishedSession
+    return { session: publishedSession, rebuilt: true }
   }
 
   async assertCanPublishSession(eventSessionId: number) {

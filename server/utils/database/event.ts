@@ -4,6 +4,8 @@ import type { CreateEventInput, EventSessionDraftInput, UpdateEventInput } from 
 import { IDatabaseService } from '~~/types/db/database-service'
 import { createPublicEventId } from '~~/server/utils/ticketing/ids'
 import eventSessionService from '~~/server/utils/database/event-session'
+import type { SeatmapRealtimeNamespace } from '~~/server/utils/ticketing/seatmap-realtime'
+import { broadcastSeatmapResyncRequiredWithKnownVersion } from '~~/server/utils/ticketing/seatmap-realtime'
 import type {
   EventCatalogDateFilter,
   EventCatalogItem,
@@ -437,7 +439,7 @@ class EventService extends IDatabaseService<Event> {
     return updated
   }
 
-  async publish(eventId: number) {
+  async publish(eventId: number, realtimeNamespace?: SeatmapRealtimeNamespace) {
     const now = new Date()
 
     const db = this.db
@@ -460,8 +462,13 @@ class EventService extends IDatabaseService<Event> {
       await eventSessionService.assertCanPublishSessionInTransaction(db, session.id)
     }
 
+    const publishedSessions: Array<Awaited<ReturnType<typeof eventSessionService.publishSessionInTransaction>>> = []
+
     for (const session of sessions) {
-      await eventSessionService.publishSessionInTransaction(db, session.id, now)
+      const publishedSessionResult = await eventSessionService.publishSessionInTransaction(db, session.id, now)
+      if (publishedSessionResult.rebuilt) {
+        publishedSessions.push(publishedSessionResult)
+      }
     }
 
     const publishedEvent = await db
@@ -477,6 +484,14 @@ class EventService extends IDatabaseService<Event> {
 
     if (!publishedEvent) {
       throw new Error('Failed to publish event')
+    }
+
+    for (const publishedSessionResult of publishedSessions) {
+      const publishedSession = publishedSessionResult.session
+      await broadcastSeatmapResyncRequiredWithKnownVersion(realtimeNamespace, {
+        eventSessionId: publishedSession.id,
+        sessionPublicId: publishedSession.publicId,
+      }, publishedSession.seatmapVersion, 'layout-rebuilt')
     }
 
     return publishedEvent
