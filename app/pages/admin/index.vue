@@ -321,7 +321,10 @@ definePageMeta({
                 Search events, inspect revenue, and jump into the event workspace.
               </p>
             </div>
-            <Badge variant="outline" class="w-fit rounded-full">
+            <Badge
+              variant="outline"
+              class="w-fit rounded-full"
+            >
               {{ dashboard.events.length }} event{{ dashboard.events.length === 1 ? '' : 's' }}
             </Badge>
           </CardHeader>

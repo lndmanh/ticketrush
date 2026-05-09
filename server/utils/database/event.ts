@@ -342,7 +342,7 @@ class EventService extends IDatabaseService<Event> {
       return true
     }
 
-    return item.sessions.some(session => {
+    return item.sessions.some((session) => {
       const sessionStartsAt = new Date(session.startsAt).getTime()
       return sessionStartsAt >= bounds.start && sessionStartsAt < bounds.end
     })

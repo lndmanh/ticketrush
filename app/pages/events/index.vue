@@ -364,7 +364,10 @@ definePageMeta({
     </div>
 
     <section class="space-y-5">
-      <div v-if="events.length > 0" class="flex flex-col gap-3 rounded-[1.5rem] border bg-card/60 p-3 md:flex-row md:items-center md:justify-between">
+      <div
+        v-if="events.length > 0"
+        class="flex flex-col gap-3 rounded-[1.5rem] border bg-card/60 p-3 md:flex-row md:items-center md:justify-between"
+      >
         <div class="flex flex-wrap items-center gap-2">
           <Badge
             variant="secondary"
