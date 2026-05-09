@@ -39,17 +39,6 @@ definePageMeta({
 
 <template>
   <main class="space-y-6 pb-8 pt-6">
-    <section class="space-y-4">
-      <div class="space-y-3">
-        <h1 class="text-3xl font-semibold tracking-tight">
-          Your issued passes, ready whenever doors open.
-        </h1>
-        <p class="max-w-[40rem] text-base leading-8 text-muted-foreground">
-          Every confirmed order lands here with its digital QR token and purchase metadata.
-        </p>
-      </div>
-    </section>
-
     <section
       v-if="tickets.length > 0"
       class="grid gap-5 sm:grid-cols-2 xl:grid-cols-3"
@@ -142,29 +131,31 @@ definePageMeta({
       </NuxtLink>
     </section>
 
-    <section
+    <Empty
       v-else
-      class="rounded-xl border border-dashed p-8 text-center"
+      class="rounded-xl border bg-card/60 py-16"
     >
-      <div class="space-y-4 p-5">
-        <div class="space-y-3">
-          <h2 class="text-3xl font-semibold tracking-[-0.05em]">
-            Your first issued ticket will appear here.
-          </h2>
-          <p class="max-w-[36rem] text-sm leading-7 text-muted-foreground">
-            Once you confirm a checkout, TicketRush stores the QR pass, seat assignment, and event timing in this wallet automatically.
-          </p>
+      <EmptyHeader>
+        <EmptyMedia variant="icon">
+          <Ticket class="size-5" />
+        </EmptyMedia>
+        <EmptyTitle>Your first issued ticket will appear here.</EmptyTitle>
+        <EmptyDescription>
+          This wallet stores the QR pass, seat assignment, and event timing.
+        </EmptyDescription>
+      </EmptyHeader>
+      <EmptyContent>
+        <div class="flex gap-2">
+          <Button
+            as-child
+            class="rounded-full"
+          >
+            <NuxtLink to="/events">
+              Browse events
+            </NuxtLink>
+          </Button>
         </div>
-
-        <Button
-          as-child
-          class="rounded-full"
-        >
-          <NuxtLink to="/events">
-            Browse events
-          </NuxtLink>
-        </Button>
-      </div>
-    </section>
+      </EmptyContent>
+    </Empty>
   </main>
 </template>

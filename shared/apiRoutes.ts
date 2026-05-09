@@ -2,6 +2,7 @@ import type { NuxtSecurityRouteRules } from 'nuxt-security'
 
 export const apiRoutes = {
   ADMIN_FEATURE_FLAGS: '/api/admin/feature-flags',
+  ADMIN_DASHBOARD: '/api/admin/dashboard',
   ADMIN_EVENTS: '/api/admin/events',
   ADMIN_EVENT_AUTOSAVE: '/api/admin/events/autosave',
   ADMIN_EVENT_AUTOSAVES: '/api/admin/events/autosaves',

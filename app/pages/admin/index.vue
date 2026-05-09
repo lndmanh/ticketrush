@@ -1,67 +1,222 @@
 <script setup lang="ts">
+import type { EChartsOption } from 'echarts'
+import type { AdminDashboardResponse } from '~~/types/admin-dashboard'
+import { Eye, LineChart, Ticket, Users } from '@lucide/vue'
+import AdminChartCard from '@/components/admin/charts/AdminChartCard.vue'
+import AdminDashboardKpiCard from '@/components/admin/dashboard/AdminDashboardKpiCard.vue'
+import AdminDashboardSessionCalendar from '@/components/admin/dashboard/AdminDashboardSessionCalendar.vue'
+import DataTable from '@/components/DataTable.vue'
+import { createAdminDashboardColumns } from '@/components/admin/dashboard/columns'
 import { apiRoutes } from '#shared/apiRoutes'
-import { CalendarRange, LayoutGrid, MapPinned, Users } from '@lucide/vue'
-import AdminFeaturedEventCard from '@/components/admin/events/AdminFeaturedEventCard.vue'
 
-interface AdminDashboardEvent {
-  id: number
-  title: string
-  status: string
-  startsAt: string | Date
-  salesStartAt: string | Date
-  updatedAt?: string | Date | null
-  venue?: {
-    name: string
-    city: string
-  } | null
+const emptyDashboard: AdminDashboardResponse = {
+  summary: {
+    totalRevenueCents: 0,
+    totalSeatsListed: 0,
+    soldSeatsCount: 0,
+    ticketsIssuedCount: 0,
+    totalViews: 0,
+    occupancyRate: 0,
+    activeEventsCount: 0,
+    activeSessionsCount: 0,
+    activeHoldsCount: 0,
+    queueWaitingCount: 0,
+  },
+  chart: [],
+  events: [],
+  sessions: [],
 }
 
-interface AdminDashboardVenue {
-  id: number
-  name: string
-  city: string
-  capacity?: number
-  updatedAt?: string | Date | null
+const { data: dashboardResponse, refresh } = await useAPI(() => apiRoutes.ADMIN_DASHBOARD)
+const { createDonutChartOption } = useAdminChartTheme()
+const colorMode = useColorMode()
+
+const selectedDate = ref(getIsoDate(new Date()))
+const isRefreshing = ref(false)
+const columns = createAdminDashboardColumns()
+
+const dashboard = computed<AdminDashboardResponse>(() => dashboardResponse.value?.success ? dashboardResponse.value.data : emptyDashboard)
+const summary = computed(() => dashboard.value.summary)
+
+const sortedSessions = computed(() => {
+  return [...dashboard.value.sessions].sort((left, right) => new Date(left.startsAt).getTime() - new Date(right.startsAt).getTime())
+})
+
+const selectedDaySessions = computed(() => {
+  return sortedSessions.value.filter(session => getIsoDate(new Date(session.startsAt)) === selectedDate.value)
+})
+
+const sessionCountsByDate = computed(() => {
+  return sortedSessions.value.reduce<Record<string, number>>((counts, session) => {
+    const key = getIsoDate(new Date(session.startsAt))
+    counts[key] = (counts[key] ?? 0) + 1
+    return counts
+  }, {})
+})
+
+const occupancyLabel = computed(() => `${formatPercent(summary.value.occupancyRate)} occupied`)
+
+const revenueChartOption = computed<EChartsOption>(() => {
+  const isDark = colorMode.value === 'dark'
+  const axisColor = isDark ? '#94A3B8' : '#64748B'
+  const gridColor = isDark ? '#1E293B' : '#E2E8F0'
+  const revenueColor = isDark ? '#34D399' : '#059669'
+  const ticketColor = isDark ? '#93C5FD' : '#2563EB'
+  const labels = dashboard.value.chart.map(point => point.label)
+
+  return {
+    animationDuration: 450,
+    color: [revenueColor, ticketColor],
+    grid: {
+      left: 8,
+      right: 12,
+      top: 20,
+      bottom: 10,
+      containLabel: true,
+    },
+    tooltip: {
+      trigger: 'axis',
+    },
+    legend: {
+      top: 0,
+      right: 0,
+      textStyle: {
+        color: axisColor,
+      },
+    },
+    xAxis: {
+      type: 'category',
+      boundaryGap: false,
+      data: labels,
+      axisLabel: {
+        color: axisColor,
+      },
+      axisLine: {
+        lineStyle: {
+          color: gridColor,
+        },
+      },
+    },
+    yAxis: [
+      {
+        type: 'value',
+        axisLabel: {
+          color: axisColor,
+          formatter: (value: string | number) => formatCompactCurrency(Number(value) * 100),
+        },
+        splitLine: {
+          lineStyle: {
+            color: gridColor,
+            type: 'dashed',
+          },
+        },
+      },
+      {
+        type: 'value',
+        axisLabel: {
+          color: axisColor,
+        },
+        splitLine: {
+          show: false,
+        },
+      },
+    ],
+    series: [
+      {
+        name: 'Revenue',
+        type: 'line',
+        smooth: true,
+        symbolSize: 7,
+        data: dashboard.value.chart.map(point => Math.round(point.revenueCents / 100)),
+        lineStyle: {
+          width: 3,
+        },
+        areaStyle: {
+          opacity: isDark ? 0.18 : 0.12,
+          color: revenueColor,
+        },
+      },
+      {
+        name: 'Tickets',
+        type: 'line',
+        smooth: true,
+        yAxisIndex: 1,
+        symbolSize: 7,
+        data: dashboard.value.chart.map(point => point.ticketsSold),
+        lineStyle: {
+          width: 2,
+        },
+      },
+    ],
+  }
+})
+
+const seatMixOption = computed(() => {
+  return createDonutChartOption({
+    data: [
+      { label: 'Sold', value: summary.value.soldSeatsCount },
+      { label: 'Available', value: Math.max(summary.value.totalSeatsListed - summary.value.soldSeatsCount, 0) },
+    ],
+    centerValue: formatPercent(summary.value.occupancyRate),
+    centerLabel: 'Occupancy',
+  })
+})
+
+watch(sortedSessions, (sessions) => {
+  if (sessions.length === 0) return
+  const hasSelectedDate = sessions.some(session => getIsoDate(new Date(session.startsAt)) === selectedDate.value)
+  if (!hasSelectedDate) {
+    selectedDate.value = getIsoDate(new Date(sessions[0].startsAt))
+  }
+}, { immediate: true })
+
+async function refreshDashboard() {
+  isRefreshing.value = true
+  try {
+    await refresh()
+  }
+  finally {
+    isRefreshing.value = false
+  }
 }
 
-const { data: eventsResponse } = await useAPI(() => apiRoutes.ADMIN_EVENTS)
-const { data: venuesResponse } = await useAPI(() => apiRoutes.ADMIN_VENUES)
+function getIsoDate(date: Date) {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
 
-const events = computed<AdminDashboardEvent[]>(() => eventsResponse.value?.success ? eventsResponse.value.data : [])
-const venues = computed<AdminDashboardVenue[]>(() => venuesResponse.value?.success ? venuesResponse.value.data : [])
+function formatCurrency(cents: number) {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    maximumFractionDigits: 0,
+  }).format(cents / 100)
+}
 
-const draftEvents = computed(() => events.value.filter(event => event.status === 'draft'))
-const publishedEvents = computed(() => events.value.filter(event => event.status !== 'draft'))
+function formatCompactCurrency(cents: number) {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    notation: 'compact',
+    maximumFractionDigits: 1,
+  }).format(cents / 100)
+}
 
-const upcomingEvents = computed(() => {
-  const now = Date.now()
+function formatCompactNumber(value: number) {
+  return new Intl.NumberFormat('en-US', {
+    notation: 'compact',
+    maximumFractionDigits: 1,
+  }).format(value)
+}
 
-  return [...events.value]
-    .filter((event) => {
-      const startsAt = new Date(event.startsAt).getTime()
-      return Number.isFinite(startsAt) && startsAt >= now
-    })
-    .sort((left, right) => new Date(left.startsAt).getTime() - new Date(right.startsAt).getTime())
-})
-
-const nextEvent = computed(() => upcomingEvents.value[0] ?? null)
-const featuredEvent = computed(() => nextEvent.value ?? recentEvents.value[0] ?? null)
-
-const recentEvents = computed(() => {
-  return [...events.value]
-    .sort((left, right) => {
-      const leftUpdatedAt = new Date(left.updatedAt ?? left.startsAt).getTime()
-      const rightUpdatedAt = new Date(right.updatedAt ?? right.startsAt).getTime()
-      return rightUpdatedAt - leftUpdatedAt
-    })
-    .slice(0, 4)
-})
-
-const cityCoverage = computed(() => new Set(venues.value.map(venue => venue.city)).size)
-
-const largestVenue = computed(() => {
-  return [...venues.value].sort((left, right) => (right.capacity ?? 0) - (left.capacity ?? 0))[0] ?? null
-})
+function formatPercent(value: number) {
+  return new Intl.NumberFormat('en-US', {
+    style: 'percent',
+    maximumFractionDigits: 0,
+  }).format(value)
+}
 
 definePageMeta({
   title: 'Admin Dashboard',
@@ -73,214 +228,124 @@ definePageMeta({
 
 <template>
   <div class="space-y-6">
-    <section class="space-y-4">
-      <div class="space-y-1">
-        <h1 class="text-2xl font-semibold text-foreground">
-          Admin dashboard
+    <section class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+      <div class="space-y-2">
+        <h1 class="text-balance text-3xl font-semibold tracking-[-0.06em] text-foreground md:text-4xl">
+          Sales analytics at a glance.
         </h1>
-        <p class="text-sm text-muted-foreground">
-          Events, venues, and account activity in one place.
+        <p class="text-sm text-muted-foreground md:text-base">
+          Track revenue, listed capacity, active launches, and session timing without opening each event workspace.
         </p>
       </div>
+    </section>
 
-      <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <Card class="overflow-hidden border-0 bg-linear-to-br from-foreground/92 via-foreground/86 to-foreground/76 text-background shadow-sm">
-          <CardContent class="flex h-full flex-col justify-between gap-5">
-            <div class="flex items-center justify-between gap-3">
-              <p class="text-[11px] font-medium uppercase tracking-[0.24em] text-background/70">
-                Events
-              </p>
-              <CalendarRange class="size-4 text-background/80" />
-            </div>
-            <div class="space-y-2">
-              <p class="text-4xl font-semibold tracking-[-0.06em]">
-                {{ events.length }}
-              </p>
-              <p class="text-sm leading-6 text-background/72">
-                Tracked launches in the admin catalog.
-              </p>
-            </div>
-          </CardContent>
-        </Card>
+    <section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <AdminDashboardKpiCard
+        label="Total revenue"
+        :value="formatCurrency(summary.totalRevenueCents)"
+        description="Confirmed checkout revenue across every tracked event."
+        trend-label="Confirmed"
+        trend-direction="up"
+      >
+        <template #icon>
+          <LineChart class="size-4" />
+        </template>
+      </AdminDashboardKpiCard>
 
-        <Card class="overflow-hidden border-0 bg-linear-to-br from-amber-400 via-orange-400 to-rose-400 text-white shadow-sm">
-          <CardContent class="flex h-full flex-col justify-between gap-5">
-            <div class="flex items-center justify-between gap-3">
-              <p class="text-[11px] font-medium uppercase tracking-[0.24em] text-white/70">
-                Venues
-              </p>
-              <MapPinned class="size-4 text-white/80" />
-            </div>
-            <div class="space-y-2">
-              <p class="text-4xl font-semibold tracking-[-0.06em]">
-                {{ venues.length }}
-              </p>
-              <p class="text-sm leading-6 text-white/80">
-                Blueprint coverage across active rooms.
-              </p>
-            </div>
-          </CardContent>
-        </Card>
+      <AdminDashboardKpiCard
+        label="Seats listed"
+        :value="formatCompactNumber(summary.totalSeatsListed)"
+        description="Reserved and general inventory generated from venue maps."
+        :trend-label="`${summary.soldSeatsCount} sold`"
+        trend-direction="neutral"
+      >
+        <template #icon>
+          <Users class="size-4" />
+        </template>
+      </AdminDashboardKpiCard>
 
-        <Card class="overflow-hidden border-0 bg-linear-to-br from-cyan-400 via-sky-400 to-blue-500 text-white shadow-sm">
-          <CardContent class="flex h-full flex-col justify-between gap-5">
-            <div class="flex items-center justify-between gap-3">
-              <p class="text-[11px] font-medium uppercase tracking-[0.24em] text-white/70">
-                Drafts
-              </p>
-              <LayoutGrid class="size-4 text-white/80" />
-            </div>
-            <div class="space-y-2">
-              <p class="text-4xl font-semibold tracking-[-0.06em]">
-                {{ draftEvents.length }}
-              </p>
-              <p class="text-sm leading-6 text-white/80">
-                Events still being prepared for launch.
-              </p>
-            </div>
-          </CardContent>
-        </Card>
+      <AdminDashboardKpiCard
+        label="Tickets issued"
+        :value="formatCompactNumber(summary.ticketsIssuedCount)"
+        description="Digital passes created from completed buyer orders."
+        :trend-label="occupancyLabel"
+        trend-direction="up"
+      >
+        <template #icon>
+          <Ticket class="size-4" />
+        </template>
+      </AdminDashboardKpiCard>
 
-        <Card class="overflow-hidden border-0 bg-linear-to-br from-emerald-400 via-teal-400 to-cyan-400 text-white shadow-sm">
-          <CardContent class="flex h-full flex-col justify-between gap-5">
-            <div class="flex items-center justify-between gap-3">
-              <p class="text-[11px] font-medium uppercase tracking-[0.24em] text-white/70">
-                Live
+      <AdminDashboardKpiCard
+        label="Total views"
+        :value="formatCompactNumber(summary.totalViews)"
+        description="Traffic tracking is ready for the dashboard once view events are stored."
+        trend-label="Tracking pending"
+        trend-direction="neutral"
+      >
+        <template #icon>
+          <Eye class="size-4" />
+        </template>
+      </AdminDashboardKpiCard>
+    </section>
+
+    <section class="grid gap-6 xl:grid-cols-12 xl:items-start">
+      <div class="space-y-6 xl:col-span-8">
+        <div class="grid gap-6 lg:grid-cols-[minmax(0,1.45fr)_minmax(18rem,0.75fr)]">
+          <AdminChartCard
+            title="Performance"
+            description="Monthly confirmed revenue and issued tickets from checkout activity."
+            :option="revenueChartOption"
+            :height="320"
+            :stat="formatCurrency(summary.totalRevenueCents)"
+            stat-label="Total revenue"
+            tone="emerald"
+          />
+
+          <AdminChartCard
+            title="Seat mix"
+            description="Sold inventory compared with remaining listed seats."
+            :option="seatMixOption"
+            :height="320"
+            :stat="formatPercent(summary.occupancyRate)"
+            stat-label="Occupancy"
+            tone="slate"
+          />
+        </div>
+
+        <Card class="overflow-hidden border-border/70 bg-card/90 shadow-sm">
+          <CardHeader class="flex flex-col gap-3 border-b pb-4 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <CardTitle>Active listing</CardTitle>
+              <p class="mt-1 text-sm text-muted-foreground">
+                Search events, inspect revenue, and jump into the event workspace.
               </p>
-              <Users class="size-4 text-white/80" />
             </div>
-            <div class="space-y-2">
-              <p class="text-4xl font-semibold tracking-[-0.06em]">
-                {{ publishedEvents.length }}
-              </p>
-              <p class="text-sm leading-6 text-white/80">
-                Programs currently visible to buyers.
-              </p>
-            </div>
+            <Badge variant="outline" class="w-fit rounded-full">
+              {{ dashboard.events.length }} event{{ dashboard.events.length === 1 ? '' : 's' }}
+            </Badge>
+          </CardHeader>
+          <CardContent class="space-y-4">
+            <DataTable
+              :columns="columns"
+              :data="dashboard.events"
+              :loading="isRefreshing"
+              search-placeholder="Search events, venues, statuses"
+              empty-title="No events in the dashboard yet."
+              empty-description="Create or publish an event to start seeing analytics here."
+              @update:data="refreshDashboard"
+            />
           </CardContent>
         </Card>
       </div>
-    </section>
 
-    <section class="space-y-4">
-      <AdminFeaturedEventCard
-        v-if="featuredEvent"
-        eyebrow="Next launch"
-        :title="featuredEvent.title"
-        :venue-name="featuredEvent.venue?.name || 'Venue pending'"
-        :starts-at="featuredEvent.startsAt"
-        :status="featuredEvent.status"
-        :href="`/admin/events/${featuredEvent.id}`"
-        open-label="Open event"
-        :secondary-label="$t('admin.events.event_registry')"
-        secondary-href="/admin/events"
-        :leading-icon="CalendarRange"
-      />
-
-      <p
-        v-else
-        class="rounded-lg border border-dashed bg-card p-4 text-sm text-muted-foreground"
-      >
-        {{ $t('admin.no_upcoming_launches') }}
-      </p>
-    </section>
-
-    <section class="grid gap-4 xl:grid-cols-[1.05fr_0.95fr]">
-      <Card>
-        <CardHeader class="flex flex-row items-center justify-between gap-3">
-          <CardTitle>{{ $t('admin.recent_events') }}</CardTitle>
-          <Button
-            as-child
-            size="sm"
-            variant="outline"
-          >
-            <NuxtLink to="/admin/events">
-              {{ $t('admin.events.view_all') }}
-            </NuxtLink>
-          </Button>
-        </CardHeader>
-        <CardContent class="space-y-3">
-          <NuxtLink
-            v-for="event in recentEvents"
-            :key="event.id"
-            :to="`/admin/events/${event.id}`"
-            class="group flex items-center gap-3 rounded-lg border bg-card p-3 transition-all hover:border-primary/50"
-          >
-            <div class="relative shrink-0">
-              <div class="h-12 w-9 rounded bg-muted flex items-center justify-center">
-                <CalendarRange class="size-4 text-muted-foreground" />
-              </div>
-            </div>
-            <div class="flex-1 min-w-0">
-              <p class="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-                {{ $t('admin.recent_update') }}
-              </p>
-              <p class="truncate text-sm font-semibold leading-tight text-foreground">
-                {{ event.title }}
-              </p>
-              <p class="truncate text-xs text-muted-foreground">
-                {{ event.venue?.name || $t('admin.venue_pending') }} · {{ new Date(event.startsAt).toLocaleString() }}
-              </p>
-            </div>
-            <div class="shrink-0 text-xs text-muted-foreground">
-              {{ event.status.replaceAll('_', ' ') }}
-            </div>
-          </NuxtLink>
-
-          <p
-            v-if="recentEvents.length === 0"
-            class="text-sm text-muted-foreground"
-          >
-            {{ $t('admin.no_recent_events') }}
-          </p>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader class="flex flex-row items-center justify-between gap-3">
-          <CardTitle>{{ $t('admin.venue_coverage') }}</CardTitle>
-          <Button
-            as-child
-            size="sm"
-            variant="outline"
-          >
-            <NuxtLink to="/admin/venues">
-              {{ $t('admin.events.view_all') }}
-            </NuxtLink>
-          </Button>
-        </CardHeader>
-        <CardContent class="grid gap-3 md:grid-cols-2">
-          <Card class="py-3 overflow-hidden border-0 bg-linear-to-br from-violet-400 via-fuchsia-400 to-rose-400 text-white shadow-sm">
-            <CardContent class="flex h-full items-center justify-between gap-3 px-4">
-              <div>
-                <p class="text-[11px] uppercase tracking-[0.24em] text-white/70">
-                  Cities
-                </p>
-                <p class="text-lg font-semibold">
-                  {{ cityCoverage }}
-                </p>
-              </div>
-              <MapPinned class="size-4 text-white/85" />
-            </CardContent>
-          </Card>
-          <Card class="py-3 overflow-hidden border-0 bg-linear-to-br from-slate-900 via-slate-700 to-slate-500 text-white shadow-sm">
-            <CardContent class="flex h-full items-center justify-between gap-3 px-4">
-              <div>
-                <p class="text-[11px] uppercase tracking-[0.24em] text-white/70">
-                  Largest room
-                </p>
-                <p class="text-lg font-semibold">
-                  {{ largestVenue?.capacity || 0 }}
-                </p>
-              </div>
-              <LayoutGrid class="size-4 text-white/85" />
-            </CardContent>
-          </Card>
-          <div class="md:col-span-2 rounded-lg border bg-card p-4 text-sm text-muted-foreground">
-            {{ largestVenue ? `${largestVenue.name} in ${largestVenue.city} is currently the largest venue.` : 'Add venue blueprints to start tracking coverage.' }}
-          </div>
-        </CardContent>
-      </Card>
+      <aside class="space-y-6 xl:sticky xl:top-6 xl:col-span-4">
+        <AdminDashboardSessionCalendar
+          v-model:selected-date="selectedDate"
+          :session-counts="sessionCountsByDate"
+          :sessions="selectedDaySessions"
+        />
+      </aside>
     </section>
   </div>
 </template>
