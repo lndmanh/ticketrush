@@ -187,7 +187,6 @@ export default defineNuxtConfig({
   i18n: {
     strategy: 'prefix_except_default',
     defaultLocale,
-    langDir: 'locales',
     detectBrowserLanguage: {
       fallbackLocale: browserFallbackLocale,
     },
