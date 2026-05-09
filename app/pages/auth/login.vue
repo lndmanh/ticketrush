@@ -7,7 +7,6 @@ import { Field as VeeField, useForm } from 'vee-validate'
 import { loginSchema } from '#shared/schemas/userSchema'
 import { parseApiError } from '@/utils/apiError'
 import { apiRequest } from '@/utils/apiRequest'
-import { APP_MANIFEST } from '#shared/constants/manifest'
 
 const formSchema = loginSchema.pick({ username: true, password: true })
 
@@ -27,11 +26,6 @@ const oauthLoadingProvider = ref<string | null>(null)
 const oauthPopup = ref<Window | null>(null)
 const oauthPopupTimeout = ref<ReturnType<typeof setTimeout> | null>(null)
 const oauthPopupCloseMonitor = ref<ReturnType<typeof setInterval> | null>(null)
-
-type OAuthPopupCompleteMessage = {
-  type: 'oauth:complete'
-  url: string
-}
 
 function getQueryString(value: string | string[] | null | undefined) {
   if (typeof value === 'string') {
@@ -73,11 +67,7 @@ function stopOAuthPopupCloseMonitor() {
   }
 }
 
-function onOAuthPopupComplete(event: MessageEvent<OAuthPopupCompleteMessage>) {
-  if (event.origin !== window.location.origin) return
-  if (event.data?.type !== 'oauth:complete') return
-  if (!oauthPopup.value || event.source !== oauthPopup.value) return
-
+function onOAuthPopupComplete(message: { url: string }) {
   stopOAuthPopupCloseMonitor()
   stopOAuthPopupTimeout()
   oauthPopup.value = null
@@ -85,7 +75,7 @@ function onOAuthPopupComplete(event: MessageEvent<OAuthPopupCompleteMessage>) {
 
   let target: URL
   try {
-    target = new URL(event.data.url)
+    target = new URL(message.url)
   }
   catch {
     error.value = 'Authentication completed but response URL was invalid. Please try again.'
@@ -94,6 +84,8 @@ function onOAuthPopupComplete(event: MessageEvent<OAuthPopupCompleteMessage>) {
 
   window.location.assign(`${target.pathname}${target.search}${target.hash}`)
 }
+
+const oauthPopupListener = useOAuthPopupListener(onOAuthPopupComplete)
 
 const { handleSubmit, values } = useForm({
   initialValues: {
@@ -128,7 +120,7 @@ watch(() => route.query.success, (queryValue) => {
 }, { immediate: true })
 
 onMounted(() => {
-  window.addEventListener('message', onOAuthPopupComplete)
+  oauthPopupListener.start()
 })
 
 async function signInWithPasskey() {
@@ -159,7 +151,7 @@ async function signInWithProvider(provider: string) {
   try {
     const response = await apiRequest(apiRoutes.AUTH_OAUTH_URL, {
       method: 'POST',
-      body: { provider, action: 'login' },
+      body: { provider, action: 'login', redirectTo: redirectTo.value },
     })
     if (!response.success) {
       throw response
@@ -216,11 +208,11 @@ async function signInWithProvider(provider: string) {
       error.value = 'OAuth session timed out or popup was closed. Please try again.'
     }, 120000)
   }
-  catch (error) {
+  catch (err) {
     stopOAuthPopupCloseMonitor()
     stopOAuthPopupTimeout()
     oauthPopup.value = null
-    error.value = parseApiError(error, 'Unable to continue with provider right now. Please try again.').message
+    error.value = parseApiError(err, 'Unable to continue with provider right now. Please try again.').message
     oauthLoadingProvider.value = null
   }
 }
@@ -228,7 +220,7 @@ async function signInWithProvider(provider: string) {
 onBeforeUnmount(() => {
   stopOAuthPopupCloseMonitor()
   stopOAuthPopupTimeout()
-  window.removeEventListener('message', onOAuthPopupComplete)
+  oauthPopupListener.stop()
 })
 
 definePageMeta({
@@ -240,15 +232,15 @@ definePageMeta({
 
 <template>
   <AuthPageLayout
-    quote="Gromet Reader keeps my library organized and lets me get back to reading without fighting the interface."
-    quote-author="Morgan Vale"
+    quote="Keep your session, seats, and checkout ready before the rush starts."
+    quote-author="TicketRush"
   >
     <div class="space-y-1">
       <h1 class="text-2xl font-bold tracking-tight">
-        Welcome back
+        Welcome back to TicketRush
       </h1>
       <p class="text-base text-muted-foreground">
-        {{ APP_MANIFEST.description }}
+        Sign in to continue booking, managing attendees, or running your next ticket drop.
       </p>
     </div>
 
@@ -385,7 +377,7 @@ definePageMeta({
           :to="{ path: '/auth/forgot-password' }"
           class="text-xs text-primary hover:underline"
         >
-          Forgot password?
+          {{ $t('auth.forgot_password') }}
         </NuxtLink>
       </div>
 

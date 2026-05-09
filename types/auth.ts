@@ -1,5 +1,8 @@
 import type { MessagePayload } from '~~/types/common'
 
+export const OAUTH_POPUP_COMPLETE_STORAGE_KEY = 'oauth_popup_complete'
+export const OAUTH_POPUP_COMPLETE_CHANNEL = 'oauth_popup_complete'
+
 export interface OAuthPopupCompleteMessage {
   type: 'oauth:complete'
   url: string

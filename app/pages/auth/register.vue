@@ -14,7 +14,6 @@ import { apiRequest } from '@/utils/apiRequest'
 import { parseApiError } from '@/utils/apiError'
 import { Field as VeeField, useForm } from 'vee-validate'
 import { Field, FieldLabel, FieldError } from '@/components/ui/field'
-import { APP_MANIFEST } from '#shared/constants/manifest'
 
 const route = useRoute()
 const requestUrl = useRequestURL()
@@ -27,11 +26,6 @@ const oauthLoadingProvider = ref<string | null>(null)
 const oauthPopup = ref<Window | null>(null)
 const oauthPopupTimeout = ref<ReturnType<typeof setTimeout> | null>(null)
 const oauthPopupCloseMonitor = ref<ReturnType<typeof setInterval> | null>(null)
-
-type OAuthPopupCompleteMessage = {
-  type: 'oauth:complete'
-  url: string
-}
 
 function getQueryString(value: string | string[] | null | undefined) {
   if (typeof value === 'string') {
@@ -78,11 +72,7 @@ function stopOAuthPopupCloseMonitor() {
   }
 }
 
-function onOAuthPopupComplete(event: MessageEvent<OAuthPopupCompleteMessage>) {
-  if (event.origin !== window.location.origin) return
-  if (event.data?.type !== 'oauth:complete') return
-  if (!oauthPopup.value || event.source !== oauthPopup.value) return
-
+function onOAuthPopupComplete(message: { url: string }) {
   stopOAuthPopupCloseMonitor()
   stopOAuthPopupTimeout()
   oauthPopup.value = null
@@ -90,7 +80,7 @@ function onOAuthPopupComplete(event: MessageEvent<OAuthPopupCompleteMessage>) {
 
   let target: URL
   try {
-    target = new URL(event.data.url)
+    target = new URL(message.url)
   }
   catch {
     error.value = 'Authentication completed but response URL was invalid. Please try again.'
@@ -99,6 +89,8 @@ function onOAuthPopupComplete(event: MessageEvent<OAuthPopupCompleteMessage>) {
 
   window.location.assign(`${target.pathname}${target.search}${target.hash}`)
 }
+
+const oauthPopupListener = useOAuthPopupListener(onOAuthPopupComplete)
 
 const form = useForm({
   initialValues: {
@@ -138,7 +130,7 @@ watch(() => route.query.error, (queryValue) => {
 }, { immediate: true })
 
 onMounted(() => {
-  window.addEventListener('message', onOAuthPopupComplete)
+  oauthPopupListener.start()
 })
 
 async function signUpWithProvider(provider: string) {
@@ -150,7 +142,7 @@ async function signUpWithProvider(provider: string) {
   try {
     const response = await apiRequest(apiRoutes.AUTH_OAUTH_URL, {
       method: 'POST',
-      body: { provider, action: 'login' },
+      body: { provider, action: 'login', redirectTo: redirectTo.value },
     })
     if (!response.success) {
       throw response
@@ -207,11 +199,11 @@ async function signUpWithProvider(provider: string) {
       error.value = 'OAuth session timed out or popup was closed. Please try again.'
     }, 120000)
   }
-  catch (error) {
+  catch (err) {
     stopOAuthPopupCloseMonitor()
     stopOAuthPopupTimeout()
     oauthPopup.value = null
-    error.value = parseApiError(error, 'Unable to continue with provider right now. Please try again.').message
+    error.value = parseApiError(err, 'Unable to continue with provider right now. Please try again.').message
     oauthLoadingProvider.value = null
   }
 }
@@ -219,7 +211,7 @@ async function signUpWithProvider(provider: string) {
 onBeforeUnmount(() => {
   stopOAuthPopupCloseMonitor()
   stopOAuthPopupTimeout()
-  window.removeEventListener('message', onOAuthPopupComplete)
+  oauthPopupListener.stop()
 })
 
 definePageMeta({
@@ -230,13 +222,13 @@ definePageMeta({
 </script>
 
 <template>
-  <AuthPageLayout quote="Build a library that feels like yours from the first page.">
+  <AuthPageLayout quote="Create one account for faster drops, saved attendees, and protected checkout.">
     <div class="space-y-1">
       <h1 class="text-2xl font-bold tracking-tight">
-        Create account
+        Create your TicketRush account
       </h1>
       <p class="text-base text-muted-foreground">
-        {{ APP_MANIFEST.description }}
+        Join TicketRush to book live events faster when demand peaks.
       </p>
     </div>
 
@@ -502,6 +494,11 @@ definePageMeta({
       </VeeField>
 
       <NuxtTurnstile v-model="turnstileToken" />
+      <input
+        type="hidden"
+        name="cf-turnstile-response"
+        :value="turnstileToken"
+      >
       <input
         type="hidden"
         name="redirect-to"

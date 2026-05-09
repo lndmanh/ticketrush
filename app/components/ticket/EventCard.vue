@@ -22,6 +22,7 @@ interface EventCardProps {
 }
 
 const props = defineProps<EventCardProps>()
+const { t } = useI18n()
 
 const firstSessionStartsAt = computed(() => {
   const sessions = props.event.sessions ?? []
@@ -41,14 +42,18 @@ const startsAtLabel = computed(() => {
   })
 })
 
-const statusLabel = computed(() => props.event.status.replaceAll('_', ' '))
+const statusLabel = computed(() => {
+  const key = `event_card.status_${props.event.status}`
+  const translated = t(key)
+  return translated === key ? props.event.status.replaceAll('_', ' ') : translated
+})
 const sessionCountLabel = computed(() => {
   const count = props.event.sessions?.length ?? 0
   if (count === 0) {
-    return 'Schedule pending'
+    return t('event_card.schedule_pending')
   }
 
-  return `${count} session${count === 1 ? '' : 's'}`
+  return t(count === 1 ? 'event_card.session_count_one' : 'event_card.session_count_many', { count })
 })
 
 // Dynamic status badge color
@@ -121,17 +126,17 @@ const statusBadgeClass = computed(() => {
                     <MapPin class="mt-0.5 size-4 shrink-0 text-white/50" />
                     <div class="min-w-0">
                       <p class="text-[10px] uppercase tracking-[0.2em] text-white/50">
-                        Venue
+                        {{ $t('event_card.venue_label') }}
                       </p>
                       <p class="truncate text-sm font-medium leading-6 text-white/90 md:text-base">
-                        {{ event.venue?.name || 'Venue to be announced' }}
+                        {{ event.venue?.name || $t('event_card.venue_tba') }}
                       </p>
                     </div>
                   </div>
 
                   <div class="flex flex-wrap gap-2">
                     <span class="inline-flex max-w-full items-center rounded-full border border-white/10 bg-white/8 px-3 py-1.5 text-xs text-white/70">
-                      {{ event.venue?.city || 'Live' }}
+                      {{ event.venue?.city || $t('event_card.live_badge') }}
                     </span>
                     <span class="inline-flex max-w-full items-center gap-1.5 rounded-full border border-white/10 bg-white/8 px-3 py-1.5 text-xs text-white/70">
                       <Ticket class="size-3.5" />
@@ -141,7 +146,7 @@ const statusBadgeClass = computed(() => {
                 </div>
 
                 <span class="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3.5 py-2 text-sm font-medium text-white backdrop-blur-md transition-all duration-300 group-hover:bg-white/18 group-hover:translate-x-0.5">
-                  View event
+                  {{ $t('event_card.view_event') }}
                   <ArrowRight class="size-4 transition-transform duration-300 group-hover:translate-x-0.5" />
                 </span>
               </div>

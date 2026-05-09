@@ -2,7 +2,7 @@
   "common": {
     "privacy": "Privacy",
     "terms": "Terms",
-    "required": "required",
+    "required": "Required",
     "locale": {
       "prompt": "Choose your language"
     },
@@ -104,7 +104,7 @@
     }
   },
   "cta": {
-    "primary": "Console",
+    "primary": "Login",
     "start_writing": "Start writing in {fileLink} to see this page taking shape.",
     "read_more": "Read more at",
     "search_pages": "Try searching for pages",
@@ -162,7 +162,18 @@
     "venue_label": "Venue",
     "venue_tba": "Venue to be announced",
     "default_subtitle": "Flash-sale-ready ticketing with reserved seating.",
-    "session_count": "{count} session | {count} sessions"
+    "session_count": "{count} session | {count} sessions",
+    "session_count_one": "{count} session",
+    "session_count_many": "{count} sessions",
+    "schedule_pending": "Schedule pending",
+    "live_badge": "Live",
+    "view_event": "View event",
+    "status_draft": "Draft",
+    "status_published": "Upcoming",
+    "status_on_sale": "On sale",
+    "status_sold_out": "Sold out",
+    "status_ended": "Ended",
+    "status_cancelled": "Cancelled"
   },
   "home": {
     "badge": "Flash-sale ticketing for live events",
@@ -197,9 +208,13 @@
     "hero_img_alt": "Audience waiting for a live event",
     "default_event_subtitle": "Flash-sale-ready ticketing with reserved seating.",
     "session_count": "{count} session | {count} sessions",
-    "quick_stat_sessions_desc": "Featured drops",
+    "quick_stat_featured_title": "Featured drops",
+    "quick_stat_sessions_title": "Live sessions",
+    "quick_stat_sessions_desc": "Book the soonest published sessions",
     "quick_stat_live_title": "Queue",
     "quick_stat_live_desc": "Stable high-demand entry",
+    "quick_stat_cities_title": "Cities",
+    "quick_stat_cities_desc": "Featured venues across active markets",
     "quick_stat_safe_title": "Hold",
     "quick_stat_safe_desc": "Protected seat selection",
     "trust_holds_title": "Real-time holds",
@@ -250,6 +265,8 @@
     "search_events_label": "Search events",
     "search_events_placeholder": "Search by event, venue, or city",
     "search_btn": "Search",
+    "advanced_filters": "Filters",
+    "active_filters_label": "Active filters",
     "reset_btn": "Reset",
     "status_label": "Status",
     "country_label": "Country",
@@ -272,7 +289,14 @@
     "result_showing": "Showing {start}-{end} of {total} events",
     "result_no_events": "No events found",
     "result_one_event": "Showing 1 event",
-    "page_info": "Page {page} of {total}"
+    "page_info": "Page {page} of {total}",
+    "search_location_label": "Location",
+    "search_location_placeholder": "City, venue, or address",
+    "search_date_label": "Date",
+    "search_date_placeholder": "Choose date",
+    "search_keyword_label": "Artist, event, or venue",
+    "search_keyword_placeholder": "Search artist, event, or venue",
+    "clear_date": "Clear date"
   },
   "event_detail": {
     "card_title": "Event Details",

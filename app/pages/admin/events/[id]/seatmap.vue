@@ -7,7 +7,6 @@ const { t } = useI18n()
 
 const route = useRoute()
 const eventId = computed(() => Number(route.params.id))
-const { t } = useI18n()
 const selectedStatus = ref<'all' | 'available' | 'locked' | 'sold'>('all')
 
 const { detail, dashboard } = await useAdminEventWorkspace(eventId, {

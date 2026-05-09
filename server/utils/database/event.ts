@@ -22,15 +22,42 @@ type EventDetail = {
   }>
 }
 
-type Database = ReturnType<typeof useDB>
-type Transaction = Parameters<Parameters<Database['transaction']>[0]>[0]
+type Transaction = ReturnType<typeof useDB>
 
 const publicEventStatuses: EventCatalogPublicStatus[] = ['published', 'on_sale', 'sold_out', 'ended']
 
-function getDateWindowBounds(dateFilter: EventCatalogDateFilter) {
+function getSearchTokens(value: string) {
+  return value
+    .trim()
+    .toLowerCase()
+    .split(/\s+/)
+    .filter(token => token.length > 0)
+}
+
+function valuesContainEveryToken(values: string[], tokens: string[]) {
+  if (tokens.length === 0) {
+    return true
+  }
+
+  return tokens.every(token => values.some(value => value.toLowerCase().includes(token)))
+}
+
+function getDateWindowBounds(dateFilter: EventCatalogDateFilter | string) {
   const now = new Date()
   const startOfToday = new Date(now)
   startOfToday.setHours(0, 0, 0, 0)
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dateFilter)) {
+    const [year, month, day] = dateFilter.split('-').map(Number)
+    const start = new Date(year, month - 1, day)
+    const end = new Date(start)
+    end.setDate(end.getDate() + 1)
+
+    return {
+      start: start.getTime(),
+      end: end.getTime(),
+    }
+  }
 
   if (dateFilter === 'today') {
     const endOfToday = new Date(startOfToday)
@@ -136,41 +163,38 @@ class EventService extends IDatabaseService<Event> {
       throw new Error('At least one event session is required.')
     }
 
-    const event = await this.db.transaction(async (tx) => {
-      const createdEvent = await tx
-        .insert(tables.events)
-        .values({
-          publicId: createPublicEventId(),
-          slug: data.slug,
-          title: data.title,
-          subtitle: data.subtitle ?? null,
-          description: data.description,
-          status: 'draft',
-          venueId: data.venueId,
-          coverImage: data.coverImage || null,
-          startsAt: primarySession.startsAt,
-          endsAt: primarySession.endsAt ?? null,
-          salesStartAt: primarySession.salesStartAt,
-          salesEndAt: primarySession.salesEndAt,
-          publishedAt: null,
-          createdAt: now,
-          updatedAt: now,
-        })
-        .returning()
-        .get()
+    const db = this.db
+    const createdEvent = await db
+      .insert(tables.events)
+      .values({
+        publicId: createPublicEventId(),
+        slug: data.slug,
+        title: data.title,
+        subtitle: data.subtitle ?? null,
+        description: data.description,
+        status: 'draft',
+        venueId: data.venueId,
+        coverImage: data.coverImage || null,
+        startsAt: primarySession.startsAt,
+        endsAt: primarySession.endsAt ?? null,
+        salesStartAt: primarySession.salesStartAt,
+        salesEndAt: primarySession.salesEndAt,
+        publishedAt: null,
+        createdAt: now,
+        updatedAt: now,
+      })
+      .returning()
+      .get()
 
-      if (!createdEvent) {
-        throw new Error('Failed to create event')
-      }
+    if (!createdEvent) {
+      throw new Error('Failed to create event')
+    }
 
-      for (const session of data.sessions) {
-        await eventSessionService.createForEventInTransaction(tx, createdEvent.id, data.venueId, session, now)
-      }
+    for (const session of data.sessions) {
+      await eventSessionService.createForEventInTransaction(db, createdEvent.id, data.venueId, session, now)
+    }
 
-      return createdEvent
-    })
-
-    return event
+    return createdEvent
   }
 
   async update(data: UpdateEventInput) {
@@ -180,43 +204,40 @@ class EventService extends IDatabaseService<Event> {
       throw new Error('At least one event session is required.')
     }
 
-    const event = await this.db.transaction(async (tx) => {
-      const existingEvent = await tx.select().from(tables.events).where(eq(tables.events.id, data.id)).get()
-      if (!existingEvent) {
-        throw new Error('Event not found')
-      }
+    const db = this.db
+    const existingEvent = await db.select().from(tables.events).where(eq(tables.events.id, data.id)).get()
+    if (!existingEvent) {
+      throw new Error('Event not found')
+    }
 
-      const updatedEvent = await tx
-        .update(tables.events)
-        .set({
-          slug: data.slug,
-          title: data.title,
-          subtitle: data.subtitle ?? null,
-          description: data.description,
-          venueId: data.venueId,
-          coverImage: data.coverImage || null,
-          startsAt: primarySession.startsAt,
-          endsAt: primarySession.endsAt ?? null,
-          salesStartAt: primarySession.salesStartAt,
-          salesEndAt: primarySession.salesEndAt,
-          updatedAt: now,
-        })
-        .where(eq(tables.events.id, data.id))
-        .returning()
-        .get()
+    const updatedEvent = await db
+      .update(tables.events)
+      .set({
+        slug: data.slug,
+        title: data.title,
+        subtitle: data.subtitle ?? null,
+        description: data.description,
+        venueId: data.venueId,
+        coverImage: data.coverImage || null,
+        startsAt: primarySession.startsAt,
+        endsAt: primarySession.endsAt ?? null,
+        salesStartAt: primarySession.salesStartAt,
+        salesEndAt: primarySession.salesEndAt,
+        updatedAt: now,
+      })
+      .where(eq(tables.events.id, data.id))
+      .returning()
+      .get()
 
-      if (!updatedEvent) {
-        throw new Error('Event not found')
-      }
+    if (!updatedEvent) {
+      throw new Error('Event not found')
+    }
 
-      for (const session of data.sessions) {
-        await eventSessionService.updateForEventInTransaction(tx, data.id, data.venueId, session, now)
-      }
+    for (const session of data.sessions) {
+      await eventSessionService.updateForEventInTransaction(db, data.id, data.venueId, session, now)
+    }
 
-      return updatedEvent
-    })
-
-    return event
+    return updatedEvent
   }
 
   private toEventCatalogItem(event: Event, venue: Venue | null, sessions: EventSession[]): EventCatalogItem {
@@ -264,8 +285,8 @@ class EventService extends IDatabaseService<Event> {
     }
   }
 
-  private matchesCatalogSearch(item: EventCatalogItem, normalizedSearchTerm: string) {
-    if (!normalizedSearchTerm) {
+  private matchesCatalogSearch(item: EventCatalogItem, searchTokens: string[]) {
+    if (searchTokens.length === 0) {
       return true
     }
 
@@ -280,11 +301,11 @@ class EventService extends IDatabaseService<Event> {
       item.venue?.address,
     ].filter((value): value is string => typeof value === 'string' && value.length > 0)
 
-    return values.some(value => value.toLowerCase().includes(normalizedSearchTerm))
+    return valuesContainEveryToken(values, searchTokens)
   }
 
-  private matchesLocationText(item: EventCatalogItem, normalizedArea: string) {
-    if (!normalizedArea) {
+  private matchesCatalogLocation(item: EventCatalogItem, locationTokens: string[]) {
+    if (locationTokens.length === 0) {
       return true
     }
 
@@ -295,7 +316,7 @@ class EventService extends IDatabaseService<Event> {
       item.venue?.country,
     ].filter((value): value is string => typeof value === 'string' && value.length > 0)
 
-    return values.some(value => value.toLowerCase().includes(normalizedArea))
+    return valuesContainEveryToken(values, locationTokens)
   }
 
   private getAddressAreas(address: string, city: string, country: string) {
@@ -310,14 +331,21 @@ class EventService extends IDatabaseService<Event> {
       })
   }
 
-  private matchesCatalogDate(item: EventCatalogItem, dateFilter: EventCatalogDateFilter) {
+  private matchesCatalogDate(item: EventCatalogItem, dateFilter: EventCatalogDateFilter | string) {
     const bounds = getDateWindowBounds(dateFilter)
     if (!bounds) {
       return true
     }
 
-    const startsAt = new Date(item.startsAt).getTime()
-    return startsAt >= bounds.start && startsAt < bounds.end
+    const eventStartsAt = new Date(item.startsAt).getTime()
+    if (eventStartsAt >= bounds.start && eventStartsAt < bounds.end) {
+      return true
+    }
+
+    return item.sessions.some((session) => {
+      const sessionStartsAt = new Date(session.startsAt).getTime()
+      return sessionStartsAt >= bounds.start && sessionStartsAt < bounds.end
+    })
   }
 
   private sortCatalogItems(items: EventCatalogItem[], sort: EventCatalogSort) {
@@ -378,11 +406,11 @@ class EventService extends IDatabaseService<Event> {
   }
 
   async getEventCatalog(options: EventCatalogQueryOptions): Promise<EventCatalogResult> {
-    const normalizedSearchTerm = options.q.trim().toLowerCase()
     const normalizedCountry = options.country.trim().toLowerCase()
     const normalizedCity = options.city.trim().toLowerCase()
-    const normalizedArea = options.area.trim().toLowerCase()
     const normalizedVenue = options.venue.trim().toLowerCase()
+    const searchTokens = getSearchTokens(options.q)
+    const locationTokens = getSearchTokens(options.location || options.area)
     const items = await this.getPublicEventCatalogItems()
 
     const filteredItems = items.filter((item) => {
@@ -395,9 +423,9 @@ class EventService extends IDatabaseService<Event> {
         && countryMatches
         && cityMatches
         && venueMatches
-        && this.matchesLocationText(item, normalizedArea)
+        && this.matchesCatalogLocation(item, locationTokens)
         && this.matchesCatalogDate(item, options.date)
-        && this.matchesCatalogSearch(item, normalizedSearchTerm)
+        && this.matchesCatalogSearch(item, searchTokens)
     })
 
     const sortedItems = this.sortCatalogItems(filteredItems, options.sort)
@@ -493,76 +521,73 @@ class EventService extends IDatabaseService<Event> {
 
   async createSession(eventId: number, input: EventSessionDraftInput) {
     const now = new Date()
-    return this.db.transaction(async (tx) => {
-      const parent = await tx.select().from(tables.events).where(eq(tables.events.id, eventId)).get()
-      if (!parent) {
-        throw new Error('Event not found')
-      }
+    const db = this.db
+    const parent = await db.select().from(tables.events).where(eq(tables.events.id, eventId)).get()
+    if (!parent) {
+      throw new Error('Event not found')
+    }
 
-      const created = await eventSessionService.createForEventInTransaction(tx, eventId, parent.venueId, input, now)
-      await this.updateParentSummaryFieldsInTransaction(tx, eventId, now)
-      return created
-    })
+    const created = await eventSessionService.createForEventInTransaction(db, eventId, parent.venueId, input, now)
+    await this.updateParentSummaryFieldsInTransaction(db, eventId, now)
+    return created
   }
 
   async updateSession(eventId: number, sessionId: number, input: EventSessionDraftInput) {
     const now = new Date()
-    return this.db.transaction(async (tx) => {
-      const parent = await tx.select().from(tables.events).where(eq(tables.events.id, eventId)).get()
-      if (!parent) {
-        throw new Error('Event not found')
-      }
+    const db = this.db
+    const parent = await db.select().from(tables.events).where(eq(tables.events.id, eventId)).get()
+    if (!parent) {
+      throw new Error('Event not found')
+    }
 
-      const updated = await eventSessionService.updateForEventInTransaction(tx, eventId, parent.venueId, { ...input, id: sessionId }, now)
-      await this.updateParentSummaryFieldsInTransaction(tx, eventId, now)
-      return updated
-    })
+    const updated = await eventSessionService.updateForEventInTransaction(db, eventId, parent.venueId, { ...input, id: sessionId }, now)
+    await this.updateParentSummaryFieldsInTransaction(db, eventId, now)
+    return updated
   }
 
   async publish(eventId: number) {
     const now = new Date()
 
-    return this.db.transaction(async (tx) => {
-      const event = await tx.select().from(tables.events).where(eq(tables.events.id, eventId)).get()
-      if (!event) {
-        throw new Error('Event not found')
-      }
+    const db = this.db
+    const event = await db.select().from(tables.events).where(eq(tables.events.id, eventId)).get()
+    if (!event) {
+      throw new Error('Event not found')
+    }
 
-      const sessions = await tx
-        .select()
-        .from(tables.eventSessions)
-        .where(eq(tables.eventSessions.eventId, eventId))
-        .orderBy(asc(tables.eventSessions.startsAt))
-        .all()
-      if (sessions.length === 0) {
-        throw new Error('At least one event session is required before publishing.')
-      }
+    const sessions = await db
+      .select()
+      .from(tables.eventSessions)
+      .where(eq(tables.eventSessions.eventId, eventId))
+      .orderBy(asc(tables.eventSessions.startsAt))
+      .all()
+    if (sessions.length === 0) {
+      throw new Error('At least one event session is required before publishing.')
+    }
 
-      for (const session of sessions) {
-        await eventSessionService.assertCanPublishSessionInTransaction(tx, session.id)
-      }
+    for (const session of sessions) {
+      await eventSessionService.assertCanPublishSessionInTransaction(db, session.id)
+    }
 
-      for (const session of sessions) {
-        await eventSessionService.publishSessionInTransaction(tx, session.id, now)
-      }
+    for (const session of sessions) {
+      await eventSessionService.publishSessionInTransaction(db, session.id, now)
+    }
 
-      const publishedEvent = await tx
-        .update(tables.events)
-        .set({
-          status: 'published',
-          publishedAt: event.publishedAt ?? now,
-          updatedAt: now,
-        })
-        .where(eq(tables.events.id, eventId))
-        .returning()
-        .get()
+    const publishedEvent = await db
+      .update(tables.events)
+      .set({
+        status: 'published',
+        publishedAt: event.publishedAt ?? now,
+        updatedAt: now,
+      })
+      .where(eq(tables.events.id, eventId))
+      .returning()
+      .get()
 
-      if (!publishedEvent) {
-        throw new Error('Failed to publish event')
-      }
+    if (!publishedEvent) {
+      throw new Error('Failed to publish event')
+    }
 
-      return publishedEvent
-    })
+    return publishedEvent
   }
 
   async delete(id: number) {

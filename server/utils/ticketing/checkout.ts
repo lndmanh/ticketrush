@@ -116,108 +116,81 @@ class CheckoutService {
   }
 
   async startCheckout(holdPublicId: string, sessionKey: string) {
-    return this.db.transaction(async (tx) => {
-      const hold = await tx
-        .select()
-        .from(tables.seatHolds)
-        .where(eq(tables.seatHolds.publicId, holdPublicId))
-        .get()
+    const db = this.db
+    const hold = await db.select().from(tables.seatHolds).where(eq(tables.seatHolds.publicId, holdPublicId)).get()
 
-      if (!hold) {
-        throw createError({ statusCode: 404, statusMessage: 'Seat hold not found.' })
-      }
+    if (!hold) {
+      throw createError({ statusCode: 404, statusMessage: 'Seat hold not found.' })
+    }
 
-      const seats = await tx
-        .select()
-        .from(tables.eventSeats)
-        .where(eq(tables.eventSeats.holdId, hold.id))
-        .all()
+    const seats = await db.select().from(tables.eventSeats).where(eq(tables.eventSeats.holdId, hold.id)).all()
 
-      if (hold.sessionKey !== sessionKey) {
-        throw createError({ statusCode: 403, statusMessage: 'Seat hold does not belong to the current session.' })
-      }
+    if (hold.sessionKey !== sessionKey) {
+      throw createError({ statusCode: 403, statusMessage: 'Seat hold does not belong to the current session.' })
+    }
 
-      if (hold.status !== 'active' || hold.expiresAt.getTime() <= Date.now()) {
-        throw createError({ statusCode: 409, statusMessage: 'Seat hold has expired.' })
-      }
+    if (hold.status !== 'active' || hold.expiresAt.getTime() <= Date.now()) {
+      throw createError({ statusCode: 409, statusMessage: 'Seat hold has expired.' })
+    }
 
-      const existingOrder = await tx
-        .select()
-        .from(tables.orders)
-        .where(eq(tables.orders.holdId, hold.id))
-        .get()
+    const existingOrder = await db.select().from(tables.orders).where(eq(tables.orders.holdId, hold.id)).get()
+    if (existingOrder) {
+      return existingOrder
+    }
 
-      if (existingOrder) {
-        return existingOrder
-      }
+    const amountCents = seats.reduce((total, seat) => total + seat.priceCents, 0)
 
-      const amountCents = seats.reduce((total, seat) => total + seat.priceCents, 0)
-
-      let order: typeof tables.orders.$inferSelect | undefined
-      try {
-        order = await tx
-          .insert(tables.orders)
-          .values({
-            publicId: createPublicOrderId(),
-            eventId: hold.eventId,
-            eventSessionId: hold.eventSessionId,
-            userId: hold.userId,
-            holdId: hold.id,
-            customerName: null,
-            customerEmail: null,
-            customerPhone: null,
-            customerAgeBracket: null,
-            customerGender: null,
-            amountCents,
-            currency: seats[0]?.currency ?? 'VND',
-            status: 'pending',
-            checkoutSessionId: createPublicOrderId(),
-            confirmedAt: null,
-            cancelledAt: null,
-            createdAt: new Date(),
-            updatedAt: new Date(),
-          })
-          .returning()
-          .get()
-      }
-      catch {
-        const existingOrder = await tx
-          .select()
-          .from(tables.orders)
-          .where(eq(tables.orders.holdId, hold.id))
-          .get()
-
-        if (existingOrder) {
-          return existingOrder
-        }
-
-        throw createError({ statusCode: 500, statusMessage: 'Failed to start checkout.' })
-      }
-
-      if (!order) {
-        const existingOrder = await tx
-          .select()
-          .from(tables.orders)
-          .where(eq(tables.orders.holdId, hold.id))
-          .get()
-
-        if (existingOrder) {
-          return existingOrder
-        }
-
-        throw createError({ statusCode: 500, statusMessage: 'Failed to start checkout.' })
-      }
-
-      await tx
-        .update(tables.seatHolds)
-        .set({
-          checkoutStartedAt: new Date(),
+    let order: typeof tables.orders.$inferSelect | undefined
+    try {
+      order = await db
+        .insert(tables.orders)
+        .values({
+          publicId: createPublicOrderId(),
+          eventId: hold.eventId,
+          eventSessionId: hold.eventSessionId,
+          userId: hold.userId,
+          holdId: hold.id,
+          customerName: null,
+          customerEmail: null,
+          customerPhone: null,
+          customerAgeBracket: null,
+          customerGender: null,
+          amountCents,
+          currency: seats[0]?.currency ?? 'VND',
+          status: 'pending',
+          checkoutSessionId: createPublicOrderId(),
+          confirmedAt: null,
+          cancelledAt: null,
+          createdAt: new Date(),
           updatedAt: new Date(),
         })
-        .where(eq(tables.seatHolds.id, hold.id))
+        .returning()
+        .get()
+    }
+    catch {
+      const fallbackOrder = await db.select().from(tables.orders).where(eq(tables.orders.holdId, hold.id)).get()
+      if (fallbackOrder) {
+        return fallbackOrder
+      }
 
-      return order
-    })
+      throw createError({ statusCode: 500, statusMessage: 'Failed to start checkout.' })
+    }
+
+    if (!order) {
+      const fallbackOrder = await db.select().from(tables.orders).where(eq(tables.orders.holdId, hold.id)).get()
+      if (fallbackOrder) {
+        return fallbackOrder
+      }
+
+      throw createError({ statusCode: 500, statusMessage: 'Failed to start checkout.' })
+    }
+
+    await db
+      .update(tables.seatHolds)
+      .set({ checkoutStartedAt: new Date(), updatedAt: new Date() })
+      .where(eq(tables.seatHolds.id, hold.id))
+
+    return order
   }
 
   async confirmCheckout(
@@ -335,139 +308,138 @@ class CheckoutService {
 
     const now = new Date()
 
-    await this.db.transaction(async (tx) => {
-      const updatedOrder = await tx
-        .update(tables.orders)
+    const db = this.db
+    const updatedOrder = await db
+      .update(tables.orders)
+      .set({
+        customerName: payload.customerName,
+        customerEmail: payload.customerEmail,
+        customerPhone: payload.customerPhone ?? null,
+        customerAgeBracket: payload.customerAgeBracket ?? null,
+        customerGender: payload.customerGender ?? null,
+        status: 'confirmed',
+        confirmedAt: now,
+        updatedAt: now,
+      })
+      .where(and(
+        eq(tables.orders.id, existingOrder.id),
+        eq(tables.orders.holdId, hold.id),
+        eq(tables.orders.status, 'pending'),
+      ))
+      .returning()
+      .get()
+
+    if (!updatedOrder) {
+      const currentCheckout = await this.getCheckoutByPublicId(existingOrder.publicId)
+      if (currentCheckout?.order.status === 'confirmed') {
+        return currentCheckout
+      }
+
+      throw createError({ statusCode: 409, statusMessage: 'Checkout session does not match this seat hold.' })
+    }
+
+    for (const assignment of payload.ticketHolders) {
+      if (!assignment.saveAsAttendee || !assignment.holder) {
+        continue
+      }
+
+      const savedAttendee = await savedAttendeeService.createInTransaction(db, payload.userId, assignment.holder)
+      const snapshot = holderSnapshots.get(assignment.eventSeatId)
+      if (!snapshot) {
+        throw createError({ statusCode: 400, statusMessage: 'Assign a ticket holder to each ticket.' })
+      }
+
+      holderSnapshots.set(assignment.eventSeatId, {
+        ...snapshot,
+        savedAttendeeId: savedAttendee.id,
+      })
+    }
+
+    await db
+      .update(tables.seatHolds)
+      .set({
+        status: 'converted',
+        updatedAt: now,
+      })
+      .where(eq(tables.seatHolds.id, hold.id))
+
+    for (const seat of seats) {
+      const holder = holderSnapshots.get(seat.id)
+      if (!holder) {
+        throw createError({ statusCode: 400, statusMessage: 'Assign a ticket holder to each ticket.' })
+      }
+
+      const soldSeat = await db
+        .update(tables.eventSeats)
         .set({
-          customerName: payload.customerName,
-          customerEmail: payload.customerEmail,
-          customerPhone: payload.customerPhone ?? null,
-          customerAgeBracket: payload.customerAgeBracket ?? null,
-          customerGender: payload.customerGender ?? null,
-          status: 'confirmed',
-          confirmedAt: now,
+          status: 'sold',
+          orderId: updatedOrder.id,
+          soldAt: now,
           updatedAt: now,
         })
         .where(and(
-          eq(tables.orders.id, existingOrder.id),
-          eq(tables.orders.holdId, hold.id),
-          eq(tables.orders.status, 'pending'),
+          eq(tables.eventSeats.id, seat.id),
+          eq(tables.eventSeats.holdId, hold.id),
+          eq(tables.eventSeats.status, 'locked'),
         ))
         .returning()
         .get()
 
-      if (!updatedOrder) {
-        const currentCheckout = await this.getCheckoutByPublicId(existingOrder.publicId)
-        if (currentCheckout?.order.status === 'confirmed') {
-          return currentCheckout
-        }
-
-        throw createError({ statusCode: 409, statusMessage: 'Checkout session does not match this seat hold.' })
+      if (!soldSeat) {
+        throw createError({ statusCode: 409, statusMessage: 'Seat hold has expired.' })
       }
 
-      for (const assignment of payload.ticketHolders) {
-        if (!assignment.saveAsAttendee || !assignment.holder) {
-          continue
-        }
-
-        const savedAttendee = await savedAttendeeService.createInTransaction(tx, payload.userId, assignment.holder)
-        const snapshot = holderSnapshots.get(assignment.eventSeatId)
-        if (!snapshot) {
-          throw createError({ statusCode: 400, statusMessage: 'Assign a ticket holder to each ticket.' })
-        }
-
-        holderSnapshots.set(assignment.eventSeatId, {
-          ...snapshot,
-          savedAttendeeId: savedAttendee.id,
-        })
-      }
-
-      await tx
-        .update(tables.seatHolds)
-        .set({
-          status: 'converted',
+      const orderItem = await db
+        .insert(tables.orderItems)
+        .values({
+          orderId: updatedOrder.id,
+          eventSeatId: seat.id,
+          ticketTypeId: seat.ticketTypeId,
+          ticketLabel: `${seat.sectionNameSnapshot} ${seat.seatLabelSnapshot}`,
+          sectionLabel: seat.sectionNameSnapshot,
+          rowLabel: seat.rowLabelSnapshot,
+          seatLabel: seat.seatLabelSnapshot,
+          unitPriceCents: seat.priceCents,
+          quantity: 1,
+          createdAt: now,
           updatedAt: now,
         })
-        .where(eq(tables.seatHolds.id, hold.id))
+        .returning()
+        .get()
 
-      for (const seat of seats) {
-        const holder = holderSnapshots.get(seat.id)
-        if (!holder) {
-          throw createError({ statusCode: 400, statusMessage: 'Assign a ticket holder to each ticket.' })
-        }
-
-        const soldSeat = await tx
-          .update(tables.eventSeats)
-          .set({
-            status: 'sold',
-            orderId: updatedOrder.id,
-            soldAt: now,
-            updatedAt: now,
-          })
-          .where(and(
-            eq(tables.eventSeats.id, seat.id),
-            eq(tables.eventSeats.holdId, hold.id),
-            eq(tables.eventSeats.status, 'locked'),
-          ))
-          .returning()
-          .get()
-
-        if (!soldSeat) {
-          throw createError({ statusCode: 409, statusMessage: 'Seat hold has expired.' })
-        }
-
-        const orderItem = await tx
-          .insert(tables.orderItems)
-          .values({
-            orderId: updatedOrder.id,
-            eventSeatId: seat.id,
-            ticketTypeId: seat.ticketTypeId,
-            ticketLabel: `${seat.sectionNameSnapshot} ${seat.seatLabelSnapshot}`,
-            sectionLabel: seat.sectionNameSnapshot,
-            rowLabel: seat.rowLabelSnapshot,
-            seatLabel: seat.seatLabelSnapshot,
-            unitPriceCents: seat.priceCents,
-            quantity: 1,
-            createdAt: now,
-            updatedAt: now,
-          })
-          .returning()
-          .get()
-
-        if (!orderItem) {
-          throw createError({ statusCode: 500, statusMessage: 'Failed to create order item.' })
-        }
-
-        await tx
-          .insert(tables.tickets)
-          .values({
-            publicId: createPublicTicketId(),
-            orderId: updatedOrder.id,
-            orderItemId: orderItem.id,
-            eventId: updatedOrder.eventId,
-            eventSessionId: updatedOrder.eventSessionId,
-            eventSeatId: seat.id,
-            userId: updatedOrder.userId,
-            savedAttendeeId: holder.savedAttendeeId,
-            attendeeName: holder.attendeeName,
-            attendeeEmail: holder.attendeeEmail,
-            attendeePhone: holder.attendeePhone,
-            attendeeBirthDate: holder.attendeeBirthDate,
-            attendeeGender: holder.attendeeGender,
-            attendeeGuardianName: holder.attendeeGuardianName,
-            attendeeGuardianEmail: holder.attendeeGuardianEmail,
-            attendeeGuardianPhone: holder.attendeeGuardianPhone,
-            attendeeNotes: holder.attendeeNotes,
-            attendeeAccessibilityNeeds: holder.attendeeAccessibilityNeeds,
-            qrToken: createQrToken(orderItem.id.toString()),
-            status: 'issued',
-            issuedAt: now,
-            checkedInAt: null,
-            createdAt: now,
-            updatedAt: now,
-          })
+      if (!orderItem) {
+        throw createError({ statusCode: 500, statusMessage: 'Failed to create order item.' })
       }
-    })
+
+      await db
+        .insert(tables.tickets)
+        .values({
+          publicId: createPublicTicketId(),
+          orderId: updatedOrder.id,
+          orderItemId: orderItem.id,
+          eventId: updatedOrder.eventId,
+          eventSessionId: updatedOrder.eventSessionId,
+          eventSeatId: seat.id,
+          userId: updatedOrder.userId,
+          savedAttendeeId: holder.savedAttendeeId,
+          attendeeName: holder.attendeeName,
+          attendeeEmail: holder.attendeeEmail,
+          attendeePhone: holder.attendeePhone,
+          attendeeBirthDate: holder.attendeeBirthDate,
+          attendeeGender: holder.attendeeGender,
+          attendeeGuardianName: holder.attendeeGuardianName,
+          attendeeGuardianEmail: holder.attendeeGuardianEmail,
+          attendeeGuardianPhone: holder.attendeeGuardianPhone,
+          attendeeNotes: holder.attendeeNotes,
+          attendeeAccessibilityNeeds: holder.attendeeAccessibilityNeeds,
+          qrToken: createQrToken(orderItem.id.toString()),
+          status: 'issued',
+          issuedAt: now,
+          checkedInAt: null,
+          createdAt: now,
+          updatedAt: now,
+        })
+    }
 
     await analyticsService.recomputeDailyBucket(existingOrder.eventId)
 

@@ -4,8 +4,9 @@ import type { EventSessionDraftInput } from '#shared/schemas/ticketingSchema'
 import { IDatabaseService } from '~~/types/db/database-service'
 import { createPublicEventSessionId } from '~~/server/utils/ticketing/ids'
 
-type Database = ReturnType<typeof useDB>
-type Transaction = Parameters<Parameters<Database['transaction']>[0]>[0]
+const D1_INSERT_BATCH_SIZE = 5
+
+type Transaction = ReturnType<typeof useDB>
 
 type EventSessionSeatMap = {
   seats: typeof tables.eventSeats.$inferSelect[]
@@ -77,7 +78,7 @@ class EventSessionService extends IDatabaseService<typeof tables.eventSessions.$
   }
 
   async createForEvent(eventId: number, fallbackVenueId: number, input: EventSessionDraftInput) {
-    return this.db.transaction(tx => this.createForEventInTransaction(tx, eventId, fallbackVenueId, input))
+    return this.createForEventInTransaction(this.db, eventId, fallbackVenueId, input)
   }
 
   async createForEventInTransaction(tx: Transaction, eventId: number, fallbackVenueId: number, input: EventSessionDraftInput, now = new Date()) {
@@ -103,23 +104,26 @@ class EventSessionService extends IDatabaseService<typeof tables.eventSessions.$
       throw new Error('Failed to create event session')
     }
 
-    await tx.insert(tables.ticketTypes).values(
-      input.ticketTypes.map(ticketType => ({
-        eventId,
-        eventSessionId: session.id,
-        venueSectionId: ticketType.venueSectionId ?? null,
-        name: ticketType.name,
-        description: ticketType.description ?? null,
-        priceCents: ticketType.priceCents,
-        currency: ticketType.currency,
-        capacity: ticketType.capacity,
-        color: ticketType.color,
-        isReservedSeating: ticketType.isReservedSeating,
-        sortOrder: ticketType.sortOrder,
-        createdAt: now,
-        updatedAt: now,
-      })),
-    )
+    for (let start = 0; start < input.ticketTypes.length; start += D1_INSERT_BATCH_SIZE) {
+      const ticketTypeBatch = input.ticketTypes.slice(start, start + D1_INSERT_BATCH_SIZE)
+      await tx.insert(tables.ticketTypes).values(
+        ticketTypeBatch.map(ticketType => ({
+          eventId,
+          eventSessionId: session.id,
+          venueSectionId: ticketType.venueSectionId ?? null,
+          name: ticketType.name,
+          description: ticketType.description ?? null,
+          priceCents: ticketType.priceCents,
+          currency: ticketType.currency,
+          capacity: ticketType.capacity,
+          color: ticketType.color,
+          isReservedSeating: ticketType.isReservedSeating,
+          sortOrder: ticketType.sortOrder,
+          createdAt: now,
+          updatedAt: now,
+        })),
+      )
+    }
 
     return session
   }
@@ -129,7 +133,7 @@ class EventSessionService extends IDatabaseService<typeof tables.eventSessions.$
       return this.createForEvent(eventId, fallbackVenueId, input)
     }
 
-    return this.db.transaction(tx => this.updateForEventInTransaction(tx, eventId, fallbackVenueId, input))
+    return this.updateForEventInTransaction(this.db, eventId, fallbackVenueId, input)
   }
 
   async updateForEventInTransaction(tx: Transaction, eventId: number, fallbackVenueId: number, input: EventSessionDraftInput, now = new Date()) {
@@ -170,29 +174,32 @@ class EventSessionService extends IDatabaseService<typeof tables.eventSessions.$
 
     await tx.delete(tables.ticketTypes).where(eq(tables.ticketTypes.eventSessionId, input.id))
 
-    await tx.insert(tables.ticketTypes).values(
-      input.ticketTypes.map(ticketType => ({
-        eventId,
-        eventSessionId: input.id,
-        venueSectionId: ticketType.venueSectionId ?? null,
-        name: ticketType.name,
-        description: ticketType.description ?? null,
-        priceCents: ticketType.priceCents,
-        currency: ticketType.currency,
-        capacity: ticketType.capacity,
-        color: ticketType.color,
-        isReservedSeating: ticketType.isReservedSeating,
-        sortOrder: ticketType.sortOrder,
-        createdAt: now,
-        updatedAt: now,
-      })),
-    )
+    for (let start = 0; start < input.ticketTypes.length; start += D1_INSERT_BATCH_SIZE) {
+      const ticketTypeBatch = input.ticketTypes.slice(start, start + D1_INSERT_BATCH_SIZE)
+      await tx.insert(tables.ticketTypes).values(
+        ticketTypeBatch.map(ticketType => ({
+          eventId,
+          eventSessionId: input.id,
+          venueSectionId: ticketType.venueSectionId ?? null,
+          name: ticketType.name,
+          description: ticketType.description ?? null,
+          priceCents: ticketType.priceCents,
+          currency: ticketType.currency,
+          capacity: ticketType.capacity,
+          color: ticketType.color,
+          isReservedSeating: ticketType.isReservedSeating,
+          sortOrder: ticketType.sortOrder,
+          createdAt: now,
+          updatedAt: now,
+        })),
+      )
+    }
 
     return session
   }
 
   async publishSession(eventSessionId: number) {
-    return this.db.transaction(tx => this.publishSessionInTransaction(tx, eventSessionId))
+    return this.publishSessionInTransaction(this.db, eventSessionId)
   }
 
   async publishSessionInTransaction(tx: Transaction, eventSessionId: number, now = new Date()) {
@@ -225,43 +232,46 @@ class EventSessionService extends IDatabaseService<typeof tables.eventSessions.$
     await tx.delete(tables.eventSeats).where(eq(tables.eventSeats.eventSessionId, eventSessionId))
 
     if (venueSeats.length > 0) {
-      await tx.insert(tables.eventSeats).values(
-        venueSeats.map((seat) => {
-          const row = rowById.get(seat.rowId)
-          if (!row) {
-            throw new Error('Venue row not found while publishing session')
-          }
+      for (let start = 0; start < venueSeats.length; start += D1_INSERT_BATCH_SIZE) {
+        const seatBatch = venueSeats.slice(start, start + D1_INSERT_BATCH_SIZE)
+        await tx.insert(tables.eventSeats).values(
+          seatBatch.map((seat) => {
+            const row = rowById.get(seat.rowId)
+            if (!row) {
+              throw new Error('Venue row not found while publishing session')
+            }
 
-          const section = sectionById.get(row.sectionId)
-          if (!section) {
-            throw new Error('Venue section not found while publishing session')
-          }
+            const section = sectionById.get(row.sectionId)
+            if (!section) {
+              throw new Error('Venue section not found while publishing session')
+            }
 
-          const ticketType = ticketTypeBySectionId.get(section.id) ?? null
+            const ticketType = ticketTypeBySectionId.get(section.id) ?? null
 
-          return {
-            eventId: session.eventId,
-            eventSessionId,
-            venueSeatId: seat.id,
-            venueSectionId: section.id,
-            ticketTypeId: ticketType?.id ?? null,
-            holdId: null,
-            orderId: null,
-            sectionNameSnapshot: section.name,
-            rowLabelSnapshot: row.label,
-            seatLabelSnapshot: seat.label,
-            displayX: seat.x,
-            displayY: seat.y,
-            priceCents: ticketType?.priceCents ?? 0,
-            currency: ticketType?.currency ?? 'VND',
-            status: 'available',
-            lockedAt: null,
-            soldAt: null,
-            createdAt: now,
-            updatedAt: now,
-          }
-        }),
-      )
+            return {
+              eventId: session.eventId,
+              eventSessionId,
+              venueSeatId: seat.id,
+              venueSectionId: section.id,
+              ticketTypeId: ticketType?.id ?? null,
+              holdId: null,
+              orderId: null,
+              sectionNameSnapshot: section.name,
+              rowLabelSnapshot: row.label,
+              seatLabelSnapshot: seat.label,
+              displayX: seat.x,
+              displayY: seat.y,
+              priceCents: ticketType?.priceCents ?? 0,
+              currency: ticketType?.currency ?? 'VND',
+              status: 'available',
+              lockedAt: null,
+              soldAt: null,
+              createdAt: now,
+              updatedAt: now,
+            }
+          }),
+        )
+      }
     }
 
     const publishedSession = await tx.update(tables.eventSessions).set({
@@ -278,7 +288,7 @@ class EventSessionService extends IDatabaseService<typeof tables.eventSessions.$
   }
 
   async assertCanPublishSession(eventSessionId: number) {
-    return this.db.transaction(tx => this.assertCanPublishSessionInTransaction(tx, eventSessionId))
+    return this.assertCanPublishSessionInTransaction(this.db, eventSessionId)
   }
 
   async assertCanPublishSessionInTransaction(tx: Transaction, eventSessionId: number) {

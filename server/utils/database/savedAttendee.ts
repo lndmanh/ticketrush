@@ -3,8 +3,7 @@ import type { CreateSavedAttendeeInput, UpdateSavedAttendeeInput, SavedAttendeeG
 import type { SavedAttendeeModel } from '~~/types/models/saved-attendee'
 
 type SavedAttendeeRow = typeof tables.savedAttendees.$inferSelect
-type Database = ReturnType<typeof useDB>
-type Transaction = Parameters<Parameters<Database['transaction']>[0]>[0]
+type Transaction = ReturnType<typeof useDB>
 
 function cleanText(value: string | null | undefined) {
   if (value === undefined || value === null) {
@@ -96,7 +95,7 @@ class SavedAttendeeService {
   }
 
   async create(userId: number, input: CreateSavedAttendeeInput): Promise<SavedAttendeeModel> {
-    return this.db.transaction(tx => this.createInTransaction(tx, userId, input))
+    return this.createInTransaction(this.db, userId, input)
   }
 
   async createInTransaction(tx: Transaction, userId: number, input: CreateSavedAttendeeInput, now = new Date()) {
@@ -133,7 +132,7 @@ class SavedAttendeeService {
   }
 
   async update(userId: number, input: UpdateSavedAttendeeInput): Promise<SavedAttendeeModel | null> {
-    return this.db.transaction(tx => this.updateInTransaction(tx, userId, input))
+    return this.updateInTransaction(this.db, userId, input)
   }
 
   async updateInTransaction(tx: Transaction, userId: number, input: UpdateSavedAttendeeInput, now = new Date()) {
@@ -174,26 +173,25 @@ class SavedAttendeeService {
   }
 
   async delete(userId: number, id: number): Promise<boolean> {
-    return this.db.transaction(async (tx) => {
-      const existing = await tx
-        .select()
-        .from(tables.savedAttendees)
-        .where(and(eq(tables.savedAttendees.id, id), eq(tables.savedAttendees.userId, userId)))
-        .get()
+    const db = this.db
+    const existing = await db
+      .select()
+      .from(tables.savedAttendees)
+      .where(and(eq(tables.savedAttendees.id, id), eq(tables.savedAttendees.userId, userId)))
+      .get()
 
-      if (!existing) {
-        return false
-      }
+    if (!existing) {
+      return false
+    }
 
-      await tx
-        .update(tables.tickets)
-        .set({ savedAttendeeId: null })
-        .where(eq(tables.tickets.savedAttendeeId, id))
+    await db
+      .update(tables.tickets)
+      .set({ savedAttendeeId: null })
+      .where(eq(tables.tickets.savedAttendeeId, id))
 
-      await tx.delete(tables.savedAttendees).where(and(eq(tables.savedAttendees.id, id), eq(tables.savedAttendees.userId, userId)))
+    await db.delete(tables.savedAttendees).where(and(eq(tables.savedAttendees.id, id), eq(tables.savedAttendees.userId, userId)))
 
-      return true
-    })
+    return true
   }
 }
 

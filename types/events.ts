@@ -92,12 +92,13 @@ export type EventCatalogSort = 'soonest' | 'newest' | 'ending_soon'
 
 export interface EventCatalogQueryOptions {
   q: string
+  location: string
   status: EventCatalogStatusFilter
   country: string
   city: string
   area: string
   venue: string
-  date: EventCatalogDateFilter
+  date: EventCatalogDateFilter | string
   sort: EventCatalogSort
   page: number
   pageSize: number

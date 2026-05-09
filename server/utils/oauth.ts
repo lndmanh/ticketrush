@@ -9,6 +9,41 @@ export interface OAuthProfile {
   avatarUrl?: string
 }
 
+function safeRedirectPath(value: string, origin: string) {
+  try {
+    const parsed = new URL(value, origin)
+    if (parsed.origin !== origin) {
+      return '/'
+    }
+
+    return `${parsed.pathname}${parsed.search}${parsed.hash}`
+  }
+  catch {
+    return '/'
+  }
+}
+
+function getPopupRedirectTarget(event: H3Event, fallback: string) {
+  if (getCookie(event, 'oauth_popup') !== '1') {
+    return fallback
+  }
+
+  const origin = getRequestURL(event).origin
+  const redirectTo = getCookie(event, 'oauth_redirect_to') || fallback
+  return `/auth/oauth/popup?redirectTo=${encodeURIComponent(safeRedirectPath(redirectTo, origin))}`
+}
+
+function clearPopupOAuthCookies(event: H3Event) {
+  deleteCookie(event, 'oauth_popup', { path: '/' })
+  deleteCookie(event, 'oauth_redirect_to', { path: '/' })
+}
+
+export function sendOAuthRedirect(event: H3Event, fallback: string) {
+  const target = getPopupRedirectTarget(event, fallback)
+  clearPopupOAuthCookies(event)
+  return sendRedirect(event, target)
+}
+
 /**
  * Generate a valid username from a provider email address.
  * Strips the domain, converts to lowercase, replaces invalid chars, and truncates.
@@ -52,21 +87,21 @@ export async function handleOAuthSuccess(event: H3Event, provider: string, profi
 
   // ── MODE 1: Link Provider to existing logged-in account ──
   if (isLoggedIn) {
-    const currentUserId = session.user!.id
+    const currentUserId = session.user.id
 
     // Check if this provider account is already linked to someone
     const existingLink = await oauthAccountService.getByProviderAccount(provider, profile.id)
     if (existingLink) {
       if (existingLink.userId === currentUserId) {
-        return sendRedirect(event, `/settings/security?error=oauth-already-connected&provider=${provider}`)
+        return sendOAuthRedirect(event, `/settings/security?error=oauth-already-connected&provider=${provider}`)
       }
-      return sendRedirect(event, `/settings/security?error=oauth-already-linked&provider=${provider}`)
+      return sendOAuthRedirect(event, `/settings/security?error=oauth-already-linked&provider=${provider}`)
     }
 
     // Check if user already has a different account for this provider linked
     const userProviderLink = await oauthAccountService.getByUserAndProvider(currentUserId, provider)
     if (userProviderLink) {
-      return sendRedirect(event, `/settings/security?error=oauth-already-connected&provider=${provider}`)
+      return sendOAuthRedirect(event, `/settings/security?error=oauth-already-connected&provider=${provider}`)
     }
 
     // Link the provider account
@@ -79,7 +114,7 @@ export async function handleOAuthSuccess(event: H3Event, provider: string, profi
       avatarUrl: profile.avatarUrl,
     })
 
-    return sendRedirect(event, `/settings/security?success=oauth-linked&provider=${provider}`)
+    return sendOAuthRedirect(event, `/settings/security?success=oauth-linked&provider=${provider}`)
   }
 
   // ── MODE 2: Sign in or sign up (user is NOT logged in) ──
@@ -91,7 +126,7 @@ export async function handleOAuthSuccess(event: H3Event, provider: string, profi
     // User already exists, sign them in
     const dbUser = await userService.getById(linked.userId)
     if (!dbUser) {
-      return sendRedirect(event, '/auth/login?error=unknown')
+      return sendOAuthRedirect(event, '/auth/login?error=unknown')
     }
 
     await userService.update({ id: dbUser.id, lastLoginAt: new Date() })
@@ -104,7 +139,7 @@ export async function handleOAuthSuccess(event: H3Event, provider: string, profi
       },
     })
 
-    return sendRedirect(event, '/')
+    return sendOAuthRedirect(event, '/')
   }
 
   // Sign up: Create new user account + link provider
@@ -128,16 +163,14 @@ export async function handleOAuthSuccess(event: H3Event, provider: string, profi
     avatarUrl: profile.avatarUrl,
   })
 
-  const subscription = await subscriptionService.getActiveByUserId(newUser.id)
   await setUserSession(event, {
     user: {
       id: newUser.id,
       username: newUser.username,
       name: newUser.name,
       isAdmin: newUser.isAdmin,
-      subscription,
     },
   })
 
-  return sendRedirect(event, '/')
+  return sendOAuthRedirect(event, '/')
 }

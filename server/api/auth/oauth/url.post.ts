@@ -6,6 +6,7 @@ import type { OAuthUrlPayload } from '~~/types/auth'
 const oauthUrlBodySchema = z.object({
   provider: z.string().min(1, 'Provider is required'),
   action: z.enum(['login', 'link']).optional(),
+  redirectTo: z.string().optional(),
 })
 
 export default defineEventHandler(async (event) => {
@@ -21,7 +22,7 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  const { provider, action } = result.data
+  const { provider, action, redirectTo } = result.data
 
   if (!Object.prototype.hasOwnProperty.call(OAUTH_PROVIDERS, provider)) {
     throw apiError({
@@ -33,8 +34,15 @@ export default defineEventHandler(async (event) => {
   }
 
   const providerConfig = OAUTH_PROVIDERS[provider]
-  const url = action === 'link' ? `${providerConfig.route}?action=link` : providerConfig.route
+  const params = new URLSearchParams({ popup: '1' })
+  if (action === 'link') {
+    params.set('action', 'link')
+  }
+  if (redirectTo) {
+    params.set('redirectTo', redirectTo)
+  }
 
+  const url = `${providerConfig.route}?${params.toString()}`
   const response: OAuthUrlPayload = { url }
   return success(response)
 })

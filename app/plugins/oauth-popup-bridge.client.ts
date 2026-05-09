@@ -5,9 +5,11 @@ export default defineNuxtPlugin(() => {
     return
   }
 
+  const currentUrl = new URL(window.location.href)
+  const redirectTo = currentUrl.pathname === '/auth/oauth/popup' ? currentUrl.searchParams.get('redirectTo') : null
   const payload: OAuthPopupCompleteMessage = {
     type: 'oauth:complete',
-    url: window.location.href,
+    url: redirectTo ? new URL(redirectTo, window.location.origin).href : currentUrl.href,
   }
 
   try {
