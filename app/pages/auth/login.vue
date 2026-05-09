@@ -271,11 +271,6 @@ definePageMeta({
         name="redirect-to"
         :value="redirectTo"
       >
-      <input
-        type="hidden"
-        name="cf-turnstile-response"
-        :value="turnstileToken"
-      >
       <VeeField
         v-slot="{ field, errors }"
         name="username"

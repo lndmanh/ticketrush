@@ -496,11 +496,6 @@ definePageMeta({
       <NuxtTurnstile v-model="turnstileToken" />
       <input
         type="hidden"
-        name="cf-turnstile-response"
-        :value="turnstileToken"
-      >
-      <input
-        type="hidden"
         name="redirect-to"
         :value="redirectTo"
       >
