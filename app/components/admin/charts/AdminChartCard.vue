@@ -51,13 +51,15 @@ const toneClasses = computed(() => {
           >
             {{ eyebrow }}
           </p>
-          <CardTitle>{{ title }}</CardTitle>
-          <p
+          <CardTitle>
+            {{ title }}
+          </CardTitle>
+          <CardDescription
             v-if="description"
-            class="max-w-[52ch] text-sm leading-6 text-muted-foreground"
+            class="max-w-[52ch]"
           >
             {{ description }}
-          </p>
+          </CardDescription>
         </div>
 
         <div
