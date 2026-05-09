@@ -89,22 +89,22 @@ const quickStatItems = computed(() => [
     key: 'featured-drops',
     icon: Ticket,
     value: featuredEvents.value.length,
-    title: t('home.quick_stat_sessions_desc'),
+    title: t('home.quick_stat_featured_title'),
     hint: t('home.featured_eyebrow'),
   },
   {
     key: 'active-sessions',
     icon: Clock3,
     value: featuredSessionCount.value,
-    title: t('home.quick_stat_live_title'),
-    hint: t('home.quick_stat_live_desc'),
+    title: t('home.quick_stat_sessions_title'),
+    hint: t('home.quick_stat_sessions_desc'),
   },
   {
     key: 'active-cities',
     icon: UsersRound,
     value: featuredUniqueCities.value,
-    title: t('home.quick_stat_safe_title'),
-    hint: t('home.quick_stat_safe_desc'),
+    title: t('home.quick_stat_cities_title'),
+    hint: t('home.quick_stat_cities_desc'),
   },
 ])
 
@@ -329,7 +329,7 @@ async function searchEvents() {
                     {{ heroPreviewEvent?.status?.replaceAll('_', ' ') || $t('home.buyer_preview') }}
                   </span>
                   <span class="rounded-full border border-white/10 bg-white/8 px-3 py-1">
-                    {{ $t('home.quick_stat_live_title') }}
+                    {{ $t('home.quick_stat_featured_title') }}
                   </span>
                 </div>
                 <div class="grid gap-4 md:grid-cols-[1fr_auto] md:items-center">

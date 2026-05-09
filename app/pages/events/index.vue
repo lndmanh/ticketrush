@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { CalendarDays, ChevronLeft, ChevronRight, Search, SlidersHorizontal, X } from '@lucide/vue'
+import { CalendarDays, ChevronDown, ChevronLeft, ChevronRight, Search, SlidersHorizontal, X } from '@lucide/vue'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -102,6 +102,7 @@ const activeVenue = ref(getQueryString(route.query.venue) || 'all')
 const activeDate = ref<EventCatalogDateFilter>(getDateFilterFromRoute())
 const activeSort = ref<EventCatalogSort>(getSortFromRoute())
 const activePage = ref(getPositiveQueryNumber(route.query.page, 1))
+const advancedFiltersOpen = ref(false)
 
 function syncStateFromRoute() {
   const routeSearch = getQueryString(route.query.q)
@@ -181,6 +182,20 @@ async function resetFilters() {
   activeVenue.value = 'all'
   activeDate.value = 'all'
   activeSort.value = 'soonest'
+  await replaceCatalogQuery(1)
+}
+
+async function clearFilter(key: string) {
+  if (key === 'search') {
+    searchInput.value = ''
+  }
+  if (key === 'status') activeStatus.value = 'all'
+  if (key === 'country') activeCountry.value = 'all'
+  if (key === 'city') activeCity.value = 'all'
+  if (key === 'area') activeArea.value = ''
+  if (key === 'venue') activeVenue.value = 'all'
+  if (key === 'date') activeDate.value = 'all'
+
   await replaceCatalogQuery(1)
 }
 
@@ -361,6 +376,41 @@ const activeFilterCount = computed(() => {
   if (activeDate.value !== 'all') count += 1
   return count
 })
+
+function getOptionLabel<T extends string>(options: Array<{ label: string, value: T }>, value: T) {
+  return options.find(option => option.value === value)?.label ?? value
+}
+
+const activeFilterChips = computed(() => {
+  const chips: Array<{ key: string, label: string, value: string }> = []
+  if (activeSearch.value) {
+    chips.push({ key: 'search', label: t('events.search_events_label'), value: activeSearch.value })
+  }
+  if (activeStatus.value !== 'all') {
+    chips.push({ key: 'status', label: t('events.status_label'), value: getOptionLabel(statusOptions.value, activeStatus.value) })
+  }
+  if (activeCountry.value !== 'all') {
+    chips.push({ key: 'country', label: t('events.country_label'), value: activeCountry.value })
+  }
+  if (activeCity.value !== 'all') {
+    chips.push({ key: 'city', label: t('events.city_label'), value: activeCity.value })
+  }
+  if (activeArea.value.trim()) {
+    chips.push({ key: 'area', label: t('events.area_label'), value: activeArea.value.trim() })
+  }
+  if (activeVenue.value !== 'all') {
+    chips.push({
+      key: 'venue',
+      label: t('events.venue_label'),
+      value: venueOptions.value.find(venue => venue.slug === activeVenue.value)?.name ?? activeVenue.value,
+    })
+  }
+  if (activeDate.value !== 'all') {
+    chips.push({ key: 'date', label: t('events.date_label'), value: getOptionLabel(dateOptions.value, activeDate.value) })
+  }
+
+  return chips
+})
 const resultSummary = computed(() => {
   const total = pagination.value.totalItems
   if (total === 0) {
@@ -466,6 +516,21 @@ definePageMeta({
             </Button>
             <Button
               type="button"
+              variant="secondary"
+              class="h-11 rounded-full px-5 md:hidden"
+              :aria-expanded="advancedFiltersOpen"
+              aria-controls="event-advanced-filters"
+              @click="advancedFiltersOpen = !advancedFiltersOpen"
+            >
+              <SlidersHorizontal class="size-4" />
+              {{ $t('events.advanced_filters') }}
+              <ChevronDown
+                class="size-4 transition-transform"
+                :class="advancedFiltersOpen ? 'rotate-180' : ''"
+              />
+            </Button>
+            <Button
+              type="button"
               variant="outline"
               class="h-11 rounded-full px-5"
               :disabled="activeFilterCount === 0"
@@ -477,7 +542,31 @@ definePageMeta({
           </div>
         </form>
 
-        <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+        <div
+          v-if="activeFilterChips.length > 0"
+          class="flex flex-wrap items-center gap-2 rounded-[1.25rem] border bg-background/70 p-3"
+        >
+          <span class="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+            {{ $t('events.active_filters_label') }}
+          </span>
+          <button
+            v-for="chip in activeFilterChips"
+            :key="chip.key"
+            type="button"
+            class="inline-flex max-w-full items-center gap-1.5 rounded-full border bg-card px-3 py-1.5 text-xs text-foreground transition-colors hover:border-primary/30 hover:bg-primary/8"
+            @click="clearFilter(chip.key)"
+          >
+            <span class="text-muted-foreground">{{ chip.label }}:</span>
+            <span class="truncate font-medium">{{ chip.value }}</span>
+            <X class="size-3.5 text-muted-foreground" />
+          </button>
+        </div>
+
+        <div
+          id="event-advanced-filters"
+          class="gap-3 rounded-[1.5rem] border bg-background/50 p-3 md:grid md:grid-cols-2 md:border-0 md:bg-transparent md:p-0 xl:grid-cols-3"
+          :class="advancedFiltersOpen ? 'grid' : 'hidden'"
+        >
           <div class="space-y-2">
             <Label for="event-status-filter">{{ $t('events.status_label') }}</Label>
             <Select
@@ -675,7 +764,7 @@ definePageMeta({
           </Badge>
         </div>
         <p class="text-sm text-muted-foreground">
-          Page {{ pagination.page }}{{ pagination.totalPages > 0 ? ` of ${pagination.totalPages}` : '' }}
+          {{ $t('events.page_info', { page: pagination.page, total: pagination.totalPages || 1 }) }}
         </p>
       </div>
 

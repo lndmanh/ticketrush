@@ -7,7 +7,6 @@ import { Field as VeeField, useForm } from 'vee-validate'
 import { loginSchema } from '#shared/schemas/userSchema'
 import { parseApiError } from '@/utils/apiError'
 import { apiRequest } from '@/utils/apiRequest'
-import { APP_MANIFEST } from '#shared/constants/manifest'
 
 const formSchema = loginSchema.pick({ username: true, password: true })
 
@@ -233,15 +232,15 @@ definePageMeta({
 
 <template>
   <AuthPageLayout
-    quote="The future belongs to those who believe in the beauty of their dreams."
-    quote-author="Morgan Vale"
+    quote="Keep your session, seats, and checkout ready before the rush starts."
+    quote-author="TicketRush"
   >
     <div class="space-y-1">
       <h1 class="text-2xl font-bold tracking-tight">
-        Welcome back
+        Welcome back to TicketRush
       </h1>
       <p class="text-base text-muted-foreground">
-        {{ APP_MANIFEST.description }}
+        Sign in to continue booking, managing attendees, or running your next ticket drop.
       </p>
     </div>
 
@@ -378,7 +377,7 @@ definePageMeta({
           :to="{ path: '/auth/forgot-password' }"
           class="text-xs text-primary hover:underline"
         >
-          Forgot password?
+          {{ $t('auth.forgot_password') }}
         </NuxtLink>
       </div>
 
