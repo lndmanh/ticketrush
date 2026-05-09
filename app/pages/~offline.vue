@@ -2,8 +2,7 @@
 import { WifiOff, RefreshCw } from '@lucide/vue'
 import { Button } from '@/components/ui/button'
 
-const { t } = useI18n()
-definePageMeta({ title: t('errors.offline_title'), layout: 'empty' })
+definePageMeta({ title: 'Offline', layout: 'empty' })
 
 function reload() {
   window.location.reload()
