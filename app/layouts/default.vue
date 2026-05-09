@@ -78,9 +78,9 @@
             >
               <Button
                 size="sm"
-                @click="navigateTo('/admin')"
+                @click="handleHeaderCtaClick"
               >
-                {{ $t('cta.primary') }}
+                {{ headerCtaLabel }}
                 <ArrowRight class="ml-1.5 h-3.5 w-3.5 transition-transform duration-300 group-hover:translate-x-0.5" />
               </Button>
             </Motion>
@@ -213,9 +213,9 @@
                 <Button
                   size="lg"
                   class="w-full rounded-full px-8 text-base font-medium group relative overflow-hidden shadow-sm shadow-primary/20"
-                  @click="handleMobileNavClick('contact')"
+                  @click="handleHeaderCtaClick"
                 >
-                  {{ $t('cta.primary') }}
+                  {{ headerCtaLabel }}
                   <ArrowRight class="ml-2 h-4 w-4 transition-transform duration-300 group-hover:translate-x-0.5" />
                 </Button>
               </div>
@@ -483,7 +483,11 @@ function closeSubmenu() {
 
 const { locale } = useI18n()
 const { i18nEnabled } = useI18nDocs()
+const { loggedIn } = useUserSession()
 const isMobileMenuOpen = ref(false)
+
+const headerCtaLabel = computed(() => loggedIn.value ? 'My tickets' : 'Login')
+const headerCtaTarget = computed(() => loggedIn.value ? '/tickets' : '/auth/login')
 
 const { y: scrollY } = useWindowScroll()
 const isScrolled = computed(() => scrollY.value > 300)
@@ -510,12 +514,12 @@ watch(isMobileMenuOpen, (isOpen) => {
   }
 })
 
-function handleMobileNavClick(sectionId: string) {
-  isMobileMenuOpen.value = false
-  navigateTo(`/${locale}#${sectionId}`)
-}
-
 function localeSectionLink(sectionId: string): string {
   return locale.value === defaultLocale ? `/#${sectionId}` : `/${locale.value}/#${sectionId}`
+}
+
+function handleHeaderCtaClick() {
+  isMobileMenuOpen.value = false
+  return navigateTo(headerCtaTarget.value)
 }
 </script>

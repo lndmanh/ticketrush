@@ -209,11 +209,11 @@ async function signInWithProvider(provider: string) {
       error.value = 'OAuth session timed out or popup was closed. Please try again.'
     }, 120000)
   }
-  catch (error) {
+  catch (err) {
     stopOAuthPopupCloseMonitor()
     stopOAuthPopupTimeout()
     oauthPopup.value = null
-    error.value = parseApiError(error, 'Unable to continue with provider right now. Please try again.').message
+    error.value = parseApiError(err, 'Unable to continue with provider right now. Please try again.').message
     oauthLoadingProvider.value = null
   }
 }
