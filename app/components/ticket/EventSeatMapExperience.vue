@@ -188,70 +188,56 @@ function getStatusRatio(count: number, total: number) {
     :selected-seat-ids="selectedSeatIds"
   >
     <section class="space-y-5">
-      <div class="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
-        <div class="space-y-2">
-          <p class="section-eyebrow">
-            Seat map
-          </p>
-          <h2 class="text-balance text-2xl font-semibold tracking-tight text-foreground md:text-3xl">
-            {{ mode === 'admin' ? 'Inspect the event seating snapshot.' : interactive ? 'Choose your exact seats.' : 'Preview the room before booking.' }}
-          </h2>
-          <p class="max-w-[65ch] text-sm leading-7 text-muted-foreground">
-            {{ mode === 'admin' ? 'Shared layout data powers this map and the venue editor, keeping section structure consistent.' : interactive ? 'Focus sections, inspect seats, and keep your selection in one stable checkout flow.' : 'Review live availability and pricing before entering the reservation flow.' }}
-          </p>
-        </div>
+      <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
+        <Select
+          :model-value="selectedSection"
+          @update:model-value="setSelectedSection"
+        >
+          <SelectTrigger class="min-w-[12rem]">
+            <SelectValue placeholder="Focus section" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">
+              All sections
+            </SelectItem>
+            <SelectItem
+              v-for="section in sectionOptions"
+              :key="section.value"
+              :value="section.value"
+            >
+              {{ section.label }}
+            </SelectItem>
+          </SelectContent>
+        </Select>
 
-        <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
-          <Select
-            :model-value="selectedSection"
-            @update:model-value="setSelectedSection"
+        <div class="flex items-center gap-2 rounded-full border border-border bg-muted/35 p-1">
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            aria-label="Zoom out"
+            @click="decreaseZoom"
           >
-            <SelectTrigger class="min-w-[12rem]">
-              <SelectValue placeholder="Focus section" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">
-                All sections
-              </SelectItem>
-              <SelectItem
-                v-for="section in sectionOptions"
-                :key="section.value"
-                :value="section.value"
-              >
-                {{ section.label }}
-              </SelectItem>
-            </SelectContent>
-          </Select>
-
-          <div class="flex items-center gap-2 rounded-full border border-border bg-muted/35 p-1">
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              aria-label="Zoom out"
-              @click="decreaseZoom"
-            >
-              <ZoomOut class="size-4" />
-            </Button>
-            <span class="min-w-[3.5rem] text-center text-xs font-medium tabular-nums text-muted-foreground">
-              {{ zoomLevel }}%
-            </span>
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              aria-label="Zoom in"
-              @click="increaseZoom"
-            >
-              <ZoomIn class="size-4" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              class="px-3 text-xs"
-              @click="resetZoom"
-            >
-              Reset
-            </Button>
-          </div>
+            <ZoomOut class="size-4" />
+          </Button>
+          <span class="min-w-[3.5rem] text-center text-xs font-medium tabular-nums text-muted-foreground">
+            {{ zoomLevel }}%
+          </span>
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            aria-label="Zoom in"
+            @click="increaseZoom"
+          >
+            <ZoomIn class="size-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            class="px-3 text-xs"
+            @click="resetZoom"
+          >
+            Reset
+          </Button>
         </div>
       </div>
 

@@ -215,23 +215,14 @@ definePageMeta({
           </div>
         </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle class="text-base">
-              Seat map
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <TicketEventSeatMapExperience
-              :seats="seatMap.seats"
-              :ticket-types="seatMap.ticketTypes"
-              :selected-seat-ids="selectedSeatIds"
-              :interactive="true"
-              :action-label="null"
-              @toggle="toggleSeat"
-            />
-          </CardContent>
-        </Card>
+        <TicketEventSeatMapExperience
+          :seats="seatMap.seats"
+          :ticket-types="seatMap.ticketTypes"
+          :selected-seat-ids="selectedSeatIds"
+          :interactive="true"
+          :action-label="null"
+          @toggle="toggleSeat"
+        />
       </div>
 
       <Card class="xl:sticky xl:top-8">
