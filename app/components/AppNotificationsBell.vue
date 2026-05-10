@@ -238,7 +238,7 @@ onUnmounted(() => {
         <div
           v-for="notification in notifications"
           :key="notification.id"
-          class="flex w-full gap-3 rounded-xl p-3 text-left transition-colors hover:bg-muted/60"
+          class="flex w-full items-start gap-3 rounded-xl p-3 text-left transition-colors hover:bg-muted/60"
           :class="isNotificationRead(notification) ? 'opacity-70' : 'bg-primary/5 ring-1 ring-primary/10'"
         >
           <button
@@ -267,7 +267,7 @@ onUnmounted(() => {
           </button>
           <button
             type="button"
-            class="mt-0.5 shrink-0 rounded-full border px-2.5 py-1 text-[10px] transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            class="mt-0.5 inline-flex h-6 shrink-0 items-center justify-center whitespace-nowrap rounded-full border px-2.5 text-[10px] leading-none transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             :class="isNotificationRead(notification) ? 'text-muted-foreground' : 'border-primary/30 text-primary'"
             :aria-label="isNotificationRead(notification) ? $t('notifications.mark_unread') : $t('notifications.mark_read')"
             @click="toggleNotificationRead(notification)"
