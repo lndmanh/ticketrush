@@ -15,6 +15,7 @@ import { Motion, motion } from 'motion-v'
 import type { EventCatalogQueryOptions } from '~~/types/events'
 
 const { t, locale } = useI18n()
+const localePath = useLocalePath()
 
 const FEATURED_EVENT_LIMIT = 8
 const STADIUM_IMAGE = 'https://images.pexels.com/photos/31007653/pexels-photo-31007653.jpeg'
@@ -225,7 +226,7 @@ definePageMeta({
                 size="lg"
                 class="rounded-full bg-primary px-6 text-primary-foreground transition-all duration-300 hover:-translate-y-0.5 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950 active:translate-y-0"
               >
-                <NuxtLink to="/events">
+                <NuxtLink :to="localePath('/events')">
                   {{ $t('home.browse_all') }}
                   <ArrowRight class="size-4" />
                 </NuxtLink>
@@ -236,7 +237,7 @@ definePageMeta({
                 size="lg"
                 class="rounded-full border-white/18 bg-white/8 px-6 text-white backdrop-blur-xl transition-all duration-300 hover:-translate-y-0.5 hover:bg-white/14 hover:text-white focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950 active:translate-y-0"
               >
-                <NuxtLink to="/admin">
+                <NuxtLink :to="localePath('/admin')">
                   {{ $t('home.organizer_cta') }}
                 </NuxtLink>
               </Button>

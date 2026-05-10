@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ArrowRight, CalendarRange, MapPin, Ticket } from '@lucide/vue'
+import { getDisplayDateLocale, getLocalizedCityName, getLocalizedEventDisplay, getLocalizedVenueName } from '@/lib/localizedEvents'
 
 interface EventCardProps {
   event: {
@@ -22,7 +23,12 @@ interface EventCardProps {
 }
 
 const props = defineProps<EventCardProps>()
-const { t } = useI18n()
+const { t, locale } = useI18n()
+const localePath = useLocalePath()
+
+const localizedEvent = computed(() => getLocalizedEventDisplay(props.event, locale.value))
+const localizedVenueName = computed(() => getLocalizedVenueName(props.event.venue?.name, locale.value))
+const localizedCityName = computed(() => getLocalizedCityName(props.event.venue?.city, locale.value))
 
 const firstSessionStartsAt = computed(() => {
   const sessions = props.event.sessions ?? []
@@ -34,7 +40,7 @@ const firstSessionStartsAt = computed(() => {
 })
 
 const startsAtLabel = computed(() => {
-  return new Date(firstSessionStartsAt.value).toLocaleString('en-US', {
+  return new Date(firstSessionStartsAt.value).toLocaleString(getDisplayDateLocale(locale.value), {
     month: 'short',
     day: 'numeric',
     hour: 'numeric',
@@ -68,7 +74,7 @@ const statusBadgeClass = computed(() => {
 
 <template>
   <NuxtLink
-    :to="`/events/${event.slug}`"
+    :to="localePath(`/events/${event.slug}`)"
     class="group block h-full outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
   >
     <article class="card-shine relative flex h-full min-h-[30rem] overflow-hidden rounded-2xl border border-white/8 bg-card text-card-foreground shadow-sm transition-all duration-500 group-hover:-translate-y-2 group-hover:border-primary/40 group-hover:shadow-2xl group-hover:shadow-primary/20">
@@ -80,7 +86,7 @@ const statusBadgeClass = computed(() => {
         <div class="absolute inset-0">
           <img
             :src="event.coverImage || `https://picsum.photos/seed/${event.slug}/1200/900`"
-            :alt="event.title"
+            :alt="localizedEvent.title"
             class="h-full w-full object-cover transition-transform duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] group-hover:scale-[1.06]"
           >
           <!-- Layered gradient for depth -->
@@ -108,13 +114,13 @@ const statusBadgeClass = computed(() => {
           <div class="space-y-4">
             <div class="max-w-2xl space-y-3">
               <h3 class="text-balance text-3xl font-bold leading-[1.02] tracking-[-0.06em] text-white md:text-4xl">
-                {{ event.title }}
+                {{ localizedEvent.title }}
               </h3>
               <p
-                v-if="event.subtitle"
+                v-if="localizedEvent.subtitle"
                 class="line-clamp-2 max-w-[36rem] break-words text-sm leading-6 text-white/75 md:text-base md:leading-7"
               >
-                {{ event.subtitle }}
+                {{ localizedEvent.subtitle }}
               </p>
             </div>
 
@@ -129,14 +135,14 @@ const statusBadgeClass = computed(() => {
                         {{ $t('event_card.venue_label') }}
                       </p>
                       <p class="truncate text-sm font-medium leading-6 text-white/90 md:text-base">
-                        {{ event.venue?.name || $t('event_card.venue_tba') }}
+                        {{ localizedVenueName || $t('event_card.venue_tba') }}
                       </p>
                     </div>
                   </div>
 
                   <div class="flex flex-wrap gap-2">
                     <span class="inline-flex max-w-full items-center rounded-full border border-white/10 bg-white/8 px-3 py-1.5 text-xs text-white/70">
-                      {{ event.venue?.city || $t('event_card.live_badge') }}
+                      {{ localizedCityName || $t('event_card.live_badge') }}
                     </span>
                     <span class="inline-flex max-w-full items-center gap-1.5 rounded-full border border-white/10 bg-white/8 px-3 py-1.5 text-xs text-white/70">
                       <Ticket class="size-3.5" />

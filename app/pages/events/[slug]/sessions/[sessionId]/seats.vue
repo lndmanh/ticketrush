@@ -1,18 +1,6 @@
 <script setup lang="ts">
 import { toast } from 'vue-sonner'
 import { CheckCircle2, Clock3, RefreshCw, ShoppingBag, Sparkles, TicketCheck, TicketPlus, Trash2, Users } from '@lucide/vue'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import {
-  Item,
-  ItemActions,
-  ItemContent,
-  ItemDescription,
-  ItemGroup,
-  ItemMedia,
-  ItemTitle,
-} from '@/components/ui/item'
-import { ScrollArea } from '@/components/ui/scroll-area'
 import { parseApiError } from '@/utils/apiError'
 import { apiRoutes } from '#shared/apiRoutes'
 import { parseSeatmapRealtimeMessage } from '~~/types/seatmap-realtime'
@@ -438,15 +426,21 @@ definePageMeta({
             <div class="grid grid-cols-3 gap-2 text-sm sm:min-w-[18rem]">
               <div class="rounded-2xl border bg-background/80 px-3 py-2">
                 <span class="text-xs text-muted-foreground">{{ $t('common.available') }}</span>
-                <p class="font-semibold tabular-nums text-foreground">{{ inventorySummary.available }}</p>
+                <p class="font-semibold tabular-nums text-foreground">
+                  {{ inventorySummary.available }}
+                </p>
               </div>
               <div class="rounded-2xl border bg-background/80 px-3 py-2">
                 <span class="text-xs text-muted-foreground">{{ $t('common.held') }}</span>
-                <p class="font-semibold tabular-nums text-foreground">{{ inventorySummary.locked }}</p>
+                <p class="font-semibold tabular-nums text-foreground">
+                  {{ inventorySummary.locked }}
+                </p>
               </div>
               <div class="rounded-2xl border bg-background/80 px-3 py-2">
                 <span class="text-xs text-muted-foreground">{{ $t('common.sold') }}</span>
-                <p class="font-semibold tabular-nums text-foreground">{{ inventorySummary.sold }}</p>
+                <p class="font-semibold tabular-nums text-foreground">
+                  {{ inventorySummary.sold }}
+                </p>
               </div>
             </div>
           </div>
@@ -455,7 +449,7 @@ definePageMeta({
             v-if="realtimeStatus !== 'connected'"
             class="mt-3 text-xs text-muted-foreground"
           >
-            {{ realtimeStatus === 'connecting' ? 'Reconnecting live updates…' : 'Live updates unavailable.' }}
+            {{ realtimeStatus === 'connecting' ? $t('seats.realtime_reconnecting_short') : $t('seats.realtime_unavailable') }}
           </p>
         </div>
 
@@ -488,20 +482,30 @@ definePageMeta({
           <div class="grid gap-2 pt-4 sm:grid-cols-3 lg:grid-cols-1 xl:grid-cols-3">
             <div class="rounded-2xl border bg-muted/30 p-3">
               <Users class="mb-2 size-4 text-muted-foreground" />
-              <p class="text-xs text-muted-foreground">{{ $t('common.selected') }}</p>
+              <p class="text-xs text-muted-foreground">
+                {{ $t('common.selected') }}
+              </p>
               <p class="text-sm font-medium text-foreground">
                 {{ $t('seats.selected_seats', { count: selectedTicketCount }) }}
               </p>
             </div>
             <div class="rounded-2xl border bg-muted/30 p-3">
               <Clock3 class="mb-2 size-4 text-muted-foreground" />
-              <p class="text-xs text-muted-foreground">{{ $t('seats.hold_window') }}</p>
-              <p class="text-sm font-medium text-foreground">{{ $t('seats.hold_minutes') }}</p>
+              <p class="text-xs text-muted-foreground">
+                {{ $t('seats.hold_window') }}
+              </p>
+              <p class="text-sm font-medium text-foreground">
+                {{ $t('seats.hold_minutes') }}
+              </p>
             </div>
             <div class="rounded-2xl border bg-muted/30 p-3">
               <RefreshCw :class="['mb-2 size-4 text-muted-foreground', realtimeStatus === 'connecting' ? 'animate-spin' : '']" />
-              <p class="text-xs text-muted-foreground">{{ $t('seats.inventory') }}</p>
-              <p class="text-sm font-medium text-foreground">{{ inventoryStatusLabel }}</p>
+              <p class="text-xs text-muted-foreground">
+                {{ $t('seats.inventory') }}
+              </p>
+              <p class="text-sm font-medium text-foreground">
+                {{ inventoryStatusLabel }}
+              </p>
             </div>
           </div>
         </CardHeader>
@@ -516,8 +520,12 @@ definePageMeta({
               >
                 <div class="mb-2 flex items-center justify-between gap-3">
                   <div>
-                    <p class="text-xs font-medium uppercase tracking-[0.22em] text-primary">Preview ticket</p>
-                    <p class="text-sm text-muted-foreground">Confirm this seat to include it at checkout.</p>
+                    <p class="text-xs font-medium uppercase tracking-[0.22em] text-primary">
+                      Preview ticket
+                    </p>
+                    <p class="text-sm text-muted-foreground">
+                      Confirm this seat to include it at checkout.
+                    </p>
                   </div>
                   <span class="inline-flex items-center gap-1 rounded-full border border-primary/20 bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
                     <Sparkles class="size-3.5" />
@@ -528,7 +536,10 @@ definePageMeta({
                 <ItemGroup>
                   <Item class="relative isolate overflow-hidden border-dashed border-primary/40 bg-gradient-to-br from-primary/15 via-background to-background shadow-[0_18px_60px_-36px_hsl(var(--primary))]">
                     <div class="pointer-events-none absolute -right-10 -top-10 size-28 rounded-full bg-primary/15 blur-2xl" />
-                    <ItemMedia variant="icon" class="border-primary/25 bg-primary text-primary-foreground">
+                    <ItemMedia
+                      variant="icon"
+                      class="border-primary/25 bg-primary text-primary-foreground"
+                    >
                       <TicketPlus class="size-4" />
                     </ItemMedia>
                     <ItemContent class="relative">
@@ -541,7 +552,9 @@ definePageMeta({
                       <p class="font-mono text-sm font-semibold text-foreground">
                         {{ formatCurrency(previewSeat.priceCents, previewSeat.currency) }}
                       </p>
-                      <p class="text-xs text-muted-foreground">Expected add-on</p>
+                      <p class="text-xs text-muted-foreground">
+                        Expected add-on
+                      </p>
                     </div>
                     <ItemActions class="relative w-full justify-end sm:w-auto">
                       <Button
@@ -567,8 +580,12 @@ definePageMeta({
 
               <section v-if="selectedSeats.length > 0">
                 <div class="mb-2">
-                  <p class="text-xs font-medium uppercase tracking-[0.22em] text-muted-foreground">Confirmed tickets</p>
-                  <p class="text-sm text-muted-foreground">These seats will be held together when you continue.</p>
+                  <p class="text-xs font-medium uppercase tracking-[0.22em] text-muted-foreground">
+                    Confirmed tickets
+                  </p>
+                  <p class="text-sm text-muted-foreground">
+                    These seats will be held together when you continue.
+                  </p>
                 </div>
 
                 <ItemGroup>
@@ -613,7 +630,9 @@ definePageMeta({
                 <div class="mx-auto flex size-12 items-center justify-center rounded-full border bg-background">
                   <TicketPlus class="size-5 text-muted-foreground" />
                 </div>
-                <p class="mt-4 text-sm font-medium text-foreground">{{ $t('seats.pick_seats_prompt') }}</p>
+                <p class="mt-4 text-sm font-medium text-foreground">
+                  {{ $t('seats.pick_seats_prompt') }}
+                </p>
                 <p class="mt-2 text-sm text-muted-foreground">
                   Click a seat on the map to create a preview ticket here.
                 </p>
@@ -631,8 +650,12 @@ definePageMeta({
               </div>
               <div class="mt-3 flex items-end justify-between gap-4">
                 <div>
-                  <p class="text-xs text-muted-foreground">Expected price</p>
-                  <p class="text-xs text-muted-foreground">Includes the preview ticket after confirmation.</p>
+                  <p class="text-xs text-muted-foreground">
+                    Expected price
+                  </p>
+                  <p class="text-xs text-muted-foreground">
+                    Includes the preview ticket after confirmation.
+                  </p>
                 </div>
                 <p class="text-2xl font-semibold tracking-tight text-foreground">
                   {{ formatCurrency(previewTotalValue) }}

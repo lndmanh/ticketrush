@@ -330,6 +330,18 @@ class HoldService {
         ))
         .returning({ id: tables.eventSeats.id })
 
+      await this.db
+        .update(tables.orders)
+        .set({
+          status: 'cancelled',
+          cancelledAt: now,
+          updatedAt: now,
+        })
+        .where(and(
+          eq(tables.orders.holdId, hold.id),
+          eq(tables.orders.status, 'pending'),
+        ))
+
       if (hold.eventSessionId && releasedSeats.length > 0) {
         const session = sessionsById.get(hold.eventSessionId)
         if (session) {

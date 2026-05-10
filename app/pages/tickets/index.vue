@@ -1,11 +1,14 @@
 <script setup lang="ts">
 import { ArrowRight, CalendarRange, MapPin, Ticket, UserRound } from '@lucide/vue'
+import { getDisplayDateLocale, getLocalizedEventDisplay } from '@/lib/localizedEvents'
 
+const { locale, t } = useI18n()
+const localePath = useLocalePath()
 const { data: ticketsResponse } = await useAPI(() => '/api/tickets')
 const tickets = computed(() => ticketsResponse.value?.data ?? [])
 
 function formatIssuedAt(value: string | Date) {
-  return new Date(value).toLocaleDateString('en-US', {
+  return new Date(value).toLocaleDateString(getDisplayDateLocale(locale.value), {
     month: 'short',
     day: 'numeric',
     year: 'numeric',
@@ -14,10 +17,10 @@ function formatIssuedAt(value: string | Date) {
 
 function formatEventTime(value: string | Date | null | undefined) {
   if (!value) {
-    return 'Time to be announced'
+    return t('tickets.time_tba')
   }
 
-  return new Date(value).toLocaleString('en-US', {
+  return new Date(value).toLocaleString(getDisplayDateLocale(locale.value), {
     month: 'short',
     day: 'numeric',
     hour: 'numeric',
@@ -27,6 +30,16 @@ function formatEventTime(value: string | Date | null | undefined) {
 
 function getShortTicketId(value: string) {
   return value.length > 10 ? value.slice(-10) : value
+}
+
+function getTicketEventTitle(ticket: typeof tickets.value[number]) {
+  return ticket.event ? getLocalizedEventDisplay(ticket.event, locale.value).title : ticket.publicId
+}
+
+function getTicketStatusLabel(status: string) {
+  const key = `tickets.status_${status}`
+  const translated = t(key)
+  return translated === key ? status.replaceAll('_', ' ') : translated
 }
 
 definePageMeta({
@@ -46,7 +59,7 @@ definePageMeta({
       <NuxtLink
         v-for="ticket in tickets"
         :key="ticket.id"
-        :to="`/tickets/${ticket.publicId}`"
+        :to="localePath(`/tickets/${ticket.publicId}`)"
         class="group relative block overflow-hidden rounded-2xl border bg-card text-card-foreground shadow-sm outline-none transition-all duration-300 hover:-translate-y-1 hover:border-primary/50 hover:shadow-md focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
       >
         <div class="h-1.5 bg-gradient-to-r from-primary via-primary/55 to-transparent" />
@@ -58,10 +71,10 @@ definePageMeta({
                 variant="secondary"
                 class="w-fit capitalize"
               >
-                {{ ticket.status }}
+                {{ getTicketStatusLabel(ticket.status) }}
               </Badge>
               <h2 class="line-clamp-2 text-xl font-semibold tracking-tight">
-                {{ ticket.event?.title || ticket.publicId }}
+                {{ getTicketEventTitle(ticket) }}
               </h2>
               <p class="flex items-center gap-2 truncate text-sm text-muted-foreground">
                 <UserRound class="size-3.5 shrink-0" />
@@ -89,7 +102,7 @@ definePageMeta({
                 <div class="min-w-0">
                   <p class="text-xs text-muted-foreground">{{ $t('tickets.event_time') }}</p>
                   <p class="truncate font-medium">
-                    {{ formatEventTime(ticket.event?.startsAt) }}
+                    {{ formatEventTime(ticket.eventSession?.startsAt || ticket.event?.startsAt) }}
                   </p>
                 </div>
               </div>
@@ -139,9 +152,9 @@ definePageMeta({
         <EmptyMedia variant="icon">
           <Ticket class="size-5" />
         </EmptyMedia>
-        <EmptyTitle>Your first issued ticket will appear here.</EmptyTitle>
+        <EmptyTitle>{{ $t('tickets.empty_title') }}</EmptyTitle>
         <EmptyDescription>
-          This wallet stores the QR pass, seat assignment, and event timing.
+          {{ $t('tickets.empty_wallet_desc') }}
         </EmptyDescription>
       </EmptyHeader>
       <EmptyContent>
@@ -150,8 +163,8 @@ definePageMeta({
             as-child
             class="rounded-full"
           >
-            <NuxtLink to="/events">
-              Browse events
+            <NuxtLink :to="localePath('/events')">
+              {{ $t('tickets.browse_events') }}
             </NuxtLink>
           </Button>
         </div>
