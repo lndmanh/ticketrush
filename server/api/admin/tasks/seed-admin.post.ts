@@ -13,18 +13,16 @@ export default defineEventHandler(async () => {
     .get()
 
   if (existingAdmin) {
-    if (existingAdmin.isAdmin && !existingAdmin.emailVerified) {
-      const response: SeedAdminTaskData = {
-        result: 'Admin account already exists',
-        admin: {
-          id: existingAdmin.id,
-          username: existingAdmin.username,
-          name: existingAdmin.name,
-          isAdmin: existingAdmin.isAdmin,
-        },
-      }
-      return success(response)
+    const response: SeedAdminTaskData = {
+      result: 'Admin account already exists',
+      admin: {
+        id: existingAdmin.id,
+        username: existingAdmin.username,
+        name: existingAdmin.name,
+        isAdmin: existingAdmin.isAdmin,
+      },
     }
+    return success(response)
   }
 
   const defaultAdminPassword = useRuntimeConfig().defaultAdminPassword

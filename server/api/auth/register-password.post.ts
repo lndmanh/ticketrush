@@ -5,6 +5,7 @@ import { sendVerificationEmail } from '~~/server/utils/email'
 import { apiRoutes } from '#shared/apiRoutes'
 import type { User } from '#shared/db'
 import type { RegisterUserInput } from '#shared/schemas/userSchema'
+import { verifyTurnstileTokenWithDevBypass } from '~~/server/utils/turnstileGuard'
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object'
@@ -36,7 +37,7 @@ export default defineEventHandler(async (event) => {
 
   const { username, password, 'cf-turnstile-response': token } = result.data
 
-  const tokenValidation = await verifyTurnstileToken(token)
+  const tokenValidation = await verifyTurnstileTokenWithDevBypass(token)
   if (!tokenValidation.success) {
     return sendRedirect(event, apiRoutes.AUTH_REGISTER + '?error=captcha')
   }

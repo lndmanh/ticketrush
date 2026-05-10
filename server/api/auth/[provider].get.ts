@@ -54,6 +54,16 @@ function rememberPopupOAuthRequest(event: H3Event) {
   }
 }
 
+function isProviderConfigured(provider: string) {
+  if (provider === 'google') {
+    const clientId = process.env.NUXT_OAUTH_GOOGLE_CLIENT_ID
+    const clientSecret = process.env.NUXT_OAUTH_GOOGLE_CLIENT_SECRET
+    return Boolean(clientId && clientSecret)
+  }
+
+  return true
+}
+
 const googleHandler = defineOAuthGoogleEventHandler({
   config: {
     scope: ['openid', 'email', 'profile'],
@@ -94,6 +104,10 @@ export default defineEventHandler(async (event) => {
   rememberPopupOAuthRequest(event)
 
   const provider = getRouterParam(event, 'provider') || ''
+
+  if (!isProviderConfigured(provider)) {
+    return sendOAuthRedirect(event, '/auth/login?error=oauth-not-configured')
+  }
 
   switch (provider) {
     case 'google':

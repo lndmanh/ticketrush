@@ -16,6 +16,7 @@ const sortOptions = computed<Array<{ label: string, value: EventCatalogSort }>>(
 
 const router = useRouter()
 const route = useRoute()
+const localePath = useLocalePath()
 
 function getQueryString(value: string | string[] | null | undefined) {
   if (typeof value === 'string') return value
@@ -95,7 +96,7 @@ function buildCatalogQuery(page: number) {
 
 async function replaceCatalogQuery(page: number = 1) {
   await router.replace({
-    path: '/events',
+    path: localePath('/events'),
     query: buildCatalogQuery(page),
   })
 }
