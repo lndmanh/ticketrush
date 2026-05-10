@@ -89,7 +89,7 @@ function logout() {
           <LogIn />
           {{ $t('common.sign_in') }}
         </DropdownMenuItem>
-        <DropdownMenuItem @click="navigateTo(localePath('/settings/security'))">
+        <DropdownMenuItem @click="navigateTo(localePath('/settings'))">
           <Settings />
           {{ $t('common.settings') }}
         </DropdownMenuItem>
