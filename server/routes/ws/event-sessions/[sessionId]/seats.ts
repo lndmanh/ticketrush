@@ -1,56 +1,54 @@
-import type { H3Event } from 'h3'
 import eventSessionService from '~~/server/utils/database/event-session'
-import { apiError } from '~~/server/utils/apiResponse'
-import { getSeatmapRealtimeEnv } from '~~/server/utils/ticketing/seatmap-realtime'
-import { getTicketingSessionKey } from '~~/server/utils/ticketing/session'
+import { serializeSeatmapRealtimeMessage } from '~~/types/seatmap-realtime'
 
-function createHeadersFromRequest(event: H3Event) {
-  const headers = new Headers()
-  const requestHeaders = event.node.req.headers
-
-  for (const [key, value] of Object.entries(requestHeaders)) {
-    if (typeof value === 'string') {
-      headers.set(key, value)
-    }
-    else if (Array.isArray(value)) {
-      headers.set(key, value.join(', '))
-    }
-  }
-
-  return headers
+interface SeatmapPeerContext {
+  sessionPublicId: string
+  version: number
 }
 
-export default defineEventHandler(async (event) => {
-  if (event.node.req.headers.upgrade?.toLowerCase() !== 'websocket') {
-    throw apiError({ status: 400, statusText: 'Bad Request', code: 'INVALID_REQUEST', message: 'WebSocket upgrade required.' })
-  }
+function isSeatmapPeerContext(value: unknown): value is SeatmapPeerContext {
+  return typeof value === 'object'
+    && value !== null
+    && 'sessionPublicId' in value
+    && 'version' in value
+}
 
-  const sessionPublicId = getRouterParam(event, 'sessionId')
-  if (!sessionPublicId) {
-    throw apiError({ status: 400, statusText: 'Bad Request', code: 'INVALID_SESSION_ID', message: 'Session ID is required.' })
-  }
+export default defineWebSocketHandler({
+  async upgrade(request) {
+    const url = new URL(request.url)
+    const sessionPublicId = url.pathname.split('/').at(-2)
 
-  const session = await eventSessionService.getByPublicId(sessionPublicId)
+    if (!sessionPublicId) {
+      throw new Response('Session ID is required.', { status: 400 })
+    }
 
-  if (!session) {
-    throw apiError({ status: 404, statusText: 'Not Found', code: 'SESSION_NOT_FOUND', message: 'Session not found.' })
-  }
+    const session = await eventSessionService.getByPublicId(sessionPublicId)
+    if (!session || session.status === 'draft' || session.status === 'cancelled') {
+      throw new Response('Session not found.', { status: 404 })
+    }
 
-  if (session.status === 'draft' || session.status === 'cancelled') {
-    throw apiError({ status: 404, statusText: 'Not Found', code: 'SESSION_NOT_FOUND', message: 'Session not found.' })
-  }
+    return {
+      namespace: `seatmap:${session.publicId}`,
+      context: {
+        sessionPublicId: session.publicId,
+        version: session.seatmapVersion,
+      },
+    }
+  },
+  open(peer) {
+    if (!isSeatmapPeerContext(peer.context)) {
+      peer.close(1011, 'Missing seatmap context')
+      return
+    }
 
-  getTicketingSessionKey(event)
-
-  const { SEATMAP_REALTIME_ROOM: namespace } = getSeatmapRealtimeEnv(event)
-  if (!namespace) {
-    throw apiError({ status: 503, statusText: 'Service Unavailable', code: 'SEATMAP_REALTIME_UNAVAILABLE', message: 'Seatmap realtime is unavailable.' })
-  }
-
-  const stub = namespace.get(namespace.idFromName(session.publicId))
-  const requestHeaders = createHeadersFromRequest(event)
-
-  return stub.fetch('https://seatmap-realtime-room.local/connect', {
-    headers: requestHeaders,
-  })
+    peer.subscribe('seatmap')
+    peer.send(serializeSeatmapRealtimeMessage({
+      type: 'seatmap-connected',
+      sessionPublicId: peer.context.sessionPublicId,
+      version: peer.context.version,
+    }))
+  },
+  close(peer) {
+    peer.unsubscribe('seatmap')
+  },
 })

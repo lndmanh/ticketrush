@@ -23,10 +23,10 @@ export const SIDEBAR_CONTEXTS: SidebarContext[] = [
     showBack: true,
     sections: [
       {
-        title: 'nav.account',
+        title: 'Account',
         items: [
-          { title: 'nav.security', url: '/settings/security', icon: Shield },
-          { title: 'nav.saved_attendees', url: '/settings/saved-attendees', icon: ContactRound },
+          { title: 'Security', url: '/settings/security', icon: Shield },
+          { title: 'Saved Attendees', url: '/settings/saved-attendees', icon: ContactRound },
         ],
       },
     ],
@@ -39,25 +39,25 @@ export const SIDEBAR_CONTEXTS: SidebarContext[] = [
     guard: (user: SidebarGuardUser) => user?.isAdmin === true,
     sections: [
       {
-        title: 'nav.overview',
+        title: 'Overview',
         items: [
-          { title: 'nav.dashboard', url: '/admin', icon: LayoutDashboardIcon },
-          { title: 'nav.events', url: '/admin/events', icon: CalendarRange },
-          { title: 'nav.venues', url: '/admin/venues', icon: MapPin },
+          { title: 'Dashboard', url: '/admin', icon: LayoutDashboardIcon },
+          { title: 'Events', url: '/admin/events', icon: CalendarRange },
+          { title: 'Venues', url: '/admin/venues', icon: MapPin },
         ],
       },
       {
-        title: 'nav.users',
+        title: 'Users',
         items: [
-          { title: 'nav.users', url: '/admin/users', icon: UsersIcon },
+          { title: 'Users', url: '/admin/users', icon: UsersIcon },
         ],
       },
       {
-        title: 'nav.system',
+        title: 'System',
         items: [
-          { title: 'nav.tasks', url: '/admin/tasks', icon: ListChecksIcon },
-          { title: 'nav.waiting_room', url: '/admin/waiting-room', icon: ShieldCheck },
-          { title: 'nav.feature_flags', url: '/admin/feature-flags', icon: FlagIcon },
+          { title: 'Tasks', url: '/admin/tasks', icon: ListChecksIcon },
+          { title: 'Waiting Room', url: '/admin/waiting-room', icon: ShieldCheck },
+          { title: 'Feature Flags', url: '/admin/feature-flags', icon: FlagIcon },
         ],
       },
     ],
@@ -67,27 +67,27 @@ export const SIDEBAR_CONTEXTS: SidebarContext[] = [
     match: '/',
     sections: [
       {
-        title: 'nav.discover',
+        title: 'Discover',
         items: [
-          { title: 'nav.home', url: '/', icon: Home },
-          { title: 'nav.events', url: '/events', icon: CalendarRange },
-          { title: 'nav.my_tickets', url: '/tickets', icon: Ticket },
-          { title: 'nav.saved_attendees', url: '/tickets/saved-attendees', icon: ContactRound },
-          { title: 'nav.security', url: '/settings/security', icon: Settings },
+          { title: 'Home', url: '/', icon: Home },
+          { title: 'Events', url: '/events', icon: CalendarRange },
+          { title: 'My Tickets', url: '/tickets', icon: Ticket },
+          { title: 'Saved Attendees', url: '/tickets/saved-attendees', icon: ContactRound },
+          { title: 'Settings', url: '/settings/security', icon: Settings },
         ],
       },
       {
-        title: 'nav.admin',
+        title: 'Admin',
         guard: (user: SidebarGuardUser) => user?.isAdmin === true,
         items: [
-          { title: 'nav.admin_dashboard', url: '/admin', icon: LayoutDashboardIcon },
+          { title: 'Admin Dashboard', url: '/admin', icon: LayoutDashboardIcon },
         ],
       },
       {
-        title: 'nav.support',
+        title: 'Support',
         secondary: true,
         items: [
-          { title: 'nav.help_support', url: '/support', icon: UserCog2Icon },
+          { title: 'Help & Support', url: '/support', icon: UserCog2Icon },
         ],
       },
     ],

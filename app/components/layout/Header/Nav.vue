@@ -1,28 +1,8 @@
 <template>
   <NavigationMenu>
     <NavigationMenuList>
-      <template v-if="eventBreadcrumbTitle">
-        <NavigationMenuItem class="relative">
-          <NuxtLinkLocale to="/events">
-            <div
-              :class="navigationMenuTriggerStyle()"
-              class="bg-transparent font-semibold"
-            >
-              {{ $t('nav.events') }}
-            </div>
-          </NuxtLinkLocale>
-        </NavigationMenuItem>
-        <NavigationMenuItem class="relative">
-          <div
-            :class="navigationMenuTriggerStyle()"
-            class="pointer-events-none bg-transparent font-semibold text-muted-foreground"
-          >
-            / {{ eventBreadcrumbTitle }}
-          </div>
-        </NavigationMenuItem>
-      </template>
       <NavigationMenuItem
-        v-for="(item, i) in eventBreadcrumbTitle ? [] : nav"
+        v-for="(item, i) in nav"
         :key="i"
         class="relative"
       >
@@ -96,22 +76,4 @@ import { navigationMenuTriggerStyle, NavigationMenu, NavigationMenuContent, Navi
 import CtIcon from '@/components/content/CtIcon.vue'
 
 const { nav } = useConfig().value.header
-const route = useRoute()
-
-const eventBreadcrumbTitle = computed(() => {
-  if (!route.path.startsWith('/events/') || route.path.includes('/sessions/')) {
-    return ''
-  }
-
-  const slug = route.params.slug
-  if (typeof slug !== 'string') {
-    return ''
-  }
-
-  return slug
-    .split('-')
-    .filter(Boolean)
-    .map(part => part[0]?.toUpperCase() + part.slice(1))
-    .join(' ')
-})
 </script>

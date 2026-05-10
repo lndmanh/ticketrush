@@ -1,17 +1,24 @@
 <script setup lang="ts">
 import { toast } from 'vue-sonner'
-import { Clock3, RefreshCw, ShoppingBag, Users } from '@lucide/vue'
+import { CheckCircle2, Clock3, RefreshCw, ShoppingBag, Sparkles, TicketCheck, TicketPlus, Trash2, Users } from '@lucide/vue'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Separator } from '@/components/ui/separator'
-import { getDisplayDateLocale, getLocalizedCityName, getLocalizedEventDisplay, getLocalizedVenueName } from '@/lib/localizedEvents'
+import {
+  Item,
+  ItemActions,
+  ItemContent,
+  ItemDescription,
+  ItemGroup,
+  ItemMedia,
+  ItemTitle,
+} from '@/components/ui/item'
+import { ScrollArea } from '@/components/ui/scroll-area'
 import { parseApiError } from '@/utils/apiError'
 import { apiRoutes } from '#shared/apiRoutes'
 import { parseSeatmapRealtimeMessage } from '~~/types/seatmap-realtime'
 import type { SeatStatusDeltaChange } from '~~/types/seatmap-realtime'
 
 const route = useRoute()
-const { t, locale } = useI18n()
 const slug = computed(() => route.params.slug.toString())
 const sessionPublicId = computed(() => route.params.sessionId.toString())
 const passToken = computed(() => typeof route.query.pass === 'string' ? route.query.pass : undefined)
@@ -36,6 +43,8 @@ if (gateResponse.value?.success && gateResponse.value.data.shouldQueue) {
 const { data: seatMapResponse, refresh: refreshSeatMap } = await useAPI(() => apiRoutes.eventSessionSeatmap(sessionPublicId.value))
 const seatMap = computed(() => seatMapResponse.value?.success ? seatMapResponse.value.data : null)
 const selectedSeatIds = ref<number[]>([])
+const previewSeatId = ref<number | null>(null)
+const previewTicketItem = ref<HTMLElement | null>(null)
 const isSubmitting = ref(false)
 const realtimeStatus = ref<'connecting' | 'connected' | 'disconnected'>('connecting')
 const currentSeatmapVersion = ref(0)
@@ -89,15 +98,14 @@ const inventorySummary = computed(() => {
   }
 })
 
-const localizedEventTitle = computed(() => event.value ? getLocalizedEventDisplay(event.value, locale.value).title : '')
-const venueName = computed(() => getLocalizedVenueName(detail.value?.venue?.venue.name, locale.value) || t('seats.venue_pending'))
-const venueCity = computed(() => getLocalizedCityName(detail.value?.venue?.venue.city, locale.value) || t('seats.location_incoming'))
+const venueName = computed(() => detail.value?.venue?.venue.name || 'Venue pending')
+const venueCity = computed(() => detail.value?.venue?.venue.city || 'Location incoming')
 const sessionTimeLabel = computed(() => {
   if (!session.value) {
-    return t('seats.session_time_pending')
+    return 'Session time pending'
   }
 
-  return new Date(session.value.startsAt).toLocaleString(getDisplayDateLocale(locale.value), {
+  return new Date(session.value.startsAt).toLocaleString('en-US', {
     month: 'short',
     day: 'numeric',
     hour: 'numeric',
@@ -108,59 +116,113 @@ const selectedSeats = computed(() => {
   return (seatMap.value?.seats ?? []).filter(seat => selectedSeatIds.value.includes(seat.id))
 })
 
+const previewSeat = computed(() => {
+  if (previewSeatId.value === null) {
+    return null
+  }
+
+  return (seatMap.value?.seats ?? []).find(seat => seat.id === previewSeatId.value) ?? null
+})
+
+const seatMapSelectedSeatIds = computed(() => {
+  if (!previewSeat.value || selectedSeatIds.value.includes(previewSeat.value.id)) {
+    return selectedSeatIds.value
+  }
+
+  return [...selectedSeatIds.value, previewSeat.value.id]
+})
+
+const selectedTicketCount = computed(() => {
+  return selectedSeatIds.value.length + (previewSeat.value ? 1 : 0)
+})
+
 const totalValue = computed(() => {
   return selectedSeats.value.reduce((total, seat) => total + seat.priceCents, 0)
 })
 
-const selectedSeatSummary = computed(() => {
-  if (selectedSeats.value.length === 0) {
-    return t('seats.no_seats_selected')
-  }
-
-  return selectedSeats.value
-    .map(seat => `${seat.rowLabelSnapshot || t('seatmap.general_admission_short')}${seat.seatLabelSnapshot}`)
-    .join(', ')
+const previewTotalValue = computed(() => {
+  return totalValue.value + (previewSeat.value?.priceCents ?? 0)
 })
 
 const inventoryStatusLabel = computed(() => {
   if (realtimeStatus.value === 'connected') {
-    return t('seats.realtime_connected')
+    return 'Connected'
   }
 
   if (realtimeStatus.value === 'connecting') {
-    return t('seats.realtime_connecting')
+    return 'Connecting'
   }
 
-  return t('seats.realtime_disconnected')
-})
-
-const inventoryStatusDescription = computed(() => {
-  if (realtimeStatus.value === 'connected') {
-    return t('seats.live_updating')
-  }
-
-  if (realtimeStatus.value === 'connecting') {
-    return t('seats.realtime_reconnecting')
-  }
-
-  return t('seats.realtime_paused')
+  return 'Disconnected'
 })
 
 function formatCurrency(value: number, currency = 'VND') {
-  return `${Intl.NumberFormat(getDisplayDateLocale(locale.value)).format(value / 100)} ${currency}`
+  return `${Intl.NumberFormat('en-US').format(value / 100)} ${currency}`
 }
 
-function toggleSeat(seatId: number) {
-  if (selectedSeatIds.value.includes(seatId)) {
-    selectedSeatIds.value = selectedSeatIds.value.filter(id => id !== seatId)
+function formatSeatLabel(seat: { sectionNameSnapshot: string, rowLabelSnapshot: string | null, seatLabelSnapshot: string }) {
+  const rowLabel = seat.rowLabelSnapshot ? `${seat.rowLabelSnapshot}-` : ''
+
+  return `${seat.sectionNameSnapshot} · ${rowLabel}${seat.seatLabelSnapshot}`
+}
+
+async function scrollToPreviewTicket() {
+  await nextTick()
+  previewTicketItem.value?.scrollIntoView({
+    block: 'nearest',
+    behavior: 'smooth',
+  })
+}
+
+function clearPreviewSeat() {
+  previewSeatId.value = null
+}
+
+function confirmPreviewSeat() {
+  if (!previewSeat.value) {
+    return
+  }
+
+  if (selectedSeatIds.value.includes(previewSeat.value.id)) {
+    previewSeatId.value = null
     return
   }
 
   if (selectedSeatIds.value.length >= 10) {
+    toast.error('You can select up to 10 seats.')
     return
   }
 
-  selectedSeatIds.value = [...selectedSeatIds.value, seatId]
+  selectedSeatIds.value = [...selectedSeatIds.value, previewSeat.value.id]
+  previewSeatId.value = null
+}
+
+function removeSelectedSeat(seatId: number) {
+  selectedSeatIds.value = selectedSeatIds.value.filter(id => id !== seatId)
+
+  if (previewSeatId.value === seatId) {
+    previewSeatId.value = null
+  }
+}
+
+function toggleSeat(seatId: number) {
+  if (selectedSeatIds.value.includes(seatId)) {
+    removeSelectedSeat(seatId)
+    return
+  }
+
+  if (previewSeatId.value === seatId) {
+    previewSeatId.value = null
+    return
+  }
+
+  if (selectedSeatIds.value.length >= 10) {
+    toast.error('You can select up to 10 seats.')
+    return
+  }
+
+  previewSeatId.value = seatId
+  void scrollToPreviewTicket()
 }
 
 function applySeatChanges(changes: SeatStatusDeltaChange[], version: number) {
@@ -272,13 +334,13 @@ async function reserveSeats() {
     await navigateTo(`/checkout/${checkoutResponse.data.publicId}?hold=${holdPublicId}`)
   }
   catch (error) {
-    const parsedError = parseApiError(error, t('seats.checkout_error'))
+    const parsedError = parseApiError(error, 'We could not open checkout. Please try again.')
 
     const statusCode = parsedError.status
     const message = parsedError.message
 
     if (statusCode === 409) {
-      toast.error(t('seats.seats_conflict_error'))
+      toast.error('Some of the selected seats are no longer available. We refreshed the map for you.')
       return
     }
 
@@ -312,9 +374,19 @@ watch(seatMap, (value) => {
   )
 
   const nextSelectedSeatIds = selectedSeatIds.value.filter(seatId => availableSeatIds.has(seatId))
-  if (nextSelectedSeatIds.length !== selectedSeatIds.value.length) {
+  const selectedSeatsChanged = nextSelectedSeatIds.length !== selectedSeatIds.value.length
+  const previewSeatWasTaken = previewSeatId.value !== null && !availableSeatIds.has(previewSeatId.value)
+
+  if (selectedSeatsChanged) {
     selectedSeatIds.value = nextSelectedSeatIds
-    toast.error(t('seats.seats_taken_error'))
+  }
+
+  if (previewSeatWasTaken) {
+    previewSeatId.value = null
+  }
+
+  if (selectedSeatsChanged || previewSeatWasTaken) {
+    toast.error('One or more selected seats were taken by another customer.')
   }
 }, { deep: true, immediate: true })
 
@@ -345,203 +417,251 @@ definePageMeta({
 <template>
   <main
     v-if="detail && event && session && seatMap"
-    class="space-y-6 pb-8 pt-6"
+    class="flex h-[calc(100dvh-var(--header-height,3.5rem)-2rem)] min-h-0 flex-col overflow-hidden md:h-[calc(100dvh-var(--header-height,3.5rem)-3rem)]"
   >
-    <section class="grid gap-6 lg:grid-cols-[2fr_1fr] lg:items-start">
-      <div class="space-y-4">
-        <div class="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-          <div>
-            <h1 class="text-2xl font-semibold tracking-tight">
-              {{ localizedEventTitle }}
-            </h1>
-            <p class="mt-1 text-sm text-muted-foreground">
-              {{ session.label }} &middot; {{ venueName }}, {{ venueCity }} &middot; {{ sessionTimeLabel }}
-            </p>
-          </div>
-          <div class="space-y-2 rounded-lg border bg-muted/40 p-3 text-sm">
-            <div class="flex gap-4">
-              <div class="flex flex-col">
+    <section class="grid min-h-0 flex-1 gap-4 overflow-y-auto lg:grid-cols-[minmax(0,1fr)_minmax(24rem,28rem)] lg:grid-rows-1 lg:overflow-hidden">
+      <div class="flex min-h-0 flex-col overflow-hidden rounded-[1.75rem] border bg-background/95 shadow-sm">
+        <div class="shrink-0 border-b bg-muted/20 p-4 md:p-5">
+          <div class="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+            <div class="min-w-0">
+              <p class="text-xs font-medium uppercase tracking-[0.24em] text-muted-foreground">
+                Live seat selection
+              </p>
+              <h1 class="mt-2 truncate text-2xl font-semibold tracking-tight text-foreground">
+                {{ event.title }}
+              </h1>
+              <p class="mt-1 text-sm text-muted-foreground">
+                {{ session.label }} &middot; {{ venueName }}, {{ venueCity }} &middot; {{ sessionTimeLabel }}
+              </p>
+            </div>
+
+            <div class="grid grid-cols-3 gap-2 text-sm sm:min-w-[18rem]">
+              <div class="rounded-2xl border bg-background/80 px-3 py-2">
                 <span class="text-xs text-muted-foreground">{{ $t('common.available') }}</span>
-                <span class="font-medium">{{ inventorySummary.available }}</span>
+                <p class="font-semibold tabular-nums text-foreground">{{ inventorySummary.available }}</p>
               </div>
-              <div class="w-px bg-border" />
-              <div class="flex flex-col">
+              <div class="rounded-2xl border bg-background/80 px-3 py-2">
                 <span class="text-xs text-muted-foreground">{{ $t('common.held') }}</span>
-                <span class="font-medium">{{ inventorySummary.locked }}</span>
+                <p class="font-semibold tabular-nums text-foreground">{{ inventorySummary.locked }}</p>
               </div>
-              <div class="w-px bg-border" />
-              <div class="flex flex-col">
+              <div class="rounded-2xl border bg-background/80 px-3 py-2">
                 <span class="text-xs text-muted-foreground">{{ $t('common.sold') }}</span>
-                <span class="font-medium">{{ inventorySummary.sold }}</span>
+                <p class="font-semibold tabular-nums text-foreground">{{ inventorySummary.sold }}</p>
               </div>
             </div>
-            <p
-              v-if="realtimeStatus !== 'connected'"
-              class="text-xs text-muted-foreground"
-            >
-              {{ realtimeStatus === 'connecting' ? $t('seats.realtime_reconnecting_short') : $t('seats.realtime_unavailable') }}
-            </p>
           </div>
+
+          <p
+            v-if="realtimeStatus !== 'connected'"
+            class="mt-3 text-xs text-muted-foreground"
+          >
+            {{ realtimeStatus === 'connecting' ? 'Reconnecting live updates…' : 'Live updates unavailable.' }}
+          </p>
         </div>
 
-        <TicketEventSeatMapExperience
-          :seats="seatMap.seats"
-          :ticket-types="seatMap.ticketTypes"
-          :selected-seat-ids="selectedSeatIds"
-          :interactive="true"
-          :action-label="null"
-          @toggle="toggleSeat"
-        />
+        <div class="min-h-0 flex-1 overflow-hidden p-3 md:p-4 [&>section]:flex [&>section]:h-full [&>section]:min-h-0 [&>section]:flex-col [&_[data-slot=scroll-area]]:min-h-0">
+          <TicketEventSeatMapExperience
+            :seats="seatMap.seats"
+            :ticket-types="seatMap.ticketTypes"
+            :selected-seat-ids="seatMapSelectedSeatIds"
+            :interactive="true"
+            :action-label="null"
+            @toggle="toggleSeat"
+          />
+        </div>
       </div>
 
-      <Card class="xl:sticky xl:top-8">
-        <CardHeader class="space-y-4">
+      <Card class="flex min-h-0 overflow-hidden rounded-[1.75rem]">
+        <CardHeader class="shrink-0 border-b p-4 md:p-5">
           <div class="flex items-start gap-3">
-            <div class="flex size-10 items-center justify-center rounded-full border bg-muted/40">
-              <ShoppingBag class="size-4 text-muted-foreground" />
+            <div class="flex size-11 items-center justify-center rounded-2xl border bg-primary/10 text-primary">
+              <ShoppingBag class="size-5" />
             </div>
-            <div>
+            <div class="min-w-0 flex-1">
               <CardTitle>{{ $t('seats.selection_summary') }}</CardTitle>
-              <p class="text-sm text-muted-foreground">
-                {{ $t('seats.selection_summary_desc') }}
+              <p class="mt-1 text-sm text-muted-foreground">
+                Choose a seat, review the preview ticket, then confirm it into your checkout selection.
               </p>
+            </div>
+          </div>
+
+          <div class="grid gap-2 pt-4 sm:grid-cols-3 lg:grid-cols-1 xl:grid-cols-3">
+            <div class="rounded-2xl border bg-muted/30 p-3">
+              <Users class="mb-2 size-4 text-muted-foreground" />
+              <p class="text-xs text-muted-foreground">{{ $t('common.selected') }}</p>
+              <p class="text-sm font-medium text-foreground">
+                {{ $t('seats.selected_seats', { count: selectedTicketCount }) }}
+              </p>
+            </div>
+            <div class="rounded-2xl border bg-muted/30 p-3">
+              <Clock3 class="mb-2 size-4 text-muted-foreground" />
+              <p class="text-xs text-muted-foreground">{{ $t('seats.hold_window') }}</p>
+              <p class="text-sm font-medium text-foreground">{{ $t('seats.hold_minutes') }}</p>
+            </div>
+            <div class="rounded-2xl border bg-muted/30 p-3">
+              <RefreshCw :class="['mb-2 size-4 text-muted-foreground', realtimeStatus === 'connecting' ? 'animate-spin' : '']" />
+              <p class="text-xs text-muted-foreground">{{ $t('seats.inventory') }}</p>
+              <p class="text-sm font-medium text-foreground">{{ inventoryStatusLabel }}</p>
             </div>
           </div>
         </CardHeader>
 
-        <CardContent class="space-y-4">
-          <div class="grid gap-3 md:grid-cols-3 xl:grid-cols-1">
-            <Card class="py-3">
-              <CardContent class="flex items-start gap-3 px-4">
-                <Users class="mt-0.5 size-4 text-muted-foreground" />
-                <div>
-                  <p class="text-xs text-muted-foreground">
-                    {{ $t('common.selected') }}
-                  </p>
-                  <p class="text-sm font-medium text-foreground">
-                    {{ $t('seats.selected_seats', { count: selectedSeatIds.length }) }}
-                  </p>
+        <CardContent class="flex min-h-0 flex-1 flex-col gap-4 p-0">
+          <ScrollArea class="min-h-0 flex-1 px-4 py-4 md:px-5">
+            <div class="space-y-5 pb-2">
+              <section
+                v-if="previewSeat"
+                ref="previewTicketItem"
+                class="scroll-mt-4"
+              >
+                <div class="mb-2 flex items-center justify-between gap-3">
+                  <div>
+                    <p class="text-xs font-medium uppercase tracking-[0.22em] text-primary">Preview ticket</p>
+                    <p class="text-sm text-muted-foreground">Confirm this seat to include it at checkout.</p>
+                  </div>
+                  <span class="inline-flex items-center gap-1 rounded-full border border-primary/20 bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
+                    <Sparkles class="size-3.5" />
+                    New
+                  </span>
                 </div>
-              </CardContent>
-            </Card>
-            <Card class="py-3">
-              <CardContent class="flex items-start gap-3 px-4">
-                <Clock3 class="mt-0.5 size-4 text-muted-foreground" />
-                <div>
-                  <p class="text-xs text-muted-foreground">
-                    {{ $t('seats.hold_window') }}
-                  </p>
-                  <p class="text-sm font-medium text-foreground">
-                    {{ $t('seats.hold_minutes') }}
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-            <Card class="py-3">
-              <CardContent class="flex items-start gap-3 px-4">
-                <RefreshCw :class="['mt-0.5 size-4 text-muted-foreground', realtimeStatus === 'connecting' ? 'animate-spin' : '']" />
-                <div>
-                  <p class="text-xs text-muted-foreground">
-                    {{ $t('seats.inventory') }}
-                  </p>
-                  <p class="text-sm font-medium text-foreground">
-                    {{ inventoryStatusLabel }}
-                  </p>
-                  <p class="text-xs text-muted-foreground">
-                    {{ inventoryStatusDescription }}
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
 
-          <Separator />
+                <ItemGroup>
+                  <Item class="relative isolate overflow-hidden border-dashed border-primary/40 bg-gradient-to-br from-primary/15 via-background to-background shadow-[0_18px_60px_-36px_hsl(var(--primary))]">
+                    <div class="pointer-events-none absolute -right-10 -top-10 size-28 rounded-full bg-primary/15 blur-2xl" />
+                    <ItemMedia variant="icon" class="border-primary/25 bg-primary text-primary-foreground">
+                      <TicketPlus class="size-4" />
+                    </ItemMedia>
+                    <ItemContent class="relative">
+                      <ItemTitle>{{ formatSeatLabel(previewSeat) }}</ItemTitle>
+                      <ItemDescription class="line-clamp-none">
+                        Preview only. Confirm it to add this ticket to checkout.
+                      </ItemDescription>
+                    </ItemContent>
+                    <div class="relative ml-auto text-right">
+                      <p class="font-mono text-sm font-semibold text-foreground">
+                        {{ formatCurrency(previewSeat.priceCents, previewSeat.currency) }}
+                      </p>
+                      <p class="text-xs text-muted-foreground">Expected add-on</p>
+                    </div>
+                    <ItemActions class="relative w-full justify-end sm:w-auto">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        @click="clearPreviewSeat"
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        @click="confirmPreviewSeat"
+                      >
+                        <CheckCircle2 class="size-4" />
+                        Confirm
+                      </Button>
+                    </ItemActions>
+                  </Item>
+                </ItemGroup>
+              </section>
 
-          <div class="space-y-3">
-            <div
-              v-for="seat in selectedSeats"
-              :key="seat.id"
-              class="rounded-md border p-4"
-            >
-              <div class="flex items-start justify-between gap-3">
-                <div>
-                  <p class="text-sm font-medium text-foreground">
-                    {{ seat.sectionNameSnapshot }} · {{ seat.rowLabelSnapshot }}{{ seat.rowLabelSnapshot ? '-' : '' }}{{ seat.seatLabelSnapshot }}
-                  </p>
-                  <p class="text-sm text-muted-foreground">
-                    {{ $t('seats.reserved_for_checkout') }}
-                  </p>
+              <section v-if="selectedSeats.length > 0">
+                <div class="mb-2">
+                  <p class="text-xs font-medium uppercase tracking-[0.22em] text-muted-foreground">Confirmed tickets</p>
+                  <p class="text-sm text-muted-foreground">These seats will be held together when you continue.</p>
                 </div>
-                <p class="font-mono text-sm font-medium text-foreground">
-                  {{ formatCurrency(seat.priceCents, seat.currency) }}
+
+                <ItemGroup>
+                  <Item
+                    v-for="seat in selectedSeats"
+                    :key="seat.id"
+                    variant="outline"
+                    class="bg-background/80"
+                  >
+                    <ItemMedia variant="icon">
+                      <TicketCheck class="size-4" />
+                    </ItemMedia>
+                    <ItemContent>
+                      <ItemTitle>{{ formatSeatLabel(seat) }}</ItemTitle>
+                      <ItemDescription>{{ $t('seats.reserved_for_checkout') }}</ItemDescription>
+                    </ItemContent>
+                    <div class="ml-auto text-right">
+                      <p class="font-mono text-sm font-semibold text-foreground">
+                        {{ formatCurrency(seat.priceCents, seat.currency) }}
+                      </p>
+                    </div>
+                    <ItemActions class="w-full justify-end sm:w-auto">
+                      <Button
+                        type="button"
+                        size="icon-sm"
+                        variant="ghost"
+                        class="text-muted-foreground hover:text-destructive"
+                        :aria-label="`Remove ${formatSeatLabel(seat)}`"
+                        @click="removeSelectedSeat(seat.id)"
+                      >
+                        <Trash2 class="size-4" />
+                      </Button>
+                    </ItemActions>
+                  </Item>
+                </ItemGroup>
+              </section>
+
+              <div
+                v-if="!previewSeat && selectedSeats.length === 0"
+                class="rounded-[1.5rem] border border-dashed bg-muted/20 p-6 text-center"
+              >
+                <div class="mx-auto flex size-12 items-center justify-center rounded-full border bg-background">
+                  <TicketPlus class="size-5 text-muted-foreground" />
+                </div>
+                <p class="mt-4 text-sm font-medium text-foreground">{{ $t('seats.pick_seats_prompt') }}</p>
+                <p class="mt-2 text-sm text-muted-foreground">
+                  Click a seat on the map to create a preview ticket here.
+                </p>
+              </div>
+            </div>
+          </ScrollArea>
+
+          <div class="shrink-0 border-t bg-background/95 p-4 md:p-5">
+            <div class="rounded-[1.5rem] border bg-muted/25 p-4">
+              <div class="flex items-center justify-between gap-4 text-sm">
+                <span class="text-muted-foreground">Original price</span>
+                <span class="font-mono font-medium text-muted-foreground">
+                  {{ formatCurrency(totalValue) }}
+                </span>
+              </div>
+              <div class="mt-3 flex items-end justify-between gap-4">
+                <div>
+                  <p class="text-xs text-muted-foreground">Expected price</p>
+                  <p class="text-xs text-muted-foreground">Includes the preview ticket after confirmation.</p>
+                </div>
+                <p class="text-2xl font-semibold tracking-tight text-foreground">
+                  {{ formatCurrency(previewTotalValue) }}
                 </p>
               </div>
             </div>
 
-            <div
-              v-if="selectedSeats.length === 0"
-              class="rounded-md border border-dashed p-4 text-sm text-muted-foreground"
-            >
-              {{ $t('seats.pick_seats_prompt') }}
+            <div class="mt-4 grid gap-3">
+              <Button
+                class="w-full"
+                size="lg"
+                :disabled="selectedSeatIds.length === 0"
+                :is-loading="isSubmitting"
+                @click="reserveSeats"
+              >
+                {{ $t('seats.continue_to_checkout') }}
+              </Button>
+              <Button
+                class="w-full"
+                size="lg"
+                variant="outline"
+                @click="refreshSeatMap"
+              >
+                {{ $t('seats.refresh_map') }}
+              </Button>
             </div>
-          </div>
-
-          <Card class="py-4">
-            <CardContent class="space-y-2 px-4">
-              <p class="text-xs text-muted-foreground">
-                {{ $t('common.subtotal') }}
-              </p>
-              <p class="text-2xl font-semibold tracking-tight text-foreground">
-                {{ formatCurrency(totalValue) }}
-              </p>
-            </CardContent>
-          </Card>
-
-          <div class="space-y-3">
-            <Button
-              class="w-full"
-              size="lg"
-              :disabled="selectedSeatIds.length === 0"
-              :is-loading="isSubmitting"
-              @click="reserveSeats"
-            >
-              {{ $t('seats.continue_to_checkout') }}
-            </Button>
-            <Button
-              class="w-full"
-              size="lg"
-              variant="outline"
-              @click="refreshSeatMap"
-            >
-              {{ $t('seats.refresh_map') }}
-            </Button>
           </div>
         </CardContent>
       </Card>
     </section>
-
-    <div
-      v-if="selectedSeats.length > 0"
-      class="fixed inset-x-4 bottom-4 z-50 mx-auto max-w-4xl rounded-[1.5rem] border border-primary/25 bg-background/95 p-3 shadow-2xl shadow-black/25 backdrop-blur-xl md:bottom-6"
-    >
-      <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <div class="min-w-0">
-          <p class="text-sm font-semibold text-foreground">
-            {{ $t('seats.selected_seats', { count: selectedSeats.length }) }} · {{ formatCurrency(totalValue) }}
-          </p>
-          <p class="mt-1 truncate text-xs text-muted-foreground">
-            {{ $t('seats.floating_hold_note', { seats: selectedSeatSummary }) }}
-          </p>
-        </div>
-        <Button
-          size="lg"
-          class="shrink-0 rounded-full"
-          :is-loading="isSubmitting"
-          @click="reserveSeats"
-        >
-          {{ $t('seats.continue_to_checkout') }}
-        </Button>
-      </div>
-    </div>
   </main>
 </template>

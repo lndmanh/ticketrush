@@ -235,7 +235,20 @@ class EventService extends IDatabaseService<Event> {
       throw new Error('Event not found')
     }
 
-    for (const session of data.sessions) {
+    const sessions = data.sessions.map(session => ({
+      ...session,
+      status: existingEvent.status === 'draft' ? 'draft' : session.status,
+    }))
+
+    if (existingEvent.status === 'draft') {
+      const sessionIds = sessions
+        .map(session => session.id)
+        .filter((sessionId): sessionId is number => typeof sessionId === 'number')
+
+      await this.resetEventSessionsByIdToDraftInTransaction(db, data.id, sessionIds, now)
+    }
+
+    for (const session of sessions) {
       await eventSessionService.updateForEventInTransaction(db, data.id, data.venueId, session, now)
     }
 
@@ -521,6 +534,35 @@ class EventService extends IDatabaseService<Event> {
     return updatedEvent
   }
 
+  private async resetEventSessionsToDraftInTransaction(tx: Transaction, eventId: number, now: Date) {
+    await tx
+      .update(tables.eventSessions)
+      .set({
+        status: 'draft',
+        publishedAt: null,
+        updatedAt: now,
+      })
+      .where(eq(tables.eventSessions.eventId, eventId))
+  }
+
+  private async resetEventSessionsByIdToDraftInTransaction(tx: Transaction, eventId: number, sessionIds: number[], now: Date) {
+    if (sessionIds.length === 0) {
+      return
+    }
+
+    await tx
+      .update(tables.eventSessions)
+      .set({
+        status: 'draft',
+        publishedAt: null,
+        updatedAt: now,
+      })
+      .where(and(
+        eq(tables.eventSessions.eventId, eventId),
+        inArray(tables.eventSessions.id, sessionIds),
+      ))
+  }
+
   async createSession(eventId: number, input: EventSessionDraftInput) {
     const now = new Date()
     const db = this.db
@@ -634,16 +676,22 @@ class EventService extends IDatabaseService<Event> {
   }
 
   async unpublish(eventId: number) {
-    return this.db
+    const now = new Date()
+    const db = this.db
+    const unpublished = await db
       .update(tables.events)
       .set({
         status: 'draft',
         publishedAt: null,
-        updatedAt: new Date(),
+        updatedAt: now,
       })
       .where(eq(tables.events.id, eventId))
       .returning()
       .get()
+
+    await this.resetEventSessionsToDraftInTransaction(db, eventId, now)
+
+    return unpublished
   }
 
   async getEventCardList() {

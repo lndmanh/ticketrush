@@ -12,16 +12,12 @@ const props = withDefaults(defineProps<{
   selectedSeatIds: () => [],
   defaultSection: 'all',
 })
-const { t } = useI18n()
 
 const selectedSection = ref(props.defaultSection)
 const zoomLevel = ref(100)
 const activeSeatId = ref<number | null>(null)
 
-const layout = computed(() => buildSeatMapLayout(props.seats, props.ticketTypes, {
-  fallbackSectionName: t('seatmap.floor'),
-  fallbackRowLabel: t('seatmap.general_admission_short'),
-}))
+const layout = computed(() => buildSeatMapLayout(props.seats, props.ticketTypes))
 
 const sectionOptions = computed(() => layout.value.sections.map(section => ({
   value: section.key,

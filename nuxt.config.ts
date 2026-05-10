@@ -82,6 +82,10 @@ export default defineNuxtConfig({
     session: {
       password: '',
     },
+    resend: {
+      apiKey: '',
+      fromEmail: 'Ticketrush <noreply@nnsvn.me>',
+    },
   },
 
   routeRules: routeRules,
@@ -110,22 +114,6 @@ export default defineNuxtConfig({
     cloudflare: {
       deployConfig: true,
       nodeCompat: true,
-      wrangler: {
-        durable_objects: {
-          bindings: [
-            {
-              name: 'SEATMAP_REALTIME_ROOM',
-              class_name: 'SeatmapRealtimeRoom',
-            },
-          ],
-        },
-        migrations: [
-          {
-            tag: 'v1_seatmap_realtime_room',
-            new_sqlite_classes: ['SeatmapRealtimeRoom'],
-          },
-        ],
-      },
     },
     prerender: {
       ignore: [
@@ -208,10 +196,6 @@ export default defineNuxtConfig({
     strategy: 'prefix_except_default',
     defaultLocale,
     detectBrowserLanguage: {
-      useCookie: true,
-      cookieKey: 'i18n_redirected',
-      redirectOn: 'root',
-      alwaysRedirect: false,
       fallbackLocale: browserFallbackLocale,
     },
     locales: locales.map(locale => ({

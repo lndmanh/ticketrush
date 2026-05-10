@@ -57,11 +57,7 @@ export function getTintStyle(color: string, borderAlpha: number, backgroundAlpha
   }
 }
 
-export function buildSeatMapLayout(
-  seats: SeatMapSeat[],
-  ticketTypes: SeatMapTicketType[],
-  options: { fallbackSectionName: string, fallbackRowLabel: string } = { fallbackSectionName: 'Floor', fallbackRowLabel: 'GA' },
-): SeatMapLayout {
+export function buildSeatMapLayout(seats: SeatMapSeat[], ticketTypes: SeatMapTicketType[]): SeatMapLayout {
   const ticketTypeById = new Map(
     ticketTypes
       .filter((ticketType): ticketType is SeatMapTicketType & { id: number } => typeof ticketType.id === 'number')
@@ -77,7 +73,7 @@ export function buildSeatMapLayout(
   const sectionMap = new Map<string, { name: string, seats: SeatMapSeat[] }>()
 
   for (const seat of seats) {
-    const sectionName = seat.sectionNameSnapshot || options.fallbackSectionName
+    const sectionName = seat.sectionNameSnapshot || 'Floor'
     const key = typeof seat.venueSectionId === 'number'
       ? `section-${seat.venueSectionId}`
       : `name-${sectionName}`
@@ -91,7 +87,7 @@ export function buildSeatMapLayout(
     const rowMap = new Map<string, SeatMapSeat[]>()
 
     for (const seat of sectionSeats) {
-      const rowKey = seat.rowLabelSnapshot || options.fallbackRowLabel
+      const rowKey = seat.rowLabelSnapshot || 'GA'
       const currentRowSeats = rowMap.get(rowKey) ?? []
       currentRowSeats.push(seat)
       rowMap.set(rowKey, currentRowSeats)
@@ -106,15 +102,11 @@ export function buildSeatMapLayout(
 
           return left.seatLabelSnapshot.localeCompare(right.seatLabelSnapshot, undefined, { numeric: true })
         })
-        const normalizedSeats = sortedSeats.map((seat, seatIndex) => ({
-          ...seat,
-          displayX: seatIndex,
-        }))
 
         return {
           label: rowLabel,
-          seats: normalizedSeats,
-          columnCount: Math.max(normalizedSeats.length, 1),
+          seats: sortedSeats,
+          columnCount: Math.max(...sortedSeats.map(seat => (seat.displayX ?? 0) + 1), sortedSeats.length, 1),
         }
       })
       .sort((left, right) => {
@@ -128,8 +120,6 @@ export function buildSeatMapLayout(
         return left.label.localeCompare(right.label, undefined, { numeric: true })
       })
 
-    const normalizedSectionSeats = rows.flatMap(row => row.seats)
-
     const sectionTicketType = sectionSeats.find(seat => typeof seat.venueSectionId === 'number')?.venueSectionId
       ? ticketTypeBySectionId.get(sectionSeats.find(seat => typeof seat.venueSectionId === 'number')?.venueSectionId ?? 0)
       : undefined
@@ -139,7 +129,7 @@ export function buildSeatMapLayout(
       code: buildSectionCode(sectionEntry.name, sectionIndex),
       name: sectionEntry.name,
       color: sectionTicketType?.color || fallbackSectionColors[sectionIndex % fallbackSectionColors.length] || fallbackSectionColors[0],
-      seats: normalizedSectionSeats,
+      seats: sectionSeats,
       rows,
       metrics: {
         total: sectionSeats.length,
@@ -167,7 +157,7 @@ export function buildSeatMapLayout(
 
 export function getRowStyle(row: SeatMapRow) {
   return {
-    gridTemplateColumns: `repeat(${row.columnCount}, minmax(0, 2.85rem))`,
+    gridTemplateColumns: `repeat(${row.columnCount}, minmax(0, 2.35rem))`,
   }
 }
 
