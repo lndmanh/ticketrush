@@ -572,6 +572,8 @@
     "unread": "Chưa đọc",
     "read": "Đã đọc",
     "unread_count": "{count} chưa đọc",
+    "mark_read": "Đánh dấu đã đọc",
+    "mark_unread": "Đánh dấu chưa đọc",
     "mark_all_read": "Đánh dấu tất cả đã đọc",
     "expired": "Đã hết hạn",
     "expires_in_min": "Hết hạn sau {count} phút",

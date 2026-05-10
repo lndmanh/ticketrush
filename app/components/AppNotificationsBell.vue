@@ -105,6 +105,26 @@ function markNotificationsRead(ids: string[]) {
   persistReadNotificationIds(nextIds)
 }
 
+function markNotificationsUnread(ids: string[]) {
+  if (ids.length === 0) {
+    return
+  }
+
+  const unreadIds = new Set(ids)
+  const nextIds = readNotificationIds.value.filter(id => !unreadIds.has(id))
+  readNotificationIds.value = nextIds
+  persistReadNotificationIds(nextIds)
+}
+
+function toggleNotificationRead(notification: AppNotification) {
+  if (isNotificationRead(notification)) {
+    markNotificationsUnread([notification.id])
+    return
+  }
+
+  markNotificationsRead([notification.id])
+}
+
 function markAllNotificationsRead() {
   markNotificationsRead(notifications.value.map(notification => notification.id))
 }
@@ -215,42 +235,46 @@ onUnmounted(() => {
       </div>
 
       <div class="max-h-[28rem] overflow-y-auto p-2">
-        <button
+        <div
           v-for="notification in notifications"
           :key="notification.id"
-          type="button"
           class="flex w-full gap-3 rounded-xl p-3 text-left transition-colors hover:bg-muted/60"
           :class="isNotificationRead(notification) ? 'opacity-70' : 'bg-primary/5 ring-1 ring-primary/10'"
-          @click="openNotification(notification)"
         >
-          <span :class="['mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-full border', severityClass[notification.severity]]">
-            <component
-              :is="getIcon(notification.kind)"
-              class="size-4"
-            />
-          </span>
-          <span class="min-w-0 flex-1">
-            <span class="flex items-start justify-between gap-3">
+          <button
+            type="button"
+            class="flex min-w-0 flex-1 gap-3 text-left"
+            @click="openNotification(notification)"
+          >
+            <span :class="['mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-full border', severityClass[notification.severity]]">
+              <component
+                :is="getIcon(notification.kind)"
+                class="size-4"
+              />
+            </span>
+            <span class="min-w-0 flex-1">
               <span class="block text-sm font-medium text-foreground">
                 {{ $t(notification.titleKey, getLocalizedDescriptionParams(notification.descriptionParams)) }}
               </span>
-              <Badge
-                variant="outline"
-                class="shrink-0 rounded-full text-[10px]"
-                :class="isNotificationRead(notification) ? 'text-muted-foreground' : 'border-primary/30 text-primary'"
-              >
-                {{ isNotificationRead(notification) ? $t('notifications.read') : $t('notifications.unread') }}
-              </Badge>
+              <span class="mt-1 block text-sm leading-5 text-muted-foreground">
+                {{ $t(notification.descriptionKey, getLocalizedDescriptionParams(notification.descriptionParams)) }}
+              </span>
+              <span class="mt-2 flex flex-wrap gap-2 text-[11px] text-muted-foreground">
+                <span>{{ getTimeLabel(notification.createdAt) }}</span>
+                <span v-if="getExpiryLabel(notification.expiresAt)">· {{ getExpiryLabel(notification.expiresAt) }}</span>
+              </span>
             </span>
-            <span class="mt-1 block text-sm leading-5 text-muted-foreground">
-              {{ $t(notification.descriptionKey, getLocalizedDescriptionParams(notification.descriptionParams)) }}
-            </span>
-            <span class="mt-2 flex flex-wrap gap-2 text-[11px] text-muted-foreground">
-              <span>{{ getTimeLabel(notification.createdAt) }}</span>
-              <span v-if="getExpiryLabel(notification.expiresAt)">· {{ getExpiryLabel(notification.expiresAt) }}</span>
-            </span>
-          </span>
-        </button>
+          </button>
+          <button
+            type="button"
+            class="mt-0.5 shrink-0 rounded-full border px-2.5 py-1 text-[10px] transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            :class="isNotificationRead(notification) ? 'text-muted-foreground' : 'border-primary/30 text-primary'"
+            :aria-label="isNotificationRead(notification) ? $t('notifications.mark_unread') : $t('notifications.mark_read')"
+            @click="toggleNotificationRead(notification)"
+          >
+            {{ isNotificationRead(notification) ? $t('notifications.read') : $t('notifications.unread') }}
+          </button>
+        </div>
 
         <div
           v-if="notifications.length === 0"
