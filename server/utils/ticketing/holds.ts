@@ -158,7 +158,7 @@ class HoldService {
 
       await queueService.completeEntry(input.eventSessionId, input.sessionKey)
 
-      return this.getHoldWithSeats(created.publicId)
+      return this.getHoldWithSeats(hold.publicId)
     }
     catch (error) {
       const scopedExistingHold = await this.db
@@ -251,6 +251,18 @@ class HoldService {
           updatedAt: now,
         })
         .where(eq(tables.eventSeats.holdId, hold.id))
+
+      await db
+        .update(tables.orders)
+        .set({
+          status: 'cancelled',
+          cancelledAt: now,
+          updatedAt: now,
+        })
+        .where(and(
+          eq(tables.orders.holdId, hold.id),
+          eq(tables.orders.status, 'pending'),
+        ))
 
       await db
         .update(tables.seatHolds)

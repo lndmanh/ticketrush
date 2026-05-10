@@ -117,6 +117,7 @@ class CheckoutService {
 
   async startCheckout(holdPublicId: string, sessionKey: string) {
     const db = this.db
+    await holdService.expireStaleHolds()
     const hold = await db.select().from(tables.seatHolds).where(eq(tables.seatHolds.publicId, holdPublicId)).get()
 
     if (!hold) {
@@ -207,6 +208,7 @@ class CheckoutService {
       ticketHolders: CheckoutTicketHolderInput[]
     },
   ) {
+    await holdService.expireStaleHolds()
     const holdBundle = await holdService.getHoldWithSeats(holdPublicId)
     if (!holdBundle) {
       throw createError({ statusCode: 404, statusMessage: 'Seat hold not found.' })

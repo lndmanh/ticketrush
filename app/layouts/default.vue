@@ -378,7 +378,7 @@
                 </li>
                 <li>
                   <NuxtLink
-                    to="/admin"
+                    :to="localePath('/admin')"
                     class="text-[13px] text-muted-foreground transition-colors duration-200 hover:text-foreground"
                   >
                     <ArrowRight class="mr-2 inline-block size-4" />
@@ -465,13 +465,14 @@ function closeSubmenu() {
   activeSubmenu.value = null
 }
 
-const { locale } = useI18n()
+const { locale, t } = useI18n()
 const { i18nEnabled } = useI18nDocs()
 const { loggedIn } = useUserSession()
 const isMobileMenuOpen = ref(false)
 
-const headerCtaLabel = computed(() => loggedIn.value ? 'My tickets' : 'Login')
+const headerCtaLabel = computed(() => loggedIn.value ? t('nav.my_tickets') : t('auth.login_title'))
 const headerCtaTarget = computed(() => loggedIn.value ? '/tickets' : '/auth/login')
+const localePath = useLocalePath()
 
 const { y: scrollY } = useWindowScroll()
 const isScrolled = computed(() => scrollY.value > 300)
@@ -504,6 +505,6 @@ function localeSectionLink(sectionId: string): string {
 
 function handleHeaderCtaClick() {
   isMobileMenuOpen.value = false
-  return navigateTo(headerCtaTarget.value)
+  return navigateTo(localePath(headerCtaTarget.value))
 }
 </script>

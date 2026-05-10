@@ -3,6 +3,7 @@ import { apiError, zodErrorToFieldErrors } from '~~/server/utils/apiResponse'
 import userService from '~~/server/utils/database/user'
 import authTokenService from '~~/server/utils/database/authToken'
 import { sendPasswordResetEmail } from '~~/server/utils/email'
+import { verifyTurnstileTokenWithDevBypass } from '~~/server/utils/turnstileGuard'
 
 const bodySchema = z.object({
   'email': z.email(),
@@ -21,7 +22,7 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  const tokenValidation = await verifyTurnstileToken(result.data['cf-turnstile-response'])
+  const tokenValidation = await verifyTurnstileTokenWithDevBypass(result.data['cf-turnstile-response'])
   if (!tokenValidation.success) {
     throw apiError({
       status: 400,

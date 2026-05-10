@@ -28,6 +28,7 @@ const { toggleIsOpen } = useHotSearch()
 const { public: publicConfig } = useRuntimeConfig()
 const { open } = useSidebar()
 const { activeContext, primarySections, secondarySections, showBack, isContextView } = useSidebarContext()
+const localePath = useLocalePath()
 </script>
 
 <template>
@@ -81,7 +82,7 @@ const { activeContext, primarySections, secondarySections, showBack, isContextVi
                   :tooltip="$t('common.back')"
                   class="flex items-center"
                 >
-                  <nuxt-link to="/">
+                  <nuxt-link :to="localePath('/')">
                     <ArrowLeft />
                     <span>{{ $t('common.back') }}</span>
                   </nuxt-link>

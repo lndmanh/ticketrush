@@ -188,6 +188,10 @@ export default defineNuxtConfig({
     strategy: 'prefix_except_default',
     defaultLocale,
     detectBrowserLanguage: {
+      useCookie: true,
+      cookieKey: 'i18n_redirected',
+      redirectOn: 'root',
+      alwaysRedirect: false,
       fallbackLocale: browserFallbackLocale,
     },
     locales: locales.map(locale => ({

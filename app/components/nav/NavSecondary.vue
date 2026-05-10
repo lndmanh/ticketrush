@@ -11,6 +11,8 @@ import type { SidebarItem } from '~~/types/common'
 defineProps<{
   items: SidebarItem[]
 }>()
+
+const localePath = useLocalePath()
 </script>
 
 <template>
@@ -25,9 +27,9 @@ defineProps<{
             as-child
             size="sm"
           >
-            <nuxt-link :to="item.url">
+            <nuxt-link :to="localePath(item.url || '/')">
               <component :is="item.icon" />
-              <span>{{ item.title }}</span>
+              <span>{{ $t(item.title) }}</span>
             </nuxt-link>
           </SidebarMenuButton>
         </SidebarMenuItem>

@@ -8,6 +8,7 @@ import { parseApiError } from '@/utils/apiError'
 import { apiRoutes } from '#shared/apiRoutes'
 
 const route = useRoute()
+const { t } = useI18n()
 const slug = computed(() => route.params.slug.toString())
 const sessionPublicId = computed(() => route.params.sessionId.toString())
 const passToken = computed(() => typeof route.query.pass === 'string' ? route.query.pass : undefined)
@@ -66,6 +67,16 @@ const totalValue = computed(() => {
   return selectedSeats.value.reduce((total, seat) => total + seat.priceCents, 0)
 })
 
+const selectedSeatSummary = computed(() => {
+  if (selectedSeats.value.length === 0) {
+    return t('seats.no_seats_selected')
+  }
+
+  return selectedSeats.value
+    .map(seat => `${seat.rowLabelSnapshot || 'GA'}${seat.seatLabelSnapshot}`)
+    .join(', ')
+})
+
 function formatCurrency(value: number, currency = 'VND') {
   return `${Intl.NumberFormat('en-US').format(value / 100)} ${currency}`
 }
@@ -117,13 +128,13 @@ async function reserveSeats() {
     await navigateTo(`/checkout/${checkoutResponse.data.publicId}?hold=${holdPublicId}`)
   }
   catch (error) {
-    const parsedError = parseApiError(error, 'We could not open checkout. Please try again.')
+    const parsedError = parseApiError(error, t('seats.checkout_error'))
 
     const statusCode = parsedError.status
     const message = parsedError.message
 
     if (statusCode === 409) {
-      toast.error('Some of the selected seats are no longer available. We refreshed the map for you.')
+      toast.error(t('seats.seats_conflict_error'))
       return
     }
 
@@ -138,8 +149,6 @@ async function reserveSeats() {
 
     toast.error(message)
     return
-
-    toast.error('We could not open checkout. Please try again.')
   }
   finally {
     isSubmitting.value = false
@@ -157,7 +166,7 @@ watch(seatMap, (value) => {
   const nextSelectedSeatIds = selectedSeatIds.value.filter(seatId => availableSeatIds.has(seatId))
   if (nextSelectedSeatIds.length !== selectedSeatIds.value.length) {
     selectedSeatIds.value = nextSelectedSeatIds
-    toast.error('One or more selected seats were taken by another customer.')
+    toast.error(t('seats.seats_taken_error'))
   }
 }, { deep: true })
 
@@ -347,5 +356,29 @@ definePageMeta({
         </CardContent>
       </Card>
     </section>
+
+    <div
+      v-if="selectedSeats.length > 0"
+      class="fixed inset-x-4 bottom-4 z-50 mx-auto max-w-4xl rounded-[1.5rem] border border-primary/25 bg-background/95 p-3 shadow-2xl shadow-black/25 backdrop-blur-xl md:bottom-6"
+    >
+      <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <div class="min-w-0">
+          <p class="text-sm font-semibold text-foreground">
+            {{ $t('seats.selected_seats', { count: selectedSeats.length }) }} · {{ formatCurrency(totalValue) }}
+          </p>
+          <p class="mt-1 truncate text-xs text-muted-foreground">
+            {{ $t('seats.floating_hold_note', { seats: selectedSeatSummary }) }}
+          </p>
+        </div>
+        <Button
+          size="lg"
+          class="shrink-0 rounded-full"
+          :is-loading="isSubmitting"
+          @click="reserveSeats"
+        >
+          {{ $t('seats.continue_to_checkout') }}
+        </Button>
+      </div>
+    </div>
   </main>
 </template>

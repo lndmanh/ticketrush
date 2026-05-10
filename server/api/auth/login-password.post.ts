@@ -1,6 +1,7 @@
 import userService from '~~/server/utils/database/user'
 import { apiRoutes } from '#shared/apiRoutes'
 import { loginSchema } from '#shared/schemas/userSchema'
+import { verifyTurnstileTokenWithDevBypass } from '~~/server/utils/turnstileGuard'
 
 function safeRedirectPath(value: string | undefined, origin: string): string {
   if (!value) {
@@ -34,7 +35,7 @@ export default defineEventHandler(async (event) => {
     return sendRedirect(event, apiRoutes.AUTH_LOGIN + '?error=captcha')
   }
 
-  const tokenValidation = await verifyTurnstileToken(token)
+  const tokenValidation = await verifyTurnstileTokenWithDevBypass(token)
   if (!tokenValidation.success) {
     return sendRedirect(event, apiRoutes.AUTH_LOGIN + '?error=captcha')
   }
