@@ -8,9 +8,10 @@ interface SendEmailOptions {
 
 export async function sendEmail(options: SendEmailOptions): Promise<boolean> {
   const config = useRuntimeConfig()
+  const resend = config.resend
 
-  if (!config.resend.apiKey) {
-    console.warn('[Email] Resend API key not configured, skipping email send')
+  if (!resend?.apiKey || !resend.fromEmail) {
+    console.warn('[Email] Resend config not configured, skipping email send')
     return false
   }
 
@@ -18,11 +19,11 @@ export async function sendEmail(options: SendEmailOptions): Promise<boolean> {
     const response = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${config.resend.apiKey}`,
+        'Authorization': `Bearer ${resend.apiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from: config.resend.fromEmail,
+        from: resend.fromEmail,
         to: options.to,
         subject: options.subject,
         html: options.html,

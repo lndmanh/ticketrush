@@ -82,6 +82,10 @@ export default defineNuxtConfig({
     session: {
       password: '',
     },
+    resend: {
+      apiKey: '',
+      fromEmail: 'Ticketrush <noreply@nnsvn.me>',
+    },
   },
 
   routeRules: routeRules,
