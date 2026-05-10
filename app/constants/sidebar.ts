@@ -7,11 +7,11 @@ import {
   LayoutDashboardIcon,
   ListChecksIcon,
   MapPin,
+  Settings,
   Shield,
   ShieldCheck,
   Ticket,
   UserCog2Icon,
-  UserIcon,
   UsersIcon,
 } from '@lucide/vue'
 
@@ -25,7 +25,6 @@ export const SIDEBAR_CONTEXTS: SidebarContext[] = [
       {
         title: 'nav.account',
         items: [
-          { title: 'nav.profile', url: '/settings/profile', icon: UserIcon },
           { title: 'nav.security', url: '/settings/security', icon: Shield },
           { title: 'nav.saved_attendees', url: '/settings/saved-attendees', icon: ContactRound },
         ],
@@ -74,6 +73,7 @@ export const SIDEBAR_CONTEXTS: SidebarContext[] = [
           { title: 'nav.events', url: '/events', icon: CalendarRange },
           { title: 'nav.my_tickets', url: '/tickets', icon: Ticket },
           { title: 'nav.saved_attendees', url: '/tickets/saved-attendees', icon: ContactRound },
+          { title: 'nav.security', url: '/settings/security', icon: Settings },
         ],
       },
       {

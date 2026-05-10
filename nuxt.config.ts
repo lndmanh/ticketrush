@@ -85,6 +85,9 @@ export default defineNuxtConfig({
   },
 
   routeRules: routeRules,
+  future: {
+    compatibilityVersion: 5,
+  },
 
   experimental: {
     emitRouteChunkError: 'automatic-immediate',
@@ -95,17 +98,34 @@ export default defineNuxtConfig({
   nitro: {
     compressPublicAssets: true,
     minify: true,
-    preset: 'cloudflare-module',
+    preset: 'cloudflare_module',
     rollupConfig: {
       external: ['sharp', /^@img\/sharp.*/],
     },
     experimental: {
       tasks: true,
       wasm: true,
+      websocket: true,
     },
     cloudflare: {
       deployConfig: true,
       nodeCompat: true,
+      wrangler: {
+        durable_objects: {
+          bindings: [
+            {
+              name: 'SEATMAP_REALTIME_ROOM',
+              class_name: 'SeatmapRealtimeRoom',
+            },
+          ],
+        },
+        migrations: [
+          {
+            tag: 'v1_seatmap_realtime_room',
+            new_sqlite_classes: ['SeatmapRealtimeRoom'],
+          },
+        ],
+      },
     },
     prerender: {
       ignore: [

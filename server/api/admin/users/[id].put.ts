@@ -1,5 +1,7 @@
-import { apiError, zodErrorToFieldErrors } from '~~/server/utils/apiResponse'
 import { userUpdateSchema } from '#shared/schemas/userSchema'
+import userService from '~~/server/utils/database/user'
+import { apiError, success, zodErrorToFieldErrors } from '~~/server/utils/apiResponse'
+import type { AdminUserModel } from '~~/types/models/profile'
 
 export default defineEventHandler(async (event) => {
   const userId = Number(getRouterParam(event, 'id'))
@@ -22,9 +24,29 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  // Hash password if provided
-  if (result.data.password && typeof result.data.password === 'string' && result.data.password.trim()) {
-    result.data.password = await hashPassword(result.data.password)
+  const { password, ...validatedData } = result.data
+  const updateData = {
+    ...validatedData,
+    id: userId,
+    ...(password?.trim() ? { password: await hashPassword(password) } : {}),
+  }
+
+  const updatedUser = await userService.update(updateData)
+  if (!updatedUser) {
+    throw apiError({
+      status: 404,
+      statusText: 'Not Found',
+      message: 'Not Found. The requested user does not exist.',
+      code: 'USER_NOT_FOUND',
+    })
+  }
+
+  const user: AdminUserModel = {
+    id: updatedUser.id,
+    username: updatedUser.username,
+    name: updatedUser.name,
+    email: updatedUser.email,
+    isAdmin: updatedUser.isAdmin,
   }
 
   return success({ user })

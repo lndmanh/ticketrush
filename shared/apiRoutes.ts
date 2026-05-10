@@ -45,6 +45,7 @@ export const apiRoutes = {
   eventSession: (sessionId: string | number) => `/api/event-sessions/${sessionId}`,
   eventSessionGate: (sessionId: string | number) => `/api/event-sessions/${sessionId}/gate`,
   eventSessionSeatmap: (sessionId: string | number) => `/api/event-sessions/${sessionId}/seatmap`,
+  eventSessionSeatmapSocket: (sessionId: string) => `/ws/event-sessions/${sessionId}/seats`,
   eventSessionHolds: (sessionId: string | number) => `/api/event-sessions/${sessionId}/holds`,
   eventSessionQueueStatus: (sessionId: string | number) => `/api/event-sessions/${sessionId}/queue/status`,
   eventSessionQueueJoin: (sessionId: string | number) => `/api/event-sessions/${sessionId}/queue/join`,
@@ -70,17 +71,9 @@ export const routeRules = {
     ssr: false,
     prerender: false,
   },
-  '/docs/**': {
-    swr: 3600,
-  },
-  '/blogs/**': {
-    swr: 3600,
-  },
-  '/_studio/**': {
-    ssr: true,
-  },
-  '/__nuxt_studio/**': {
-    ssr: true,
+  '/settings/**': {
+    ssr: false,
+    prerender: false,
   },
   '/admin/studio/login': {
     ssr: true,

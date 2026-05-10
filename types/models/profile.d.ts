@@ -16,6 +16,9 @@ export interface UserProfileModel {
   hasPassword: boolean
   passkeyCount: number
   isAdmin: boolean
+  phone: string | null
+  birthDate: Date | null
+  gender: string | null
   linkedAccounts: LinkedAccount[]
 }
 

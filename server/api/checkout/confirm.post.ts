@@ -1,6 +1,7 @@
 import { confirmCheckoutSchema } from '#shared/schemas/ticketingSchema'
 import checkoutService from '~~/server/utils/ticketing/checkout'
 import { apiError, success, zodErrorToFieldErrors } from '~~/server/utils/apiResponse'
+import { getSeatmapRealtimeEnv } from '~~/server/utils/ticketing/seatmap-realtime'
 import { getTicketingSessionKey } from '~~/server/utils/ticketing/session'
 
 export default defineEventHandler(async (event) => {
@@ -11,6 +12,7 @@ export default defineEventHandler(async (event) => {
     throw apiError({ status: 400, statusText: 'Bad Request', code: 'VALIDATION_ERROR', message: 'Invalid request.', fieldErrors: zodErrorToFieldErrors(result.error), cause: result.error })
   }
 
+  const { SEATMAP_REALTIME_ROOM: realtimeNamespace } = getSeatmapRealtimeEnv(event)
   const checkout = await checkoutService.confirmCheckout(
     result.data.checkoutSessionId,
     result.data.holdPublicId,
@@ -24,6 +26,7 @@ export default defineEventHandler(async (event) => {
       customerGender: result.data.customerGender,
       ticketHolders: result.data.ticketHolders,
     },
+    realtimeNamespace,
   )
 
   const response: Awaited<ReturnType<typeof checkoutService.confirmCheckout>> = checkout

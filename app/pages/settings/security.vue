@@ -497,10 +497,10 @@ definePageMeta({
   title: 'Security',
   breadcrumb: 'Security',
   middleware: 'auth',
+  layout: 'dashboard',
 })
 
 const route = useRoute()
-const { loggedIn } = useUserSession()
 
 function getQueryString(value: string | string[] | null | undefined) {
   if (typeof value === 'string') {
@@ -575,31 +575,27 @@ watch(
   },
 )
 
+onMounted(() => {
+  window.addEventListener('message', onOAuthPopupComplete)
+})
+
 // Fetch profile data
 const {
-  data: profile,
+  data: profileResponse,
   refresh: refreshProfile,
-} = await useAsyncData(
-  'user-profile',
-  async () => {
-    if (!loggedIn.value) return null
-    const response = await apiRequest(apiRoutes.MY_PROFILE)
-    return response.success ? response.data : null
-  })
+} = await useAPI(() => apiRoutes.MY_PROFILE)
+
+const profile = computed(() => profileResponse.value?.success ? profileResponse.value.data : null)
 
 // Fetch passkeys
 const {
-  data: passkeys,
+  data: passkeysResponse,
   pending: passkeysLoading,
   error: passkeysError,
   refresh: refreshPasskeys,
-} = await useAsyncData(
-  'user-passkeys',
-  async () => {
-    if (!loggedIn.value) return []
-    const response = await apiRequest(apiRoutes.MY_PASSKEYS)
-    return response.success ? response.data : []
-  })
+} = await useAPI(() => apiRoutes.MY_PASSKEYS)
+
+const passkeys = computed(() => passkeysResponse.value?.success ? passkeysResponse.value.data : [])
 
 // Connected accounts
 const unlinkingProvider = ref<string | null>(null)
@@ -609,14 +605,23 @@ const oauthPopupTimeout = ref<ReturnType<typeof setTimeout> | null>(null)
 const showUnlinkConfirmDialog = ref(false)
 const providerToUnlink = ref<string | null>(null)
 
-function onOAuthPopupComplete(message: { url: string }) {
+type OAuthPopupCompleteMessage = {
+  type: 'oauth:complete'
+  url: string
+}
+
+function onOAuthPopupComplete(event: MessageEvent<OAuthPopupCompleteMessage>) {
+  if (event.origin !== window.location.origin) return
+  if (event.data?.type !== 'oauth:complete') return
+  if (oauthPopup.value && event.source !== oauthPopup.value) return
+
   stopOAuthPopupTimeout()
   oauthPopup.value = null
   linkingProvider.value = null
 
   let target: URL
   try {
-    target = new URL(message.url)
+    target = new URL(event.data.url)
   }
   catch {
     toast.error('OAuth completed but returned an invalid callback URL.')
@@ -629,12 +634,6 @@ function onOAuthPopupComplete(message: { url: string }) {
 
   navigateTo(`${target.pathname}${target.search}${target.hash}`)
 }
-
-const oauthPopupListener = useOAuthPopupListener(onOAuthPopupComplete)
-
-onMounted(() => {
-  oauthPopupListener.start()
-})
 
 function stopOAuthPopupTimeout() {
   if (oauthPopupTimeout.value) {
@@ -705,7 +704,7 @@ async function linkProvider(provider: string) {
 
 onBeforeUnmount(() => {
   stopOAuthPopupTimeout()
-  oauthPopupListener.stop()
+  window.removeEventListener('message', onOAuthPopupComplete)
 })
 
 async function executeUnlink() {

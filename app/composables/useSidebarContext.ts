@@ -2,12 +2,22 @@ import type { SidebarContext, SidebarSection } from '~~/types/common'
 import { SIDEBAR_CONTEXTS } from '@/constants/sidebar'
 
 const DEFAULT_CONTEXT = SIDEBAR_CONTEXTS[SIDEBAR_CONTEXTS.length - 1]!
+const sidebarContextOverride = ref<string | null>(null)
 
 export function useSidebarContext() {
   const route = useRoute()
   const { user } = useUserSession()
 
+  const getContextById = (id: string) => {
+    return SIDEBAR_CONTEXTS.find(ctx => ctx.id === id && (!ctx.guard || ctx.guard(user.value)))
+  }
+
   const activeContext = computed<SidebarContext>(() => {
+    if (sidebarContextOverride.value) {
+      const overrideContext = getContextById(sidebarContextOverride.value)
+      if (overrideContext) return overrideContext
+    }
+
     const path = route.path
     return SIDEBAR_CONTEXTS.find((ctx) => {
       if (ctx.match !== '/' && !path.startsWith(ctx.match)) return false
@@ -35,6 +45,18 @@ export function useSidebarContext() {
   const showBack = computed(() => activeContext.value.showBack ?? false)
   const isContextView = computed(() => activeContext.value.id !== 'main')
 
+  const showMainSidebar = () => {
+    sidebarContextOverride.value = 'main'
+  }
+
+  const clearSidebarContextOverride = () => {
+    sidebarContextOverride.value = null
+  }
+
+  watch(() => route.path, () => {
+    clearSidebarContextOverride()
+  })
+
   return {
     activeContext,
     visibleSections,
@@ -43,5 +65,7 @@ export function useSidebarContext() {
     sidebarVariant,
     showBack,
     isContextView,
+    showMainSidebar,
+    clearSidebarContextOverride,
   }
 }

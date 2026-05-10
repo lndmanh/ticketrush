@@ -38,10 +38,9 @@ A comprehensive, production-ready SaaS starter kit built with Nuxt 4, featuring 
 
 ### 🎯 SEO
 
-- Pre-configured SEO with `@nuxtjs/seo`
+- Manual SEO defaults with Nuxt head composables
 - Dynamic meta tags and Open Graph support
-- Sitemap generation
-- Robots.txt configuration
+- Canonical links and JSON-LD through the local `useSeo` composable
 
 ### 📱 PWA Features
 

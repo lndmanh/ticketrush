@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { motion } from 'motion-v'
 import { ArrowLeft } from '@lucide/vue'
-import { Button } from '@/components/ui/button'
 
 const error = useError()
 
@@ -47,7 +46,7 @@ const handleError = () => {
             @click="handleError"
           >
             <ArrowLeft class="h-4 w-4" />
-            Go Back Home
+            Go Back
           </Button>
         </div>
       </MaxWidthWrapper>

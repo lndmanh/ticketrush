@@ -5,6 +5,8 @@ import { createPublicOrderId, createPublicTicketId, createQrToken } from '~~/ser
 import holdService from '~~/server/utils/ticketing/holds'
 import analyticsService from '~~/server/utils/ticketing/analytics'
 import savedAttendeeService from '~~/server/utils/database/savedAttendee'
+import { broadcastSeatStatusDelta, createSeatStatusChanges } from '~~/server/utils/ticketing/seatmap-realtime'
+import type { SeatmapRealtimeNamespace } from '~~/server/utils/ticketing/seatmap-realtime'
 
 interface TicketHolderSnapshot {
   eventSeatId: number
@@ -207,6 +209,7 @@ class CheckoutService {
       customerGender?: string
       ticketHolders: CheckoutTicketHolderInput[]
     },
+    realtimeNamespace?: SeatmapRealtimeNamespace,
   ) {
     await holdService.expireStaleHolds()
     const holdBundle = await holdService.getHoldWithSeats(holdPublicId)
@@ -340,6 +343,8 @@ class CheckoutService {
       throw createError({ statusCode: 409, statusMessage: 'Checkout session does not match this seat hold.' })
     }
 
+    const soldSeatIds: number[] = []
+
     for (const assignment of payload.ticketHolders) {
       if (!assignment.saveAsAttendee || !assignment.holder) {
         continue
@@ -390,6 +395,8 @@ class CheckoutService {
       if (!soldSeat) {
         throw createError({ statusCode: 409, statusMessage: 'Seat hold has expired.' })
       }
+
+      soldSeatIds.push(soldSeat.id)
 
       const orderItem = await db
         .insert(tables.orderItems)
@@ -443,7 +450,27 @@ class CheckoutService {
         })
     }
 
-    await analyticsService.recomputeDailyBucket(existingOrder.eventId)
+    const eventSession = hold.eventSessionId
+      ? await db
+          .select()
+          .from(tables.eventSessions)
+          .where(eq(tables.eventSessions.id, hold.eventSessionId))
+          .get()
+      : null
+
+    if (eventSession) {
+      await broadcastSeatStatusDelta(realtimeNamespace, {
+        eventSessionId: eventSession.id,
+        sessionPublicId: eventSession.publicId,
+      }, createSeatStatusChanges(soldSeatIds, 'sold'))
+    }
+
+    try {
+      await analyticsService.recomputeDailyBucket(existingOrder.eventId)
+    }
+    catch (error) {
+      console.error('Failed to recompute daily ticketing analytics.', error)
+    }
 
     return this.getCheckoutByPublicId(existingOrder.publicId)
   }

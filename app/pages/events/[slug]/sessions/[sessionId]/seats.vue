@@ -6,12 +6,15 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
 import { parseApiError } from '@/utils/apiError'
 import { apiRoutes } from '#shared/apiRoutes'
+import { parseSeatmapRealtimeMessage } from '~~/types/seatmap-realtime'
+import type { SeatStatusDeltaChange } from '~~/types/seatmap-realtime'
 
 const route = useRoute()
 const { t } = useI18n()
 const slug = computed(() => route.params.slug.toString())
 const sessionPublicId = computed(() => route.params.sessionId.toString())
 const passToken = computed(() => typeof route.query.pass === 'string' ? route.query.pass : undefined)
+const requestUrl = useRequestURL()
 
 const { data: detailResponse } = await useAPI(() => apiRoutes.eventSession(sessionPublicId.value))
 const detail = computed(() => detailResponse.value?.success ? detailResponse.value.data : null)
@@ -33,7 +36,47 @@ const { data: seatMapResponse, refresh: refreshSeatMap } = await useAPI(() => ap
 const seatMap = computed(() => seatMapResponse.value?.success ? seatMapResponse.value.data : null)
 const selectedSeatIds = ref<number[]>([])
 const isSubmitting = ref(false)
-let seatRefreshIntervalId: number | null = null
+const realtimeStatus = ref<'connecting' | 'connected' | 'disconnected'>('connecting')
+const currentSeatmapVersion = ref(0)
+let fallbackRefreshTimer: ReturnType<typeof setInterval> | undefined
+const socketUrl = computed(() => {
+  const url = new URL(apiRoutes.eventSessionSeatmapSocket(sessionPublicId.value), requestUrl.origin)
+  url.protocol = requestUrl.protocol === 'https:' ? 'wss:' : 'ws:'
+  return url.toString()
+})
+const { open, close } = useWebSocket(socketUrl, {
+  autoReconnect: {
+    retries: 5,
+    delay: 1000,
+    onFailed() {
+      realtimeStatus.value = 'disconnected'
+    },
+  },
+  immediate: false,
+  async onConnected() {
+    await refreshSeatMap()
+    currentSeatmapVersion.value = seatMap.value?.version ?? currentSeatmapVersion.value
+    realtimeStatus.value = 'connected'
+  },
+  onDisconnected() {
+    realtimeStatus.value = 'connecting'
+  },
+  onError() {
+    if (realtimeStatus.value !== 'connected') {
+      realtimeStatus.value = 'connecting'
+    }
+  },
+  async onMessage(_ws, event) {
+    if (typeof event.data === 'string') {
+      await handleRealtimeMessage(event.data)
+      return
+    }
+
+    if (event.data instanceof Blob) {
+      await handleRealtimeMessage(await event.data.text())
+    }
+  },
+})
 
 const inventorySummary = computed(() => {
   const seats = seatMap.value?.seats ?? []
@@ -77,6 +120,30 @@ const selectedSeatSummary = computed(() => {
     .join(', ')
 })
 
+const inventoryStatusLabel = computed(() => {
+  if (realtimeStatus.value === 'connected') {
+    return 'Connected'
+  }
+
+  if (realtimeStatus.value === 'connecting') {
+    return 'Connecting'
+  }
+
+  return 'Disconnected'
+})
+
+const inventoryStatusDescription = computed(() => {
+  if (realtimeStatus.value === 'connected') {
+    return 'Live updating'
+  }
+
+  if (realtimeStatus.value === 'connecting') {
+    return 'Reconnecting to live updates'
+  }
+
+  return 'Live updates paused'
+})
+
 function formatCurrency(value: number, currency = 'VND') {
   return `${Intl.NumberFormat('en-US').format(value / 100)} ${currency}`
 }
@@ -92,6 +159,81 @@ function toggleSeat(seatId: number) {
   }
 
   selectedSeatIds.value = [...selectedSeatIds.value, seatId]
+}
+
+function applySeatChanges(changes: SeatStatusDeltaChange[], version: number) {
+  if (!seatMapResponse.value?.success) {
+    return false
+  }
+
+  const seatIds = new Set(seatMapResponse.value.data.seats.map(seat => seat.id))
+  if (changes.some(change => !seatIds.has(change.seatId))) {
+    return false
+  }
+
+  const nextSeats = seatMapResponse.value.data.seats.map((seat) => {
+    const change = changes.find(item => item.seatId === seat.id)
+    if (!change) {
+      return seat
+    }
+
+    return {
+      ...seat,
+      status: change.status,
+    }
+  })
+
+  seatMapResponse.value = {
+    ...seatMapResponse.value,
+    data: {
+      ...seatMapResponse.value.data,
+      version,
+      seats: nextSeats,
+    },
+  }
+
+  return true
+}
+
+async function handleRealtimeMessage(rawValue: string) {
+  const message = parseSeatmapRealtimeMessage(rawValue)
+  if (!message || message.sessionPublicId !== sessionPublicId.value) {
+    await refreshSeatMap()
+    currentSeatmapVersion.value = seatMap.value?.version ?? message?.version ?? currentSeatmapVersion.value
+    return
+  }
+
+  if (message.type === 'seatmap-connected') {
+    realtimeStatus.value = 'connected'
+    if (message.version > currentSeatmapVersion.value) {
+      await refreshSeatMap()
+      currentSeatmapVersion.value = seatMap.value?.version ?? message.version
+      return
+    }
+
+    currentSeatmapVersion.value = currentSeatmapVersion.value > message.version ? currentSeatmapVersion.value : message.version
+    return
+  }
+
+  if (message.version !== currentSeatmapVersion.value + 1) {
+    await refreshSeatMap()
+    currentSeatmapVersion.value = seatMap.value?.version ?? message.version
+    return
+  }
+
+  if (message.type === 'seat-status-delta') {
+    if (!applySeatChanges(message.changes, message.version)) {
+      await refreshSeatMap()
+      currentSeatmapVersion.value = seatMap.value?.version ?? message.version
+      return
+    }
+
+    currentSeatmapVersion.value = message.version
+    return
+  }
+
+  await refreshSeatMap()
+  currentSeatmapVersion.value = seatMap.value?.version ?? message.version
 }
 
 async function reserveSeats() {
@@ -157,6 +299,10 @@ async function reserveSeats() {
 }
 
 watch(seatMap, (value) => {
+  if (value) {
+    currentSeatmapVersion.value = value.version
+  }
+
   const availableSeatIds = new Set(
     (value?.seats ?? [])
       .filter(seat => seat.status === 'available')
@@ -168,18 +314,22 @@ watch(seatMap, (value) => {
     selectedSeatIds.value = nextSelectedSeatIds
     toast.error(t('seats.seats_taken_error'))
   }
-}, { deep: true })
+}, { deep: true, immediate: true })
 
 onMounted(() => {
-  seatRefreshIntervalId = window.setInterval(async () => {
-    await refreshSeatMap()
-  }, 5000)
+  fallbackRefreshTimer = setInterval(() => {
+    if (realtimeStatus.value !== 'connected') {
+      void refreshSeatMap()
+    }
+  }, 15000)
+  open()
 })
 
 onUnmounted(() => {
-  if (seatRefreshIntervalId !== null) {
-    window.clearInterval(seatRefreshIntervalId)
+  if (fallbackRefreshTimer) {
+    clearInterval(fallbackRefreshTimer)
   }
+  close()
 })
 
 definePageMeta({
@@ -206,21 +356,29 @@ definePageMeta({
               {{ session.label }} &middot; {{ venueName }}, {{ venueCity }} &middot; {{ sessionTimeLabel }}
             </p>
           </div>
-          <div class="flex gap-4 rounded-lg border bg-muted/40 p-3 text-sm">
-            <div class="flex flex-col">
-              <span class="text-xs text-muted-foreground">{{ $t('common.available') }}</span>
-              <span class="font-medium">{{ inventorySummary.available }}</span>
+          <div class="space-y-2 rounded-lg border bg-muted/40 p-3 text-sm">
+            <div class="flex gap-4">
+              <div class="flex flex-col">
+                <span class="text-xs text-muted-foreground">{{ $t('common.available') }}</span>
+                <span class="font-medium">{{ inventorySummary.available }}</span>
+              </div>
+              <div class="w-px bg-border" />
+              <div class="flex flex-col">
+                <span class="text-xs text-muted-foreground">{{ $t('common.held') }}</span>
+                <span class="font-medium">{{ inventorySummary.locked }}</span>
+              </div>
+              <div class="w-px bg-border" />
+              <div class="flex flex-col">
+                <span class="text-xs text-muted-foreground">{{ $t('common.sold') }}</span>
+                <span class="font-medium">{{ inventorySummary.sold }}</span>
+              </div>
             </div>
-            <div class="w-px bg-border" />
-            <div class="flex flex-col">
-              <span class="text-xs text-muted-foreground">{{ $t('common.held') }}</span>
-              <span class="font-medium">{{ inventorySummary.locked }}</span>
-            </div>
-            <div class="w-px bg-border" />
-            <div class="flex flex-col">
-              <span class="text-xs text-muted-foreground">{{ $t('common.sold') }}</span>
-              <span class="font-medium">{{ inventorySummary.sold }}</span>
-            </div>
+            <p
+              v-if="realtimeStatus !== 'connected'"
+              class="text-xs text-muted-foreground"
+            >
+              {{ realtimeStatus === 'connecting' ? 'Reconnecting live updates…' : 'Live updates unavailable.' }}
+            </p>
           </div>
         </div>
 
@@ -279,13 +437,16 @@ definePageMeta({
             </Card>
             <Card class="py-3">
               <CardContent class="flex items-start gap-3 px-4">
-                <RefreshCw class="mt-0.5 size-4 text-muted-foreground" />
+                <RefreshCw :class="['mt-0.5 size-4 text-muted-foreground', realtimeStatus === 'connecting' ? 'animate-spin' : '']" />
                 <div>
                   <p class="text-xs text-muted-foreground">
                     {{ $t('seats.inventory') }}
                   </p>
                   <p class="text-sm font-medium text-foreground">
-                    {{ $t('seats.live_updating') }}
+                    {{ inventoryStatusLabel }}
+                  </p>
+                  <p class="text-xs text-muted-foreground">
+                    {{ inventoryStatusDescription }}
                   </p>
                 </div>
               </CardContent>

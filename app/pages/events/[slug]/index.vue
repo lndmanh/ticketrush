@@ -181,6 +181,10 @@ const heroImage = computed(() => {
   return event.value?.coverImage || `https://picsum.photos/seed/${slug.value}/1600/1100`
 })
 
+if (!event.value) {
+  throw createError({ statusCode: 404, statusMessage: 'Event not found.' })
+}
+
 definePageMeta({
   title: 'Event detail',
   breadcrumb: 'Event',
@@ -188,9 +192,10 @@ definePageMeta({
 </script>
 
 <template>
-  <main
-    v-if="detail && event"
-    class="relative overflow-hidden pb-16 pt-6 md:pb-24"
+  <AppLayout
+    v-if="event"
+    :hide-header="true"
+    class-name="relative gap-8 overflow-hidden md:gap-10 max-w-[90rem] px-4 mt-16 pb-3 sm:px-6 lg:px-10"
   >
     <div class="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[38rem] bg-[radial-gradient(circle_at_14%_10%,hsl(var(--primary)/0.24),transparent_34%),radial-gradient(circle_at_86%_0%,rgba(56,189,248,0.12),transparent_32%),linear-gradient(180deg,rgba(255,255,255,0.04),transparent_68%)]" />
 
@@ -397,5 +402,5 @@ definePageMeta({
         </Card>
       </aside>
     </section>
-  </main>
+  </AppLayout>
 </template>

@@ -3,6 +3,7 @@ import type { HoldData } from '~~/types/ticketing'
 import eventSessionService from '~~/server/utils/database/event-session'
 import holdService from '~~/server/utils/ticketing/holds'
 import { apiError, success, zodErrorToFieldErrors } from '~~/server/utils/apiResponse'
+import { getSeatmapRealtimeEnv } from '~~/server/utils/ticketing/seatmap-realtime'
 import { getTicketingSessionKey } from '~~/server/utils/ticketing/session'
 
 export default defineEventHandler(async (event) => {
@@ -25,10 +26,12 @@ export default defineEventHandler(async (event) => {
     throw apiError({ status: 400, statusText: 'Bad Request', code: 'VALIDATION_ERROR', message: 'Invalid request.', fieldErrors: zodErrorToFieldErrors(result.error), cause: result.error })
   }
 
+  const { SEATMAP_REALTIME_ROOM: realtimeNamespace } = getSeatmapRealtimeEnv(event)
+
   const holdBundle = await holdService.createHold({
     ...result.data,
     sessionKey,
-  }, userSession.user?.id)
+  }, userSession.user?.id, realtimeNamespace)
   if (!holdBundle) {
     throw apiError({ status: 500, statusText: 'Internal Server Error', code: 'ERROR', message: 'Failed to create seat hold.' })
   }

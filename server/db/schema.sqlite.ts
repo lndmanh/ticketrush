@@ -40,6 +40,18 @@ export const authTokens = sqliteTable('auth_tokens', {
   index('auth_tokens_expires_idx').on(table.expiresAt),
 ])
 
+export const credentials = sqliteTable('credentials', {
+  userId: integer('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  id: text('id').notNull().primaryKey(), // WebAuthn Credential IDs are unique strings, safer as PK
+  publicKey: text('public_key').notNull(),
+  counter: integer('counter').notNull(),
+  backedUp: integer('backed_up', { mode: 'boolean' }).notNull(),
+  transports: text('transports', { mode: 'json' }).notNull().$type<WebAuthnCredential['transports']>(),
+  ...timestampColumns,
+}, table => ({
+  userIndex: index('credentials_user_idx').on(table.userId), // Index for faster lookups by user
+}))
+
 export const savedAttendees = sqliteTable('saved_attendees', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   userId: integer('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
@@ -150,6 +162,7 @@ export const eventSessions = sqliteTable('event_sessions', {
   salesStartAt: integer('sales_start_at', { mode: 'timestamp' }).notNull(),
   salesEndAt: integer('sales_end_at', { mode: 'timestamp' }).notNull(),
   queueEnabled: integer('queue_enabled', { mode: 'boolean' }).notNull().default(false),
+  seatmapVersion: integer('seatmap_version').notNull().default(0),
   publishedAt: integer('published_at', { mode: 'timestamp' }),
   ...timestampColumns,
 }, table => [
@@ -409,18 +422,6 @@ export const eventMetricBuckets = sqliteTable('event_metric_buckets', {
     foreignColumns: [eventSessions.id],
   }).onDelete('cascade'),
 ])
-
-export const credentials = sqliteTable('credentials', {
-  userId: integer('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
-  id: text('id').notNull().primaryKey(), // WebAuthn Credential IDs are unique strings, safer as PK
-  publicKey: text('public_key').notNull(),
-  counter: integer('counter').notNull(),
-  backedUp: integer('backed_up', { mode: 'boolean' }).notNull(),
-  transports: text('transports', { mode: 'json' }).notNull().$type<WebAuthnCredential['transports']>(),
-  ...timestampColumns,
-}, table => ({
-  userIndex: index('credentials_user_idx').on(table.userId), // Index for faster lookups by user
-}))
 
 // ── OAuth Accounts Table ──────────────────────────────────────
 
