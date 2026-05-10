@@ -193,40 +193,6 @@ definePageMeta({
           </p>
         </CardContent>
       </Card>
-
-      <Card class="h-full xl:col-span-6">
-        <CardHeader><CardTitle>{{ $t('admin_event_seatmap.queue_pulse') }}</CardTitle></CardHeader>
-        <CardContent class="grid gap-3 sm:grid-cols-2">
-          <div class="rounded-[1.25rem] border border-border bg-secondary/30 p-4">
-            <p class="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-              {{ $t('admin_event_seatmap.waiting') }}
-            </p><p class="mt-2 text-2xl font-semibold tracking-[-0.05em] text-foreground">
-              {{ dashboard.queueWaitingCount }}
-            </p>
-          </div>
-          <div class="rounded-[1.25rem] border border-border bg-secondary/30 p-4">
-            <p class="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-              {{ $t('admin_event_seatmap.admitted') }}
-            </p><p class="mt-2 text-2xl font-semibold tracking-[-0.05em] text-foreground">
-              {{ dashboard.queueAdmittedCount }}
-            </p>
-          </div>
-          <div class="rounded-[1.25rem] border border-border bg-secondary/30 p-4">
-            <p class="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-              {{ $t('admin_event_seatmap.sold_seats') }}
-            </p><p class="mt-2 text-2xl font-semibold tracking-[-0.05em] text-foreground">
-              {{ dashboard.soldSeatsCount }}
-            </p>
-          </div>
-          <div class="rounded-[1.25rem] border border-border bg-secondary/30 p-4">
-            <p class="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-              {{ $t('admin_event_seatmap.sections_in_view') }}
-            </p><p class="mt-2 text-2xl font-semibold tracking-[-0.05em] text-foreground">
-              {{ sectionCount }}
-            </p>
-          </div>
-        </CardContent>
-      </Card>
     </section>
   </div>
 </template>

@@ -110,22 +110,6 @@ export default defineNuxtConfig({
     cloudflare: {
       deployConfig: true,
       nodeCompat: true,
-      wrangler: {
-        durable_objects: {
-          bindings: [
-            {
-              name: 'SEATMAP_REALTIME_ROOM',
-              class_name: 'SeatmapRealtimeRoom',
-            },
-          ],
-        },
-        migrations: [
-          {
-            tag: 'v1_seatmap_realtime_room',
-            new_sqlite_classes: ['SeatmapRealtimeRoom'],
-          },
-        ],
-      },
     },
     prerender: {
       ignore: [
