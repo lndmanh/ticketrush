@@ -17,8 +17,6 @@ export default defineEventHandler(async (event) => {
     throw apiError({ status: 404, statusText: 'Not Found', code: 'SESSION_NOT_FOUND', message: 'Event session not found.' })
   }
 
-  await holdService.expireStaleHolds()
-
   const sessionKey = getTicketingSessionKey(event)
   const userSession = await requireUserSession(event)
   const result = await readValidatedBody(event, body => createSeatHoldSchema.safeParse({ ...body, eventSessionId: session.id }))

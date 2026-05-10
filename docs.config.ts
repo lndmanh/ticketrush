@@ -41,7 +41,7 @@ export const DOCS_CONFIG = {
       dropdownType: 'select',
     },
     nav: [{
-      title: 'nav.events',
+      title: 'Events',
       to: '/events',
       showLinkIcon: false,
     }],

@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import type { VueElement } from 'vue'
 import { cn } from '@/lib/utils'
-import { locales } from '~~/i18n-constants'
 
 import MaxWidthWrapper from './MaxWidthWrapper.vue'
 import { ChevronLeft, HomeIcon, LogInIcon } from '@lucide/vue'
@@ -9,21 +8,6 @@ import type { BreadcrumbItemType } from '~~/types/common'
 
 const router = useRouter()
 const route = useRoute()
-const { t } = useI18n()
-const localePath = useLocalePath()
-
-const translatedRouteTitles: Record<string, string> = {
-  'Home': 'nav.home',
-  'Admin': 'nav.admin',
-  'Admin Dashboard': 'nav.admin_dashboard',
-  'Events': 'nav.events',
-  'Tickets': 'nav.my_tickets',
-  'Settings': 'common.settings',
-  'Security': 'nav.security',
-  'Saved Attendees': 'nav.saved_attendees',
-  'Choose seats': 'seats.page_title',
-  'Seat selection': 'seats.breadcrumb',
-}
 
 function getRouteTitle(meta: { breadcrumb?: unknown, title?: unknown } | undefined) {
   if (!meta) return null
@@ -33,96 +17,29 @@ function getRouteTitle(meta: { breadcrumb?: unknown, title?: unknown } | undefin
   return null
 }
 
-function translateRouteTitle(title: string) {
-  const key = translatedRouteTitles[title]
-  return key ? t(key) : title
-}
-
-/**
- * Detect if a URL segment is a dynamic ID (publicId, UUID, or numeric ID)
- * and return a human-friendly short label instead.
- */
-function getHumanSegmentLabel(segment: string, previousSegment?: string): string | null {
-  // Match publicId patterns like "Ses_84e35258aec342cb..." or "Evt_abc123..."
-  if (/^[A-Za-z]{2,6}_[a-f0-9]{8,}$/i.test(segment)) {
-    // Use the prefix to determine the entity type
-    const prefix = segment.split('_')[0]?.toLowerCase()
-    const prefixLabels: Record<string, string> = {
-      ses: t('nav.breadcrumb_session', 'Session'),
-      evt: t('nav.breadcrumb_event', 'Event'),
-      ord: t('nav.breadcrumb_order', 'Order'),
-      tkt: t('nav.breadcrumb_ticket', 'Ticket'),
-      hld: t('nav.breadcrumb_hold', 'Hold'),
-    }
-    return prefixLabels[prefix] ?? `#${segment.slice(-6)}`
-  }
-
-  // Match UUIDs (with or without dashes)
-  if (/^[a-f0-9]{8}-?[a-f0-9]{4}-?[a-f0-9]{4}-?[a-f0-9]{4}-?[a-f0-9]{12}$/i.test(segment)) {
-    // Derive label from the previous segment (parent context)
-    if (previousSegment) {
-      const contextLabels: Record<string, string> = {
-        sessions: t('nav.breadcrumb_session', 'Session'),
-        events: t('nav.breadcrumb_event', 'Event'),
-        tickets: t('nav.breadcrumb_ticket', 'Ticket'),
-        venues: t('nav.breadcrumb_venue', 'Venue'),
-        users: t('nav.breadcrumb_user', 'User'),
-      }
-      return contextLabels[previousSegment] ?? `#${segment.slice(-6)}`
-    }
-    return `#${segment.slice(-6)}`
-  }
-
-  // Match long hex strings (32+ chars, like publicIds without prefix)
-  if (/^[a-f0-9]{32,}$/i.test(segment)) {
-    if (previousSegment) {
-      const contextLabels: Record<string, string> = {
-        sessions: t('nav.breadcrumb_session', 'Session'),
-        events: t('nav.breadcrumb_event', 'Event'),
-        checkout: t('nav.breadcrumb_order', 'Order'),
-      }
-      return contextLabels[previousSegment] ?? `#${segment.slice(-6)}`
-    }
-    return `#${segment.slice(-6)}`
-  }
-
-  return null
-}
-
 const breadcrumbs = computed<BreadcrumbItemType[]>(() => {
-  const crumbs: BreadcrumbItemType[] = [{ title: t('nav.home'), href: localePath('/') }]
+  const path = route.path
+  const crumbs: BreadcrumbItemType[] = [{ title: 'Home', href: '/' }]
 
-  if (route.path === '/') return crumbs
+  if (path === '/') return crumbs
 
-  const segments = route.path.split('/').filter(Boolean)
+  const segments = path.split('/').filter(Boolean)
   let currentPath = ''
 
   segments.forEach((segment, index) => {
-    if (locales.includes(segment as (typeof locales)[number])) {
-      return
-    }
-
     currentPath += `/${segment}`
 
     // Try to find a matching route record to get meta
-    const match = router.resolve(localePath(currentPath))
+    const match = router.resolve(currentPath)
 
     let title = segment
     const matchedRouteTitle = getRouteTitle(match?.meta)
     if (matchedRouteTitle) {
-      title = translateRouteTitle(matchedRouteTitle)
+      title = matchedRouteTitle
     }
     else {
-      // Check if this segment is a dynamic ID and get a human-friendly label
-      const previousSegment = index > 0 ? segments[index - 1] : undefined
-      const humanLabel = getHumanSegmentLabel(segment, previousSegment)
-      if (humanLabel) {
-        title = humanLabel
-      }
-      else {
-        // Capitalize
-        title = segment.charAt(0).toUpperCase() + segment.slice(1)
-      }
+      // Capitalize
+      title = segment.charAt(0).toUpperCase() + segment.slice(1)
     }
 
     // If it's the last segment, it matches the current route
@@ -130,13 +47,13 @@ const breadcrumbs = computed<BreadcrumbItemType[]>(() => {
     if (index === segments.length - 1) {
       const currentRouteTitle = getRouteTitle(route.meta)
       if (currentRouteTitle) {
-        title = translateRouteTitle(currentRouteTitle)
+        title = currentRouteTitle
       }
     }
 
     crumbs.push({
       title,
-      href: localePath(currentPath),
+      href: currentPath,
     })
   })
 
@@ -168,7 +85,6 @@ withDefaults(defineProps<{
 })
 
 const { loggedIn, user } = useUserSession()
-const { i18nEnabled } = useI18nDocs()
 </script>
 
 <template>
@@ -290,13 +206,11 @@ const { i18nEnabled } = useI18nDocs()
           </BreadcrumbList>
         </Breadcrumb>
         <div class="ml-auto flex items-center gap-2">
-          <LangSwitcher v-if="i18nEnabled" />
-          <AppNotificationsBell v-if="loggedIn && user" />
           <Button
             v-if="!loggedIn || !user"
             variant="default"
             size="sm"
-            @click="navigateTo(localePath('/auth/login'))"
+            @click="navigateTo('/auth/login')"
           >
             <LogInIcon />
             <span
