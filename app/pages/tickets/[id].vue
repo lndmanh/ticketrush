@@ -1,34 +1,25 @@
 <script setup lang="ts">
 import QRCode from 'qrcode.vue'
 import { CalendarRange, Mail, MapPin, Ticket, UserRound } from '@lucide/vue'
-import { getDisplayDateLocale, getLocalizedEventDisplay, getLocalizedTicketTypeName } from '@/lib/localizedEvents'
 
 const route = useRoute()
 const ticketId = computed(() => route.params.id.toString())
-const { locale, t } = useI18n()
-const localePath = useLocalePath()
 const { data: ticketResponse } = await useAPI(() => `/api/tickets/${ticketId.value}`)
 
 const ticketBundle = computed(() => ticketResponse.value?.data ?? null)
 
 const ticketSessionStartsAt = computed(() => ticketBundle.value?.eventSession?.startsAt ?? null)
-const eventTitle = computed(() => {
-  const event = ticketBundle.value?.event
-  return event ? getLocalizedEventDisplay(event, locale.value).title : ticketBundle.value?.ticket.publicId || t('tickets.ticket_label')
-})
-const seatLabel = computed(() => ticketBundle.value?.orderItem?.seatLabel || t('tickets.ga'))
-const sectionLabel = computed(() => {
-  const section = ticketBundle.value?.orderItem?.sectionLabel
-  return getLocalizedTicketTypeName(section, locale.value) || t('tickets.detail_general_admission')
-})
-const rowLabel = computed(() => ticketBundle.value?.orderItem?.rowLabel || t('tickets.detail_open_floor'))
+const eventTitle = computed(() => ticketBundle.value?.event?.title || ticketBundle.value?.ticket.publicId || 'Ticket')
+const seatLabel = computed(() => ticketBundle.value?.orderItem?.seatLabel || 'GA')
+const sectionLabel = computed(() => ticketBundle.value?.orderItem?.sectionLabel || 'General admission')
+const rowLabel = computed(() => ticketBundle.value?.orderItem?.rowLabel || 'Open floor')
 const issuedAtLabel = computed(() => {
   const issuedAt = ticketBundle.value?.ticket.issuedAt
   if (!issuedAt) {
-    return t('tickets.detail_unknown')
+    return '—'
   }
 
-  return new Date(issuedAt).toLocaleDateString(getDisplayDateLocale(locale.value), {
+  return new Date(issuedAt).toLocaleDateString('en-US', {
     month: 'short',
     day: 'numeric',
     year: 'numeric',
@@ -36,10 +27,10 @@ const issuedAtLabel = computed(() => {
 })
 const sessionTimeLabel = computed(() => {
   if (!ticketSessionStartsAt.value) {
-    return t('tickets.time_tba')
+    return 'Time to be announced'
   }
 
-  return new Date(ticketSessionStartsAt.value).toLocaleString(getDisplayDateLocale(locale.value), {
+  return new Date(ticketSessionStartsAt.value).toLocaleString('en-US', {
     month: 'short',
     day: 'numeric',
     hour: 'numeric',
@@ -49,19 +40,10 @@ const sessionTimeLabel = computed(() => {
 const orderTotalLabel = computed(() => {
   const amountCents = ticketBundle.value?.order?.amountCents
   if (typeof amountCents !== 'number') {
-    return t('tickets.detail_unknown')
+    return '—'
   }
 
-  return `${Intl.NumberFormat(getDisplayDateLocale(locale.value)).format(amountCents / 100)} VND`
-})
-
-const statusLabel = computed(() => {
-  const status = ticketBundle.value?.ticket.status
-  if (!status) return t('tickets.detail_unknown')
-
-  const key = `tickets.status_${status}`
-  const translated = t(key)
-  return translated === key ? status.replaceAll('_', ' ') : translated
+  return `${Intl.NumberFormat('en-US').format(amountCents / 100)} VND`
 })
 
 definePageMeta({
@@ -83,13 +65,13 @@ definePageMeta({
           variant="secondary"
           class="w-fit"
         >
-          {{ $t('tickets.detail_pass_status', { status: statusLabel }) }}
+          {{ ticketBundle.ticket.status }} pass
         </Badge>
         <h1 class="text-balance text-3xl font-semibold tracking-tight md:text-4xl">
           {{ eventTitle }}
         </h1>
         <p class="max-w-[60ch] text-sm leading-7 text-muted-foreground">
-          {{ $t('tickets.detail_qr_ready_desc') }}
+          Keep this QR ready at the door. The essentials below match the pass details scanned by the venue team.
         </p>
       </div>
 
@@ -97,8 +79,8 @@ definePageMeta({
         as-child
         variant="outline"
       >
-        <NuxtLink :to="localePath('/tickets')">
-          {{ $t('tickets.back_to_wallet') }}
+        <NuxtLink to="/tickets">
+          Back to wallet
         </NuxtLink>
       </Button>
     </section>
@@ -115,7 +97,7 @@ definePageMeta({
                 {{ ticketBundle.ticket.publicId }}
               </p>
               <h2 class="mt-1 text-xl font-semibold tracking-tight">
-                {{ $t('tickets.digital_entry_pass') }}
+                Digital entry pass
               </h2>
             </div>
           </div>
@@ -131,7 +113,7 @@ definePageMeta({
 
           <div class="space-y-2 rounded-lg border bg-muted/30 p-3 text-left">
             <p class="text-xs font-medium text-muted-foreground">
-              {{ $t('tickets.qr_token') }}
+              QR token
             </p>
             <p class="break-all font-mono text-xs leading-5 text-muted-foreground">
               {{ ticketBundle.ticket.qrToken }}
@@ -144,7 +126,7 @@ definePageMeta({
         <Card>
           <CardHeader>
             <CardTitle class="text-base">
-              {{ $t('tickets.entry_details') }}
+              Entry details
             </CardTitle>
           </CardHeader>
           <CardContent class="grid gap-4 text-sm sm:grid-cols-2">
@@ -152,7 +134,7 @@ definePageMeta({
               <UserRound class="mt-0.5 size-4 text-muted-foreground" />
               <div>
                 <p class="text-xs text-muted-foreground">
-                  {{ $t('tickets.detail_attendee') }}
+                  Attendee
                 </p>
                 <p class="font-medium">
                   {{ ticketBundle.ticket.attendeeName }}
@@ -163,7 +145,7 @@ definePageMeta({
               <Mail class="mt-0.5 size-4 text-muted-foreground" />
               <div class="min-w-0">
                 <p class="text-xs text-muted-foreground">
-                  {{ $t('auth.email_label') }}
+                  Email
                 </p>
                 <p class="truncate font-medium">
                   {{ ticketBundle.ticket.attendeeEmail }}
@@ -174,7 +156,7 @@ definePageMeta({
               <MapPin class="mt-0.5 size-4 text-muted-foreground" />
               <div>
                 <p class="text-xs text-muted-foreground">
-                  {{ $t('tickets.seat_label') }}
+                  Seat
                 </p>
                 <p class="font-medium">
                   {{ sectionLabel }} · {{ rowLabel }} · {{ seatLabel }}
@@ -185,7 +167,7 @@ definePageMeta({
               <CalendarRange class="mt-0.5 size-4 text-muted-foreground" />
               <div>
                 <p class="text-xs text-muted-foreground">
-                  {{ $t('tickets.session_label') }}
+                  Session
                 </p>
                 <p class="font-medium">
                   {{ sessionTimeLabel }}
@@ -198,14 +180,14 @@ definePageMeta({
         <Card>
           <CardHeader>
             <CardTitle class="text-base">
-              {{ $t('tickets.order_summary') }}
+              Order summary
             </CardTitle>
           </CardHeader>
           <CardContent class="space-y-4 text-sm">
             <div class="grid gap-4 sm:grid-cols-3">
               <div>
                 <p class="text-xs text-muted-foreground">
-                  {{ $t('tickets.detail_issued') }}
+                  Issued
                 </p>
                 <p class="font-medium">
                   {{ issuedAtLabel }}
@@ -213,15 +195,15 @@ definePageMeta({
               </div>
               <div>
                 <p class="text-xs text-muted-foreground">
-                  {{ $t('tickets.detail_status') }}
+                  Status
                 </p>
                 <p class="font-medium">
-                  {{ statusLabel }}
+                  {{ ticketBundle.ticket.status }}
                 </p>
               </div>
               <div>
                 <p class="text-xs text-muted-foreground">
-                  {{ $t('tickets.detail_order_total') }}
+                  Total
                 </p>
                 <p class="font-medium">
                   {{ orderTotalLabel }}
@@ -231,10 +213,10 @@ definePageMeta({
 
             <div class="rounded-lg border bg-muted/20 p-4 text-muted-foreground">
               <p class="font-medium text-foreground">
-                {{ $t('tickets.admission_notes') }}
+                Admission notes
               </p>
               <p class="mt-2 leading-7">
-                {{ $t('tickets.admission_bring_qr') }} {{ $t('tickets.admission_staff_note') }}
+                Bring this QR code and the attendee email used during checkout. Venue staff may ask you to show both before entry.
               </p>
             </div>
           </CardContent>
@@ -254,19 +236,19 @@ definePageMeta({
             variant="secondary"
             class="w-fit"
           >
-            {{ $t('tickets.missing_eyebrow') }}
+            Ticket missing
           </Badge>
           <h2 class="text-3xl font-semibold tracking-tight">
-            {{ $t('tickets.missing_title') }}
+            We could not find that ticket.
           </h2>
           <p class="max-w-[36rem] text-sm leading-7 text-muted-foreground">
-            {{ $t('tickets.missing_subtitle') }}
+            The pass may have been removed, or this link may not belong to your account.
           </p>
         </div>
 
         <Button as-child>
-          <NuxtLink :to="localePath('/tickets')">
-            {{ $t('tickets.return_to_wallet') }}
+          <NuxtLink to="/tickets">
+            Return to wallet
           </NuxtLink>
         </Button>
       </CardContent>

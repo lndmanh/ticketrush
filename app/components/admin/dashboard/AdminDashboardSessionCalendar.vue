@@ -18,7 +18,6 @@ import {
   CalendarRoot,
 } from 'reka-ui'
 import { cn } from '@/lib/utils'
-import { getDisplayDateLocale, getLocalizedCityName, getLocalizedEventTitle, getLocalizedVenueName } from '@/lib/localizedEvents'
 
 const props = defineProps<{
   selectedDate: string
@@ -29,10 +28,6 @@ const props = defineProps<{
 const emit = defineEmits<{
   (event: 'update:selectedDate', value: string): void
 }>()
-
-const { t, locale } = useI18n()
-const localePath = useLocalePath()
-const dateLocale = computed(() => getDisplayDateLocale(locale.value))
 
 function parseIsoDate(value: string) {
   const [yearText, monthText, dayText] = value.split('-')
@@ -67,7 +62,7 @@ function getDayNumber(day: DateValue) {
 }
 
 function formatSelectedDate(value: string) {
-  return new Date(`${value}T00:00:00`).toLocaleDateString(dateLocale.value, {
+  return new Date(`${value}T00:00:00`).toLocaleDateString('en-US', {
     weekday: 'long',
     month: 'short',
     day: 'numeric',
@@ -75,14 +70,14 @@ function formatSelectedDate(value: string) {
 }
 
 function formatTime(value: string | Date) {
-  return new Date(value).toLocaleTimeString(dateLocale.value, {
+  return new Date(value).toLocaleTimeString('en-US', {
     hour: 'numeric',
     minute: '2-digit',
   })
 }
 
 function formatCurrency(cents: number) {
-  return new Intl.NumberFormat(dateLocale.value, {
+  return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: 'USD',
     maximumFractionDigits: 0,
@@ -95,26 +90,14 @@ function getStatusVariant(statusLabel: string): 'default' | 'outline' | 'seconda
   return 'secondary'
 }
 
-function getStatusLabel(session: AdminDashboardCalendarSession) {
-  const key = `event_card.status_${session.status}`
-  const translated = t(key)
-  return translated === key ? session.statusLabel : translated
-}
-
 function getSeatSummary(session: AdminDashboardCalendarSession) {
-  if (session.totalSeats === 0) return t('admin.dashboard_no_seats_listed')
-  return t('admin.dashboard_seat_summary', { sold: session.soldSeats, total: session.totalSeats })
+  if (session.totalSeats === 0) return 'No seats listed'
+  return `${session.soldSeats}/${session.totalSeats} sold`
 }
 
 function getOccupancyWidth(session: AdminDashboardCalendarSession) {
   if (session.totalSeats === 0) return '0%'
   return `${Math.round((session.soldSeats / session.totalSeats) * 100)}%`
-}
-
-function getVenueLabel(session: AdminDashboardCalendarSession) {
-  const venueName = getLocalizedVenueName(session.venueName, locale.value) || t('admin.venue_pending')
-  const venueCity = getLocalizedCityName(session.venueCity, locale.value)
-  return `${venueName}${venueCity ? `, ${venueCity}` : ''}`
 }
 </script>
 
@@ -124,10 +107,10 @@ function getVenueLabel(session: AdminDashboardCalendarSession) {
       <div class="flex items-center justify-between gap-3">
         <div>
           <CardTitle class="text-base">
-            {{ $t('admin.dashboard_session_calendar') }}
+            Session calendar
           </CardTitle>
           <p class="mt-1 text-sm text-muted-foreground">
-            {{ $t('admin.dashboard_session_calendar_desc') }}
+            Pick a day to inspect launches and sales status.
           </p>
         </div>
       </div>
@@ -140,20 +123,19 @@ function getVenueLabel(session: AdminDashboardCalendarSession) {
         :week-starts-on="1"
         fixed-weeks
         prevent-deselect
-        :locale="dateLocale"
         class="w-full"
       >
         <CalendarHeader class="mb-4 flex items-center justify-between gap-3">
           <CalendarPrev
             class="inline-flex size-8 items-center justify-center rounded-md border bg-background text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            :aria-label="$t('admin.dashboard_previous_month')"
+            aria-label="Previous month"
           >
             <ChevronLeft class="size-4" />
           </CalendarPrev>
           <CalendarHeading class="text-sm font-semibold text-foreground" />
           <CalendarNext
             class="inline-flex size-8 items-center justify-center rounded-md border bg-background text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            :aria-label="$t('admin.dashboard_next_month')"
+            aria-label="Next month"
           >
             <ChevronRight class="size-4" />
           </CalendarNext>
@@ -218,7 +200,7 @@ function getVenueLabel(session: AdminDashboardCalendarSession) {
         <div class="mb-4 flex items-start justify-between gap-3">
           <div>
             <h3 class="text-base font-semibold tracking-[-0.02em] text-foreground">
-              {{ $t('admin.dashboard_daily_agenda') }}
+              Daily agenda
             </h3>
             <p class="mt-1 text-sm text-muted-foreground">
               {{ formatSelectedDate(props.selectedDate) }}
@@ -228,7 +210,7 @@ function getVenueLabel(session: AdminDashboardCalendarSession) {
             variant="outline"
             class="rounded-full"
           >
-            {{ $t('admin.dashboard_session_count', { count: sessions.length }) }}
+            {{ sessions.length }} session{{ sessions.length === 1 ? '' : 's' }}
           </Badge>
         </div>
 
@@ -236,13 +218,13 @@ function getVenueLabel(session: AdminDashboardCalendarSession) {
           <NuxtLink
             v-for="session in sessions"
             :key="session.id"
-            :to="localePath(`/admin/events/${session.eventId}`)"
+            :to="`/admin/events/${session.eventId}`"
             class="group block rounded-2xl border bg-muted/25 p-4 transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/30 hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:translate-y-0"
           >
             <div class="flex items-start justify-between gap-3">
               <div class="min-w-0 space-y-1">
                 <p class="truncate font-medium text-foreground">
-                  {{ getLocalizedEventTitle(session.eventTitle, locale) }}
+                  {{ session.eventTitle }}
                 </p>
                 <p class="truncate text-sm text-muted-foreground">
                   {{ session.label }} · {{ formatTime(session.startsAt) }}
@@ -252,14 +234,14 @@ function getVenueLabel(session: AdminDashboardCalendarSession) {
                 :variant="getStatusVariant(session.statusLabel)"
                 class="shrink-0 rounded-full"
               >
-                {{ getStatusLabel(session) }}
+                {{ session.statusLabel }}
               </Badge>
             </div>
 
             <div class="mt-4 grid gap-2 text-sm text-muted-foreground">
               <div class="flex items-center gap-2">
                 <MapPin class="size-3.5 shrink-0" />
-                <span class="truncate">{{ getVenueLabel(session) }}</span>
+                <span class="truncate">{{ session.venueName || 'Venue pending' }}{{ session.venueCity ? `, ${session.venueCity}` : '' }}</span>
               </div>
               <div class="flex items-center gap-2">
                 <Ticket class="size-3.5 shrink-0" />
@@ -284,9 +266,9 @@ function getVenueLabel(session: AdminDashboardCalendarSession) {
               <EmptyMedia variant="icon">
                 <CalendarClock class="size-5" />
               </EmptyMedia>
-              <EmptyTitle>{{ $t('admin.dashboard_no_sessions_day') }}</EmptyTitle>
+              <EmptyTitle>No sessions on this day</EmptyTitle>
               <EmptyDescription>
-                {{ $t('admin.dashboard_no_sessions_day_desc') }}
+                Select a marked date to inspect selling windows, capacity, and revenue.
               </EmptyDescription>
             </EmptyHeader>
           </Empty>

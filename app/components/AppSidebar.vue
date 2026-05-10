@@ -78,7 +78,7 @@ const config = useRuntimeConfig()
                   @click="showMainSidebar"
                 >
                   <ArrowLeft />
-                  <span>{{ $t('common.back') }}</span>
+                  <span>Back</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
             </SidebarMenu>

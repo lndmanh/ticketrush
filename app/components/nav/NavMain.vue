@@ -16,7 +16,6 @@ import { useSidebar } from '@/components/ui/sidebar/utils'
 import type { SidebarItem } from '~~/types/common'
 
 const route = useRoute()
-const localePath = useLocalePath()
 const { isMobile, setOpenMobile } = useSidebar()
 
 withDefaults(defineProps<{
@@ -27,7 +26,7 @@ withDefaults(defineProps<{
 })
 
 const isItemActive = (itemUrl: string) => {
-  return route.path === itemUrl || route.path === localePath(itemUrl)
+  return route.path === itemUrl
 }
 
 const hasActiveSubItem = (items?: { url: string }[]) => {
@@ -43,7 +42,7 @@ const handleSubItemClick = () => {
 
 <template>
   <SidebarGroup>
-    <SidebarGroupLabel>{{ $t(title) }}</SidebarGroupLabel>
+    <SidebarGroupLabel>{{ title }}</SidebarGroupLabel>
     <SidebarMenu>
       <template
         v-for="item in items"
@@ -59,7 +58,7 @@ const handleSubItemClick = () => {
           <SidebarMenuItem>
             <CollapsibleTrigger as-child>
               <SidebarMenuButton
-                :tooltip="$t(item.title)"
+                :tooltip="item.title"
                 :close-sidebar-on-mobile="false"
                 :class="{
                   'bg-sidebar-accent text-sidebar-accent-foreground': hasActiveSubItem(item.items),
@@ -69,7 +68,7 @@ const handleSubItemClick = () => {
                   :is="item.icon"
                   v-if="item.icon"
                 />
-                <span>{{ $t(item.title) }}</span>
+                <span>{{ item.title }}</span>
                 <ChevronRight
                   class="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90"
                 />
@@ -83,7 +82,7 @@ const handleSubItemClick = () => {
                 >
                   <SidebarMenuSubButton as-child>
                     <nuxt-link
-                      :to="localePath(subItem.url || '/')"
+                      :to="subItem.url"
                       :class="{
                         'bg-sidebar-accent text-sidebar-accent-foreground': isItemActive(
                           subItem.url,
@@ -95,7 +94,7 @@ const handleSubItemClick = () => {
                         :is="subItem.icon"
                         v-if="subItem.icon"
                       />
-                      <span>{{ $t(subItem.title) }}</span>
+                      <span>{{ subItem.title }}</span>
                     </nuxt-link>
                   </SidebarMenuSubButton>
                 </SidebarMenuSubItem>
@@ -108,10 +107,10 @@ const handleSubItemClick = () => {
         <SidebarMenuItem v-else>
           <SidebarMenuButton
             as-child
-            :tooltip="$t(item.title)"
+            :tooltip="item.title"
           >
             <nuxt-link
-              :to="localePath(item.url || '/')"
+              :to="item.url"
               :class="{
                 'bg-sidebar-accent text-sidebar-accent-foreground': isItemActive(item.url),
               }"
@@ -120,7 +119,7 @@ const handleSubItemClick = () => {
                 :is="item.icon"
                 v-if="item.icon"
               />
-              <span>{{ $t(item.title) }}</span>
+              <span>{{ item.title }}</span>
             </nuxt-link>
           </SidebarMenuButton>
         </SidebarMenuItem>

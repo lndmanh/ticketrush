@@ -19,7 +19,6 @@ import {
 import ThemeSwitcher from '@/components/ThemeSwitcher.vue'
 
 const { user, clear, loggedIn } = useUserSession()
-const localePath = useLocalePath()
 
 function getInitials(name: string) {
   return name.split(' ').map(n => n[0]).join('').toUpperCase()
@@ -70,26 +69,26 @@ function logout() {
       <DropdownMenuGroup>
         <DropdownMenuItem
           v-if="user?.isAdmin"
-          @click="navigateTo(localePath('/admin'))"
+          @click="navigateTo('/admin')"
         >
           <UsersIcon />
           {{ $t('common.admin') }}
         </DropdownMenuItem>
         <DropdownMenuItem
           v-if="loggedIn"
-          @click="navigateTo(localePath('/settings/security'))"
+          @click="navigateTo('/settings/account')"
         >
           <UserIcon />
           {{ $t('common.account') }}
         </DropdownMenuItem>
         <DropdownMenuItem
           v-else
-          @click="navigateTo(localePath('/auth/login'))"
+          @click="navigateTo('/auth/login')"
         >
           <LogIn />
           {{ $t('common.sign_in') }}
         </DropdownMenuItem>
-        <DropdownMenuItem @click="navigateTo(localePath('/settings'))">
+        <DropdownMenuItem @click="navigateTo('/settings')">
           <Settings />
           {{ $t('common.settings') }}
         </DropdownMenuItem>

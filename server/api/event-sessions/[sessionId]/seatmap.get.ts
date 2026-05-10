@@ -1,6 +1,5 @@
 import eventSessionService from '~~/server/utils/database/event-session'
 import { apiError, success } from '~~/server/utils/apiResponse'
-import holdService from '~~/server/utils/ticketing/holds'
 import { getTicketingSessionKey } from '~~/server/utils/ticketing/session'
 import type { SeatMapStatus, SessionSeatMapResponse } from '~~/types/seatmap'
 
@@ -66,7 +65,6 @@ export default defineEventHandler(async (event) => {
   }
 
   getTicketingSessionKey(event)
-  await holdService.expireStaleHolds()
 
   const seatMap = await eventSessionService.getSeatMap(session.id)
   const response: SessionSeatMapResponse = mapSeatMap(seatMap, session.seatmapVersion)

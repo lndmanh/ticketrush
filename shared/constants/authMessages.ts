@@ -15,8 +15,7 @@ export const AUTH_ERROR_MESSAGES = {
   // OAuth errors
   'oauth-already-linked': 'This account is already linked to another user.',
   'oauth-already-connected': 'You already have an account from this provider linked.',
-  'oauth-error': 'Authentication failed. Please try again. If this keeps happening, contact support to verify OAuth provider settings.',
-  'oauth-not-configured': 'Google sign-in is not configured in this environment yet. Please sign in with username/password for now.',
+  'oauth-error': 'Authentication failed. Please try again.',
   'not-authenticated': 'You need to be logged in to link an account.',
   'unlink-last-method': 'You can\'t unlink your only sign-in method. Set a password first.',
 } as const
