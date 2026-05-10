@@ -71,17 +71,9 @@ export const routeRules = {
     ssr: false,
     prerender: false,
   },
-  '/docs/**': {
-    swr: 3600,
-  },
-  '/blogs/**': {
-    swr: 3600,
-  },
-  '/_studio/**': {
-    ssr: true,
-  },
-  '/__nuxt_studio/**': {
-    ssr: true,
+  '/settings/**': {
+    ssr: false,
+    prerender: false,
   },
   '/admin/studio/login': {
     ssr: true,
