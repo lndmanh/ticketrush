@@ -4,13 +4,14 @@ import { Clock3, RefreshCw, ShoppingBag, Users } from '@lucide/vue'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
+import { getDisplayDateLocale, getLocalizedCityName, getLocalizedEventDisplay, getLocalizedVenueName } from '@/lib/localizedEvents'
 import { parseApiError } from '@/utils/apiError'
 import { apiRoutes } from '#shared/apiRoutes'
 import { parseSeatmapRealtimeMessage } from '~~/types/seatmap-realtime'
 import type { SeatStatusDeltaChange } from '~~/types/seatmap-realtime'
 
 const route = useRoute()
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const slug = computed(() => route.params.slug.toString())
 const sessionPublicId = computed(() => route.params.sessionId.toString())
 const passToken = computed(() => typeof route.query.pass === 'string' ? route.query.pass : undefined)
@@ -88,14 +89,15 @@ const inventorySummary = computed(() => {
   }
 })
 
-const venueName = computed(() => detail.value?.venue?.venue.name || 'Venue pending')
-const venueCity = computed(() => detail.value?.venue?.venue.city || 'Location incoming')
+const localizedEventTitle = computed(() => event.value ? getLocalizedEventDisplay(event.value, locale.value).title : '')
+const venueName = computed(() => getLocalizedVenueName(detail.value?.venue?.venue.name, locale.value) || t('seats.venue_pending'))
+const venueCity = computed(() => getLocalizedCityName(detail.value?.venue?.venue.city, locale.value) || t('seats.location_incoming'))
 const sessionTimeLabel = computed(() => {
   if (!session.value) {
-    return 'Session time pending'
+    return t('seats.session_time_pending')
   }
 
-  return new Date(session.value.startsAt).toLocaleString('en-US', {
+  return new Date(session.value.startsAt).toLocaleString(getDisplayDateLocale(locale.value), {
     month: 'short',
     day: 'numeric',
     hour: 'numeric',
@@ -116,36 +118,36 @@ const selectedSeatSummary = computed(() => {
   }
 
   return selectedSeats.value
-    .map(seat => `${seat.rowLabelSnapshot || 'GA'}${seat.seatLabelSnapshot}`)
+    .map(seat => `${seat.rowLabelSnapshot || t('seatmap.general_admission_short')}${seat.seatLabelSnapshot}`)
     .join(', ')
 })
 
 const inventoryStatusLabel = computed(() => {
   if (realtimeStatus.value === 'connected') {
-    return 'Connected'
+    return t('seats.realtime_connected')
   }
 
   if (realtimeStatus.value === 'connecting') {
-    return 'Connecting'
+    return t('seats.realtime_connecting')
   }
 
-  return 'Disconnected'
+  return t('seats.realtime_disconnected')
 })
 
 const inventoryStatusDescription = computed(() => {
   if (realtimeStatus.value === 'connected') {
-    return 'Live updating'
+    return t('seats.live_updating')
   }
 
   if (realtimeStatus.value === 'connecting') {
-    return 'Reconnecting to live updates'
+    return t('seats.realtime_reconnecting')
   }
 
-  return 'Live updates paused'
+  return t('seats.realtime_paused')
 })
 
 function formatCurrency(value: number, currency = 'VND') {
-  return `${Intl.NumberFormat('en-US').format(value / 100)} ${currency}`
+  return `${Intl.NumberFormat(getDisplayDateLocale(locale.value)).format(value / 100)} ${currency}`
 }
 
 function toggleSeat(seatId: number) {
@@ -350,7 +352,7 @@ definePageMeta({
         <div class="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
           <div>
             <h1 class="text-2xl font-semibold tracking-tight">
-              {{ event.title }}
+              {{ localizedEventTitle }}
             </h1>
             <p class="mt-1 text-sm text-muted-foreground">
               {{ session.label }} &middot; {{ venueName }}, {{ venueCity }} &middot; {{ sessionTimeLabel }}
@@ -377,7 +379,7 @@ definePageMeta({
               v-if="realtimeStatus !== 'connected'"
               class="text-xs text-muted-foreground"
             >
-              {{ realtimeStatus === 'connecting' ? 'Reconnecting live updates…' : 'Live updates unavailable.' }}
+              {{ realtimeStatus === 'connecting' ? $t('seats.realtime_reconnecting_short') : $t('seats.realtime_unavailable') }}
             </p>
           </div>
         </div>
