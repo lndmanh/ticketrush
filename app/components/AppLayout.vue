@@ -18,6 +18,9 @@ const translatedRouteTitles: Record<string, string> = {
   'Admin Dashboard': 'nav.admin_dashboard',
   'Events': 'nav.events',
   'Tickets': 'nav.my_tickets',
+  'Settings': 'common.settings',
+  'Security': 'nav.security',
+  'Saved Attendees': 'nav.saved_attendees',
   'Choose seats': 'seats.page_title',
   'Seat selection': 'seats.breadcrumb',
 }

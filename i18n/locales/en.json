@@ -185,6 +185,15 @@
     "breadcrumb_venue": "Venue",
     "breadcrumb_user": "User"
   },
+  "settings": {
+    "overview_eyebrow": "Settings",
+    "overview_title": "Manage your account settings",
+    "overview_desc": "Choose the area you want to update, from sign-in security to saved attendee profiles used during checkout.",
+    "overview_security_title": "Security & authentication",
+    "overview_security_desc": "Manage passwords, passkeys, and connected sign-in providers.",
+    "overview_saved_attendees_title": "Saved attendees",
+    "overview_saved_attendees_desc": "Keep attendee details ready for faster ticket checkout."
+  },
   "event_card": {
     "venue_label": "Venue",
     "venue_tba": "Venue to be announced",

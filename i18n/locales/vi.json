@@ -185,6 +185,15 @@
     "breadcrumb_venue": "Địa điểm",
     "breadcrumb_user": "Người dùng"
   },
+  "settings": {
+    "overview_eyebrow": "Cài đặt",
+    "overview_title": "Quản lý cài đặt tài khoản",
+    "overview_desc": "Chọn khu vực bạn muốn cập nhật, từ bảo mật đăng nhập đến hồ sơ người tham dự đã lưu khi thanh toán.",
+    "overview_security_title": "Bảo mật & xác thực",
+    "overview_security_desc": "Quản lý mật khẩu, passkey và nhà cung cấp đăng nhập đã liên kết.",
+    "overview_saved_attendees_title": "Người tham dự đã lưu",
+    "overview_saved_attendees_desc": "Lưu sẵn thông tin người tham dự để thanh toán vé nhanh hơn."
+  },
   "event_card": {
     "venue_label": "Địa điểm",
     "venue_tba": "Địa điểm sẽ được thông báo",
