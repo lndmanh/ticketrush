@@ -176,7 +176,14 @@
     "system": "Hệ thống",
     "tasks": "Tác vụ",
     "waiting_room": "Phòng chờ",
-    "feature_flags": "Cờ tính năng"
+    "feature_flags": "Cờ tính năng",
+    "breadcrumb_session": "Suất diễn",
+    "breadcrumb_event": "Sự kiện",
+    "breadcrumb_order": "Đơn hàng",
+    "breadcrumb_ticket": "Vé",
+    "breadcrumb_hold": "Giữ chỗ",
+    "breadcrumb_venue": "Địa điểm",
+    "breadcrumb_user": "Người dùng"
   },
   "event_card": {
     "venue_label": "Địa điểm",
@@ -381,6 +388,13 @@
     "venue_pending": "Địa điểm đang chờ",
     "location_incoming": "Địa điểm sắp có",
     "session_time_pending": "Giờ suất diễn đang chờ",
+    "realtime_connected": "Đã kết nối",
+    "realtime_connecting": "Đang kết nối",
+    "realtime_disconnected": "Mất kết nối",
+    "realtime_reconnecting": "Đang kết nối lại cập nhật trực tiếp",
+    "realtime_paused": "Cập nhật trực tiếp đang tạm dừng",
+    "realtime_reconnecting_short": "Đang kết nối lại cập nhật trực tiếp…",
+    "realtime_unavailable": "Cập nhật trực tiếp chưa khả dụng.",
     "session_time": "Giờ suất diễn",
     "map_refresh_note": "Bản đồ tự làm mới mỗi 5 giây",
     "seat_map": "Sơ đồ chỗ ngồi",
@@ -432,7 +446,17 @@
     "seat_count": "{count} ghế",
     "section_summary": "{available}/{total} còn trống · {rows} hàng",
     "from_price": "từ {price}",
-    "row_short": "Hàng"
+    "row_short": "Hàng",
+    "focus_section": "Chọn khu vực",
+    "all_sections": "Tất cả khu vực",
+    "zoom_out": "Thu nhỏ",
+    "zoom_in": "Phóng to",
+    "reset_zoom": "Đặt lại",
+    "open_metric": "Trống",
+    "floor": "Sàn đứng",
+    "general_admission_short": "GA",
+    "seat_aria_label": "{section} hàng {row} ghế {seat} ({status})",
+    "seat_sr_label": "{section} hàng {row} ghế {seat}"
   },
   "checkout": {
     "page_title": "Thanh toán",

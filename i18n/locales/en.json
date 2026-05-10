@@ -176,7 +176,14 @@
     "system": "System",
     "tasks": "Tasks",
     "waiting_room": "Waiting Room",
-    "feature_flags": "Feature Flags"
+    "feature_flags": "Feature Flags",
+    "breadcrumb_session": "Session",
+    "breadcrumb_event": "Event",
+    "breadcrumb_order": "Order",
+    "breadcrumb_ticket": "Ticket",
+    "breadcrumb_hold": "Hold",
+    "breadcrumb_venue": "Venue",
+    "breadcrumb_user": "User"
   },
   "event_card": {
     "venue_label": "Venue",
@@ -381,6 +388,13 @@
     "venue_pending": "Venue pending",
     "location_incoming": "Location incoming",
     "session_time_pending": "Session time pending",
+    "realtime_connected": "Connected",
+    "realtime_connecting": "Connecting",
+    "realtime_disconnected": "Disconnected",
+    "realtime_reconnecting": "Reconnecting to live updates",
+    "realtime_paused": "Live updates paused",
+    "realtime_reconnecting_short": "Reconnecting live updates…",
+    "realtime_unavailable": "Live updates unavailable.",
     "session_time": "Session time",
     "map_refresh_note": "Map refreshes every 5 seconds",
     "seat_map": "Seat map",
@@ -432,7 +446,17 @@
     "seat_count": "{count} seats",
     "section_summary": "{available}/{total} available · {rows} rows",
     "from_price": "from {price}",
-    "row_short": "Row"
+    "row_short": "Row",
+    "focus_section": "Focus section",
+    "all_sections": "All sections",
+    "zoom_out": "Zoom out",
+    "zoom_in": "Zoom in",
+    "reset_zoom": "Reset",
+    "open_metric": "Open",
+    "floor": "Floor",
+    "general_admission_short": "GA",
+    "seat_aria_label": "{section} row {row} seat {seat} ({status})",
+    "seat_sr_label": "{section} row {row} seat {seat}"
   },
   "checkout": {
     "page_title": "Checkout",
