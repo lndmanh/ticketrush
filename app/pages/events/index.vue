@@ -228,13 +228,14 @@ const resultSummary = computed(() => {
 definePageMeta({
   title: 'Events',
   breadcrumb: 'Events',
+  defaultLayoutContained: false,
 })
 </script>
 
 <template>
   <AppLayout
     :hide-header="true"
-    class-name="relative gap-8 overflow-hidden py-6 md:gap-10 md:py-10"
+    class-name="relative gap-8 overflow-hidden md:gap-10 max-w-[90rem] px-4 mt-16 pb-3 sm:px-6 lg:px-10"
   >
     <div class="relative space-y-5 py-3">
       <form

@@ -5,7 +5,6 @@ import { ArrowLeft, SearchIcon } from '@lucide/vue'
 import NavMain from '@/components/nav/NavMain.vue'
 import NavSecondary from '@/components/nav/NavSecondary.vue'
 import NavUser from '@/components/nav/NavUser.vue'
-import { APP_MANIFEST } from '#shared/constants/manifest'
 import type { SidebarProps } from '@/components/ui/sidebar'
 import {
   Sidebar,
@@ -17,7 +16,6 @@ import {
   SidebarMenuButton,
 } from '@/components/ui/sidebar'
 import { useSidebar } from '@/components/ui/sidebar/utils'
-
 import { Separator } from './ui/separator'
 
 const props = withDefaults(defineProps<SidebarProps>(), {
@@ -25,9 +23,9 @@ const props = withDefaults(defineProps<SidebarProps>(), {
 })
 
 const { toggleIsOpen } = useHotSearch()
-const { public: publicConfig } = useRuntimeConfig()
 const { open } = useSidebar()
-const { activeContext, primarySections, secondarySections, showBack, isContextView } = useSidebarContext()
+const { activeContext, primarySections, secondarySections, showBack, isContextView, showMainSidebar } = useSidebarContext()
+const config = useRuntimeConfig()
 </script>
 
 <template>
@@ -50,7 +48,6 @@ const { activeContext, primarySections, secondarySections, showBack, isContextVi
               size="lg"
             >
               <SearchIcon />
-              <span>{{ $t('nav.quick_search') }}</span>
               <KbdGroup class="ml-auto">
                 <Kbd>Ctrl</Kbd>
                 <span>+</span>
@@ -77,14 +74,11 @@ const { activeContext, primarySections, secondarySections, showBack, isContextVi
             <SidebarMenu>
               <SidebarMenuItem>
                 <SidebarMenuButton
-                  as-child
-                  :tooltip="$t('common.back')"
                   class="flex items-center"
+                  @click="showMainSidebar"
                 >
-                  <nuxt-link to="/">
-                    <ArrowLeft />
-                    <span>{{ $t('common.back') }}</span>
-                  </nuxt-link>
+                  <ArrowLeft />
+                  <span>Back</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
             </SidebarMenu>
@@ -104,13 +98,14 @@ const { activeContext, primarySections, secondarySections, showBack, isContextVi
         </motion.div>
       </AnimatePresence>
     </SidebarContent>
+
     <Separator />
     <SidebarFooter>
       <span
         v-show="open"
         class="text-sm text-muted-foreground"
       >
-        {{ APP_MANIFEST.short_name }} v{{ publicConfig.version }}
+        {{ config.public.version! }}
       </span>
     </SidebarFooter>
   </Sidebar>

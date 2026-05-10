@@ -5,7 +5,7 @@
       <header
         class="w-full max-w-5xl transition-all duration-500 ease-out"
         :class="cn(
-          'rounded-full border px-8 transition-all',
+          'rounded-full border px-4 transition-all sm:px-6 lg:px-8',
           isScrolled
             ? 'border-border/40 bg-background/30 shadow-[0_8px_30px_rgb(0,0,0,0.12)] backdrop-blur-md py-3'
             : 'border-border/10 bg-background/40 py-4 backdrop-blur-sm',
@@ -261,13 +261,19 @@
     </Transition>
 
     <!-- Main Content -->
-    <main>
-      <slot />
+    <main class="min-h-dvh">
+      <div
+        v-if="isDefaultLayoutContained"
+        class="mx-auto w-full max-w-[90rem] px-4 pb-16 pt-28 sm:px-6 md:pt-32 lg:px-10"
+      >
+        <slot />
+      </div>
+      <slot v-else />
     </main>
 
     <footer class="border-t border-border/40 bg-background">
       <!-- Main Footer Content -->
-      <div class="mx-auto max-w-5xl px-6 pt-14 pb-10 lg:px-8 lg:pt-16 lg:pb-12">
+      <div class="mx-auto max-w-[90rem] px-4 pt-14 pb-10 sm:px-6 lg:px-10 lg:pt-16 lg:pb-12">
         <div class="lg:grid lg:grid-cols-12 lg:gap-12">
           <!-- Brand -->
           <div class="lg:col-span-5">
@@ -401,7 +407,7 @@
 
       <!-- Legal Bar -->
       <div class="border-t border-border/30">
-        <div class="mx-auto py-3 px-8">
+        <div class="mx-auto max-w-[90rem] px-4 py-3 sm:px-6 lg:px-10">
           <div class="flex flex-col-reverse items-center gap-4 sm:flex-row sm:justify-between">
             <div class="flex flex-col items-center gap-0.5 sm:items-start">
               <p class="text-xs text-muted-foreground/60">
@@ -454,6 +460,9 @@ const config = useConfig()
 
 const headerNav = computed(() => config.value.header.nav)
 const headerSearch = computed(() => config.value.search)
+const route = useRoute()
+
+const isDefaultLayoutContained = computed(() => route.meta.defaultLayoutContained !== false)
 
 const activeSubmenu = ref<number | null>(null)
 

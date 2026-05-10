@@ -52,6 +52,10 @@ const releaseCount = computed(() => {
   return sortedSessions.value.reduce((total, session) => total + session.ticketTypes.length, 0)
 })
 
+if (!event.value) {
+  await navigateTo('/404', { replace: true })
+}
+
 definePageMeta({
   title: 'Event detail',
   breadcrumb: 'Event',
@@ -59,9 +63,10 @@ definePageMeta({
 </script>
 
 <template>
-  <main
-    v-if="detail && event"
-    class="relative space-y-10 overflow-hidden pb-16 pt-6 md:space-y-14 md:pb-24"
+  <AppLayout
+    v-if="event"
+    :hide-header="true"
+    class-name="relative gap-8 overflow-hidden md:gap-10 max-w-[90rem] px-4 mt-16 pb-3 sm:px-6 lg:px-10"
   >
     <div class="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[32rem] bg-[radial-gradient(circle_at_18%_12%,hsl(var(--primary)/0.18),transparent_34%),radial-gradient(circle_at_88%_4%,hsl(var(--muted-foreground)/0.14),transparent_30%)]" />
 
@@ -185,5 +190,5 @@ definePageMeta({
         </CardContent>
       </Card>
     </section>
-  </main>
+  </AppLayout>
 </template>

@@ -8,7 +8,6 @@ import {
   CircleAlert,
   Clock3,
   MapPin,
-  ShieldCheck,
   Ticket,
   UsersRound,
 } from '@lucide/vue'
@@ -167,6 +166,10 @@ watch(upcomingEvents, async () => {
   await nextTick()
   updateCarouselState()
 })
+
+definePageMeta({
+  defaultLayoutContained: false,
+})
 </script>
 
 <template>
@@ -211,7 +214,7 @@ watch(upcomingEvents, async () => {
               <h1 class="max-w-5xl text-balance text-5xl font-semibold leading-[0.94] tracking-[-0.075em] text-white sm:text-6xl lg:text-8xl">
                 {{ $t('home.title') }}
               </h1>
-              <p class="max-w-2xl text-base leading-8 text-white/76 md:text-lg">
+              <p class="max-w-2xl font-semibold text-base leading-8 text-white md:text-lg">
                 {{ $t('home.subtitle') }}
               </p>
             </div>
