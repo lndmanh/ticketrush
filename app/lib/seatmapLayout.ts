@@ -57,7 +57,11 @@ export function getTintStyle(color: string, borderAlpha: number, backgroundAlpha
   }
 }
 
-export function buildSeatMapLayout(seats: SeatMapSeat[], ticketTypes: SeatMapTicketType[]): SeatMapLayout {
+export function buildSeatMapLayout(
+  seats: SeatMapSeat[],
+  ticketTypes: SeatMapTicketType[],
+  options: { fallbackSectionName: string, fallbackRowLabel: string } = { fallbackSectionName: 'Floor', fallbackRowLabel: 'GA' },
+): SeatMapLayout {
   const ticketTypeById = new Map(
     ticketTypes
       .filter((ticketType): ticketType is SeatMapTicketType & { id: number } => typeof ticketType.id === 'number')
@@ -73,7 +77,7 @@ export function buildSeatMapLayout(seats: SeatMapSeat[], ticketTypes: SeatMapTic
   const sectionMap = new Map<string, { name: string, seats: SeatMapSeat[] }>()
 
   for (const seat of seats) {
-    const sectionName = seat.sectionNameSnapshot || 'Floor'
+    const sectionName = seat.sectionNameSnapshot || options.fallbackSectionName
     const key = typeof seat.venueSectionId === 'number'
       ? `section-${seat.venueSectionId}`
       : `name-${sectionName}`
@@ -87,7 +91,7 @@ export function buildSeatMapLayout(seats: SeatMapSeat[], ticketTypes: SeatMapTic
     const rowMap = new Map<string, SeatMapSeat[]>()
 
     for (const seat of sectionSeats) {
-      const rowKey = seat.rowLabelSnapshot || 'GA'
+      const rowKey = seat.rowLabelSnapshot || options.fallbackRowLabel
       const currentRowSeats = rowMap.get(rowKey) ?? []
       currentRowSeats.push(seat)
       rowMap.set(rowKey, currentRowSeats)

@@ -26,7 +26,7 @@ const props = withDefaults(defineProps<{
   interactive?: boolean
   mode?: 'public' | 'admin'
 }>(), {
-  actionLabel: 'Open live seat selection',
+  actionLabel: undefined,
   selectedSeatIds: () => [],
   interactive: false,
   mode: 'public',
@@ -191,6 +191,8 @@ function getStatusDescription(status: SeatMapStatus) {
 
   return t('seatmap.desc_unavailable')
 }
+
+const effectiveActionLabel = computed(() => props.actionLabel === undefined ? t('seatmap.open_live_selection') : props.actionLabel)
 </script>
 
 <template>
@@ -226,11 +228,11 @@ function getStatusDescription(status: SeatMapStatus) {
           @update:model-value="setSelectedSection"
         >
           <SelectTrigger class="min-w-[12rem]">
-            <SelectValue placeholder="Focus section" />
+            <SelectValue :placeholder="$t('seatmap.focus_section')" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">
-              All sections
+              {{ $t('seatmap.all_sections') }}
             </SelectItem>
             <SelectItem
               v-for="section in sectionOptions"
@@ -246,7 +248,7 @@ function getStatusDescription(status: SeatMapStatus) {
           <Button
             variant="ghost"
             size="icon-sm"
-            aria-label="Zoom out"
+            :aria-label="$t('seatmap.zoom_out')"
             @click="decreaseZoom"
           >
             <ZoomOut class="size-4" />
@@ -257,7 +259,7 @@ function getStatusDescription(status: SeatMapStatus) {
           <Button
             variant="ghost"
             size="icon-sm"
-            aria-label="Zoom in"
+            :aria-label="$t('seatmap.zoom_in')"
             @click="increaseZoom"
           >
             <ZoomIn class="size-4" />
@@ -268,7 +270,7 @@ function getStatusDescription(status: SeatMapStatus) {
             class="px-3 text-xs"
             @click="resetZoom"
           >
-            Reset
+            {{ $t('seatmap.reset_zoom') }}
           </Button>
         </div>
       </div>
@@ -388,7 +390,7 @@ function getStatusDescription(status: SeatMapStatus) {
                       <div class="grid grid-cols-3 gap-2 text-center md:min-w-[12rem]">
                         <div class="rounded-2xl border border-border bg-background/88 px-3 py-2">
                           <p class="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-                            Open
+                            {{ $t('seatmap.open_metric') }}
                           </p>
                           <p class="mt-1 text-sm font-semibold tabular-nums text-foreground">
                             {{ section.metrics.available }}
@@ -396,7 +398,7 @@ function getStatusDescription(status: SeatMapStatus) {
                         </div>
                         <div class="rounded-2xl border border-border bg-background/88 px-3 py-2">
                           <p class="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-                            Held
+                            {{ $t('common.held') }}
                           </p>
                           <p class="mt-1 text-sm font-semibold tabular-nums text-foreground">
                             {{ section.metrics.locked }}
@@ -404,7 +406,7 @@ function getStatusDescription(status: SeatMapStatus) {
                         </div>
                         <div class="rounded-2xl border border-border bg-background/88 px-3 py-2">
                           <p class="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-                            Sold
+                            {{ $t('common.sold') }}
                           </p>
                           <p class="mt-1 text-sm font-semibold tabular-nums text-foreground">
                             {{ section.metrics.sold }}
@@ -440,12 +442,12 @@ function getStatusDescription(status: SeatMapStatus) {
                               :style="getSeatStyle(getSeatColor(section.color, seat, layout.ticketTypeById), seat, activeSeat?.id === seat.id, isSeatSelected(seat.id))"
                               :aria-pressed="isSeatSelected(seat.id) || activeSeat?.id === seat.id"
                               :aria-disabled="seat.status !== 'available'"
-                              :aria-label="`${section.name} row ${row.label} seat ${seat.seatLabelSnapshot} (${getStatusLabel(seat.status)})`"
+                              :aria-label="$t('seatmap.seat_aria_label', { section: section.name, row: row.label, seat: seat.seatLabelSnapshot, status: getStatusLabel(seat.status) })"
                               :title="`${section.name} · ${$t('admin.event_session.row_label', { row: row.label, seat: seat.seatLabelSnapshot })}`"
                               @click="onSeatPress(seat, setActiveSeat)"
                             >
                               <span class="sr-only">
-                                {{ section.name }} row {{ row.label }} seat {{ seat.seatLabelSnapshot }}
+                                {{ $t('seatmap.seat_sr_label', { section: section.name, row: row.label, seat: seat.seatLabelSnapshot }) }}
                               </span>
                               <span aria-hidden="true">{{ seat.seatLabelSnapshot }}</span>
                             </button>
@@ -465,7 +467,7 @@ function getStatusDescription(status: SeatMapStatus) {
           <div class="grid gap-3 sm:grid-cols-4">
             <div class="rounded-[1.25rem] border border-border bg-secondary/35 p-4">
               <p class="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
-                Total
+                {{ $t('common.total') }}
               </p>
               <p class="mt-2 text-2xl font-semibold tabular-nums tracking-tight text-foreground">
                 {{ inventorySummary.total }}
@@ -473,7 +475,7 @@ function getStatusDescription(status: SeatMapStatus) {
             </div>
             <div class="rounded-[1.25rem] border border-border bg-secondary/35 p-4">
               <p class="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
-                Available
+                {{ $t('common.available') }}
               </p>
               <p class="mt-2 text-2xl font-semibold tabular-nums tracking-tight text-foreground">
                 {{ inventorySummary.available }}
@@ -481,7 +483,7 @@ function getStatusDescription(status: SeatMapStatus) {
             </div>
             <div class="rounded-[1.25rem] border border-border bg-secondary/35 p-4">
               <p class="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
-                Held
+                {{ $t('common.held') }}
               </p>
               <p class="mt-2 text-2xl font-semibold tabular-nums tracking-tight text-foreground">
                 {{ inventorySummary.locked }}
@@ -489,7 +491,7 @@ function getStatusDescription(status: SeatMapStatus) {
             </div>
             <div class="rounded-[1.25rem] border border-border bg-secondary/35 p-4">
               <p class="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
-                Sold
+                {{ $t('common.sold') }}
               </p>
               <p class="mt-2 text-2xl font-semibold tabular-nums tracking-tight text-foreground">
                 {{ inventorySummary.sold }}
@@ -503,7 +505,7 @@ function getStatusDescription(status: SeatMapStatus) {
                 {{ getStatusLabel(activeSeat.status) }}
               </span>
               <h3 class="mt-3 text-xl font-semibold tracking-tight text-foreground">
-                {{ $t('seatmap.row_label', { row: activeSeat.rowLabelSnapshot || 'GA', seat: activeSeat.seatLabelSnapshot }) }}
+                {{ $t('seatmap.row_label', { row: activeSeat.rowLabelSnapshot || $t('seatmap.general_admission_short'), seat: activeSeat.seatLabelSnapshot }) }}
               </h3>
               <p class="mt-2 text-sm leading-6 text-muted-foreground">
                 {{ getStatusDescription(activeSeat.status) }}
@@ -515,12 +517,12 @@ function getStatusDescription(status: SeatMapStatus) {
                 {{ activeSeatTicketType?.name || $t('seatmap.general_seating') }}
               </p>
               <Button
-                v-if="actionLabel"
+                v-if="effectiveActionLabel"
                 class="mt-4 w-full"
                 size="lg"
                 @click="emit('purchase')"
               >
-                {{ actionLabel }}
+                {{ effectiveActionLabel }}
               </Button>
             </template>
           </div>
