@@ -25,6 +25,7 @@ const notifications = computed<AppNotification[]>(() => data.value?.success ? da
 const isOpen = ref(false)
 const readNotificationIds = ref<string[]>([])
 const unreadCount = computed(() => notifications.value.filter(notification => !readNotificationIds.value.includes(notification.id)).length)
+const hasUnreadNotifications = computed(() => unreadCount.value > 0)
 
 const severityClass: Record<NotificationSeverity, string> = {
   success: 'border-emerald-500/25 bg-emerald-500/10 text-emerald-600 dark:text-emerald-300',
@@ -82,6 +83,10 @@ function openNotification(notification: AppNotification) {
   void navigateTo(localePath(notification.href))
 }
 
+function isNotificationRead(notification: AppNotification) {
+  return readNotificationIds.value.includes(notification.id)
+}
+
 function persistReadNotificationIds(ids: string[]) {
   if (!import.meta.client) {
     return
@@ -98,6 +103,10 @@ function markNotificationsRead(ids: string[]) {
   const nextIds = Array.from(new Set([...readNotificationIds.value, ...ids]))
   readNotificationIds.value = nextIds
   persistReadNotificationIds(nextIds)
+}
+
+function markAllNotificationsRead() {
+  markNotificationsRead(notifications.value.map(notification => notification.id))
 }
 
 function loadReadNotificationIds() {
@@ -141,12 +150,6 @@ onMounted(() => {
   }, 30000)
 })
 
-watch(isOpen, (open) => {
-  if (open) {
-    markNotificationsRead(notifications.value.map(notification => notification.id))
-  }
-})
-
 onUnmounted(() => {
   if (refreshIntervalId !== null) {
     window.clearInterval(refreshIntervalId)
@@ -179,14 +182,35 @@ onUnmounted(() => {
       <div class="border-b p-4">
         <div class="flex items-center justify-between gap-3">
           <div>
-            <p class="font-semibold tracking-[-0.03em] text-foreground">
-              {{ $t('notifications.title') }}
-            </p>
+            <div class="flex flex-wrap items-center gap-2">
+              <p class="font-semibold tracking-[-0.03em] text-foreground">
+                {{ $t('notifications.title') }}
+              </p>
+              <Badge
+                v-if="hasUnreadNotifications"
+                variant="secondary"
+                class="rounded-full text-[10px]"
+              >
+                {{ $t('notifications.unread_count', { count: unreadCount }) }}
+              </Badge>
+            </div>
             <p class="mt-1 text-xs text-muted-foreground">
               {{ $t('notifications.subtitle') }}
             </p>
           </div>
-          <WalletCards class="size-4 text-muted-foreground" />
+          <div class="flex items-center gap-2">
+            <Button
+              v-if="hasUnreadNotifications"
+              type="button"
+              variant="ghost"
+              size="sm"
+              class="h-8 rounded-full px-3 text-xs"
+              @click="markAllNotificationsRead"
+            >
+              {{ $t('notifications.mark_all_read') }}
+            </Button>
+            <WalletCards class="size-4 text-muted-foreground" />
+          </div>
         </div>
       </div>
 
@@ -196,7 +220,7 @@ onUnmounted(() => {
           :key="notification.id"
           type="button"
           class="flex w-full gap-3 rounded-xl p-3 text-left transition-colors hover:bg-muted/60"
-          :class="readNotificationIds.includes(notification.id) ? 'opacity-70' : ''"
+          :class="isNotificationRead(notification) ? 'opacity-70' : 'bg-primary/5 ring-1 ring-primary/10'"
           @click="openNotification(notification)"
         >
           <span :class="['mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-full border', severityClass[notification.severity]]">
@@ -206,8 +230,17 @@ onUnmounted(() => {
             />
           </span>
           <span class="min-w-0 flex-1">
-            <span class="block text-sm font-medium text-foreground">
-              {{ $t(notification.titleKey, getLocalizedDescriptionParams(notification.descriptionParams)) }}
+            <span class="flex items-start justify-between gap-3">
+              <span class="block text-sm font-medium text-foreground">
+                {{ $t(notification.titleKey, getLocalizedDescriptionParams(notification.descriptionParams)) }}
+              </span>
+              <Badge
+                variant="outline"
+                class="shrink-0 rounded-full text-[10px]"
+                :class="isNotificationRead(notification) ? 'text-muted-foreground' : 'border-primary/30 text-primary'"
+              >
+                {{ isNotificationRead(notification) ? $t('notifications.read') : $t('notifications.unread') }}
+              </Badge>
             </span>
             <span class="mt-1 block text-sm leading-5 text-muted-foreground">
               {{ $t(notification.descriptionKey, getLocalizedDescriptionParams(notification.descriptionParams)) }}
