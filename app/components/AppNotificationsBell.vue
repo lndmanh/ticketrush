@@ -214,9 +214,6 @@ onUnmounted(() => {
                 {{ $t('notifications.unread_count', { count: unreadCount }) }}
               </Badge>
             </div>
-            <p class="mt-1 text-xs text-muted-foreground">
-              {{ $t('notifications.subtitle') }}
-            </p>
           </div>
           <div class="flex items-center gap-2">
             <Button
