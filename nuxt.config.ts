@@ -85,6 +85,9 @@ export default defineNuxtConfig({
   },
 
   routeRules: routeRules,
+  future: {
+    compatibilityVersion: 5,
+  },
 
   experimental: {
     emitRouteChunkError: 'automatic-immediate',
@@ -95,7 +98,7 @@ export default defineNuxtConfig({
   nitro: {
     compressPublicAssets: true,
     minify: true,
-    preset: 'cloudflare-module',
+    preset: 'cloudflare_module',
     rollupConfig: {
       external: ['sharp', /^@img\/sharp.*/],
     },
