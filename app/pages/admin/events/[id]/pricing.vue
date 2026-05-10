@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { LockKeyhole } from '@lucide/vue'
+import { LockKeyhole, SaveIcon } from '@lucide/vue'
 import { useForm } from 'vee-validate'
 import { toast } from 'vue-sonner'
 import { apiRequest } from '@/utils/apiRequest'
@@ -223,7 +223,7 @@ const onSubmit = handleSubmit(
           subtitle: eventFields.subtitle,
           description: eventFields.description,
           venueId: eventFields.venueId,
-          coverImage: eventFields.coverImage,
+          coverImage: eventFields.coverImage ?? '',
           status: eventFields.status,
           startsAt: new Date(eventFields.startsAt),
           endsAt: eventFields.endsAt ? new Date(eventFields.endsAt) : undefined,
@@ -330,6 +330,7 @@ definePageMeta({
               :disabled="isLockedConfiguration || isSaving"
               :is-loading="isSaving"
             >
+              <SaveIcon class="size-4" />
               Save changes
             </Button>
           </div>

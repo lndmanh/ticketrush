@@ -343,12 +343,15 @@ function updateTicketType(sessionIndex: number, ticketIndex: number, updates: Pa
 
                   <div class="space-y-2">
                     <Label :for="`session-${sessionIndex}-starts-at`">{{ $t('admin.event_session.starts_at') }}</Label>
-                    <Input
+                    <AdminEventsAdminEventDateTimePicker
                       :id="`session-${sessionIndex}-starts-at`"
-                      type="datetime-local"
                       :model-value="session.startsAt"
                       :disabled="locked"
                       :aria-invalid="!!getSessionError(sessionIndex, 'startsAt')"
+                      :placeholder="$t('admin.event_session.pick_datetime')"
+                      :time-label="$t('admin.event_session.time')"
+                      :clear-label="$t('admin.event_session.clear_datetime')"
+                      :date-placeholder="$t('admin.event_session.choose_date_first')"
                       @update:model-value="value => updateSession(sessionIndex, { startsAt: String(value) })"
                     />
                     <p
@@ -361,12 +364,15 @@ function updateTicketType(sessionIndex: number, ticketIndex: number, updates: Pa
 
                   <div class="space-y-2">
                     <Label :for="`session-${sessionIndex}-ends-at`">{{ $t('admin.event_session.ends_at') }}</Label>
-                    <Input
+                    <AdminEventsAdminEventDateTimePicker
                       :id="`session-${sessionIndex}-ends-at`"
-                      type="datetime-local"
                       :model-value="session.endsAt"
                       :disabled="locked"
                       :aria-invalid="!!getSessionError(sessionIndex, 'endsAt')"
+                      :placeholder="$t('admin.event_session.pick_datetime')"
+                      :time-label="$t('admin.event_session.time')"
+                      :clear-label="$t('admin.event_session.clear_datetime')"
+                      :date-placeholder="$t('admin.event_session.choose_date_first')"
                       @update:model-value="value => updateSession(sessionIndex, { endsAt: String(value) })"
                     />
                     <p
@@ -393,12 +399,15 @@ function updateTicketType(sessionIndex: number, ticketIndex: number, updates: Pa
                 <div class="grid gap-4 md:grid-cols-2">
                   <div class="space-y-2">
                     <Label :for="`session-${sessionIndex}-sales-start-at`">{{ $t('admin.event_session.sales_start') }}</Label>
-                    <Input
+                    <AdminEventsAdminEventDateTimePicker
                       :id="`session-${sessionIndex}-sales-start-at`"
-                      type="datetime-local"
                       :model-value="session.salesStartAt"
                       :disabled="locked"
                       :aria-invalid="!!getSessionError(sessionIndex, 'salesStartAt')"
+                      :placeholder="$t('admin.event_session.pick_datetime')"
+                      :time-label="$t('admin.event_session.time')"
+                      :clear-label="$t('admin.event_session.clear_datetime')"
+                      :date-placeholder="$t('admin.event_session.choose_date_first')"
                       @update:model-value="value => updateSession(sessionIndex, { salesStartAt: String(value) })"
                     />
                     <p
@@ -411,12 +420,15 @@ function updateTicketType(sessionIndex: number, ticketIndex: number, updates: Pa
 
                   <div class="space-y-2">
                     <Label :for="`session-${sessionIndex}-sales-end-at`">{{ $t('admin.event_session.sales_end') }}</Label>
-                    <Input
+                    <AdminEventsAdminEventDateTimePicker
                       :id="`session-${sessionIndex}-sales-end-at`"
-                      type="datetime-local"
                       :model-value="session.salesEndAt"
                       :disabled="locked"
                       :aria-invalid="!!getSessionError(sessionIndex, 'salesEndAt')"
+                      :placeholder="$t('admin.event_session.pick_datetime')"
+                      :time-label="$t('admin.event_session.time')"
+                      :clear-label="$t('admin.event_session.clear_datetime')"
+                      :date-placeholder="$t('admin.event_session.choose_date_first')"
                       @update:model-value="value => updateSession(sessionIndex, { salesEndAt: String(value) })"
                     />
                     <p
@@ -505,6 +517,7 @@ function updateTicketType(sessionIndex: number, ticketIndex: number, updates: Pa
                       >
                         <SelectTrigger
                           :id="`session-${sessionIndex}-ticket-${ticketIndex}-section`"
+                          class="w-full"
                           :aria-invalid="!!getTicketError(sessionIndex, ticketIndex, 'venueSectionId')"
                         >
                           <SelectValue :placeholder="$t('admin.event_session.general_admission')" />

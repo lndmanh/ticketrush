@@ -226,6 +226,10 @@ export const waitingRoomSettingsSchema = z.object({
   queueWindowSeconds: z.coerce.number().int().positive('Admission window must be at least 1 second').default(180),
 })
 
+const eventCoverImageSchema = z.union([z.string().url(), z.literal(''), z.null()])
+  .optional()
+  .transform(value => value === null ? '' : value)
+
 const eventSessionEditorBaseSchema = eventSessionDraftBaseSchema.extend({
   startsAt: z.string().min(1, 'Session start is required'),
   endsAt: z.string().optional(),
@@ -245,7 +249,7 @@ export const createEventSchema = z.object({
   subtitle: z.string().trim().optional(),
   description: commonSchemaFragments.nonEmptyString('Event description'),
   venueId: commonSchemaFragments.positiveId,
-  coverImage: z.string().url().optional().or(z.literal('')),
+  coverImage: eventCoverImageSchema,
   sessions: z.array(eventSessionDraftSchema).min(1),
 })
 
