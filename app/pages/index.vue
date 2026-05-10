@@ -8,7 +8,6 @@ import {
   CircleAlert,
   Clock3,
   MapPin,
-  ShieldCheck,
   Ticket,
   UsersRound,
 } from '@lucide/vue'
