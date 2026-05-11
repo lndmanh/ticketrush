@@ -3,6 +3,7 @@ import queueService from '~~/server/utils/ticketing/queue'
 import { apiError, success } from '~~/server/utils/apiResponse'
 import { getTicketingSessionKey } from '~~/server/utils/ticketing/session'
 import type { EventSessionGateResponse } from '~~/types/ticketing'
+import { EventStatus } from '#shared/commonEnums'
 
 export default defineEventHandler(async (event) => {
   const sessionPublicId = getRouterParam(event, 'sessionId')
@@ -15,7 +16,7 @@ export default defineEventHandler(async (event) => {
     throw apiError({ status: 404, statusText: 'Not Found', code: 'SESSION_NOT_FOUND', message: 'Session not found.' })
   }
 
-  if (session.status === 'draft' || session.status === 'cancelled') {
+  if (session.status === EventStatus.Draft || session.status === EventStatus.Cancelled) {
     throw apiError({ status: 404, statusText: 'Not Found', code: 'SESSION_NOT_FOUND', message: 'Session not found.' })
   }
 
