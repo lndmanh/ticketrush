@@ -1,4 +1,4 @@
-import type { AdminEventWorkspaceDetail, AdminEventWorkspaceSeat, AdminEventWorkspaceSession, AdminEventWorkspaceTicketType } from '~~/types/admin-events'
+import type { AdminEventWorkspaceDetail, AdminEventWorkspaceSession } from '~~/types/admin-events'
 import eventService from '~~/server/utils/database/event'
 import venueService from '~~/server/utils/database/venue'
 import { apiError, success } from '~~/server/utils/apiResponse'
@@ -20,6 +20,7 @@ export default defineEventHandler(async (event) => {
   }
 
   const venue = await venueService.getDetail(current.venueId)
+  const currentVenueLayoutVersion = venue?.venue.layoutVersion
   const sessions: AdminEventWorkspaceSession[] = detail.sessions.map(session => ({
     id: session.id,
     publicId: session.publicId,
@@ -32,20 +33,30 @@ export default defineEventHandler(async (event) => {
     salesStartAt: session.salesStartAt,
     salesEndAt: session.salesEndAt,
     queueEnabled: session.queueEnabled,
-    ticketTypes: session.ticketTypes.map(ticketType => ({
-      id: ticketType.id,
-      venueSectionId: ticketType.venueSectionId,
-      name: ticketType.name,
-      description: ticketType.description,
-      priceCents: ticketType.priceCents,
-      currency: ticketType.currency,
-      capacity: ticketType.capacity,
-      color: ticketType.color,
-      isReservedSeating: ticketType.isReservedSeating,
-      sortOrder: ticketType.sortOrder,
+    pricingMode: session.pricingMode,
+    currency: session.currency,
+    venueLayoutVersion: session.venueLayoutVersion,
+    venueSyncedAt: session.venueSyncedAt,
+    venueSyncStatus: currentVenueLayoutVersion !== undefined && session.venueLayoutVersion === currentVenueLayoutVersion ? 'current' : 'stale',
+    sectionPrices: session.sectionPrices.map(sectionPrice => ({
+      venueSectionId: sectionPrice.venueSectionId,
+      sectionNameSnapshot: sectionPrice.sectionNameSnapshot,
+      sectionColorSnapshot: sectionPrice.sectionColorSnapshot,
+      priceCents: sectionPrice.priceCents,
+      currency: sectionPrice.currency,
+      sortOrder: sectionPrice.sortOrder,
+    })),
+    seatOverrides: session.seatOverrides.map(seatOverride => ({
+      venueSeatId: seatOverride.venueSeatId,
+      venueSectionId: seatOverride.venueSectionId,
+      priceCents: seatOverride.priceCents,
+      currency: seatOverride.currency,
+      isDisabled: seatOverride.isDisabled,
     })),
     seats: session.seats.map(seat => ({
       id: seat.id,
+      venueSeatId: seat.venueSeatId,
+      venueSectionId: seat.venueSectionId,
       sectionNameSnapshot: seat.sectionNameSnapshot,
       rowLabelSnapshot: seat.rowLabelSnapshot,
       seatLabelSnapshot: seat.seatLabelSnapshot,
@@ -57,8 +68,6 @@ export default defineEventHandler(async (event) => {
       updatedAt: seat.updatedAt,
     })),
   }))
-  const ticketTypes: AdminEventWorkspaceTicketType[] = sessions[0]?.ticketTypes ?? []
-  const seats: AdminEventWorkspaceSeat[] = sessions[0]?.seats ?? []
   const response: AdminEventWorkspaceDetail = {
     event: {
       id: detail.event.id,
@@ -74,9 +83,8 @@ export default defineEventHandler(async (event) => {
       salesStartAt: detail.event.salesStartAt,
       salesEndAt: detail.event.salesEndAt,
     },
+    primarySessionId: detail.event.primarySessionId,
     sessions,
-    ticketTypes,
-    seats,
     venue,
   }
 
