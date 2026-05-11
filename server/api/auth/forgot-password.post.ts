@@ -3,6 +3,7 @@ import { apiError, zodErrorToFieldErrors } from '~~/server/utils/apiResponse'
 import userService from '~~/server/utils/database/user'
 import authTokenService from '~~/server/utils/database/authToken'
 import { sendPasswordResetEmail } from '~~/server/utils/email'
+import { AuthTokenType } from '#shared/commonEnums'
 
 const bodySchema = z.object({
   'email': z.email(),
@@ -38,14 +39,14 @@ export default defineEventHandler(async (event) => {
     return success({})
   }
 
-  const hasRecent = await authTokenService.hasRecentToken(user.id, 'password_reset')
+  const hasRecent = await authTokenService.hasRecentToken(user.id, AuthTokenType.PasswordReset)
   if (hasRecent) {
     // Still return success to prevent timing attacks
     return success({})
   }
 
-  await authTokenService.invalidateUserTokens(user.id, 'password_reset')
-  const token = await authTokenService.createToken(user.id, 'password_reset')
+  await authTokenService.invalidateUserTokens(user.id, AuthTokenType.PasswordReset)
+  const token = await authTokenService.createToken(user.id, AuthTokenType.PasswordReset)
   await sendPasswordResetEmail(user.email, user.username, token)
 
   return success({})

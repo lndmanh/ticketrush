@@ -3,6 +3,7 @@ import { apiError, zodErrorToFieldErrors } from '~~/server/utils/apiResponse'
 import userService from '~~/server/utils/database/user'
 import authTokenService from '~~/server/utils/database/authToken'
 import { sendVerificationEmail } from '~~/server/utils/email'
+import { AuthTokenType } from '#shared/commonEnums'
 
 const bodySchema = z.object({
   email: z.email(),
@@ -27,7 +28,7 @@ export default defineEventHandler(async (event) => {
     return success({})
   }
 
-  const hasRecent = await authTokenService.hasRecentToken(user.id, 'email_verification')
+  const hasRecent = await authTokenService.hasRecentToken(user.id, AuthTokenType.EmailVerification)
   if (hasRecent) {
     throw apiError({
       status: 429,
@@ -37,8 +38,8 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  await authTokenService.invalidateUserTokens(user.id, 'email_verification')
-  const token = await authTokenService.createToken(user.id, 'email_verification')
+  await authTokenService.invalidateUserTokens(user.id, AuthTokenType.EmailVerification)
+  const token = await authTokenService.createToken(user.id, AuthTokenType.EmailVerification)
   await sendVerificationEmail(user.email, user.username, token)
 
   return success({})

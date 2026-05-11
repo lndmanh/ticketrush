@@ -3,6 +3,7 @@ import { passwordComplexitySchema } from '#shared/schemas/userSchema'
 import authTokenService from '~~/server/utils/database/authToken'
 import userService from '~~/server/utils/database/user'
 import { apiError, zodErrorToFieldErrors } from '~~/server/utils/apiResponse'
+import { AuthTokenType } from '#shared/commonEnums'
 
 const bodySchema = z.object({
   token: z.string().min(1),
@@ -25,7 +26,7 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  const tokenRecord = await authTokenService.verifyToken(result.data.token, 'password_reset')
+  const tokenRecord = await authTokenService.verifyToken(result.data.token, AuthTokenType.PasswordReset)
   if (!tokenRecord) {
     throw apiError({
       status: 400,
@@ -49,12 +50,12 @@ export default defineEventHandler(async (event) => {
 
   await userService.update({ id: user.id, password: hashedPassword })
   await authTokenService.markUsed(tokenRecord.id)
-  await authTokenService.invalidateUserTokens(user.id, 'password_reset')
+  await authTokenService.invalidateUserTokens(user.id, AuthTokenType.PasswordReset)
 
   // Also verify email if it wasn't verified (user proved email ownership via reset link)
   if (!user.emailVerified) {
     await userService.update({ id: user.id, emailVerified: true })
-    await authTokenService.invalidateUserTokens(user.id, 'email_verification')
+    await authTokenService.invalidateUserTokens(user.id, AuthTokenType.EmailVerification)
   }
 
   return success({})

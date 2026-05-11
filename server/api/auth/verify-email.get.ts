@@ -1,6 +1,7 @@
 import authTokenService from '~~/server/utils/database/authToken'
 import userService from '~~/server/utils/database/user'
 import { apiRoutes } from '#shared/apiRoutes'
+import { AuthTokenType } from '#shared/commonEnums'
 
 export default defineEventHandler(async (event) => {
   const query = getQuery(event)
@@ -10,7 +11,7 @@ export default defineEventHandler(async (event) => {
     return sendRedirect(event, apiRoutes.AUTH_LOGIN + '?error=invalid-token')
   }
 
-  const tokenRecord = await authTokenService.verifyToken(token, 'email_verification')
+  const tokenRecord = await authTokenService.verifyToken(token, AuthTokenType.EmailVerification)
 
   if (!tokenRecord) {
     return sendRedirect(event, apiRoutes.AUTH_LOGIN + '?error=invalid-token')
@@ -27,7 +28,7 @@ export default defineEventHandler(async (event) => {
 
   await userService.update({ id: user.id, emailVerified: true })
   await authTokenService.markUsed(tokenRecord.id)
-  await authTokenService.invalidateUserTokens(user.id, 'email_verification')
+  await authTokenService.invalidateUserTokens(user.id, AuthTokenType.EmailVerification)
 
   return sendRedirect(event, apiRoutes.AUTH_LOGIN + '?success=email-verified')
 })

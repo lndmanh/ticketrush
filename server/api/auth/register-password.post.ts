@@ -5,6 +5,7 @@ import { sendVerificationEmail } from '~~/server/utils/email'
 import { apiRoutes } from '#shared/apiRoutes'
 import type { User } from '#shared/db'
 import type { RegisterUserInput } from '#shared/schemas/userSchema'
+import { AuthTokenType } from '#shared/commonEnums'
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object'
@@ -111,7 +112,7 @@ export default defineEventHandler(async (event) => {
   }
 
   // Send verification email (non-blocking - don't fail registration if email fails)
-  const verificationToken = await authTokenService.createToken(newUser.id, 'email_verification')
+  const verificationToken = await authTokenService.createToken(newUser.id, AuthTokenType.EmailVerification)
   sendVerificationEmail(newUser.email, newUser.username, verificationToken).catch((err) => {
     console.error('[Register] Failed to send verification email:', err)
   })
