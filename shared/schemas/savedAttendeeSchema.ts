@@ -1,7 +1,8 @@
 import { z } from 'zod'
 import { commonSchemaFragments } from './index'
+import { SavedAttendeeGender as SavedAttendeeGenderEnum } from '../commonEnums'
 
-export const savedAttendeeGenderSchema = z.enum(['female', 'male', 'non-binary', 'prefer-not-to-say'])
+export const savedAttendeeGenderSchema = z.enum(SavedAttendeeGenderEnum)
 export type SavedAttendeeGender = z.infer<typeof savedAttendeeGenderSchema>
 
 function optionalTextSchema() {

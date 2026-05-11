@@ -1,9 +1,13 @@
 import type { PublicTicketTypeSummary } from '~~/types/events'
+import type { SeatPricingSource as SeatPricingSourceEnum, SeatStatus as SeatStatusEnum } from '#shared/commonEnums'
 
-export type SeatMapStatus = 'available' | 'locked' | 'sold' | 'unavailable'
+export type SeatMapStatus = `${SeatStatusEnum}`
+
+export type SeatPricingSource = `${SeatPricingSourceEnum}`
 
 export interface SeatMapSeat {
   id: number
+  venueSeatId?: number | null
   venueSectionId?: number | null
   ticketTypeId?: number | null
   sectionNameSnapshot: string
@@ -14,6 +18,7 @@ export interface SeatMapSeat {
   priceCents: number
   currency?: string
   status: SeatMapStatus
+  pricingSource?: SeatPricingSource
 }
 
 export interface SeatMapTicketType {
@@ -25,6 +30,23 @@ export interface SeatMapTicketType {
   currency: string
   capacity: number
   color: string
+}
+
+export interface SeatMapSectionPriceSummary {
+  venueSectionId: number
+  sectionNameSnapshot: string
+  sectionColorSnapshot: string
+  priceCents: number
+  currency: string
+  sortOrder: number
+}
+
+export interface SeatMapSeatOverrideSummary {
+  venueSeatId: number
+  venueSectionId: number
+  priceCents: number | null
+  currency: string | null
+  isDisabled: boolean
 }
 
 export interface SeatMapRow {
@@ -60,11 +82,14 @@ export interface SeatMapInventorySummary {
 export interface SeatMapLayout {
   sections: SeatMapSection[]
   inventorySummary: SeatMapInventorySummary
+  sectionPriceBySectionId: Map<number, SeatMapSectionPriceSummary>
+  seatOverrideBySeatId: Map<number, SeatMapSeatOverrideSummary>
   ticketTypeById: Map<number, SeatMapTicketType>
   ticketTypeBySectionId: Map<number, SeatMapTicketType>
 }
 
 export interface SessionSeatMapSeat extends SeatMapSeat {
+  venueSeatId: number | null
   venueSectionId: number | null
   ticketTypeId: number | null
   displayX: number | null
@@ -72,10 +97,13 @@ export interface SessionSeatMapSeat extends SeatMapSeat {
   currency: string
 }
 
+/** Legacy-only: retained for transitional APIs while section pricing becomes primary. */
 export type SessionSeatMapTicketType = PublicTicketTypeSummary
 
 export interface SessionSeatMapResponse {
   version: number
   seats: SessionSeatMapSeat[]
-  ticketTypes: SessionSeatMapTicketType[]
+  sectionPrices: SeatMapSectionPriceSummary[]
+  seatOverrides: SeatMapSeatOverrideSummary[]
+  ticketTypes?: SessionSeatMapTicketType[]
 }

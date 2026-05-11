@@ -1,4 +1,5 @@
 import type { SeatMapStatus } from '~~/types/seatmap'
+import { SeatStatus } from '#shared/commonEnums'
 
 export interface SeatStatusDeltaChange {
   seatId: number
@@ -25,13 +26,13 @@ export interface SeatmapConnectedMessage {
   version: number
 }
 
-export type SeatmapRealtimeMessage =
-  | SeatStatusDeltaMessage
-  | SeatmapResyncRequiredMessage
-  | SeatmapConnectedMessage
+export type SeatmapRealtimeMessage
+  = | SeatStatusDeltaMessage
+    | SeatmapResyncRequiredMessage
+    | SeatmapConnectedMessage
 
 export function isSeatMapStatus(value: unknown): value is SeatMapStatus {
-  return value === 'available' || value === 'locked' || value === 'sold' || value === 'unavailable'
+  return value === SeatStatus.Available || value === SeatStatus.Locked || value === SeatStatus.Sold || value === SeatStatus.Unavailable
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

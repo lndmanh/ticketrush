@@ -1,16 +1,33 @@
 import { z } from 'zod'
 import { commonSchemaFragments } from './index'
 import { savedAttendeeFormSchema } from './savedAttendeeSchema'
+import {
+  AgeBracket,
+  EventStatus,
+  HoldStatus,
+  OrderStatus,
+  PricingMode,
+  QueueStatus,
+  SavedAttendeeGender,
+  SeatStatus,
+  TicketHolderSource,
+  TicketStatus,
+} from '../commonEnums'
+import { locales, sourceLocale } from '../../i18n-constants'
 
+export const localeSchema = z.enum(locales)
+export const translatableLocaleSchema = localeSchema.refine(locale => locale !== sourceLocale, {
+  message: 'Source locale is edited in the original content form',
+})
 export const venueCountrySchema = z.string().min(2).max(80)
-export const eventStatusSchema = z.enum(['draft', 'published', 'on_sale', 'sold_out', 'ended', 'cancelled'])
-export const seatStatusSchema = z.enum(['available', 'locked', 'sold', 'unavailable'])
-export const holdStatusSchema = z.enum(['active', 'expired', 'converted', 'released'])
-export const orderStatusSchema = z.enum(['pending', 'confirmed', 'expired', 'cancelled'])
-export const ticketStatusSchema = z.enum(['issued', 'checked_in', 'cancelled'])
-export const queueStatusSchema = z.enum(['waiting', 'admitted', 'expired', 'completed'])
-export const ageBracketSchema = z.enum(['18-24', '25-34', '35-44', '45+'])
-export const genderSchema = z.enum(['female', 'male', 'non-binary', 'prefer-not-to-say'])
+export const eventStatusSchema = z.enum(EventStatus)
+export const seatStatusSchema = z.enum(SeatStatus)
+export const holdStatusSchema = z.enum(HoldStatus)
+export const orderStatusSchema = z.enum(OrderStatus)
+export const ticketStatusSchema = z.enum(TicketStatus)
+export const queueStatusSchema = z.enum(QueueStatus)
+export const ageBracketSchema = z.enum(AgeBracket)
+export const genderSchema = z.enum(SavedAttendeeGender)
 
 const requiredDateSchema = z.union([
   z.date(),
@@ -20,6 +37,7 @@ const requiredDateSchema = z.union([
 const optionalDateSchema = requiredDateSchema.optional()
 
 export const venueSeatDraftSchema = z.object({
+  id: commonSchemaFragments.positiveId.optional(),
   label: commonSchemaFragments.nonEmptyString('Seat label'),
   seatNumber: z.coerce.number().int().positive(),
   x: z.coerce.number().int().min(0),
@@ -61,12 +79,14 @@ function addDuplicateSectionCodeIssues(sections: { code: string }[], ctx: z.Refi
 }
 
 export const venueRowDraftSchema = z.object({
+  id: commonSchemaFragments.positiveId.optional(),
   label: commonSchemaFragments.nonEmptyString('Row label'),
   sortOrder: z.coerce.number().int().min(0).default(0),
   seats: z.array(venueSeatDraftSchema).min(1),
 })
 
 export const venueSectionDraftSchema = z.object({
+  id: commonSchemaFragments.positiveId.optional(),
   code: commonSchemaFragments.nonEmptyString('Section code'),
   name: commonSchemaFragments.nonEmptyString('Section name'),
   color: commonSchemaFragments.nonEmptyString('Section color'),
@@ -109,6 +129,67 @@ export const ticketTypeDraftSchema = z.object({
   isReservedSeating: z.boolean().default(true),
   sortOrder: z.coerce.number().int().min(0).default(0),
 })
+
+export const pricingModeSchema = z.enum(PricingMode)
+
+export const sessionSectionPriceDraftSchema = z.object({
+  venueSectionId: commonSchemaFragments.positiveId,
+  priceCents: z.coerce.number().int().nonnegative(),
+  currency: z.string().trim().min(3).max(3).default('VND'),
+  sortOrder: z.coerce.number().int().min(0).default(0),
+})
+
+export const sessionSeatOverrideDraftSchema = z.object({
+  venueSeatId: commonSchemaFragments.positiveId,
+  venueSectionId: commonSchemaFragments.positiveId,
+  priceCents: z.coerce.number().int().nonnegative().nullable().optional(),
+  currency: z.string().trim().min(3).max(3).nullable().optional(),
+  isDisabled: z.boolean().default(false),
+}).superRefine((override, ctx) => {
+  if (!override.isDisabled && override.priceCents == null && override.currency == null) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['priceCents'],
+      message: 'Provide a price, currency, or disable the override',
+    })
+  }
+})
+
+function addDuplicateSessionSectionPriceIssues(sectionPrices: { venueSectionId: number }[], ctx: z.RefinementCtx) {
+  const firstIndexBySectionId = new Map<number, number>()
+
+  sectionPrices.forEach((sectionPrice, index) => {
+    const firstIndex = firstIndexBySectionId.get(sectionPrice.venueSectionId)
+    if (firstIndex === undefined) {
+      firstIndexBySectionId.set(sectionPrice.venueSectionId, index)
+      return
+    }
+
+    ctx.addIssue({
+      code: 'custom',
+      path: [index, 'venueSectionId'],
+      message: `Section price must be unique. Section ${sectionPrice.venueSectionId} is already configured at position ${firstIndex + 1}.`,
+    })
+  })
+}
+
+function addDuplicateSessionSeatOverrideIssues(seatOverrides: { venueSeatId: number }[], ctx: z.RefinementCtx) {
+  const firstIndexBySeatId = new Map<number, number>()
+
+  seatOverrides.forEach((seatOverride, index) => {
+    const firstIndex = firstIndexBySeatId.get(seatOverride.venueSeatId)
+    if (firstIndex === undefined) {
+      firstIndexBySeatId.set(seatOverride.venueSeatId, index)
+      return
+    }
+
+    ctx.addIssue({
+      code: 'custom',
+      path: [index, 'venueSeatId'],
+      message: `Seat override must be unique. Seat ${seatOverride.venueSeatId} is already configured at position ${firstIndex + 1}.`,
+    })
+  })
+}
 
 export const ticketTypeEditorSchema = ticketTypeDraftSchema.extend({
   venueSectionId: commonSchemaFragments.positiveId.nullable(),
@@ -196,13 +277,17 @@ const eventSessionDraftBaseSchema = z.object({
   publicId: z.string().trim().optional(),
   label: commonSchemaFragments.nonEmptyString('Session label'),
   venueId: commonSchemaFragments.positiveId,
-  status: eventStatusSchema.default('draft'),
+  status: eventStatusSchema.default(EventStatus.Draft),
+  pricingMode: pricingModeSchema.default(PricingMode.Uniform),
+  currency: z.string().trim().min(3).max(3).default('VND'),
   startsAt: requiredDateSchema,
   endsAt: optionalDateSchema,
   salesStartAt: requiredDateSchema,
   salesEndAt: requiredDateSchema,
   queueEnabled: z.boolean().default(false),
-  ticketTypes: z.array(ticketTypeDraftSchema).min(1, 'Add at least one ticket release'),
+  sectionPrices: z.array(sessionSectionPriceDraftSchema).default([]),
+  seatOverrides: z.array(sessionSeatOverrideDraftSchema).default([]),
+  ticketTypes: z.array(ticketTypeDraftSchema).optional(),
 })
 
 function addEventSessionTimingIssues(input: EventSessionTimingInput, sessionLabel: string, ctx: z.RefinementCtx) {
@@ -218,6 +303,8 @@ function addEventSessionTimingIssues(input: EventSessionTimingInput, sessionLabe
 export const eventSessionDraftSchema = eventSessionDraftBaseSchema.superRefine((session, ctx) => {
   const sessionLabel = session.label?.trim() || 'Session'
   addEventSessionTimingIssues(session, sessionLabel, ctx)
+  addDuplicateSessionSectionPriceIssues(session.sectionPrices, ctx)
+  addDuplicateSessionSeatOverrideIssues(session.seatOverrides, ctx)
 })
 
 export const waitingRoomSettingsSchema = z.object({
@@ -235,12 +322,68 @@ const eventSessionEditorBaseSchema = eventSessionDraftBaseSchema.extend({
   endsAt: z.string().optional(),
   salesStartAt: z.string().min(1, 'Sales start is required'),
   salesEndAt: z.string().min(1, 'Sales end is required'),
-  ticketTypes: z.array(ticketTypeEditorSchema).min(1, 'Add at least one ticket release'),
+  sectionPrices: z.array(sessionSectionPriceDraftSchema).default([]),
+  seatOverrides: z.array(sessionSeatOverrideDraftSchema).default([]),
+  ticketTypes: z.array(ticketTypeEditorSchema).optional(),
 })
 
 export const eventSessionEditorSchema = eventSessionEditorBaseSchema.superRefine((session, ctx) => {
   const sessionLabel = session.label?.trim() || 'Session'
   addEventSessionTimingIssues(session, sessionLabel, ctx)
+  addDuplicateSessionSectionPriceIssues(session.sectionPrices, ctx)
+  addDuplicateSessionSeatOverrideIssues(session.seatOverrides, ctx)
+})
+
+export const sessionPricingUpdateSchema = z.object({
+  pricingMode: pricingModeSchema,
+  currency: z.string().trim().min(3).max(3),
+  priceCents: z.coerce.number().int().nonnegative().optional(),
+  sectionPrices: z.array(sessionSectionPriceDraftSchema).default([]),
+}).superRefine((session, ctx) => {
+  addDuplicateSessionSectionPriceIssues(session.sectionPrices, ctx)
+  if (session.pricingMode === PricingMode.Uniform) {
+    if (session.priceCents === undefined) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['priceCents'],
+        message: 'Uniform pricing requires a price',
+      })
+    }
+
+    if (session.sectionPrices.length > 0) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['sectionPrices'],
+        message: 'Uniform pricing does not accept section prices',
+      })
+    }
+  }
+
+  if (session.pricingMode === PricingMode.Section && session.sectionPrices.length === 0) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['sectionPrices'],
+      message: 'Section pricing requires section prices',
+    })
+  }
+})
+
+export const sessionSeatOverridesUpdateSchema = z.object({
+  seatOverrides: z.array(sessionSeatOverrideDraftSchema).optional(),
+  overrides: z.array(sessionSeatOverrideDraftSchema).optional(),
+}).transform(session => ({
+  seatOverrides: session.seatOverrides ?? session.overrides ?? [],
+})).superRefine((session, ctx) => {
+  addDuplicateSessionSeatOverrideIssues(session.seatOverrides, ctx)
+})
+
+export const venueLayoutSyncApplySchema = z.object({
+  mappings: z.array(z.object({
+    venueSectionId: commonSchemaFragments.positiveId,
+    sourceVenueSectionId: commonSchemaFragments.positiveId.nullable(),
+    priceCents: z.coerce.number().int().nonnegative(),
+    currency: z.string().trim().min(3).max(3),
+  })).min(1),
 })
 
 export const createEventSchema = z.object({
@@ -273,12 +416,27 @@ const eventAutosaveSessionSchema = z.object({
   label: z.string().trim().max(120).optional(),
   venueId: z.coerce.number().int().nonnegative().optional(),
   status: eventStatusSchema.optional(),
+  pricingMode: pricingModeSchema.optional(),
+  currency: z.string().trim().min(3).max(3).optional(),
   queueEnabled: z.boolean().optional(),
   startsAt: z.string().max(40).optional(),
   endsAt: z.string().max(40).optional(),
   salesStartAt: z.string().max(40).optional(),
   salesEndAt: z.string().max(40).optional(),
   ticketTypes: z.array(eventAutosaveTicketTypeSchema).max(50).optional(),
+  sectionPrices: z.array(z.object({
+    venueSectionId: z.coerce.number().int().positive(),
+    priceCents: z.coerce.number().int().nonnegative(),
+    currency: z.string().trim().min(3).max(3).optional(),
+    sortOrder: z.coerce.number().int().min(0).optional(),
+  }).strict()).max(50).optional(),
+  seatOverrides: z.array(z.object({
+    venueSeatId: z.coerce.number().int().positive(),
+    venueSectionId: z.coerce.number().int().positive(),
+    priceCents: z.coerce.number().int().nonnegative().nullable().optional(),
+    currency: z.string().trim().min(3).max(3).nullable().optional(),
+    isDisabled: z.boolean().optional(),
+  }).strict()).max(200).optional(),
 }).strict()
 
 export const eventAutosavePayloadSchema = z.object({
@@ -289,6 +447,21 @@ export const eventAutosavePayloadSchema = z.object({
   venueId: z.coerce.number().int().nonnegative().optional(),
   coverImage: z.string().trim().max(1000).optional(),
   sessions: z.array(eventAutosaveSessionSchema).max(25).optional(),
+  pricingMode: pricingModeSchema.optional(),
+  currency: z.string().trim().min(3).max(3).optional(),
+  sectionPrices: z.array(z.object({
+    venueSectionId: z.coerce.number().int().positive(),
+    priceCents: z.coerce.number().int().nonnegative(),
+    currency: z.string().trim().min(3).max(3).optional(),
+    sortOrder: z.coerce.number().int().min(0).optional(),
+  }).strict()).max(50).optional(),
+  seatOverrides: z.array(z.object({
+    venueSeatId: z.coerce.number().int().positive(),
+    venueSectionId: z.coerce.number().int().positive(),
+    priceCents: z.coerce.number().int().nonnegative().nullable().optional(),
+    currency: z.string().trim().min(3).max(3).nullable().optional(),
+    isDisabled: z.boolean().optional(),
+  }).strict()).max(200).optional(),
 }).strict()
 
 export const eventAutosaveDraftSchema = z.object({
@@ -303,15 +476,21 @@ export const eventSessionPricingFormSchema = eventSessionEditorBaseSchema.pick({
   label: true,
   venueId: true,
   status: true,
+  pricingMode: true,
+  currency: true,
   queueEnabled: true,
   startsAt: true,
   endsAt: true,
   salesStartAt: true,
   salesEndAt: true,
+  sectionPrices: true,
+  seatOverrides: true,
   ticketTypes: true,
 }).superRefine((session, ctx) => {
   const sessionLabel = session.label?.trim() || 'Session'
   addEventSessionTimingIssues(session, sessionLabel, ctx)
+  addDuplicateSessionSectionPriceIssues(session.sectionPrices, ctx)
+  addDuplicateSessionSeatOverrideIssues(session.seatOverrides, ctx)
 })
 
 export const eventPricingFormSchema = z.object({
@@ -320,7 +499,32 @@ export const eventPricingFormSchema = z.object({
 
 export const updateEventSchema = createEventSchema.extend({
   id: commonSchemaFragments.positiveId,
-  status: eventStatusSchema.default('draft'),
+  status: eventStatusSchema.default(EventStatus.Draft),
+})
+
+const optionalLocalizedShortTextSchema = z.string().trim().max(240).nullable().optional()
+const optionalLocalizedLongTextSchema = z.string().trim().max(5000).nullable().optional()
+
+export const ticketTypeTranslationSchema = z.object({
+  ticketTypeId: commonSchemaFragments.positiveId,
+  name: optionalLocalizedShortTextSchema,
+  description: optionalLocalizedLongTextSchema,
+})
+
+export const eventTranslationSchema = z.object({
+  locale: translatableLocaleSchema,
+  title: optionalLocalizedShortTextSchema,
+  subtitle: optionalLocalizedShortTextSchema,
+  description: optionalLocalizedLongTextSchema,
+  ticketTypes: z.array(ticketTypeTranslationSchema).default([]),
+})
+
+export const venueTranslationSchema = z.object({
+  locale: translatableLocaleSchema,
+  name: optionalLocalizedShortTextSchema,
+  description: optionalLocalizedLongTextSchema,
+  city: optionalLocalizedShortTextSchema,
+  address: optionalLocalizedLongTextSchema,
 })
 
 export const publishEventSchema = z.object({
@@ -342,7 +546,7 @@ export const joinQueueSchema = z.object({
   eventSessionId: commonSchemaFragments.positiveId,
 })
 
-export const ticketHolderSourceSchema = z.enum(['account', 'saved-attendee', 'manual'])
+export const ticketHolderSourceSchema = z.enum(TicketHolderSource)
 
 export const checkoutTicketHolderSchema = z.object({
   eventSeatId: commonSchemaFragments.positiveId,
@@ -351,10 +555,10 @@ export const checkoutTicketHolderSchema = z.object({
   holder: savedAttendeeFormSchema.optional(),
   saveAsAttendee: z.boolean().default(false),
 }).superRefine((assignment, ctx) => {
-  if (assignment.source === 'saved-attendee' && !assignment.savedAttendeeId) {
+  if (assignment.source === TicketHolderSource.SavedAttendee && !assignment.savedAttendeeId) {
     ctx.addIssue({ code: 'custom', path: ['savedAttendeeId'], message: 'Choose a Saved Attendee' })
   }
-  if ((assignment.source === 'account' || assignment.source === 'manual') && !assignment.holder) {
+  if ((assignment.source === TicketHolderSource.Account || assignment.source === TicketHolderSource.Manual) && !assignment.holder) {
     ctx.addIssue({ code: 'custom', path: ['holder'], message: 'Ticket holder information is required' })
   }
 })
@@ -386,6 +590,9 @@ export type VenueBuilderInput = z.infer<typeof venueBuilderSchema>
 export type UpdateVenueInput = z.infer<typeof updateVenueSchema>
 export type TicketTypeDraftInput = z.infer<typeof ticketTypeDraftSchema>
 export type TicketTypeEditorInput = z.infer<typeof ticketTypeEditorSchema>
+export type PricingModeInput = z.infer<typeof pricingModeSchema>
+export type SessionSectionPriceDraftInput = z.infer<typeof sessionSectionPriceDraftSchema>
+export type SessionSeatOverrideDraftInput = z.infer<typeof sessionSeatOverrideDraftSchema>
 export type EventSessionDraftInput = z.infer<typeof eventSessionDraftSchema>
 export type EventSessionEditorInput = z.infer<typeof eventSessionEditorSchema>
 export type EventSessionPricingFormInput = z.infer<typeof eventSessionPricingFormSchema>
@@ -395,6 +602,8 @@ export type CreateEventInput = z.infer<typeof createEventSchema>
 export type EventComposerInput = z.infer<typeof eventComposerSchema>
 export type EventPricingFormInput = z.infer<typeof eventPricingFormSchema>
 export type UpdateEventInput = z.infer<typeof updateEventSchema>
+export type EventTranslationInput = z.infer<typeof eventTranslationSchema>
+export type VenueTranslationInput = z.infer<typeof venueTranslationSchema>
 export type PublishEventInput = z.infer<typeof publishEventSchema>
 export type CreateSeatHoldInput = z.infer<typeof createSeatHoldSchema>
 export type ReleaseSeatHoldInput = z.infer<typeof releaseSeatHoldSchema>
@@ -403,3 +612,4 @@ export type TicketHolderSourceInput = z.infer<typeof ticketHolderSourceSchema>
 export type CheckoutTicketHolderInput = z.infer<typeof checkoutTicketHolderSchema>
 export type ConfirmCheckoutInput = z.infer<typeof confirmCheckoutSchema>
 export type CheckoutCustomerInput = z.infer<typeof checkoutCustomerSchema>
+export type VenueLayoutSyncApplySchemaInput = z.infer<typeof venueLayoutSyncApplySchema>

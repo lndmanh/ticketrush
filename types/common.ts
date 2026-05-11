@@ -47,3 +47,7 @@ export interface StatusPayload {
   status: string
   timestamp: number
 }
+
+export interface DeletedPayload {
+  deleted: true
+}

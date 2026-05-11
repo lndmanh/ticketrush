@@ -1,4 +1,5 @@
-import type { EventAutosaveDraftInput } from '#shared/schemas/ticketingSchema'
+import type { EventAutosaveDraftInput, VenueLayoutSyncApplySchemaInput } from '#shared/schemas/ticketingSchema'
+import type { EventStatus, PricingMode as PricingModeEnum, SeatStatus } from '#shared/commonEnums'
 import type { DateLike } from '~~/types/events'
 import type { VenueDetail } from '~~/types/venues'
 
@@ -41,7 +42,7 @@ export interface AdminEventWorkspaceEvent {
   title: string
   subtitle: string | null
   description: string
-  status: string
+  status: EventStatus
   venueId: number
   coverImage: string | null
   startsAt: DateLike
@@ -50,7 +51,8 @@ export interface AdminEventWorkspaceEvent {
   salesEndAt: DateLike
 }
 
-export interface AdminEventWorkspaceTicketType {
+/** Legacy-only: retained for transitional APIs while section pricing becomes primary. */
+export interface AdminEventWorkspaceTicketTypeLegacy {
   id?: number
   venueSectionId?: number | null
   name: string
@@ -63,14 +65,78 @@ export interface AdminEventWorkspaceTicketType {
   sortOrder: number
 }
 
+export interface AdminSessionSectionPrice {
+  id?: number
+  venueSectionId: number
+  sectionNameSnapshot: string
+  sectionColorSnapshot: string
+  priceCents: number
+  currency: string
+  sortOrder: number
+}
+
+export interface AdminSessionSeatOverride {
+  id?: number
+  venueSeatId: number
+  venueSectionId: number
+  priceCents: number | null
+  currency: string | null
+  isDisabled: boolean
+}
+
+export interface VenueLayoutSyncOldSection {
+  venueSectionId: number
+  name: string
+  color: string
+  sortOrder: number
+  priceCents: number
+  currency: string
+  rowCount: number
+  seatCount: number
+}
+
+export interface VenueLayoutSyncCurrentSection {
+  venueSectionId: number
+  name: string
+  color: string
+  sortOrder: number
+  rowCount: number
+  seatCount: number
+}
+
+export interface VenueLayoutSyncSuggestion {
+  venueSectionId: number
+  sourceVenueSectionId: number | null
+  confidence: 'high' | 'medium' | 'none'
+  reason: 'lineage' | 'ancestor-lineage' | 'display-match' | 'new-section'
+}
+
+export interface VenueLayoutSyncPreview {
+  sessionId: number
+  eventId: number
+  venueId: number
+  sessionLayoutVersion: number
+  currentLayoutVersion: number
+  status: 'current' | 'stale'
+  oldSections: VenueLayoutSyncOldSection[]
+  currentSections: VenueLayoutSyncCurrentSection[]
+  suggestions: VenueLayoutSyncSuggestion[]
+  clearsSeatOverrides: boolean
+}
+
+export type VenueLayoutSyncApplyInput = VenueLayoutSyncApplySchemaInput
+export type VenueLayoutSyncApplyMapping = VenueLayoutSyncApplyInput['mappings'][number]
+
 export interface AdminEventWorkspaceSeat {
   id: number
+  venueSeatId: number | null
+  venueSectionId: number | null
   sectionNameSnapshot: string
   rowLabelSnapshot: string | null
   seatLabelSnapshot: string
   displayX?: number | null
   displayY?: number | null
-  status: string
+  status: SeatStatus
   priceCents: number
   currency: string
   updatedAt?: DateLike
@@ -82,14 +148,20 @@ export interface AdminEventWorkspaceSession {
   eventId: number
   venueId: number
   label: string
-  status: string
+  status: EventStatus
   startsAt: DateLike
   endsAt: DateLike | null
   salesStartAt: DateLike
   salesEndAt: DateLike
   queueEnabled: boolean
-  ticketTypes: AdminEventWorkspaceTicketType[]
-  seats: AdminEventWorkspaceSeat[]
+  pricingMode: PricingModeEnum
+  currency: string
+  venueLayoutVersion: number
+  venueSyncedAt: DateLike | null
+  venueSyncStatus: 'current' | 'stale'
+  sectionPrices: AdminSessionSectionPrice[]
+  seatOverrides: AdminSessionSeatOverride[]
+  seats?: AdminEventWorkspaceSeat[]
 }
 
 export interface AdminEventWorkspaceVenue extends VenueDetail {}
@@ -97,9 +169,8 @@ export interface AdminEventWorkspaceVenue extends VenueDetail {}
 export interface AdminEventWorkspaceDetail {
   venue?: AdminEventWorkspaceVenue
   event: AdminEventWorkspaceEvent
+  primarySessionId: number | null
   sessions: AdminEventWorkspaceSession[]
-  ticketTypes: AdminEventWorkspaceTicketType[]
-  seats: AdminEventWorkspaceSeat[]
 }
 
 export interface AdminEventWorkspaceDashboard {

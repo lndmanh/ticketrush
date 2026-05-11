@@ -1,3 +1,5 @@
+import type { EventCatalogDateFilter as EventCatalogDateFilterEnum, EventCatalogSort as EventCatalogSortEnum, EventCatalogStatusFilter as EventCatalogStatusFilterEnum } from '#shared/commonEnums'
+
 export type DateLike = string | Date
 
 export interface PublicEventSummary {
@@ -39,6 +41,23 @@ export interface PublicTicketTypeSummary {
   sortOrder: number
 }
 
+export interface PublicSessionSectionPriceSummary {
+  venueSectionId: number
+  sectionNameSnapshot: string
+  sectionColorSnapshot: string
+  priceCents: number
+  currency: string
+  sortOrder: number
+}
+
+export interface PublicSessionSeatOverrideSummary {
+  venueSeatId: number
+  venueSectionId: number
+  priceCents: number | null
+  currency: string | null
+  isDisabled: boolean
+}
+
 export interface PublicEventSessionBase {
   publicId: string
   label: string
@@ -50,7 +69,9 @@ export interface PublicEventSessionBase {
 }
 
 export interface PublicEventSessionSummary extends PublicEventSessionBase {
-  ticketTypes: PublicTicketTypeSummary[]
+  sectionPrices: PublicSessionSectionPriceSummary[]
+  seatOverrides?: PublicSessionSeatOverrideSummary[]
+  ticketTypes?: PublicTicketTypeSummary[]
 }
 
 export interface EventDetailResponse {
@@ -63,7 +84,9 @@ export interface EventSessionDetailResponse {
   event: PublicEventSummary | null
   session: PublicEventSessionBase | null
   venue: PublicVenueDetail | null
-  ticketTypes: PublicTicketTypeSummary[]
+  sectionPrices: PublicSessionSectionPriceSummary[]
+  seatOverrides: PublicSessionSeatOverrideSummary[]
+  ticketTypes?: PublicTicketTypeSummary[]
 }
 
 export interface EventSearchApiSession {
@@ -82,15 +105,16 @@ export interface EventSearchApiItem {
   sessions: EventSearchApiSession[]
 }
 
-export type EventCatalogPublicStatus = 'published' | 'on_sale' | 'sold_out' | 'ended'
+export type EventCatalogPublicStatus = `${Exclude<EventCatalogStatusFilterEnum, EventCatalogStatusFilterEnum.All>}`
 
-export type EventCatalogStatusFilter = 'all' | EventCatalogPublicStatus
+export type EventCatalogStatusFilter = `${EventCatalogStatusFilterEnum}`
 
-export type EventCatalogDateFilter = 'all' | 'today' | 'week' | 'month'
+export type EventCatalogDateFilter = `${EventCatalogDateFilterEnum}`
 
-export type EventCatalogSort = 'soonest' | 'newest' | 'ending_soon'
+export type EventCatalogSort = `${EventCatalogSortEnum}`
 
 export interface EventCatalogQueryOptions {
+  locale: string
   q: string
   location: string
   status: EventCatalogStatusFilter
