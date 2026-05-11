@@ -1,11 +1,14 @@
-import { eq, inArray } from 'drizzle-orm'
+import { and, eq, inArray } from 'drizzle-orm'
 import type { Venue } from '#shared/db'
-import type { CreateVenueInput, UpdateVenueInput, VenueRowDraftInput, VenueSectionDraftInput } from '#shared/schemas/ticketingSchema'
+import type { CreateVenueInput, UpdateVenueInput, VenueRowDraftInput, VenueSeatDraftInput, VenueSectionDraftInput, VenueTranslationInput } from '#shared/schemas/ticketingSchema'
 import { IDatabaseService } from '~~/types/db/database-service'
 import { createPublicVenueId } from '~~/server/utils/ticketing/ids'
 import type { VenueDetail } from '~~/types/venues'
+import { sourceLocale } from '~~/i18n-constants'
+import { localizeVenue, normalizeTranslationText, resolveContentLocale } from '~~/server/utils/i18n/content-localization'
 
 const D1_INSERT_BATCH_SIZE = 5
+type VenueTransaction = ReturnType<typeof useDB>
 
 class VenueService extends IDatabaseService<Venue> {
   private static instance: VenueService
@@ -45,16 +48,31 @@ class VenueService extends IDatabaseService<Venue> {
       .all()
   }
 
-  async getDetail(id: number): Promise<VenueDetail | undefined> {
+  async getDetail(id: number, locale: string = sourceLocale): Promise<VenueDetail | undefined> {
     const venue = await this.getById(id)
     if (!venue) {
       return undefined
     }
 
+    const contentLocale = resolveContentLocale(locale)
+    const translation = contentLocale === sourceLocale
+      ? undefined
+      : await this.db
+          .select()
+          .from(tables.venueTranslations)
+          .where(and(
+            eq(tables.venueTranslations.venueId, id),
+            eq(tables.venueTranslations.locale, contentLocale),
+          ))
+          .get()
+
     const sections = await this.db
       .select()
       .from(tables.venueSections)
-      .where(eq(tables.venueSections.venueId, id))
+      .where(and(
+        eq(tables.venueSections.venueId, id),
+        eq(tables.venueSections.layoutVersion, venue.layoutVersion),
+      ))
       .all()
 
     const sectionIds = sections.map(section => section.id)
@@ -62,7 +80,10 @@ class VenueService extends IDatabaseService<Venue> {
       ? await this.db
           .select()
           .from(tables.venueRows)
-          .where(inArray(tables.venueRows.sectionId, sectionIds))
+          .where(and(
+            inArray(tables.venueRows.sectionId, sectionIds),
+            eq(tables.venueRows.layoutVersion, venue.layoutVersion),
+          ))
           .all()
       : []
 
@@ -71,12 +92,15 @@ class VenueService extends IDatabaseService<Venue> {
       ? await this.db
           .select()
           .from(tables.venueSeats)
-          .where(inArray(tables.venueSeats.rowId, rowIds))
+          .where(and(
+            inArray(tables.venueSeats.rowId, rowIds),
+            eq(tables.venueSeats.layoutVersion, venue.layoutVersion),
+          ))
           .all()
       : []
 
     return {
-      venue,
+      venue: localizeVenue(venue, translation),
       sections: sections
         .sort((left, right) => left.sortOrder - right.sortOrder)
         .map(section => ({
@@ -112,6 +136,7 @@ class VenueService extends IDatabaseService<Venue> {
 
   async create(data: CreateVenueInput) {
     const now = new Date()
+    this.validateSubmittedLineage(data.sections)
 
     const db = this.db
     const createdVenue = await db
@@ -126,6 +151,7 @@ class VenueService extends IDatabaseService<Venue> {
         address: data.address,
         coverImage: data.coverImage || null,
         capacity: this.calculateCapacity(data.sections),
+        layoutVersion: 1,
         createdAt: now,
         updatedAt: now,
       })
@@ -136,15 +162,31 @@ class VenueService extends IDatabaseService<Venue> {
       throw new Error('Failed to create venue')
     }
 
-    await this.insertVenueTree(db, createdVenue.id, data.sections, now)
+    try {
+      await this.insertVenueTree(db, createdVenue.id, createdVenue.layoutVersion, data.sections, now, false)
+    }
+    catch (error) {
+      await db.delete(tables.venues).where(eq(tables.venues.id, createdVenue.id))
+      throw error
+    }
 
     return createdVenue
   }
 
   async update(data: UpdateVenueInput) {
     const now = new Date()
+    this.validateSubmittedLineage(data.sections)
 
     const db = this.db
+    const currentVenue = await this.getById(data.id)
+    if (!currentVenue) {
+      throw new Error('Venue not found')
+    }
+
+    const currentTree = await this.loadVenueLayoutTree(db, data.id, currentVenue.layoutVersion)
+    this.validateLineageAgainstCurrentTree(currentTree, data.sections)
+    const layoutChanged = this.hasLayoutChanged(currentTree, data.sections)
+
     const updatedVenue = await db
       .update(tables.venues)
       .set({
@@ -155,7 +197,6 @@ class VenueService extends IDatabaseService<Venue> {
         country: data.country,
         address: data.address,
         coverImage: data.coverImage || null,
-        capacity: this.calculateCapacity(data.sections),
         updatedAt: now,
       })
       .where(eq(tables.venues.id, data.id))
@@ -166,39 +207,83 @@ class VenueService extends IDatabaseService<Venue> {
       throw new Error('Venue not found')
     }
 
-    const existingSections = await db
-      .select({ id: tables.venueSections.id })
-      .from(tables.venueSections)
-      .where(eq(tables.venueSections.venueId, data.id))
-      .all()
+    if (layoutChanged) {
+      const nextLayoutVersion = currentVenue.layoutVersion + 1
+      try {
+        await this.insertVenueTree(db, data.id, nextLayoutVersion, data.sections, now, true)
 
-    const sectionIds = existingSections.map(section => section.id)
-    if (sectionIds.length > 0) {
-      const existingRows = await db
-        .select({ id: tables.venueRows.id })
-        .from(tables.venueRows)
-        .where(inArray(tables.venueRows.sectionId, sectionIds))
-        .all()
-
-      const rowIds = existingRows.map(row => row.id)
-      if (rowIds.length > 0) {
         await db
-          .delete(tables.venueSeats)
-          .where(inArray(tables.venueSeats.rowId, rowIds))
+          .update(tables.venues)
+          .set({
+            capacity: this.calculateCapacity(data.sections),
+            layoutVersion: nextLayoutVersion,
+            updatedAt: now,
+          })
+          .where(eq(tables.venues.id, data.id))
       }
-
+      catch (error) {
+        await this.deleteVenueLayoutSnapshot(db, data.id, nextLayoutVersion)
+        throw error
+      }
+    }
+    else {
       await db
-        .delete(tables.venueRows)
-        .where(inArray(tables.venueRows.sectionId, sectionIds))
-
-      await db
-        .delete(tables.venueSections)
-        .where(eq(tables.venueSections.venueId, data.id))
+        .update(tables.venues)
+        .set({
+          capacity: this.calculateCapacity(data.sections),
+          updatedAt: now,
+        })
+        .where(eq(tables.venues.id, data.id))
     }
 
-    await this.insertVenueTree(db, data.id, data.sections, now)
-
     return updatedVenue
+  }
+
+  async getTranslations(venueId: number) {
+    return this.db
+      .select()
+      .from(tables.venueTranslations)
+      .where(eq(tables.venueTranslations.venueId, venueId))
+      .all()
+  }
+
+  async saveTranslation(venueId: number, input: VenueTranslationInput) {
+    const now = new Date()
+    const existingTranslation = await this.db
+      .select()
+      .from(tables.venueTranslations)
+      .where(and(
+        eq(tables.venueTranslations.venueId, venueId),
+        eq(tables.venueTranslations.locale, input.locale),
+      ))
+      .get()
+
+    const translationValues = {
+      name: normalizeTranslationText(input.name),
+      description: normalizeTranslationText(input.description),
+      city: normalizeTranslationText(input.city),
+      address: normalizeTranslationText(input.address),
+      updatedAt: now,
+    }
+
+    if (existingTranslation) {
+      await this.db
+        .update(tables.venueTranslations)
+        .set(translationValues)
+        .where(eq(tables.venueTranslations.id, existingTranslation.id))
+    }
+    else {
+      await this.db
+        .insert(tables.venueTranslations)
+        .values({
+          venueId,
+          locale: input.locale,
+          ...translationValues,
+          createdAt: now,
+        })
+    }
+
+    return this.getTranslations(venueId)
   }
 
   async delete(id: number) {
@@ -225,16 +310,20 @@ class VenueService extends IDatabaseService<Venue> {
   }
 
   private async insertVenueTree(
-    tx: ReturnType<typeof useDB>,
+    tx: VenueTransaction,
     venueId: number,
+    layoutVersion: number,
     sections: VenueSectionDraftInput[],
     timestamp: Date,
+    preserveLineage: boolean,
   ) {
     for (const section of sections) {
       const createdSection = await tx
         .insert(tables.venueSections)
         .values({
           venueId,
+          layoutVersion,
+          previousSectionId: preserveLineage ? section.id ?? null : null,
           code: section.code,
           name: section.name,
           color: section.color,
@@ -249,21 +338,32 @@ class VenueService extends IDatabaseService<Venue> {
         throw new Error('Failed to create venue section')
       }
 
-      await this.insertRows(tx, createdSection.id, section.rows, timestamp)
+      await this.insertRows(tx, createdSection.id, layoutVersion, section.rows, timestamp, preserveLineage)
     }
   }
 
+  private async deleteVenueLayoutSnapshot(tx: VenueTransaction, venueId: number, layoutVersion: number) {
+    await tx.delete(tables.venueSections).where(and(
+      eq(tables.venueSections.venueId, venueId),
+      eq(tables.venueSections.layoutVersion, layoutVersion),
+    ))
+  }
+
   private async insertRows(
-    tx: ReturnType<typeof useDB>,
+    tx: VenueTransaction,
     sectionId: number,
+    layoutVersion: number,
     rows: VenueRowDraftInput[],
     timestamp: Date,
+    preserveLineage: boolean,
   ) {
     for (const row of rows) {
       const createdRow = await tx
         .insert(tables.venueRows)
         .values({
           sectionId,
+          layoutVersion,
+          previousRowId: preserveLineage ? row.id ?? null : null,
           label: row.label,
           sortOrder: row.sortOrder,
           createdAt: timestamp,
@@ -281,6 +381,8 @@ class VenueService extends IDatabaseService<Venue> {
         await tx.insert(tables.venueSeats).values(
           seatBatch.map(seat => ({
             rowId: createdRow.id,
+            layoutVersion,
+            previousSeatId: preserveLineage ? seat.id ?? null : null,
             label: seat.label,
             seatNumber: seat.seatNumber,
             x: seat.x,
@@ -292,6 +394,183 @@ class VenueService extends IDatabaseService<Venue> {
             updatedAt: timestamp,
           })),
         )
+      }
+    }
+  }
+
+  private validateSubmittedLineage(sections: VenueSectionDraftInput[]) {
+    const sectionIds = new Set<number>()
+    for (const section of sections) {
+      if (section.id && sectionIds.has(section.id)) {
+        throw new Error('Duplicate submitted section IDs are not allowed')
+      }
+      if (section.id) {
+        sectionIds.add(section.id)
+      }
+
+      const rowIds = new Set<number>()
+      for (const row of section.rows) {
+        if (row.id && rowIds.has(row.id)) {
+          throw new Error('Duplicate submitted row IDs are not allowed')
+        }
+        if (row.id) {
+          rowIds.add(row.id)
+        }
+
+        const seatIds = new Set<number>()
+        for (const seat of row.seats) {
+          if (seat.id && seatIds.has(seat.id)) {
+            throw new Error('Duplicate submitted seat IDs are not allowed')
+          }
+          if (seat.id) {
+            seatIds.add(seat.id)
+          }
+        }
+      }
+    }
+  }
+
+  private async loadVenueLayoutTree(tx: VenueTransaction, venueId: number, layoutVersion: number) {
+    const sections = await tx
+      .select()
+      .from(tables.venueSections)
+      .where(and(
+        eq(tables.venueSections.venueId, venueId),
+        eq(tables.venueSections.layoutVersion, layoutVersion),
+      ))
+      .all()
+
+    const sectionIds = sections.map(section => section.id)
+    const rows = sectionIds.length > 0
+      ? await tx
+          .select()
+          .from(tables.venueRows)
+          .where(and(
+            inArray(tables.venueRows.sectionId, sectionIds),
+            eq(tables.venueRows.layoutVersion, layoutVersion),
+          ))
+          .all()
+      : []
+
+    const rowIds = rows.map(row => row.id)
+    const seats = rowIds.length > 0
+      ? await tx
+          .select()
+          .from(tables.venueSeats)
+          .where(and(
+            inArray(tables.venueSeats.rowId, rowIds),
+            eq(tables.venueSeats.layoutVersion, layoutVersion),
+          ))
+          .all()
+      : []
+
+    return { sections, rows, seats }
+  }
+
+  private normalizeLayoutForComparison(sections: Array<typeof tables.venueSections.$inferSelect>, rows: Array<typeof tables.venueRows.$inferSelect>, seats: Array<typeof tables.venueSeats.$inferSelect>) {
+    return sections
+      .sort((left, right) => left.sortOrder - right.sortOrder)
+      .map(section => ({
+        code: section.code,
+        name: section.name,
+        color: section.color,
+        sortOrder: section.sortOrder,
+        rows: rows
+          .filter(row => row.sectionId === section.id)
+          .sort((left, right) => left.sortOrder - right.sortOrder)
+          .map(row => ({
+            label: row.label,
+            sortOrder: row.sortOrder,
+            seats: seats
+              .filter(seat => seat.rowId === row.id)
+              .sort((left, right) => left.sortOrder - right.sortOrder)
+              .map(seat => ({
+                label: seat.label,
+                seatNumber: seat.seatNumber,
+                x: seat.x,
+                y: seat.y,
+                sortOrder: seat.sortOrder,
+                accessibilityLabel: seat.accessibilityLabel ?? '',
+                isAccessible: seat.isAccessible,
+              })),
+          })),
+      }))
+  }
+
+  private normalizeSubmittedLayout(sections: VenueSectionDraftInput[]) {
+    return sections.map(section => ({
+      code: section.code,
+      name: section.name,
+      color: section.color,
+      sortOrder: section.sortOrder,
+      rows: section.rows.map(row => ({
+        label: row.label,
+        sortOrder: row.sortOrder,
+        seats: row.seats.map(seat => ({
+          label: seat.label,
+          seatNumber: seat.seatNumber,
+          x: seat.x,
+          y: seat.y,
+          sortOrder: seat.sortOrder,
+          accessibilityLabel: seat.accessibilityLabel ?? '',
+          isAccessible: seat.isAccessible,
+        })),
+      })),
+    }))
+  }
+
+  private hasLayoutChanged(currentTree: { sections: Array<typeof tables.venueSections.$inferSelect>, rows: Array<typeof tables.venueRows.$inferSelect>, seats: Array<typeof tables.venueSeats.$inferSelect> }, sections: VenueSectionDraftInput[]) {
+    return JSON.stringify(this.normalizeLayoutForComparison(currentTree.sections, currentTree.rows, currentTree.seats)) !== JSON.stringify(this.normalizeSubmittedLayout(sections))
+  }
+
+  private validateLineageAgainstCurrentTree(currentTree: { sections: Array<typeof tables.venueSections.$inferSelect>, rows: Array<typeof tables.venueRows.$inferSelect>, seats: Array<typeof tables.venueSeats.$inferSelect> }, sections: VenueSectionDraftInput[]) {
+    const sectionsById = new Map<number, typeof currentTree.sections[number]>()
+    for (const section of currentTree.sections) {
+      sectionsById.set(section.id, section)
+    }
+
+    const rowsById = new Map<number, typeof currentTree.rows[number]>()
+    for (const row of currentTree.rows) {
+      rowsById.set(row.id, row)
+    }
+
+    const seatsById = new Map<number, typeof currentTree.seats[number]>()
+    for (const seat of currentTree.seats) {
+      seatsById.set(seat.id, seat)
+    }
+
+    for (const section of sections) {
+      if (section.id) {
+        const currentSection = sectionsById.get(section.id)
+        if (!currentSection) {
+          throw new Error('Submitted section does not belong to the current venue layout')
+        }
+      }
+
+      for (const row of section.rows) {
+        if (row.id) {
+          const currentRow = rowsById.get(row.id)
+          if (!currentRow) {
+            throw new Error('Submitted row does not belong to the current venue layout')
+          }
+
+          if (!section.id || currentRow.sectionId !== section.id) {
+            throw new Error('Submitted row does not belong to the current venue layout')
+          }
+        }
+
+        for (const seat of row.seats) {
+          if (seat.id) {
+            const currentSeat = seatsById.get(seat.id)
+            if (!currentSeat) {
+              throw new Error('Submitted seat does not belong to the current venue layout')
+            }
+
+            if (!row.id || currentSeat.rowId !== row.id) {
+              throw new Error('Submitted seat does not belong to the current venue layout')
+            }
+          }
+        }
       }
     }
   }

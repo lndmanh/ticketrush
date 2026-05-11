@@ -1,6 +1,7 @@
 import { and, eq } from 'drizzle-orm'
 import { eventAutosaveDraftSchema } from '#shared/schemas/ticketingSchema'
 import type { EventAutosaveDraftInput } from '#shared/schemas/ticketingSchema'
+import { EventDraftAutosaveStatus } from '#shared/commonEnums'
 
 function createDraftKey(userId: number) {
   return `event_draft_user_${userId}_active`
@@ -32,7 +33,7 @@ class EventDraftAutosaveService {
       .where(and(
         eq(tables.eventDraftAutosaves.id, id),
         eq(tables.eventDraftAutosaves.userId, userId),
-        eq(tables.eventDraftAutosaves.status, 'active'),
+        eq(tables.eventDraftAutosaves.status, EventDraftAutosaveStatus.Active),
       ))
       .returning()
       .get()
@@ -51,7 +52,7 @@ class EventDraftAutosaveService {
       .from(tables.eventDraftAutosaves)
       .where(and(
         eq(tables.eventDraftAutosaves.userId, userId),
-        eq(tables.eventDraftAutosaves.status, 'active'),
+        eq(tables.eventDraftAutosaves.status, EventDraftAutosaveStatus.Active),
       ))
       .get()
 
@@ -81,7 +82,7 @@ class EventDraftAutosaveService {
         .values({
           draftKey,
           userId,
-          status: 'active',
+          status: EventDraftAutosaveStatus.Active,
           convertedEventId: null,
           titleSnapshot,
           slugSnapshot,
@@ -125,7 +126,7 @@ class EventDraftAutosaveService {
       .from(tables.eventDraftAutosaves)
       .where(and(
         eq(tables.eventDraftAutosaves.userId, userId),
-        eq(tables.eventDraftAutosaves.status, 'active'),
+        eq(tables.eventDraftAutosaves.status, EventDraftAutosaveStatus.Active),
       ))
       .get()
   }
@@ -137,7 +138,7 @@ class EventDraftAutosaveService {
       .where(and(
         eq(tables.eventDraftAutosaves.draftKey, draftKey),
         eq(tables.eventDraftAutosaves.userId, userId),
-        eq(tables.eventDraftAutosaves.status, 'active'),
+        eq(tables.eventDraftAutosaves.status, EventDraftAutosaveStatus.Active),
       ))
       .get()
   }
@@ -148,13 +149,13 @@ class EventDraftAutosaveService {
       .update(tables.eventDraftAutosaves)
       .set({
         draftKey: `${draftKey}_discarded_${now.getTime()}`,
-        status: 'discarded',
+        status: EventDraftAutosaveStatus.Discarded,
         updatedAt: now,
       })
       .where(and(
         eq(tables.eventDraftAutosaves.draftKey, draftKey),
         eq(tables.eventDraftAutosaves.userId, userId),
-        eq(tables.eventDraftAutosaves.status, 'active'),
+        eq(tables.eventDraftAutosaves.status, EventDraftAutosaveStatus.Active),
       ))
       .returning()
       .get()
@@ -166,14 +167,14 @@ class EventDraftAutosaveService {
       .update(tables.eventDraftAutosaves)
       .set({
         draftKey: `${draftKey}_converted_${eventId}`,
-        status: 'converted',
+        status: EventDraftAutosaveStatus.Converted,
         convertedEventId: eventId,
         updatedAt: now,
       })
       .where(and(
         eq(tables.eventDraftAutosaves.draftKey, draftKey),
         eq(tables.eventDraftAutosaves.userId, userId),
-        eq(tables.eventDraftAutosaves.status, 'active'),
+        eq(tables.eventDraftAutosaves.status, EventDraftAutosaveStatus.Active),
       ))
       .returning()
       .get()

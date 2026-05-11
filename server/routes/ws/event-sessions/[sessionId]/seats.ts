@@ -1,5 +1,6 @@
 import eventSessionService from '~~/server/utils/database/event-session'
 import { serializeSeatmapRealtimeMessage } from '~~/types/seatmap-realtime'
+import { EventStatus } from '#shared/commonEnums'
 
 interface SeatmapPeerContext {
   sessionPublicId: string
@@ -23,7 +24,7 @@ export default defineWebSocketHandler({
     }
 
     const session = await eventSessionService.getByPublicId(sessionPublicId)
-    if (!session || session.status === 'draft' || session.status === 'cancelled') {
+    if (!session || session.status === EventStatus.Draft || session.status === EventStatus.Cancelled) {
       throw new Response('Session not found.', { status: 404 })
     }
 

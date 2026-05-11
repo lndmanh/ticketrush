@@ -1,4 +1,5 @@
 import { eq } from 'drizzle-orm'
+import { AgeBracket, HoldStatus, OrderStatus, QueueStatus, SavedAttendeeGender, SeatStatus } from '#shared/commonEnums'
 
 class AnalyticsService {
   private get db() {
@@ -10,10 +11,10 @@ class AnalyticsService {
   }
 
   private buildOverview(entity: typeof tables.events.$inferSelect | typeof tables.eventSessions.$inferSelect, seats: typeof tables.eventSeats.$inferSelect[], orders: typeof tables.orders.$inferSelect[], queueEntries: typeof tables.queueEntries.$inferSelect[]) {
-    const confirmedOrders = orders.filter(order => order.status === 'confirmed')
-    const activeHolds = seats.filter(seat => seat.status === 'locked')
-    const soldSeats = seats.filter(seat => seat.status === 'sold')
-    const availableSeats = seats.filter(seat => seat.status === 'available')
+    const confirmedOrders = orders.filter(order => order.status === OrderStatus.Confirmed)
+    const activeHolds = seats.filter(seat => seat.status === SeatStatus.Locked)
+    const soldSeats = seats.filter(seat => seat.status === SeatStatus.Sold)
+    const availableSeats = seats.filter(seat => seat.status === SeatStatus.Available)
 
     const salesBySection = soldSeats.reduce<Record<string, { sold: number, revenueCents: number }>>((accumulator, seat) => {
       const current = accumulator[seat.sectionNameSnapshot] ?? { sold: 0, revenueCents: 0 }
@@ -24,13 +25,29 @@ class AnalyticsService {
     }, {})
 
     const ageDistribution = confirmedOrders.reduce<Record<string, number>>((accumulator, order) => {
-      const key = order.customerAgeBracket ?? 'unknown'
+      const key = order.customerAgeBracket === AgeBracket.EighteenToTwentyFour
+        ? AgeBracket.EighteenToTwentyFour
+        : order.customerAgeBracket === AgeBracket.TwentyFiveToThirtyFour
+          ? AgeBracket.TwentyFiveToThirtyFour
+          : order.customerAgeBracket === AgeBracket.ThirtyFiveToFortyFour
+            ? AgeBracket.ThirtyFiveToFortyFour
+            : order.customerAgeBracket === AgeBracket.FortyFivePlus
+              ? AgeBracket.FortyFivePlus
+              : 'unknown'
       accumulator[key] = (accumulator[key] ?? 0) + 1
       return accumulator
     }, {})
 
     const genderDistribution = confirmedOrders.reduce<Record<string, number>>((accumulator, order) => {
-      const key = order.customerGender ?? 'unknown'
+      const key = order.customerGender === SavedAttendeeGender.Female
+        ? SavedAttendeeGender.Female
+        : order.customerGender === SavedAttendeeGender.Male
+          ? SavedAttendeeGender.Male
+          : order.customerGender === SavedAttendeeGender.NonBinary
+            ? SavedAttendeeGender.NonBinary
+            : order.customerGender === SavedAttendeeGender.PreferNotToSay
+              ? SavedAttendeeGender.PreferNotToSay
+              : 'unknown'
       accumulator[key] = (accumulator[key] ?? 0) + 1
       return accumulator
     }, {})
@@ -41,8 +58,8 @@ class AnalyticsService {
       soldSeatsCount: soldSeats.length,
       availableSeatsCount: availableSeats.length,
       activeHoldsCount: activeHolds.length,
-      queueWaitingCount: queueEntries.filter(entry => entry.status === 'waiting').length,
-      queueAdmittedCount: queueEntries.filter(entry => entry.status === 'admitted').length,
+      queueWaitingCount: queueEntries.filter(entry => entry.status === QueueStatus.Waiting).length,
+      queueAdmittedCount: queueEntries.filter(entry => entry.status === QueueStatus.Admitted).length,
       occupancyRate: seats.length > 0 ? soldSeats.length / seats.length : 0,
       salesBySection,
       ageDistribution,
@@ -225,7 +242,7 @@ class AnalyticsService {
       })
 
     const activeHolds = holds
-      .filter(hold => hold.status === 'active')
+      .filter(hold => hold.status === HoldStatus.Active)
       .sort((left, right) => this.getTime(left.expiresAt) - this.getTime(right.expiresAt))
       .slice(0, 8)
       .map(hold => ({
@@ -243,7 +260,7 @@ class AnalyticsService {
       .slice(0, 8)
 
     const seatActivity = [...seats]
-      .filter(seat => seat.status !== 'available')
+      .filter(seat => seat.status !== SeatStatus.Available)
       .sort((left, right) => {
         const rightTime = this.getTime(right.updatedAt)
         const leftTime = this.getTime(left.updatedAt)
@@ -256,7 +273,7 @@ class AnalyticsService {
       totals: {
         ordersCount: orders.length,
         ticketsCount: tickets.length,
-        activeHoldsCount: holds.filter(hold => hold.status === 'active').length,
+        activeHoldsCount: holds.filter(hold => hold.status === HoldStatus.Active).length,
         queueEntriesCount: queueEntries.length,
       },
       recentOrders,
@@ -286,14 +303,14 @@ class AnalyticsService {
       revenueCents: overview.revenueCents,
       activeHoldsCount: overview.activeHoldsCount,
       queuedUsersCount: overview.queueWaitingCount + overview.queueAdmittedCount,
-      age18To24Count: overview.ageDistribution['18-24'] ?? 0,
-      age25To34Count: overview.ageDistribution['25-34'] ?? 0,
-      age35To44Count: overview.ageDistribution['35-44'] ?? 0,
-      age45PlusCount: overview.ageDistribution['45+'] ?? 0,
-      femaleCount: overview.genderDistribution.female ?? 0,
-      maleCount: overview.genderDistribution.male ?? 0,
-      nonBinaryCount: overview.genderDistribution['non-binary'] ?? 0,
-      undisclosedCount: overview.genderDistribution['prefer-not-to-say'] ?? 0,
+      age18To24Count: overview.ageDistribution[AgeBracket.EighteenToTwentyFour] ?? 0,
+      age25To34Count: overview.ageDistribution[AgeBracket.TwentyFiveToThirtyFour] ?? 0,
+      age35To44Count: overview.ageDistribution[AgeBracket.ThirtyFiveToFortyFour] ?? 0,
+      age45PlusCount: overview.ageDistribution[AgeBracket.FortyFivePlus] ?? 0,
+      femaleCount: overview.genderDistribution[SavedAttendeeGender.Female] ?? 0,
+      maleCount: overview.genderDistribution[SavedAttendeeGender.Male] ?? 0,
+      nonBinaryCount: overview.genderDistribution[SavedAttendeeGender.NonBinary] ?? 0,
+      undisclosedCount: overview.genderDistribution[SavedAttendeeGender.PreferNotToSay] ?? 0,
       updatedAt: now,
     }
 

@@ -1,8 +1,7 @@
 import { eq, and, isNull, lt } from 'drizzle-orm'
 import type { DBAuthToken } from '#shared/db'
+import { AuthTokenType } from '#shared/commonEnums'
 import { EMAIL_VERIFICATION_EXPIRY_MS, PASSWORD_RESET_EXPIRY_MS, RESEND_COOLDOWN_MS } from '#shared/constants/authTokens'
-
-type TokenType = 'email_verification' | 'password_reset'
 
 function generateToken(): string {
   const bytes = new Uint8Array(32)
@@ -24,10 +23,10 @@ class AuthTokenService {
     return AuthTokenService.instance
   }
 
-  async createToken(userId: number, type: TokenType): Promise<string> {
+  async createToken(userId: number, type: AuthTokenType): Promise<string> {
     const token = generateToken()
     const expiresAt = new Date(
-      Date.now() + (type === 'email_verification' ? EMAIL_VERIFICATION_EXPIRY_MS : PASSWORD_RESET_EXPIRY_MS),
+      Date.now() + (type === AuthTokenType.EmailVerification ? EMAIL_VERIFICATION_EXPIRY_MS : PASSWORD_RESET_EXPIRY_MS),
     )
 
     await this.db
@@ -37,7 +36,7 @@ class AuthTokenService {
     return token
   }
 
-  async verifyToken(token: string, type: TokenType): Promise<DBAuthToken | null> {
+  async verifyToken(token: string, type: AuthTokenType): Promise<DBAuthToken | null> {
     const record = await this.db
       .select()
       .from(tables.authTokens)
@@ -63,7 +62,7 @@ class AuthTokenService {
       .where(eq(tables.authTokens.id, tokenId))
   }
 
-  async invalidateUserTokens(userId: number, type: TokenType): Promise<void> {
+  async invalidateUserTokens(userId: number, type: AuthTokenType): Promise<void> {
     await this.db
       .update(tables.authTokens)
       .set({ usedAt: new Date() })
@@ -76,7 +75,7 @@ class AuthTokenService {
       )
   }
 
-  async hasRecentToken(userId: number, type: TokenType): Promise<boolean> {
+  async hasRecentToken(userId: number, type: AuthTokenType): Promise<boolean> {
     const cutoff = new Date(Date.now() - RESEND_COOLDOWN_MS)
     const recent = await this.db
       .select()

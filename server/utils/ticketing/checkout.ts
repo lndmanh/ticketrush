@@ -7,6 +7,10 @@ import analyticsService from '~~/server/utils/ticketing/analytics'
 import savedAttendeeService from '~~/server/utils/database/savedAttendee'
 import { broadcastSeatStatusDelta, createSeatStatusChanges } from '~~/server/utils/ticketing/seatmap-realtime'
 import type { SeatmapRealtimeNamespace } from '~~/server/utils/ticketing/seatmap-realtime'
+import { HoldStatus, OrderStatus, SeatStatus, TicketHolderSource, TicketStatus } from '#shared/commonEnums'
+
+type EventSeatRow = typeof tables.eventSeats.$inferSelect
+type SeatHoldItemRow = typeof tables.seatHoldItems.$inferSelect
 
 interface TicketHolderSnapshot {
   eventSeatId: number
@@ -22,6 +26,23 @@ interface TicketHolderSnapshot {
   attendeeNotes: string | null
   attendeeAccessibilityNeeds: string | null
 }
+
+interface HoldItemSnapshot {
+  eventSeatId: number
+  ticketTypeId: number | null
+  ticketLabel: string
+  sectionLabel: string
+  rowLabel: string
+  seatLabel: string
+  unitPriceCents: number
+  quantity: number
+  currency: string
+  pricingSource: SeatHoldItemRow['pricingSource']
+  createdAt: Date
+  updatedAt: Date
+}
+
+type CheckoutBundle = NonNullable<Awaited<ReturnType<typeof holdService.getHoldWithSeats>>>
 
 function cleanText(value: string | null | undefined) {
   if (value === undefined || value === null) {
@@ -39,6 +60,105 @@ function cleanOrFallback(value: string | null | undefined, fallback: string) {
 class CheckoutService {
   private get db() {
     return useDB()
+  }
+
+  private buildHoldItemSnapshots(seats: EventSeatRow[], holdItems: SeatHoldItemRow[]): HoldItemSnapshot[] {
+    const holdItemBySeatId = new Map(holdItems.map(item => [item.eventSeatId, item]))
+
+    return seats.map((seat) => {
+      const holdItem = holdItemBySeatId.get(seat.id)
+      if (!holdItem) {
+        throw createError({ statusCode: 400, statusMessage: 'Selected seat pricing could not be resolved.' })
+      }
+
+      return {
+        eventSeatId: seat.id,
+        ticketTypeId: seat.ticketTypeId,
+        ticketLabel: `${seat.sectionNameSnapshot} ${seat.seatLabelSnapshot}`,
+        sectionLabel: seat.sectionNameSnapshot,
+        rowLabel: seat.rowLabelSnapshot,
+        seatLabel: seat.seatLabelSnapshot,
+        unitPriceCents: holdItem.priceCents,
+        quantity: 1,
+        currency: holdItem.currency,
+        pricingSource: holdItem.pricingSource,
+        createdAt: holdItem.createdAt,
+        updatedAt: holdItem.updatedAt,
+      }
+    })
+  }
+
+  private isCompleteHoldBundle(bundle: CheckoutBundle) {
+    if (bundle.hold.status !== HoldStatus.Active) {
+      return false
+    }
+
+    if (bundle.seats.length === 0 || bundle.holdItems.length === 0) {
+      return false
+    }
+
+    if (bundle.seats.length !== bundle.holdItems.length) {
+      return false
+    }
+
+    const seatIds = new Set(bundle.seats.map(seat => seat.id))
+    const holdItemSeatIds = new Set(bundle.holdItems.map(item => item.eventSeatId))
+
+    if (seatIds.size !== bundle.seats.length || holdItemSeatIds.size !== bundle.holdItems.length) {
+      return false
+    }
+
+    for (const seat of bundle.seats) {
+      if (!holdItemSeatIds.has(seat.id)) {
+        return false
+      }
+    }
+
+    return true
+  }
+
+  private getCompleteHoldItemSnapshots(bundle: CheckoutBundle) {
+    if (!this.isCompleteHoldBundle(bundle)) {
+      return null
+    }
+
+    return this.buildHoldItemSnapshots(bundle.seats, bundle.holdItems)
+  }
+
+  private buildOrderItemInput(seat: EventSeatRow, holdItem: SeatHoldItemRow, orderId: number, now: Date) {
+    return {
+      orderId,
+      eventSeatId: seat.id,
+      ticketTypeId: seat.ticketTypeId,
+      ticketLabel: `${seat.sectionNameSnapshot} ${seat.seatLabelSnapshot}`,
+      sectionLabel: seat.sectionNameSnapshot,
+      rowLabel: seat.rowLabelSnapshot,
+      seatLabel: seat.seatLabelSnapshot,
+      unitPriceCents: holdItem.priceCents,
+      quantity: 1,
+      createdAt: now,
+      updatedAt: now,
+    }
+  }
+
+  private async getOrderItemsBySeatId(orderId: number) {
+    const items = await this.db
+      .select()
+      .from(tables.orderItems)
+      .where(eq(tables.orderItems.orderId, orderId))
+      .all()
+
+    return new Map(items.map(item => [item.eventSeatId, item]))
+  }
+
+  private async getTicketsByOrderItemId(orderId: number) {
+    const tickets = await this.db
+      .select()
+      .from(tables.tickets)
+      .where(eq(tables.tickets.orderId, orderId))
+      .all()
+
+    return new Map(tickets.map(ticket => [ticket.orderItemId, ticket]))
   }
 
   async getCheckoutByPublicId(orderPublicId: string) {
@@ -65,19 +185,40 @@ class CheckoutService {
         .where(eq(tables.eventSeats.holdId, order.holdId))
         .all()
 
-      items = holdSeats.map(seat => ({
-        id: seat.id,
+      const holdItems = await this.db
+        .select()
+        .from(tables.seatHoldItems)
+        .where(eq(tables.seatHoldItems.holdId, order.holdId))
+        .all()
+
+      const hold = await this.db
+        .select()
+        .from(tables.seatHolds)
+        .where(eq(tables.seatHolds.id, order.holdId))
+        .get()
+
+      const holdBundle = hold && hold.status === HoldStatus.Active
+        ? { hold, seats: holdSeats, holdItems }
+        : null
+
+      const holdItemSnapshots = holdBundle ? this.getCompleteHoldItemSnapshots(holdBundle) : null
+      if (!holdItemSnapshots) {
+        throw createError({ statusCode: 400, statusMessage: 'Selected seat pricing could not be resolved.' })
+      }
+
+      items = holdItemSnapshots.map(snapshot => ({
+        id: snapshot.eventSeatId,
         orderId: order.id,
-        eventSeatId: seat.id,
-        ticketTypeId: seat.ticketTypeId,
-        ticketLabel: `${seat.sectionNameSnapshot} ${seat.seatLabelSnapshot}`,
-        sectionLabel: seat.sectionNameSnapshot,
-        rowLabel: seat.rowLabelSnapshot,
-        seatLabel: seat.seatLabelSnapshot,
-        unitPriceCents: seat.priceCents,
-        quantity: 1,
-        createdAt: seat.createdAt,
-        updatedAt: seat.updatedAt,
+        eventSeatId: snapshot.eventSeatId,
+        ticketTypeId: snapshot.ticketTypeId,
+        ticketLabel: snapshot.ticketLabel,
+        sectionLabel: snapshot.sectionLabel,
+        rowLabel: snapshot.rowLabel,
+        seatLabel: snapshot.seatLabel,
+        unitPriceCents: snapshot.unitPriceCents,
+        quantity: snapshot.quantity,
+        createdAt: snapshot.createdAt,
+        updatedAt: snapshot.updatedAt,
       }))
     }
 
@@ -125,22 +266,39 @@ class CheckoutService {
       throw createError({ statusCode: 404, statusMessage: 'Seat hold not found.' })
     }
 
-    const seats = await db.select().from(tables.eventSeats).where(eq(tables.eventSeats.holdId, hold.id)).all()
-
     if (hold.sessionKey !== sessionKey) {
       throw createError({ statusCode: 403, statusMessage: 'Seat hold does not belong to the current session.' })
     }
 
-    if (hold.status !== 'active' || hold.expiresAt.getTime() <= Date.now()) {
+    if (hold.status !== HoldStatus.Active || hold.expiresAt.getTime() <= Date.now()) {
       throw createError({ statusCode: 409, statusMessage: 'Seat hold has expired.' })
     }
+
+    const holdItems = await db
+      .select()
+      .from(tables.seatHoldItems)
+      .where(eq(tables.seatHoldItems.holdId, hold.id))
+      .all()
+
+    const holdSeats = await db
+      .select()
+      .from(tables.eventSeats)
+      .where(eq(tables.eventSeats.holdId, hold.id))
+      .all()
+
+    const holdBundle = { hold, seats: holdSeats, holdItems }
+    const holdItemSnapshots = this.getCompleteHoldItemSnapshots(holdBundle)
+    if (!holdItemSnapshots) {
+      throw createError({ statusCode: 400, statusMessage: 'Selected seat pricing could not be resolved.' })
+    }
+
+    const amountCents = holdItemSnapshots.reduce((total, item) => total + item.unitPriceCents, 0)
+    const currency = holdItemSnapshots[0].currency
 
     const existingOrder = await db.select().from(tables.orders).where(eq(tables.orders.holdId, hold.id)).get()
     if (existingOrder) {
       return existingOrder
     }
-
-    const amountCents = seats.reduce((total, seat) => total + seat.priceCents, 0)
 
     let order: typeof tables.orders.$inferSelect | undefined
     try {
@@ -158,8 +316,8 @@ class CheckoutService {
           customerAgeBracket: null,
           customerGender: null,
           amountCents,
-          currency: seats[0]?.currency ?? 'VND',
-          status: 'pending',
+          currency,
+          status: OrderStatus.Pending,
           checkoutSessionId: createPublicOrderId(),
           confirmedAt: null,
           cancelledAt: null,
@@ -238,13 +396,22 @@ class CheckoutService {
       throw createError({ statusCode: 403, statusMessage: 'Checkout session does not belong to this user.' })
     }
 
-    if (existingOrder.status === 'confirmed') {
+    if (existingOrder.status === OrderStatus.Confirmed) {
       return this.getCheckoutByPublicId(existingOrder.publicId)
     }
 
-    if (hold.status !== 'active' || hold.expiresAt.getTime() <= Date.now()) {
+    if (hold.status !== HoldStatus.Active || hold.expiresAt.getTime() <= Date.now()) {
       throw createError({ statusCode: 409, statusMessage: 'Seat hold has expired.' })
     }
+
+    if (!this.isCompleteHoldBundle(holdBundle)) {
+      throw createError({ statusCode: 400, statusMessage: 'Selected seat pricing could not be resolved.' })
+    }
+
+    const holdItems = holdBundle.holdItems
+
+    const amountCents = holdItems.reduce((total, item) => total + item.priceCents, 0)
+    const currency = holdItems[0].currency
 
     const seatIds = new Set(seats.map(seat => seat.id))
     const holderSnapshots = new Map<number, TicketHolderSnapshot>()
@@ -258,7 +425,7 @@ class CheckoutService {
         throw createError({ statusCode: 400, statusMessage: 'Duplicate ticket holder assignment.' })
       }
 
-      if (assignment.source === 'saved-attendee') {
+      if (assignment.source === TicketHolderSource.SavedAttendee) {
         if (!assignment.savedAttendeeId) {
           throw createError({ statusCode: 400, statusMessage: 'Choose a Saved Attendee' })
         }
@@ -320,26 +487,25 @@ class CheckoutService {
         customerPhone: payload.customerPhone ?? null,
         customerAgeBracket: payload.customerAgeBracket ?? null,
         customerGender: payload.customerGender ?? null,
-        status: 'confirmed',
-        confirmedAt: now,
+        amountCents,
+        currency,
+        status: OrderStatus.Pending,
+        confirmedAt: null,
         updatedAt: now,
       })
       .where(and(
         eq(tables.orders.id, existingOrder.id),
         eq(tables.orders.holdId, hold.id),
-        eq(tables.orders.status, 'pending'),
       ))
       .returning()
       .get()
 
     if (!updatedOrder) {
-      const currentCheckout = await this.getCheckoutByPublicId(existingOrder.publicId)
-      if (currentCheckout?.order.status === 'confirmed') {
-        return currentCheckout
-      }
-
       throw createError({ statusCode: 409, statusMessage: 'Checkout session does not match this seat hold.' })
     }
+
+    const existingItems = await this.getOrderItemsBySeatId(updatedOrder.id)
+    const existingTickets = await this.getTicketsByOrderItemId(updatedOrder.id)
 
     const soldSeatIds: number[] = []
 
@@ -360,24 +526,21 @@ class CheckoutService {
       })
     }
 
-    await db
-      .update(tables.seatHolds)
-      .set({
-        status: 'converted',
-        updatedAt: now,
-      })
-      .where(eq(tables.seatHolds.id, hold.id))
-
     for (const seat of seats) {
       const holder = holderSnapshots.get(seat.id)
       if (!holder) {
         throw createError({ statusCode: 400, statusMessage: 'Assign a ticket holder to each ticket.' })
       }
 
+      const holdItem = holdItems.find(item => item.eventSeatId === seat.id)
+      if (!holdItem) {
+        throw createError({ statusCode: 400, statusMessage: 'Selected seat pricing could not be resolved.' })
+      }
+
       const soldSeat = await db
         .update(tables.eventSeats)
         .set({
-          status: 'sold',
+          status: SeatStatus.Sold,
           orderId: updatedOrder.id,
           soldAt: now,
           updatedAt: now,
@@ -385,32 +548,26 @@ class CheckoutService {
         .where(and(
           eq(tables.eventSeats.id, seat.id),
           eq(tables.eventSeats.holdId, hold.id),
-          eq(tables.eventSeats.status, 'locked'),
+          eq(tables.eventSeats.status, SeatStatus.Locked),
         ))
         .returning()
         .get()
 
-      if (!soldSeat) {
-        throw createError({ statusCode: 409, statusMessage: 'Seat hold has expired.' })
+      let soldSeatRow = soldSeat
+      if (!soldSeatRow) {
+        const currentSeat = await db.select().from(tables.eventSeats).where(eq(tables.eventSeats.id, seat.id)).get()
+        if (!currentSeat || currentSeat.orderId !== updatedOrder.id) {
+          throw createError({ statusCode: 409, statusMessage: 'Seat hold has expired.' })
+        }
+
+        soldSeatRow = currentSeat
       }
 
-      soldSeatIds.push(soldSeat.id)
+      soldSeatIds.push(soldSeatRow.id)
 
-      const orderItem = await db
+      const orderItem = existingItems.get(seat.id) ?? await db
         .insert(tables.orderItems)
-        .values({
-          orderId: updatedOrder.id,
-          eventSeatId: seat.id,
-          ticketTypeId: seat.ticketTypeId,
-          ticketLabel: `${seat.sectionNameSnapshot} ${seat.seatLabelSnapshot}`,
-          sectionLabel: seat.sectionNameSnapshot,
-          rowLabel: seat.rowLabelSnapshot,
-          seatLabel: seat.seatLabelSnapshot,
-          unitPriceCents: seat.priceCents,
-          quantity: 1,
-          createdAt: now,
-          updatedAt: now,
-        })
+        .values(this.buildOrderItemInput(seat, holdItem, updatedOrder.id, now))
         .returning()
         .get()
 
@@ -418,35 +575,47 @@ class CheckoutService {
         throw createError({ statusCode: 500, statusMessage: 'Failed to create order item.' })
       }
 
-      await db
-        .insert(tables.tickets)
-        .values({
-          publicId: createPublicTicketId(),
-          orderId: updatedOrder.id,
-          orderItemId: orderItem.id,
-          eventId: updatedOrder.eventId,
-          eventSessionId: updatedOrder.eventSessionId,
-          eventSeatId: seat.id,
-          userId: updatedOrder.userId,
-          savedAttendeeId: holder.savedAttendeeId,
-          attendeeName: holder.attendeeName,
-          attendeeEmail: holder.attendeeEmail,
-          attendeePhone: holder.attendeePhone,
-          attendeeBirthDate: holder.attendeeBirthDate,
-          attendeeGender: holder.attendeeGender,
-          attendeeGuardianName: holder.attendeeGuardianName,
-          attendeeGuardianEmail: holder.attendeeGuardianEmail,
-          attendeeGuardianPhone: holder.attendeeGuardianPhone,
-          attendeeNotes: holder.attendeeNotes,
-          attendeeAccessibilityNeeds: holder.attendeeAccessibilityNeeds,
-          qrToken: createQrToken(orderItem.id.toString()),
-          status: 'issued',
-          issuedAt: now,
-          checkedInAt: null,
-          createdAt: now,
-          updatedAt: now,
-        })
+      if (!existingTickets.has(orderItem.id)) {
+        await db
+          .insert(tables.tickets)
+          .values({
+            publicId: createPublicTicketId(),
+            orderId: updatedOrder.id,
+            orderItemId: orderItem.id,
+            eventId: updatedOrder.eventId,
+            eventSessionId: updatedOrder.eventSessionId,
+            eventSeatId: seat.id,
+            userId: updatedOrder.userId,
+            savedAttendeeId: holder.savedAttendeeId,
+            attendeeName: holder.attendeeName,
+            attendeeEmail: holder.attendeeEmail,
+            attendeePhone: holder.attendeePhone,
+            attendeeBirthDate: holder.attendeeBirthDate,
+            attendeeGender: holder.attendeeGender,
+            attendeeGuardianName: holder.attendeeGuardianName,
+            attendeeGuardianEmail: holder.attendeeGuardianEmail,
+            attendeeGuardianPhone: holder.attendeeGuardianPhone,
+            attendeeNotes: holder.attendeeNotes,
+            attendeeAccessibilityNeeds: holder.attendeeAccessibilityNeeds,
+            qrToken: createQrToken(orderItem.id.toString()),
+            status: TicketStatus.Issued,
+            issuedAt: now,
+            checkedInAt: null,
+            createdAt: now,
+            updatedAt: now,
+          })
+      }
     }
+
+    await db
+      .update(tables.orders)
+      .set({ status: OrderStatus.Confirmed, confirmedAt: now, updatedAt: now })
+      .where(eq(tables.orders.id, updatedOrder.id))
+
+    await db
+      .update(tables.seatHolds)
+      .set({ status: HoldStatus.Converted, updatedAt: now })
+      .where(eq(tables.seatHolds.id, hold.id))
 
     const eventSession = hold.eventSessionId
       ? await db
@@ -460,7 +629,7 @@ class CheckoutService {
       await broadcastSeatStatusDelta(realtimeNamespace, {
         eventSessionId: eventSession.id,
         sessionPublicId: eventSession.publicId,
-      }, createSeatStatusChanges(soldSeatIds, 'sold'))
+      }, createSeatStatusChanges(soldSeatIds, SeatStatus.Sold))
     }
 
     try {

@@ -1,6 +1,7 @@
 import { and, asc, eq } from 'drizzle-orm'
 import { createQueuePassToken } from '~~/server/utils/ticketing/ids'
 import waitingRoomSettingsService from '~~/server/utils/ticketing/waiting-room-settings'
+import { HoldStatus, QueueStatus } from '#shared/commonEnums'
 import type { QueueState } from '~~/types/ticketing'
 
 function buildQueuePassKey(eventSessionId: number, passToken: string) {
@@ -35,11 +36,11 @@ class QueueService {
 
     const current = existing.find(entry => entry.customerKey === customerKey)
     if (current) {
-      if (current.status === 'expired' || current.status === 'completed') {
+      if (current.status === QueueStatus.Expired || current.status === QueueStatus.Completed) {
         await this.db
           .update(tables.queueEntries)
           .set({
-            status: 'waiting',
+            status: QueueStatus.Waiting,
             passToken: null,
             admittedAt: null,
             expiresAt: null,
@@ -61,7 +62,7 @@ class QueueService {
         eventSessionId,
         userId: userId ?? null,
         customerKey,
-        status: 'waiting',
+        status: QueueStatus.Waiting,
         passToken: null,
         admittedAt: null,
         expiresAt: null,
@@ -102,20 +103,20 @@ class QueueService {
       return null
     }
 
-    const position = current.status === 'waiting'
-      ? entries.filter(entry => entry.status === 'waiting' && entry.id <= current.id).length
+    const position = current.status === QueueStatus.Waiting
+      ? entries.filter(entry => entry.status === QueueStatus.Waiting && entry.id <= current.id).length
       : 0
 
     const settings = await waitingRoomSettingsService.getSettings()
-    const estimatedWaitSeconds = current.status === 'waiting'
+    const estimatedWaitSeconds = current.status === QueueStatus.Waiting
       ? Math.max(0, Math.ceil(position / Math.max(settings.queueBatchSize, 1)) * settings.queueWindowSeconds)
       : 0
 
     return {
       entry: current,
       position,
-      waitingCount: entries.filter(entry => entry.status === 'waiting').length,
-      admittedCount: entries.filter(entry => entry.status === 'admitted').length,
+      waitingCount: entries.filter(entry => entry.status === QueueStatus.Waiting).length,
+      admittedCount: entries.filter(entry => entry.status === QueueStatus.Admitted).length,
       queueBatchSize: settings.queueBatchSize,
       queueWindowSeconds: settings.queueWindowSeconds,
       estimatedWaitSeconds,
@@ -142,7 +143,7 @@ class QueueService {
 
     const settings = await waitingRoomSettingsService.getSettings()
     const candidates = waitingEntries
-      .filter(entry => entry.status === 'waiting')
+      .filter(entry => entry.status === QueueStatus.Waiting)
       .slice(0, settings.queueBatchSize)
 
     const admittedEntries: typeof tables.queueEntries.$inferSelect[] = []
@@ -153,7 +154,7 @@ class QueueService {
       const updated = await this.db
         .update(tables.queueEntries)
         .set({
-          status: 'admitted',
+          status: QueueStatus.Admitted,
           passToken,
           admittedAt: new Date(),
           expiresAt,
@@ -161,7 +162,7 @@ class QueueService {
         })
         .where(and(
           eq(tables.queueEntries.id, candidate.id),
-          eq(tables.queueEntries.status, 'waiting'),
+          eq(tables.queueEntries.status, QueueStatus.Waiting),
         ))
         .returning()
         .get()
@@ -187,7 +188,7 @@ class QueueService {
       .all()
       .then(entries => entries.find(candidate => candidate.customerKey === customerKey))
 
-    if (!entry || entry.status !== 'admitted' || entry.passToken !== passToken || !entry.expiresAt) {
+    if (!entry || entry.status !== QueueStatus.Admitted || entry.passToken !== passToken || !entry.expiresAt) {
       return false
     }
 
@@ -203,7 +204,7 @@ class QueueService {
     return this.db
       .update(tables.queueEntries)
       .set({
-        status: 'completed',
+        status: QueueStatus.Completed,
         passToken: null,
         admittedAt: null,
         expiresAt: null,
@@ -239,7 +240,7 @@ class QueueService {
     return this.db
       .update(tables.queueEntries)
       .set({
-        status: 'expired',
+        status: QueueStatus.Expired,
         passToken: null,
         admittedAt: null,
         expiresAt: null,
@@ -271,8 +272,8 @@ class QueueService {
       this.db.select().from(tables.seatHolds).where(eq(tables.seatHolds.eventSessionId, eventSessionId)).all(),
     ])
 
-    const activeQueueCount = queueEntries.filter(entry => entry.status === 'admitted').length
-    const activeHoldCount = activeHolds.filter(hold => hold.status === 'active').length
+    const activeQueueCount = queueEntries.filter(entry => entry.status === QueueStatus.Admitted).length
+    const activeHoldCount = activeHolds.filter(hold => hold.status === HoldStatus.Active).length
 
     const settings = await waitingRoomSettingsService.getSettings()
     return activeQueueCount + activeHoldCount >= settings.queueActivationThreshold
@@ -284,7 +285,7 @@ class QueueService {
       .from(tables.queueEntries)
       .all()
 
-    const expired = entries.filter(entry => entry.status === 'admitted' && entry.expiresAt && entry.expiresAt.getTime() <= Date.now())
+    const expired = entries.filter(entry => entry.status === QueueStatus.Admitted && entry.expiresAt && entry.expiresAt.getTime() <= Date.now())
 
     for (const entry of expired) {
       if (entry.passToken && entry.eventSessionId) {
@@ -294,7 +295,7 @@ class QueueService {
       await this.db
         .update(tables.queueEntries)
         .set({
-          status: 'expired',
+          status: QueueStatus.Expired,
           passToken: null,
           admittedAt: null,
           expiresAt: null,

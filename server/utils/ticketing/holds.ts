@@ -5,6 +5,7 @@ import queueService from '~~/server/utils/ticketing/queue'
 import eventSessionService from '~~/server/utils/database/event-session'
 import { broadcastSeatStatusDelta, createSeatStatusChanges } from '~~/server/utils/ticketing/seatmap-realtime'
 import type { SeatmapRealtimeNamespace } from '~~/server/utils/ticketing/seatmap-realtime'
+import { EventStatus, HoldStatus, SeatPricingSource, SeatStatus } from '#shared/commonEnums'
 
 const HOLD_DURATION_MS = 10 * 60 * 1000
 
@@ -33,10 +34,75 @@ class HoldService {
       .where(eq(tables.eventSeats.holdId, hold.id))
       .all()
 
+    const holdItems = await this.db
+      .select()
+      .from(tables.seatHoldItems)
+      .where(eq(tables.seatHoldItems.holdId, hold.id))
+      .all()
+
     return {
       hold,
       seats,
+      holdItems,
     }
+  }
+
+  private isCompleteHold(input: {
+    hold: typeof tables.seatHolds.$inferSelect
+    seats: typeof tables.eventSeats.$inferSelect[]
+    holdItems: typeof tables.seatHoldItems.$inferSelect[]
+    requestedSeatIds: number[]
+  }) {
+    if (input.hold.status !== HoldStatus.Active) {
+      return false
+    }
+
+    if (input.seats.length !== input.requestedSeatIds.length) {
+      return false
+    }
+
+    if (input.holdItems.length !== input.requestedSeatIds.length) {
+      return false
+    }
+
+    const seatIds = new Set(input.seats.map(seat => seat.id))
+    if (seatIds.size !== input.requestedSeatIds.length) {
+      return false
+    }
+
+    for (const requestedSeatId of input.requestedSeatIds) {
+      if (!seatIds.has(requestedSeatId)) {
+        return false
+      }
+    }
+
+    const holdItemSeatIds = new Set(input.holdItems.map(item => item.eventSeatId))
+    if (holdItemSeatIds.size !== input.requestedSeatIds.length) {
+      return false
+    }
+
+    for (const requestedSeatId of input.requestedSeatIds) {
+      if (!holdItemSeatIds.has(requestedSeatId)) {
+        return false
+      }
+    }
+
+    return true
+  }
+
+  private async rollbackHold(holdId: number) {
+    const now = new Date()
+    await this.db.delete(tables.seatHoldItems).where(eq(tables.seatHoldItems.holdId, holdId))
+    await this.db
+      .update(tables.eventSeats)
+      .set({
+        status: SeatStatus.Available,
+        holdId: null,
+        lockedAt: null,
+        updatedAt: now,
+      })
+      .where(eq(tables.eventSeats.holdId, holdId))
+    await this.db.delete(tables.seatHolds).where(eq(tables.seatHolds.id, holdId))
   }
 
   async createHold(input: CreateSeatHoldInput & { sessionKey: string }, userId?: number, realtimeNamespace?: SeatmapRealtimeNamespace) {
@@ -57,7 +123,7 @@ class HoldService {
     }
 
     const now = new Date()
-    if (session.status !== 'published' && session.status !== 'on_sale') {
+    if (session.status !== EventStatus.Published && session.status !== EventStatus.OnSale) {
       throw createError({ statusCode: 403, statusMessage: 'This session is not available for booking.' })
     }
 
@@ -92,7 +158,12 @@ class HoldService {
       .get()
 
     if (existingHold) {
-      return this.getHoldWithSeats(existingHold.publicId)
+      const existingBundle = await this.getHoldWithSeats(existingHold.publicId)
+      if (existingBundle && this.isCompleteHold({ ...existingBundle, requestedSeatIds: input.eventSeatIds })) {
+        return existingBundle
+      }
+
+      throw createError({ statusCode: 409, statusMessage: 'An existing hold is incomplete for this idempotent request.' })
     }
 
     const expiresAt = new Date(Date.now() + HOLD_DURATION_MS)
@@ -110,7 +181,7 @@ class HoldService {
           userId: userId ?? null,
           sessionKey: input.sessionKey,
           idempotencyKey: input.idempotencyKey,
-          status: 'active',
+          status: HoldStatus.Active,
           expiresAt,
           checkoutStartedAt: null,
           releasedAt: null,
@@ -137,23 +208,32 @@ class HoldService {
         ))
         .all()
 
-      const sellableSeats = availableSeats.filter(seat => seat.status === 'available')
+      const sellableSeats = availableSeats.filter(seat => seat.status === SeatStatus.Available)
       if (sellableSeats.length !== input.eventSeatIds.length) {
         throw createError({ statusCode: 409, statusMessage: 'One or more selected seats are no longer available.' })
       }
 
+      const pricingBundle = await eventSessionService.getSeatMap(session.id)
+      const overrideByVenueSeatId = new Map(pricingBundle.seatOverrides.map(override => [override.venueSeatId, override]))
+
       for (const seat of sellableSeats) {
+        const seatOverride = seat.venueSeatId === null ? undefined : overrideByVenueSeatId.get(seat.venueSeatId)
+        if (seatOverride?.isDisabled) {
+          throw createError({ statusCode: 409, statusMessage: 'One or more selected seats are no longer available.' })
+        }
+        const pricingSource = seatOverride?.priceCents === null || seatOverride === undefined ? SeatPricingSource.Section : SeatPricingSource.SeatOverride
+
         const lockedSeat = await db
           .update(tables.eventSeats)
           .set({
-            status: 'locked',
+            status: SeatStatus.Locked,
             holdId: hold.id,
             lockedAt: now,
             updatedAt: now,
           })
           .where(and(
             eq(tables.eventSeats.id, seat.id),
-            eq(tables.eventSeats.status, 'available'),
+            eq(tables.eventSeats.status, SeatStatus.Available),
             isNull(tables.eventSeats.holdId),
           ))
           .returning()
@@ -163,6 +243,18 @@ class HoldService {
           throw createError({ statusCode: 409, statusMessage: 'One or more selected seats are no longer available.' })
         }
 
+        await db
+          .insert(tables.seatHoldItems)
+          .values({
+            holdId: hold.id,
+            eventSeatId: lockedSeat.id,
+            priceCents: lockedSeat.priceCents,
+            currency: lockedSeat.currency,
+            pricingSource,
+            createdAt: now,
+            updatedAt: now,
+          })
+
         nextLockedSeatIds.push(lockedSeat.id)
       }
 
@@ -171,18 +263,16 @@ class HoldService {
       lockedSeatIds = nextLockedSeatIds
     }
     catch (error) {
-      const scopedExistingHold = await this.db
-        .select()
-        .from(tables.seatHolds)
-        .where(and(
-          eq(tables.seatHolds.idempotencyKey, input.idempotencyKey),
-          eq(tables.seatHolds.eventSessionId, input.eventSessionId),
-          eq(tables.seatHolds.sessionKey, input.sessionKey),
-        ))
-        .get()
+      if (holdPublicId) {
+        const failedHold = await this.db
+          .select()
+          .from(tables.seatHolds)
+          .where(eq(tables.seatHolds.publicId, holdPublicId))
+          .get()
 
-      if (scopedExistingHold) {
-        return this.getHoldWithSeats(scopedExistingHold.publicId)
+        if (failedHold) {
+          await this.rollbackHold(failedHold.id)
+        }
       }
 
       throw error
@@ -195,7 +285,7 @@ class HoldService {
     await broadcastSeatStatusDelta(realtimeNamespace, {
       eventSessionId: session.id,
       sessionPublicId: session.publicId,
-    }, createSeatStatusChanges(lockedSeatIds, 'locked'))
+    }, createSeatStatusChanges(lockedSeatIds, SeatStatus.Locked))
 
     return this.getHoldWithSeats(holdPublicId)
   }
@@ -211,7 +301,7 @@ class HoldService {
       throw createError({ statusCode: 404, statusMessage: 'Seat hold not found.' })
     }
 
-    if (hold.status !== 'active') {
+    if (hold.status !== HoldStatus.Active) {
       return hold
     }
 
@@ -219,13 +309,13 @@ class HoldService {
     const releasedHold = await this.db
       .update(tables.seatHolds)
       .set({
-        status: 'released',
+        status: HoldStatus.Released,
         releasedAt: now,
         updatedAt: now,
       })
       .where(and(
         eq(tables.seatHolds.id, hold.id),
-        eq(tables.seatHolds.status, 'active'),
+        eq(tables.seatHolds.status, HoldStatus.Active),
       ))
       .returning()
       .get()
@@ -237,14 +327,14 @@ class HoldService {
     const releasedSeats = await this.db
       .update(tables.eventSeats)
       .set({
-        status: 'available',
+        status: SeatStatus.Available,
         holdId: null,
         lockedAt: null,
         updatedAt: now,
       })
       .where(and(
         eq(tables.eventSeats.holdId, hold.id),
-        eq(tables.eventSeats.status, 'locked'),
+        eq(tables.eventSeats.status, SeatStatus.Locked),
       ))
       .returning({ id: tables.eventSeats.id })
 
@@ -254,7 +344,7 @@ class HoldService {
         await broadcastSeatStatusDelta(realtimeNamespace, {
           eventSessionId: session.id,
           sessionPublicId: session.publicId,
-        }, createSeatStatusChanges(releasedSeats.map(seat => seat.id), 'available'))
+        }, createSeatStatusChanges(releasedSeats.map(seat => seat.id), SeatStatus.Available))
       }
     }
 
@@ -280,7 +370,7 @@ class HoldService {
       .from(tables.seatHolds)
       .all()
 
-    const expiredHolds = holds.filter(hold => hold.status === 'active' && hold.expiresAt.getTime() <= now.getTime())
+    const expiredHolds = holds.filter(hold => hold.status === HoldStatus.Active && hold.expiresAt.getTime() <= now.getTime())
     const sessionIds = Array.from(new Set(expiredHolds.map(hold => hold.eventSessionId).filter((eventSessionId): eventSessionId is number => eventSessionId !== null)))
     const sessionsById = new Map<number, { id: number, publicId: string }>()
 
@@ -300,13 +390,13 @@ class HoldService {
       const releasedHold = await this.db
         .update(tables.seatHolds)
         .set({
-          status: 'expired',
+          status: HoldStatus.Expired,
           releasedAt: now,
           updatedAt: now,
         })
         .where(and(
           eq(tables.seatHolds.id, hold.id),
-          eq(tables.seatHolds.status, 'active'),
+          eq(tables.seatHolds.status, HoldStatus.Active),
           eq(tables.seatHolds.expiresAt, hold.expiresAt),
         ))
         .returning()
@@ -319,14 +409,14 @@ class HoldService {
       const releasedSeats = await this.db
         .update(tables.eventSeats)
         .set({
-          status: 'available',
+          status: SeatStatus.Available,
           holdId: null,
           lockedAt: null,
           updatedAt: now,
         })
         .where(and(
           eq(tables.eventSeats.holdId, hold.id),
-          eq(tables.eventSeats.status, 'locked'),
+          eq(tables.eventSeats.status, SeatStatus.Locked),
         ))
         .returning({ id: tables.eventSeats.id })
 
@@ -348,7 +438,7 @@ class HoldService {
       await broadcastSeatStatusDelta(realtimeNamespace, {
         eventSessionId: value.sessionId,
         sessionPublicId,
-      }, createSeatStatusChanges(value.seatIds, 'available'))
+      }, createSeatStatusChanges(value.seatIds, SeatStatus.Available))
     }
 
     return expiredHolds.length
