@@ -1,4 +1,6 @@
-import type { SeatMapLayout, SeatMapRow, SeatMapSeat, SeatMapTicketType } from '~~/types/seatmap'
+import type { SeatMapLayout, SeatMapRow, SeatMapSeat, SeatMapSeatOverrideSummary, SeatMapSectionPriceSummary, SeatMapTicketType } from '~~/types/seatmap'
+import { getDisplayDateLocale } from '~~/shared/utils/locales'
+import { SeatStatus } from '#shared/commonEnums'
 
 const fallbackSectionColors = ['#111827', '#0F766E', '#1D4ED8', '#B45309', '#BE123C']
 
@@ -57,7 +59,13 @@ export function getTintStyle(color: string, borderAlpha: number, backgroundAlpha
   }
 }
 
-export function buildSeatMapLayout(seats: SeatMapSeat[], ticketTypes: SeatMapTicketType[]): SeatMapLayout {
+export function buildSeatMapLayout(
+  seats: SeatMapSeat[],
+  ticketTypes: SeatMapTicketType[],
+  sectionPrices: SeatMapSectionPriceSummary[] = [],
+  seatOverrides: SeatMapSeatOverrideSummary[] = [],
+  options: { fallbackSectionName: string, fallbackRowLabel: string } = { fallbackSectionName: 'Floor', fallbackRowLabel: 'GA' },
+): SeatMapLayout {
   const ticketTypeById = new Map(
     ticketTypes
       .filter((ticketType): ticketType is SeatMapTicketType & { id: number } => typeof ticketType.id === 'number')
@@ -70,10 +78,13 @@ export function buildSeatMapLayout(seats: SeatMapSeat[], ticketTypes: SeatMapTic
       .map(ticketType => [ticketType.venueSectionId, ticketType]),
   )
 
+  const sectionPriceBySectionId = new Map(sectionPrices.map(sectionPrice => [sectionPrice.venueSectionId, sectionPrice]))
+  const seatOverrideBySeatId = new Map(seatOverrides.map(seatOverride => [seatOverride.venueSeatId, seatOverride]))
+
   const sectionMap = new Map<string, { name: string, seats: SeatMapSeat[] }>()
 
   for (const seat of seats) {
-    const sectionName = seat.sectionNameSnapshot || 'Floor'
+    const sectionName = seat.sectionNameSnapshot || options.fallbackSectionName
     const key = typeof seat.venueSectionId === 'number'
       ? `section-${seat.venueSectionId}`
       : `name-${sectionName}`
@@ -87,7 +98,7 @@ export function buildSeatMapLayout(seats: SeatMapSeat[], ticketTypes: SeatMapTic
     const rowMap = new Map<string, SeatMapSeat[]>()
 
     for (const seat of sectionSeats) {
-      const rowKey = seat.rowLabelSnapshot || 'GA'
+      const rowKey = seat.rowLabelSnapshot || options.fallbackRowLabel
       const currentRowSeats = rowMap.get(rowKey) ?? []
       currentRowSeats.push(seat)
       rowMap.set(rowKey, currentRowSeats)
@@ -102,11 +113,15 @@ export function buildSeatMapLayout(seats: SeatMapSeat[], ticketTypes: SeatMapTic
 
           return left.seatLabelSnapshot.localeCompare(right.seatLabelSnapshot, undefined, { numeric: true })
         })
+        const normalizedSeats = sortedSeats.map((seat, seatIndex) => ({
+          ...seat,
+          displayX: seatIndex,
+        }))
 
         return {
           label: rowLabel,
-          seats: sortedSeats,
-          columnCount: Math.max(...sortedSeats.map(seat => (seat.displayX ?? 0) + 1), sortedSeats.length, 1),
+          seats: normalizedSeats,
+          columnCount: Math.max(normalizedSeats.length, 1),
         }
       })
       .sort((left, right) => {
@@ -120,23 +135,29 @@ export function buildSeatMapLayout(seats: SeatMapSeat[], ticketTypes: SeatMapTic
         return left.label.localeCompare(right.label, undefined, { numeric: true })
       })
 
-    const sectionTicketType = sectionSeats.find(seat => typeof seat.venueSectionId === 'number')?.venueSectionId
-      ? ticketTypeBySectionId.get(sectionSeats.find(seat => typeof seat.venueSectionId === 'number')?.venueSectionId ?? 0)
+    const normalizedSectionSeats = rows.flatMap(row => row.seats)
+
+    const sectionSeat = sectionSeats.find(seat => typeof seat.venueSectionId === 'number')
+    const sectionPrice = typeof sectionSeat?.venueSectionId === 'number'
+      ? sectionPriceBySectionId.get(sectionSeat.venueSectionId)
+      : undefined
+    const sectionTicketType = typeof sectionSeat?.venueSectionId === 'number'
+      ? ticketTypeBySectionId.get(sectionSeat.venueSectionId)
       : undefined
 
     return {
       key: sectionKey,
       code: buildSectionCode(sectionEntry.name, sectionIndex),
       name: sectionEntry.name,
-      color: sectionTicketType?.color || fallbackSectionColors[sectionIndex % fallbackSectionColors.length] || fallbackSectionColors[0],
-      seats: sectionSeats,
+      color: sectionTicketType?.color || sectionPrice?.sectionColorSnapshot || fallbackSectionColors[sectionIndex % fallbackSectionColors.length] || fallbackSectionColors[0],
+      seats: normalizedSectionSeats,
       rows,
       metrics: {
         total: sectionSeats.length,
-        available: sectionSeats.filter(seat => seat.status === 'available').length,
-        locked: sectionSeats.filter(seat => seat.status === 'locked').length,
-        sold: sectionSeats.filter(seat => seat.status === 'sold').length,
-        unavailable: sectionSeats.filter(seat => seat.status === 'unavailable').length,
+        available: sectionSeats.filter(seat => seat.status === SeatStatus.Available).length,
+        locked: sectionSeats.filter(seat => seat.status === SeatStatus.Locked).length,
+        sold: sectionSeats.filter(seat => seat.status === SeatStatus.Sold).length,
+        unavailable: sectionSeats.filter(seat => seat.status === SeatStatus.Unavailable).length,
       },
     }
   })
@@ -145,11 +166,13 @@ export function buildSeatMapLayout(seats: SeatMapSeat[], ticketTypes: SeatMapTic
     sections,
     inventorySummary: {
       total: seats.length,
-      available: seats.filter(seat => seat.status === 'available').length,
-      locked: seats.filter(seat => seat.status === 'locked').length,
-      sold: seats.filter(seat => seat.status === 'sold').length,
-      unavailable: seats.filter(seat => seat.status === 'unavailable').length,
+      available: seats.filter(seat => seat.status === SeatStatus.Available).length,
+      locked: seats.filter(seat => seat.status === SeatStatus.Locked).length,
+      sold: seats.filter(seat => seat.status === SeatStatus.Sold).length,
+      unavailable: seats.filter(seat => seat.status === SeatStatus.Unavailable).length,
     },
+    sectionPriceBySectionId,
+    seatOverrideBySeatId,
     ticketTypeById,
     ticketTypeBySectionId,
   }
@@ -157,10 +180,10 @@ export function buildSeatMapLayout(seats: SeatMapSeat[], ticketTypes: SeatMapTic
 
 export function getRowStyle(row: SeatMapRow) {
   return {
-    gridTemplateColumns: `repeat(${row.columnCount}, minmax(0, 2.35rem))`,
+    gridTemplateColumns: `repeat(${row.columnCount}, minmax(0, 2.85rem))`,
   }
 }
 
-export function formatSeatMapCurrency(value: number, currency = 'VND') {
-  return `${Intl.NumberFormat('en-US').format(value / 100)} ${currency}`
+export function formatSeatMapCurrency(value: number, currency = 'VND', locale = 'vi') {
+  return `${Intl.NumberFormat(getDisplayDateLocale(locale)).format(value / 100)} ${currency}`
 }

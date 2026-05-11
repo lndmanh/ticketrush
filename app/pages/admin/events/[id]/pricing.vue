@@ -1,19 +1,34 @@
 <script setup lang="ts">
-import { LockKeyhole, SaveIcon } from '@lucide/vue'
+import { SaveIcon } from '@lucide/vue'
 import { useForm } from 'vee-validate'
 import { toast } from 'vue-sonner'
+import type { EventSession } from '#shared/db'
 import { apiRequest } from '@/utils/apiRequest'
 import { parseApiError } from '@/utils/apiError'
 import { apiRoutes } from '#shared/apiRoutes'
 import { eventPricingFormSchema, getEventSessionTimingIssues } from '#shared/schemas/ticketingSchema'
 import type { EventPricingFormInput } from '#shared/schemas/ticketingSchema'
+import type { ApiResponse } from '~~/types/api'
+import type { AdminEventWorkspaceDetail, AdminEventWorkspaceSession } from '~~/types/admin-events'
+import { EventStatus, PricingMode } from '#shared/commonEnums'
 
 const route = useRoute()
+const { t } = useI18n()
 const eventId = computed(() => Number(route.params.id))
 const isSaving = ref(false)
 const sessionValidationErrors = ref<Record<string, string>>({})
+const syncDialogOpen = ref(false)
+const syncDialogSessionId = ref<number | null>(null)
 
-const { detail, refreshDetail } = await useAdminEventWorkspace(eventId, {
+type VenueSection = NonNullable<NonNullable<AdminEventWorkspaceDetail['venue']>['sections']>[number]
+type SessionSectionPrice = EventPricingFormInput['sessions'][number]['sectionPrices'][number]
+type SessionPricingSource = {
+  pricingMode: EventPricingFormInput['sessions'][number]['pricingMode']
+  currency: string
+  sectionPrices: SessionSectionPrice[]
+}
+
+const { detail, refreshDetail, fetchVenueLayoutSyncPreview, applyVenueLayoutSync } = await useAdminEventWorkspace(eventId, {
   poll: false,
   includeOps: false,
 })
@@ -38,6 +53,19 @@ function toDateTimeLocal(value: string | Date | null | undefined) {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`
 }
 
+function normalizeSectionPricesForVenue(session: SessionPricingSource, venueSections: VenueSection[]): SessionSectionPrice[] {
+  return venueSections.map((section, index) => {
+    const matchedPrice = session.sectionPrices.find(sectionPrice => sectionPrice.venueSectionId === section.id)
+
+    return {
+      venueSectionId: section.id,
+      priceCents: matchedPrice?.priceCents ?? 0,
+      currency: matchedPrice?.currency ?? session.currency,
+      sortOrder: index,
+    }
+  })
+}
+
 watch(detail, (value) => {
   if (!value?.sessions) return
   resetForm({
@@ -53,43 +81,35 @@ watch(detail, (value) => {
         endsAt: toDateTimeLocal(s.endsAt),
         salesStartAt: toDateTimeLocal(s.salesStartAt),
         salesEndAt: toDateTimeLocal(s.salesEndAt),
-        ticketTypes: s.ticketTypes.map(tt => ({
-          id: tt.id,
-          description: tt.description ?? '',
-          name: tt.name,
-          venueSectionId: tt.venueSectionId ?? null,
-          priceCents: tt.priceCents,
-          currency: tt.currency,
-          color: tt.color,
-          isReservedSeating: tt.isReservedSeating,
-          capacity: tt.capacity,
-          sortOrder: tt.sortOrder,
+        pricingMode: s.pricingMode,
+        currency: s.currency,
+        sectionPrices: normalizeSectionPricesForVenue(s, value.venue?.sections ?? []),
+        seatOverrides: s.seatOverrides.map(seatOverride => ({
+          venueSeatId: seatOverride.venueSeatId,
+          venueSectionId: seatOverride.venueSectionId,
+          priceCents: seatOverride.priceCents,
+          currency: seatOverride.currency,
+          isDisabled: seatOverride.isDisabled,
         })),
       })),
     },
   })
 }, { immediate: true })
 
-const isLockedConfiguration = computed(() => detail.value?.event?.status !== 'draft')
+const isLockedConfiguration = computed(() => detail.value?.event?.status !== EventStatus.Draft)
+const staleSessions = computed(() => detail.value?.sessions.filter(session => session.venueSyncStatus === 'stale') ?? [])
+const hasStaleSessions = computed(() => staleSessions.value.length > 0)
+const selectedSyncSession = computed(() => {
+  const sessionId = syncDialogSessionId.value
+  if (!detail.value || sessionId === null) {
+    return null
+  }
+
+  return detail.value.sessions.find(session => session.id === sessionId) ?? null
+})
 
 function normalizeSessionErrorPath(path: string) {
   return path.replace(/\[(\d+)\]/g, '.$1')
-}
-
-interface ExistingPricingTicket {
-  id?: number
-  name: string
-  venueSectionId?: number | null
-  currency: string
-  isReservedSeating: boolean
-  description?: string | null
-}
-
-interface ExistingPricingSession {
-  id?: number
-  publicId?: string
-  queueEnabled?: boolean
-  ticketTypes: ExistingPricingTicket[]
 }
 
 function buildSessionValidationErrors(sessions: EventPricingFormInput['sessions']) {
@@ -129,6 +149,21 @@ function validateSessions(sessions: EventPricingFormInput['sessions']) {
   return true
 }
 
+function openVenueSync(session: AdminEventWorkspaceSession | null) {
+  if (!session) {
+    return
+  }
+
+  syncDialogSessionId.value = session.id
+  syncDialogOpen.value = true
+}
+
+async function handleVenueSyncApplied() {
+  toast.success(t('admin_event_sync.synced'))
+  sessionValidationErrors.value = {}
+  await refreshDetail()
+}
+
 function updateSessions(sessions: EventPricingFormInput['sessions']) {
   setFieldValue('sessions', sessions)
   if (Object.keys(sessionValidationErrors.value).length) {
@@ -136,72 +171,37 @@ function updateSessions(sessions: EventPricingFormInput['sessions']) {
   }
 }
 
-function findExistingSession(existingSessions: ExistingPricingSession[], session: EventPricingFormInput['sessions'][number], index: number) {
-  const byId = session.id ? existingSessions.find(existing => existing.id === session.id) : undefined
-  if (byId) {
-    return byId
-  }
-
-  const byPublicId = session.publicId ? existingSessions.find(existing => existing.publicId === session.publicId) : undefined
-  if (byPublicId) {
-    return byPublicId
-  }
-
-  return existingSessions[index]
-}
-
-function findExistingTicket(
-  tickets: ExistingPricingTicket[],
-  ticket: EventPricingFormInput['sessions'][number]['ticketTypes'][number],
-  index: number,
-) {
-  const byId = ticket.id ? tickets.find(existing => existing.id === ticket.id) : undefined
-  if (byId) {
-    return byId
-  }
-
-  const byStableFields = tickets.find(existing =>
-    existing.name === ticket.name
-    && (existing.venueSectionId ?? null) === ticket.venueSectionId
-    && existing.currency === ticket.currency
-    && existing.isReservedSeating === ticket.isReservedSeating,
-  )
-  if (byStableFields) {
-    return byStableFields
-  }
-
-  return tickets[index]
-}
-
-function buildSessionPayload(sessions: EventPricingFormInput['sessions']) {
-  const existingSessions: ExistingPricingSession[] = detail.value?.sessions ?? []
-
-  return sessions.map((session, sessionIndex) => {
-    const existingSession = findExistingSession(existingSessions, session, sessionIndex)
-
+function buildPricingPayload(session: EventPricingFormInput['sessions'][number]) {
+  if (session.pricingMode === PricingMode.Uniform) {
     return {
-      ...session,
-      queueEnabled: session.queueEnabled,
-      startsAt: new Date(session.startsAt),
-      endsAt: session.endsAt ? new Date(session.endsAt) : undefined,
-      salesStartAt: new Date(session.salesStartAt),
-      salesEndAt: new Date(session.salesEndAt),
-      ticketTypes: session.ticketTypes.map((ticketType, ticketIndex) => {
-        const existingTicket = existingSession?.ticketTypes ? findExistingTicket(existingSession.ticketTypes, ticketType, ticketIndex) : undefined
-
-        return {
-          ...ticketType,
-          description: existingTicket?.description ?? ticketType.description,
-          sortOrder: ticketIndex,
-        }
-      }),
+      pricingMode: session.pricingMode,
+      currency: session.currency,
+      priceCents: session.sectionPrices[0]?.priceCents ?? 0,
     }
-  })
+  }
+
+  const sectionPrices = normalizeSectionPricesForVenue(session, detail.value?.venue?.sections ?? [])
+
+  return {
+    pricingMode: session.pricingMode,
+    currency: session.currency,
+    sectionPrices: sectionPrices.map((sectionPrice, sectionIndex) => ({
+      venueSectionId: sectionPrice.venueSectionId,
+      priceCents: sectionPrice.priceCents,
+      currency: sectionPrice.currency || session.currency,
+      sortOrder: sectionIndex,
+    })),
+  }
 }
 
 const onSubmit = handleSubmit(
   async (formValues) => {
     sessionValidationErrors.value = {}
+    if (hasStaleSessions.value) {
+      toast.error(t('admin_event_sync.pricing_stale_desc'))
+      return
+    }
+
     if (!validateSessions(formValues.sessions)) {
       return
     }
@@ -209,36 +209,23 @@ const onSubmit = handleSubmit(
     isSaving.value = true
 
     try {
-      const eventFields = detail.value?.event
-      if (!eventFields) {
-        throw new Error('Event details not loaded')
+      for (const session of formValues.sessions) {
+        if (!session.id) {
+          continue
+        }
+
+        const response = await apiRequest<ApiResponse<EventSession | undefined>>(apiRoutes.adminEventSessionPricing(eventId.value, session.id), {
+          method: 'PUT',
+          body: buildPricingPayload(session),
+        })
+        if (!response.success) throw response
       }
 
-      const response = await apiRequest(apiRoutes.adminEvent(eventId.value), {
-        method: 'PUT',
-        body: {
-          id: eventId.value,
-          slug: eventFields.slug,
-          title: eventFields.title,
-          subtitle: eventFields.subtitle,
-          description: eventFields.description,
-          venueId: eventFields.venueId,
-          coverImage: eventFields.coverImage ?? '',
-          status: eventFields.status,
-          startsAt: new Date(eventFields.startsAt),
-          endsAt: eventFields.endsAt ? new Date(eventFields.endsAt) : undefined,
-          salesStartAt: new Date(eventFields.salesStartAt),
-          salesEndAt: new Date(eventFields.salesEndAt),
-          sessions: buildSessionPayload(formValues.sessions),
-        },
-      })
-      if (!response.success) throw response
-
-      toast.success('Event pricing updated')
+      toast.success(t('admin_event_pricing.updated'))
       await refreshDetail()
     }
     catch (err) {
-      toast.error(parseApiError(err, 'Failed to update pricing').message)
+      toast.error(parseApiError(err, t('admin_event_pricing.update_failed')).message)
     }
     finally {
       isSaving.value = false
@@ -273,13 +260,15 @@ definePageMeta({
   >
     <AdminEventsAdminEventNav :event-id="eventId" />
 
-    <Card class="shadow-none">
-      <CardHeader class="border-b bg-muted/20">
+    <Card
+      class="overflow-hidden shadow-none pt-0"
+    >
+      <CardHeader class="border-b bg-muted/20 py-6!">
         <div class="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
           <div>
             <CardTitle>{{ $t('admin_event_pricing.title') }}</CardTitle>
             <p class="mt-1 text-sm text-muted-foreground">
-              Edit the event sessions buyers will see on the public event page.
+              {{ $t('admin_event_pricing.desc') }}
             </p>
           </div>
           <Badge
@@ -295,21 +284,45 @@ definePageMeta({
           class="space-y-6"
           @submit.prevent="onSubmit"
         >
-          <Item
+          <Alert
             v-if="isLockedConfiguration"
-            variant="ghost"
-            class="bg-muted/35"
+            variant="destructive"
           >
-            <ItemMedia variant="icon">
-              <LockKeyhole />
-            </ItemMedia>
-            <ItemContent>
-              <ItemTitle>{{ $t('admin_event_pricing.read_only_title') }}</ItemTitle>
-              <ItemDescription>
-                Switch the event back to draft if you need to make pricing or scheduling changes.
-              </ItemDescription>
-            </ItemContent>
-          </Item>
+            <AlertTitle>{{ $t('admin_event_pricing.read_only_title') }}</AlertTitle>
+            <AlertDescription>
+              {{ $t('admin_event_pricing.read_only_desc') }}
+            </AlertDescription>
+          </Alert>
+
+          <Alert
+            v-if="hasStaleSessions"
+            variant="destructive"
+          >
+            <AlertTitle>{{ $t('admin_event_sync.pricing_stale_title') }}</AlertTitle>
+            <AlertDescription class="mt-2 space-y-3">
+              <p>{{ $t('admin_event_sync.pricing_stale_desc') }}</p>
+              <div class="space-y-2">
+                <div
+                  v-for="session in staleSessions"
+                  :key="session.id"
+                  class="flex flex-col gap-2 rounded-lg border border-destructive/20 bg-background/70 p-3 sm:flex-row sm:items-center sm:justify-between"
+                >
+                  <span class="text-sm font-medium text-foreground">
+                    {{ $t('admin_event_sync.pricing_stale_session', { session: session.label }) }}
+                  </span>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="secondary"
+                    class="w-fit"
+                    @click="openVenueSync(session)"
+                  >
+                    {{ $t('admin_event_sync.sync_button') }}
+                  </Button>
+                </div>
+              </div>
+            </AlertDescription>
+          </Alert>
 
           <AdminEventsAdminEventSessionEditor
             :model-value="values.sessions || []"
@@ -322,20 +335,28 @@ definePageMeta({
 
           <div class="flex flex-col gap-3 border-t pt-5 sm:flex-row sm:items-center sm:justify-between">
             <p class="text-sm text-muted-foreground">
-              Changes apply to every session listed above.
+              {{ $t('admin_event_pricing.changes_note') }}
             </p>
             <Button
               type="submit"
-              class="sm:min-w-36"
-              :disabled="isLockedConfiguration || isSaving"
+              :disabled="isLockedConfiguration || hasStaleSessions || isSaving"
               :is-loading="isSaving"
             >
               <SaveIcon class="size-4" />
-              Save changes
+              {{ $t('admin_event_pricing.save_changes') }}
             </Button>
           </div>
         </form>
       </CardContent>
     </Card>
+
+    <AdminEventsAdminVenueLayoutSyncDialog
+      v-model:open="syncDialogOpen"
+      :session-id="syncDialogSessionId"
+      :session-label="selectedSyncSession?.label"
+      :load-preview="fetchVenueLayoutSyncPreview"
+      :apply-sync="applyVenueLayoutSync"
+      @applied="handleVenueSyncApplied"
+    />
   </div>
 </template>

@@ -1,64 +1,235 @@
 <script setup lang="ts">
-import { Eye, LockKeyhole, Map, Ticket } from '@lucide/vue'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import AdminChartCard from '@/components/admin/charts/AdminChartCard.vue'
+import { CircleSlash, RotateCcw, SaveIcon } from '@lucide/vue'
+import { toast } from 'vue-sonner'
+import type { EventSession } from '#shared/db'
+import { getDisplayDateLocale } from '@/lib/localizedEvents'
+import { apiRoutes } from '#shared/apiRoutes'
+import { apiRequest } from '@/utils/apiRequest'
+import { parseApiError } from '@/utils/apiError'
+import type { ApiResponse } from '~~/types/api'
+import type { AdminEventWorkspaceSeat, AdminEventWorkspaceSession, AdminSessionSeatOverride } from '~~/types/admin-events'
+import type { SeatMapSeat, SeatMapStatus } from '~~/types/seatmap'
+import { EventStatus, SeatPricingSource, SeatStatus } from '#shared/commonEnums'
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 
 const route = useRoute()
 const eventId = computed(() => Number(route.params.id))
-const selectedStatus = ref<'all' | 'available' | 'locked' | 'sold'>('all')
+const selectedStatus = ref<'all' | SeatStatus>('all')
+const selectedSeatIds = ref<number[]>([])
+const customPriceInput = ref('')
+const isSavingOverride = ref(false)
+const syncDialogOpen = ref(false)
+const syncDialogSessionId = ref<number | null>(null)
 
-const { detail, dashboard } = await useAdminEventWorkspace(eventId, {
+const { detail, dashboard, refreshAll, fetchVenueLayoutSyncPreview, applyVenueLayoutSync } = await useAdminEventWorkspace(eventId, {
   poll: true,
   includeOps: false,
 })
 
-const { createBarChartOption, createDonutChartOption } = useAdminChartTheme()
-
-const filteredSeats = computed(() => {
-  if (!detail.value?.seats) {
-    return []
+const currentSession = computed(() => {
+  const currentDetail = detail.value
+  if (!currentDetail) {
+    return null
   }
 
-  return detail.value.seats.filter((seat) => {
+  return currentDetail.sessions.find(session => session.id === currentDetail.primarySessionId) ?? currentDetail.sessions[0] ?? null
+})
+
+const selectedSyncSession = computed(() => {
+  const sessionId = syncDialogSessionId.value
+  if (!detail.value || sessionId === null) {
+    return null
+  }
+
+  return detail.value.sessions.find(session => session.id === sessionId) ?? null
+})
+
+function isSeatMapStatus(status: string): status is SeatMapStatus {
+  return status === SeatStatus.Available || status === SeatStatus.Locked || status === SeatStatus.Sold || status === SeatStatus.Unavailable
+}
+
+function getSectionPrice(venueSectionId: number | null | undefined) {
+  if (typeof venueSectionId !== 'number') {
+    return null
+  }
+
+  return currentSession.value?.sectionPrices.find(sectionPrice => sectionPrice.venueSectionId === venueSectionId) ?? null
+}
+
+function getEffectiveSeat(seat: AdminEventWorkspaceSeat): AdminEventWorkspaceSeat & SeatMapSeat {
+  const sectionPrice = getSectionPrice(seat.venueSectionId)
+  const override = currentSession.value?.seatOverrides.find(seatOverride => seatOverride.venueSeatId === seat.venueSeatId) ?? null
+  const inheritedPriceCents = sectionPrice?.priceCents ?? seat.priceCents
+  const inheritedCurrency = sectionPrice?.currency ?? seat.currency
+  const customPriceCents = typeof override?.priceCents === 'number' ? override.priceCents : null
+  const status: SeatMapStatus = override?.isDisabled ? SeatStatus.Unavailable : isSeatMapStatus(seat.status) ? seat.status : SeatStatus.Unavailable
+  const pricingSource: SeatMapSeat['pricingSource'] = customPriceCents !== null ? SeatPricingSource.SeatOverride : SeatPricingSource.Section
+
+  return {
+    ...seat,
+    status,
+    priceCents: customPriceCents ?? inheritedPriceCents,
+    currency: customPriceCents !== null ? override?.currency ?? inheritedCurrency : inheritedCurrency,
+    pricingSource,
+  }
+}
+
+const currentSeats = computed(() => {
+  return currentSession.value?.seats?.map(seat => getEffectiveSeat(seat)) ?? []
+})
+
+const filteredSeats = computed(() => {
+  return currentSeats.value.filter((seat) => {
     return selectedStatus.value === 'all' || seat.status === selectedStatus.value
   })
 })
 
-const sectionCount = computed(() => new Set(filteredSeats.value.map(seat => seat.sectionNameSnapshot)).size)
+function formatCurrency(cents: number) {
+  return `${Intl.NumberFormat(getDisplayDateLocale(locale.value)).format(cents / 100)} VND`
+}
 
-const topSections = computed(() => {
-  if (!dashboard.value?.salesBySection) {
+function parsePriceInputValue(value: string) {
+  const price = Number(value)
+  if (!Number.isFinite(price) || price < 0) {
+    return null
+  }
+
+  return Math.round(price * 100)
+}
+
+function openVenueSync(session: AdminEventWorkspaceSession | null) {
+  if (!session) {
+    return
+  }
+
+  syncDialogSessionId.value = session.id
+  syncDialogOpen.value = true
+}
+
+async function handleVenueSyncApplied() {
+  toast.success(t('admin_event_sync.synced'))
+  await refreshAll()
+}
+
+function getSeatOverride(seat: AdminEventWorkspaceSeat) {
+  return currentSession.value?.seatOverrides.find(override => override.venueSeatId === seat.venueSeatId) ?? null
+}
+
+const selectedSeats = computed(() => currentSeats.value.filter(seat => selectedSeatIds.value.includes(seat.id)))
+const areOverrideActionsDisabled = computed(() => selectedSeats.value.length === 0 || isSavingOverride.value || currentSession.value?.status !== EventStatus.Draft || currentSession.value?.venueSyncStatus === 'stale')
+
+function toggleSeat(seatId: number) {
+  selectedSeatIds.value = selectedSeatIds.value.includes(seatId)
+    ? selectedSeatIds.value.filter(selectedSeatId => selectedSeatId !== seatId)
+    : [...selectedSeatIds.value, seatId]
+}
+
+function buildOverridePayload(updatedOverrides: AdminSessionSeatOverride[]) {
+  return updatedOverrides.map(override => ({
+    venueSeatId: override.venueSeatId,
+    venueSectionId: override.venueSectionId,
+    priceCents: override.priceCents,
+    currency: override.currency,
+    isDisabled: override.isDisabled,
+  }))
+}
+
+function mergeOverrides(seats: AdminEventWorkspaceSeat[], updateSeat: (seat: AdminEventWorkspaceSeat, current: AdminSessionSeatOverride | null) => AdminSessionSeatOverride | null) {
+  const session = currentSession.value
+  if (!session) {
     return []
   }
 
-  return Object.entries(dashboard.value.salesBySection)
-    .sort((left, right) => right[1].sold - left[1].sold)
-    .slice(0, 4)
-})
+  const overrideBySeatId = new Map(session.seatOverrides.map(override => [override.venueSeatId, override]))
+  for (const seat of seats) {
+    if (typeof seat.venueSeatId !== 'number' || typeof seat.venueSectionId !== 'number') {
+      continue
+    }
 
-const seatStatusOption = computed(() => {
-  return createDonutChartOption({
-    data: [
-      { label: t('common.available'), value: detail.value?.seats.filter(seat => seat.status === 'available').length ?? 0 },
-      { label: t('common.held'), value: detail.value?.seats.filter(seat => seat.status === 'locked').length ?? 0 },
-      { label: t('common.sold'), value: detail.value?.seats.filter(seat => seat.status === 'sold').length ?? 0 },
-    ],
-    centerValue: `${dashboard.value?.soldSeatsCount || 0}`,
-    centerLabel: t('admin_event_seatmap.sold_seats'),
-  })
-})
+    const nextOverride = updateSeat(seat, getSeatOverride(seat))
+    if (nextOverride) {
+      overrideBySeatId.set(seat.venueSeatId, nextOverride)
+    }
+    else {
+      overrideBySeatId.delete(seat.venueSeatId)
+    }
+  }
 
-const sectionSoldOption = computed(() => {
-  return createBarChartOption({
-    data: topSections.value.map(([section, row]) => ({
-      label: section,
-      value: row.sold,
-    })),
-    colorIndex: 1,
+  return Array.from(overrideBySeatId.values())
+}
+
+async function saveSeatOverrides(overrides: AdminSessionSeatOverride[]) {
+  const session = currentSession.value
+  if (!session) {
+    return
+  }
+
+  isSavingOverride.value = true
+  try {
+    const response = await apiRequest<ApiResponse<EventSession | undefined>>(apiRoutes.adminEventSessionSeatOverrides(eventId.value, session.id), {
+      method: 'PUT',
+      body: { seatOverrides: buildOverridePayload(overrides) },
+    })
+    if (!response.success) throw response
+
+    toast.success(t('admin_event_seatmap.overrides_updated'))
+    selectedSeatIds.value = []
+    customPriceInput.value = ''
+    await refreshAll()
+  }
+  catch (err) {
+    toast.error(parseApiError(err, t('admin_event_seatmap.overrides_update_failed')).message)
+  }
+  finally {
+    isSavingOverride.value = false
+  }
+}
+
+async function setCustomPrice() {
+  const priceCents = parsePriceInputValue(customPriceInput.value)
+  if (priceCents === null) {
+    toast.error(t('admin_event_seatmap.invalid_custom_price'))
+    return
+  }
+
+  const overrides = mergeOverrides(selectedSeats.value, (seat) => {
+    if (typeof seat.venueSeatId !== 'number' || typeof seat.venueSectionId !== 'number') {
+      return null
+    }
+
+    return {
+      venueSeatId: seat.venueSeatId,
+      venueSectionId: seat.venueSectionId,
+      priceCents,
+      currency: currentSession.value?.currency ?? 'VND',
+      isDisabled: false,
+    }
   })
-})
+  await saveSeatOverrides(overrides)
+}
+
+async function disableSelectedSeats() {
+  const overrides = mergeOverrides(selectedSeats.value, (seat) => {
+    if (typeof seat.venueSeatId !== 'number' || typeof seat.venueSectionId !== 'number') {
+      return null
+    }
+
+    return {
+      venueSeatId: seat.venueSeatId,
+      venueSectionId: seat.venueSectionId,
+      priceCents: null,
+      currency: null,
+      isDisabled: true,
+    }
+  })
+  await saveSeatOverrides(overrides)
+}
+
+async function resetSelectedOverrides() {
+  const overrides = mergeOverrides(selectedSeats.value, () => null)
+  await saveSeatOverrides(overrides)
+}
 
 definePageMeta({
   title: 'Event seat map',
@@ -75,124 +246,92 @@ definePageMeta({
   >
     <AdminEventsAdminEventNav :event-id="eventId" />
 
-    <section class="grid gap-4 md:grid-cols-2 xl:grid-cols-[repeat(3,minmax(0,1fr))_minmax(0,1.1fr)] xl:auto-rows-fr">
-      <Card class="h-full">
-        <CardContent>
-          <div class="flex items-center gap-3 text-muted-foreground">
-            <Ticket class="size-4" /><span class="text-[11px] uppercase tracking-[0.22em]">{{ $t('admin_event_seatmap.available_label') }}</span>
-          </div><p class="mt-4 text-2xl font-semibold tracking-[-0.05em] text-foreground">
-            {{ dashboard.availableSeatsCount }}
-          </p><p class="mt-2 text-sm text-muted-foreground">
-            {{ $t('admin_event_seatmap.available_desc', { count: filteredSeats.length }) }}
-          </p>
-        </CardContent>
-      </Card>
-      <Card class="h-full">
-        <CardContent>
-          <div class="flex items-center gap-3 text-muted-foreground">
-            <LockKeyhole class="size-4" /><span class="text-[11px] uppercase tracking-[0.22em]">{{ $t('admin_event_seatmap.active_holds_label') }}</span>
-          </div><p class="mt-4 text-2xl font-semibold tracking-[-0.05em] text-foreground">
-            {{ dashboard.activeHoldsCount }}
-          </p><p class="mt-2 text-sm text-muted-foreground">
-            {{ $t('admin_event_seatmap.active_holds_desc') }}
-          </p>
-        </CardContent>
-      </Card>
-      <Card class="h-full">
-        <CardContent>
-          <div class="flex items-center gap-3 text-muted-foreground">
-            <Map class="size-4" /><span class="text-[11px] uppercase tracking-[0.22em]">{{ $t('admin_event_seatmap.sections_label') }}</span>
-          </div><p class="mt-4 text-2xl font-semibold tracking-[-0.05em] text-foreground">
-            {{ sectionCount }}
-          </p><p class="mt-2 text-sm text-muted-foreground">
-            {{ $t('admin_event_seatmap.sections_desc') }}
-          </p>
-        </CardContent>
-      </Card>
-      <Card class="h-full">
-        <CardContent class="flex h-full flex-col justify-between gap-4">
-          <div class="flex items-center gap-3 text-muted-foreground">
-            <Eye class="size-4" /><span class="text-[11px] uppercase tracking-[0.22em]">{{ $t('admin_event_seatmap.status_filter_label') }}</span>
-          </div><Select v-model="selectedStatus">
-            <SelectTrigger><SelectValue :placeholder="$t('admin_event_seatmap.filter_placeholder')" /></SelectTrigger><SelectContent>
-              <SelectItem value="all">
-                {{ $t('admin_event_seatmap.all_statuses') }}
-              </SelectItem><SelectItem value="available">
-                {{ $t('admin_event_seatmap.available') }}
-              </SelectItem><SelectItem value="locked">
-                {{ $t('admin_event_seatmap.held') }}
-              </SelectItem><SelectItem value="sold">
-                {{ $t('admin_event_seatmap.sold') }}
-              </SelectItem>
-            </SelectContent>
-          </Select><p class="text-sm text-muted-foreground">
-            {{ $t('admin_event_seatmap.status_filter_desc') }}
-          </p>
-        </CardContent>
-      </Card>
-    </section>
-    <section>
-      <TicketEventSeatMapExperience
-        :seats="filteredSeats"
-        :ticket-types="detail.ticketTypes"
-        :action-label="null"
-        mode="admin"
-      />
-    </section>
+    <Alert
+      v-if="currentSession?.venueSyncStatus === 'stale'"
+      variant="destructive"
+    >
+      <AlertTitle>{{ $t('admin_event_sync.seatmap_stale_title') }}</AlertTitle>
+      <AlertDescription class="mt-2 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <span>{{ $t('admin_event_sync.seatmap_stale_desc') }}</span>
+        <Button
+          size="sm"
+          variant="secondary"
+          class="w-fit"
+          @click="openVenueSync(currentSession)"
+        >
+          {{ $t('admin_event_sync.sync_button') }}
+        </Button>
+      </AlertDescription>
+    </Alert>
 
-    <section class="grid gap-4 xl:grid-cols-12 xl:auto-rows-fr">
-      <div class="grid gap-4 xl:col-span-5 xl:auto-rows-fr">
-        <AdminChartCard
-          eyebrow="Inventory"
-          :title="$t('admin.event_chart_seat_status')"
-          description="Current inventory split across available, held, and sold seats."
-          :option="seatStatusOption"
-          :height="260"
-          tone="emerald"
-          :stat="`${dashboard.availableSeatsCount}`"
-          stat-label="Ready now"
-        />
-        <AdminChartCard
-          eyebrow="Ranking"
-          :title="$t('admin_event_seatmap.sections_by_sold_seats')"
-          description="Section ranking based on sold inventory."
-          :option="sectionSoldOption"
-          :height="260"
-          tone="amber"
-          :stat="`${topSections.length}`"
-          stat-label="Visible leaders"
-        />
-      </div>
+    <TicketEventSeatMapExperience
+      :seats="filteredSeats"
+      :ticket-types="[]"
+      :section-prices="currentSession?.sectionPrices ?? []"
+      :seat-overrides="currentSession?.seatOverrides ?? []"
+      :selected-seat-ids="selectedSeatIds"
+      :action-label="null"
+      interactive
+      mode="admin"
+      @toggle="toggleSeat"
+    />
 
-      <Card class="h-full xl:col-span-6">
-        <CardHeader><CardTitle>{{ $t('admin_event_seatmap.top_sections') }}</CardTitle></CardHeader>
-        <CardContent class="space-y-3">
-          <div
-            v-for="[section, row] in topSections"
-            :key="section"
-            class="rounded-[1.25rem] border border-border p-4"
-          >
-            <div class="flex items-center justify-between gap-3">
-              <div>
-                <p class="text-sm font-medium text-foreground">
-                  {{ section }}
-                </p><p class="text-sm text-muted-foreground">
-                  {{ row.sold }} {{ $t('common.sold') }}
-                </p>
-              </div>
-              <p class="text-sm font-medium text-foreground">
-                {{ Intl.NumberFormat('en-US').format(row.revenueCents / 100) }} VND
-              </p>
-            </div>
-          </div>
-          <p
-            v-if="topSections.length === 0"
-            class="text-sm text-muted-foreground"
-          >
-            {{ $t('admin_event_seatmap.no_section_movement') }}
+    <Card class="overflow-hidden shadow-none">
+      <CardHeader class="border-b bg-muted/20">
+        <CardTitle>{{ $t('admin_event_seatmap.override_actions_title') }}</CardTitle>
+        <CardDescription>
+          {{ $t('admin_event_seatmap.override_actions_desc', { count: selectedSeats.length }) }}
+        </CardDescription>
+      </CardHeader>
+      <CardContent class="grid gap-4 pt-6 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
+        <div class="space-y-2">
+          <Label for="custom-seat-price">{{ $t('admin_event_seatmap.custom_price') }}</Label>
+          <Input
+            id="custom-seat-price"
+            v-model="customPriceInput"
+            inputmode="decimal"
+            :placeholder="formatCurrency(0).replace('0', '500000')"
+            :disabled="areOverrideActionsDisabled"
+          />
+          <p class="text-xs text-muted-foreground">
+            {{ $t('admin_event_seatmap.custom_price_desc') }}
           </p>
-        </CardContent>
-      </Card>
-    </section>
+        </div>
+        <div class="flex flex-col gap-2 sm:flex-row">
+          <Button
+            :disabled="areOverrideActionsDisabled"
+            @click="setCustomPrice"
+          >
+            <SaveIcon class="size-4" />
+            {{ $t('admin_event_seatmap.set_custom_price') }}
+          </Button>
+          <Button
+            variant="secondary"
+            :disabled="areOverrideActionsDisabled"
+            @click="disableSelectedSeats"
+          >
+            <CircleSlash class="size-4" />
+            {{ $t('admin_event_seatmap.disable_seat') }}
+          </Button>
+          <Button
+            variant="outline"
+            :disabled="areOverrideActionsDisabled"
+            @click="resetSelectedOverrides"
+          >
+            <RotateCcw class="size-4" />
+            {{ $t('admin_event_seatmap.reset_override') }}
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+
+    <AdminEventsAdminVenueLayoutSyncDialog
+      v-model:open="syncDialogOpen"
+      :session-id="syncDialogSessionId"
+      :session-label="selectedSyncSession?.label"
+      :load-preview="fetchVenueLayoutSyncPreview"
+      :apply-sync="applyVenueLayoutSync"
+      @applied="handleVenueSyncApplied"
+    />
   </div>
 </template>
