@@ -1,7 +1,6 @@
 import { createVenueSchema } from '#shared/schemas/ticketingSchema'
 import venueService from '~~/server/utils/database/venue'
 import { apiError, success, zodErrorToFieldErrors } from '~~/server/utils/apiResponse'
-import type { VenueDetail } from '~~/types/venues'
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object'
@@ -27,7 +26,10 @@ export default defineEventHandler(async (event) => {
 
   try {
     const venue = await venueService.create(result.data)
-    const response: VenueDetail = venue
+    const response = await venueService.getDetail(venue.id)
+    if (!response) {
+      throw apiError({ status: 404, statusText: 'Not Found', code: 'VENUE_NOT_FOUND', message: 'Venue not found.' })
+    }
     return success(response)
   }
   catch (error: unknown) {

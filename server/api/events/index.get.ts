@@ -3,20 +3,24 @@ import eventService from '~~/server/utils/database/event'
 import { successPaginated } from '~~/server/utils/apiResponse'
 import type { EventCatalogQueryOptions } from '~~/types/events'
 import type { PaginationMeta } from '~~/types/models/pagination'
+import { localeSchema } from '#shared/schemas/ticketingSchema'
+import { sourceLocale } from '~~/i18n-constants'
+import { EventCatalogDateFilter, EventCatalogSort, EventCatalogStatusFilter } from '#shared/commonEnums'
 
 const eventCatalogQuerySchema = z.object({
   q: z.string().trim().default('').catch(''),
+  locale: localeSchema.default(sourceLocale).catch(sourceLocale),
   location: z.string().trim().default('').catch(''),
-  status: z.enum(['all', 'published', 'on_sale', 'sold_out', 'ended']).default('all').catch('all'),
+  status: z.enum(EventCatalogStatusFilter).default(EventCatalogStatusFilter.All).catch(EventCatalogStatusFilter.All),
   country: z.string().trim().default('all').catch('all'),
   city: z.string().trim().default('all').catch('all'),
   area: z.string().trim().default('').catch(''),
   venue: z.string().trim().default('all').catch('all'),
   date: z.union([
-    z.enum(['all', 'today', 'week', 'month']),
+    z.enum(EventCatalogDateFilter),
     z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  ]).default('all').catch('all'),
-  sort: z.enum(['soonest', 'newest', 'ending_soon']).default('soonest').catch('soonest'),
+  ]).default(EventCatalogDateFilter.All).catch(EventCatalogDateFilter.All),
+  sort: z.enum(EventCatalogSort).default(EventCatalogSort.Soonest).catch(EventCatalogSort.Soonest),
   page: z.coerce.number().int().min(1).catch(1),
   pageSize: z.coerce.number().int().min(1).max(24).catch(9),
 })
@@ -37,6 +41,7 @@ function getPaginationMeta(page: number, pageSize: number, totalItems: number): 
 export default defineEventHandler(async (event) => {
   const query = await getValidatedQuery(event, rawQuery => eventCatalogQuerySchema.parse(rawQuery))
   const options: EventCatalogQueryOptions = {
+    locale: query.locale,
     q: query.q,
     location: query.location,
     status: query.status,

@@ -1,17 +1,26 @@
+import { z } from 'zod'
 import eventSessionService from '~~/server/utils/database/event-session'
 import { apiError, success } from '~~/server/utils/apiResponse'
 import { getTicketingSessionKey } from '~~/server/utils/ticketing/session'
 import type { SeatMapStatus, SessionSeatMapResponse } from '~~/types/seatmap'
+import { localeSchema } from '#shared/schemas/ticketingSchema'
+import { sourceLocale } from '~~/i18n-constants'
+import { resolveSessionSeatPrice } from '~~/server/utils/ticketing/pricing'
+import { EventStatus, SeatStatus } from '#shared/commonEnums'
+
+const seatMapQuerySchema = z.object({
+  locale: localeSchema.default(sourceLocale).catch(sourceLocale),
+})
 
 function toSeatMapStatus(status: string): SeatMapStatus {
   switch (status) {
-    case 'available':
-    case 'locked':
-    case 'sold':
-    case 'unavailable':
+    case SeatStatus.Available:
+    case SeatStatus.Locked:
+    case SeatStatus.Sold:
+    case SeatStatus.Unavailable:
       return status
     default:
-      return 'unavailable'
+      return SeatStatus.Unavailable
   }
 }
 
@@ -19,32 +28,44 @@ function mapSeatMap(
   seatMap: Awaited<ReturnType<typeof eventSessionService.getSeatMap>>,
   version: number,
 ): SessionSeatMapResponse {
+  const sectionPriceBySectionId = new Map(seatMap.sectionPrices.map(sectionPrice => [sectionPrice.venueSectionId, sectionPrice]))
+  const seatOverrideBySeatId = new Map(seatMap.seatOverrides.map(seatOverride => [seatOverride.venueSeatId, seatOverride]))
+
   return {
     version,
-    seats: seatMap.seats.map(seat => ({
-      id: seat.id,
-      venueSectionId: seat.venueSectionId,
-      ticketTypeId: seat.ticketTypeId,
-      sectionNameSnapshot: seat.sectionNameSnapshot,
-      rowLabelSnapshot: seat.rowLabelSnapshot,
-      seatLabelSnapshot: seat.seatLabelSnapshot,
-      displayX: seat.displayX,
-      displayY: seat.displayY,
-      priceCents: seat.priceCents,
-      currency: seat.currency,
-      status: toSeatMapStatus(seat.status),
+    seats: seatMap.seats.map((seat) => {
+      const seatPricing = resolveSessionSeatPrice(seat, sectionPriceBySectionId, seatOverrideBySeatId)
+
+      return {
+        id: seat.id,
+        venueSeatId: seat.venueSeatId,
+        venueSectionId: seat.venueSectionId,
+        ticketTypeId: seat.ticketTypeId,
+        sectionNameSnapshot: seat.sectionNameSnapshot,
+        rowLabelSnapshot: seat.rowLabelSnapshot,
+        seatLabelSnapshot: seat.seatLabelSnapshot,
+        displayX: seat.displayX,
+        displayY: seat.displayY,
+        priceCents: seatPricing.priceCents,
+        currency: seatPricing.currency,
+        pricingSource: seatPricing.pricingSource,
+        status: toSeatMapStatus(seat.status),
+      }
+    }),
+    sectionPrices: seatMap.sectionPrices.map(sectionPrice => ({
+      venueSectionId: sectionPrice.venueSectionId,
+      sectionNameSnapshot: sectionPrice.sectionNameSnapshot,
+      sectionColorSnapshot: sectionPrice.sectionColorSnapshot,
+      priceCents: sectionPrice.priceCents,
+      currency: sectionPrice.currency,
+      sortOrder: sectionPrice.sortOrder,
     })),
-    ticketTypes: seatMap.ticketTypes.map(ticketType => ({
-      id: ticketType.id,
-      venueSectionId: ticketType.venueSectionId,
-      name: ticketType.name,
-      description: ticketType.description,
-      priceCents: ticketType.priceCents,
-      currency: ticketType.currency,
-      capacity: ticketType.capacity,
-      color: ticketType.color,
-      isReservedSeating: ticketType.isReservedSeating,
-      sortOrder: ticketType.sortOrder,
+    seatOverrides: seatMap.seatOverrides.map(seatOverride => ({
+      venueSeatId: seatOverride.venueSeatId,
+      venueSectionId: seatOverride.venueSectionId,
+      priceCents: seatOverride.priceCents,
+      currency: seatOverride.currency,
+      isDisabled: seatOverride.isDisabled,
     })),
   }
 }
@@ -60,13 +81,16 @@ export default defineEventHandler(async (event) => {
     throw apiError({ status: 404, statusText: 'Not Found', code: 'SESSION_NOT_FOUND', message: 'Session not found.' })
   }
 
-  if (session.status === 'draft' || session.status === 'cancelled') {
+  if (session.status === EventStatus.Draft || session.status === EventStatus.Cancelled) {
     throw apiError({ status: 404, statusText: 'Not Found', code: 'SESSION_NOT_FOUND', message: 'Session not found.' })
   }
 
   getTicketingSessionKey(event)
 
+  await getValidatedQuery(event, rawQuery => seatMapQuerySchema.parse(rawQuery))
   const seatMap = await eventSessionService.getSeatMap(session.id)
-  const response: SessionSeatMapResponse = mapSeatMap(seatMap, session.seatmapVersion)
+  const response: SessionSeatMapResponse = mapSeatMap({
+    ...seatMap,
+  }, session.seatmapVersion)
   return success(response)
 })

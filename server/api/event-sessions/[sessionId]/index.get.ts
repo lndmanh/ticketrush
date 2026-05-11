@@ -1,8 +1,16 @@
+import { z } from 'zod'
 import eventService from '~~/server/utils/database/event'
 import eventSessionService from '~~/server/utils/database/event-session'
 import venueService from '~~/server/utils/database/venue'
 import { apiError, success } from '~~/server/utils/apiResponse'
 import type { EventSessionDetailResponse, PublicEventSessionBase, PublicEventSummary, PublicVenueDetail } from '~~/types/events'
+import { localeSchema } from '#shared/schemas/ticketingSchema'
+import { sourceLocale } from '~~/i18n-constants'
+import { EventStatus } from '#shared/commonEnums'
+
+const eventSessionQuerySchema = z.object({
+  locale: localeSchema.default(sourceLocale).catch(sourceLocale),
+})
 
 function mapVenue(venueDetail: Awaited<ReturnType<typeof venueService.getDetail>>): PublicVenueDetail | null {
   if (!venueDetail) {
@@ -56,6 +64,27 @@ function mapSession(session: Awaited<ReturnType<typeof eventSessionService.getBy
   }
 }
 
+function mapSectionPrices(sectionPrices: Awaited<ReturnType<typeof eventSessionService.getSeatMap>>['sectionPrices']) {
+  return sectionPrices.map(sectionPrice => ({
+    venueSectionId: sectionPrice.venueSectionId,
+    sectionNameSnapshot: sectionPrice.sectionNameSnapshot,
+    sectionColorSnapshot: sectionPrice.sectionColorSnapshot,
+    priceCents: sectionPrice.priceCents,
+    currency: sectionPrice.currency,
+    sortOrder: sectionPrice.sortOrder,
+  }))
+}
+
+function mapSeatOverrides(seatOverrides: Awaited<ReturnType<typeof eventSessionService.getSeatMap>>['seatOverrides']) {
+  return seatOverrides.map(seatOverride => ({
+    venueSeatId: seatOverride.venueSeatId,
+    venueSectionId: seatOverride.venueSectionId,
+    priceCents: seatOverride.priceCents,
+    currency: seatOverride.currency,
+    isDisabled: seatOverride.isDisabled,
+  }))
+}
+
 export default defineEventHandler(async (event) => {
   const sessionPublicId = getRouterParam(event, 'sessionId')
   if (!sessionPublicId) {
@@ -67,13 +96,14 @@ export default defineEventHandler(async (event) => {
     throw apiError({ status: 404, statusText: 'Not Found', code: 'SESSION_NOT_FOUND', message: 'Session not found.' })
   }
 
-  if (session.status === 'draft' || session.status === 'cancelled') {
+  if (session.status === EventStatus.Draft || session.status === EventStatus.Cancelled) {
     throw apiError({ status: 404, statusText: 'Not Found', code: 'SESSION_NOT_FOUND', message: 'Session not found.' })
   }
 
+  const query = await getValidatedQuery(event, rawQuery => eventSessionQuerySchema.parse(rawQuery))
   const [parent, venue, seatMap] = await Promise.all([
-    eventService.getById(session.eventId),
-    venueService.getDetail(session.venueId),
+    eventService.getLocalizedById(session.eventId, query.locale),
+    venueService.getDetail(session.venueId, query.locale),
     eventSessionService.getSeatMap(session.id),
   ])
 
@@ -85,18 +115,8 @@ export default defineEventHandler(async (event) => {
     event: mapEvent(parent),
     session: mapSession(session),
     venue: mapVenue(venue),
-    ticketTypes: seatMap.ticketTypes.map(ticketType => ({
-      id: ticketType.id,
-      venueSectionId: ticketType.venueSectionId,
-      name: ticketType.name,
-      description: ticketType.description,
-      priceCents: ticketType.priceCents,
-      currency: ticketType.currency,
-      capacity: ticketType.capacity,
-      color: ticketType.color,
-      isReservedSeating: ticketType.isReservedSeating,
-      sortOrder: ticketType.sortOrder,
-    })),
+    sectionPrices: mapSectionPrices(seatMap.sectionPrices),
+    seatOverrides: mapSeatOverrides(seatMap.seatOverrides),
   }
 
   return success(response)
