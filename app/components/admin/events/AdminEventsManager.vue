@@ -106,7 +106,7 @@
       >
         <template #actions>
           <Button
-            v-if="featuredPriorityEvent.status === 'draft'"
+            v-if="featuredPriorityEvent.status === EventStatus.Draft"
             size="icon-sm"
             variant="outline"
             :title="$t('admin.events.publish_event')"
@@ -152,7 +152,7 @@
               </Badge>
             </div>
             <p class="text-sm text-muted-foreground">
-              {{ getAutosaveVenueName(unfinishedDraft.venueId) }} · saved {{ new Date(unfinishedDraft.updatedAt).toLocaleString() }}
+              {{ getAutosaveVenueName(unfinishedDraft.venueId) }} · saved {{ formatDateTime(unfinishedDraft.updatedAt) }}
             </p>
           </div>
           <div class="flex shrink-0 gap-2">
@@ -194,7 +194,8 @@
 import { computed, onMounted, ref } from 'vue'
 import { toast } from 'vue-sonner'
 import type { Event, Venue } from '#shared/db'
-import type { AutosaveDraftSummary } from '~~/types/admin-events'
+import type { ApiResponse } from '~~/types/api'
+import type { AutosaveDraftDeleteData, AutosaveDraftSummary } from '~~/types/admin-events'
 import { ArchiveIcon, Rocket } from '@lucide/vue'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -204,8 +205,11 @@ import type { EventTableRow } from './columns'
 import { createColumns } from './columns'
 import { apiRequest } from '@/utils/apiRequest'
 import { parseApiError } from '@/utils/apiError'
+import { getDisplayDateLocale } from '@/lib/localizedEvents'
 import { apiRoutes } from '#shared/apiRoutes'
+import { EventStatus } from '#shared/commonEnums'
 
+const { locale } = useI18n()
 const events = ref<Event[]>([])
 const venues = ref<Venue[]>([])
 const unfinishedDraft = ref<AutosaveDraftSummary | null>(null)
@@ -227,17 +231,17 @@ const rows = computed<EventTableRow[]>(() => {
   }))
 })
 
-const draftRows = computed(() => rows.value.filter(row => row.status === 'draft'))
-const liveRows = computed(() => rows.value.filter(row => row.status !== 'draft'))
+const draftRows = computed(() => rows.value.filter(row => row.status === EventStatus.Draft))
+const liveRows = computed(() => rows.value.filter(row => row.status !== EventStatus.Draft))
 
 const priorityRows = computed(() => {
   return [...rows.value]
     .sort((left, right) => {
-      if (left.status === 'draft' && right.status !== 'draft') {
+      if (left.status === EventStatus.Draft && right.status !== EventStatus.Draft) {
         return -1
       }
 
-      if (left.status !== 'draft' && right.status === 'draft') {
+      if (left.status !== EventStatus.Draft && right.status === EventStatus.Draft) {
         return 1
       }
 
@@ -249,6 +253,10 @@ const priorityRows = computed(() => {
 const featuredPriorityEvent = computed(() => priorityRows.value[0] ?? null)
 
 const firstDraftEventId = computed(() => draftRows.value[0]?.id ?? null)
+
+function formatDateTime(value: string | Date) {
+  return new Date(value).toLocaleString(getDisplayDateLocale(locale.value))
+}
 
 async function fetchEvents() {
   try {
@@ -294,7 +302,7 @@ function resumeAutosaveDraft(draftKey: string) {
 async function discardAutosaveDraft(draftKey: string) {
   try {
     loading.value = true
-    const response = await apiRequest(apiRoutes.adminEventAutosave(draftKey), { method: 'DELETE' })
+    const response = await apiRequest<ApiResponse<AutosaveDraftDeleteData>>(apiRoutes.adminEventAutosave(draftKey), { method: 'DELETE' })
     if (!response.success) {
       throw response
     }
@@ -317,7 +325,7 @@ async function discardAutosaveDraft(draftKey: string) {
 async function publishEvent(eventId: number) {
   try {
     loading.value = true
-    const response = await apiRequest(apiRoutes.adminEventPublish(eventId), { method: 'POST' })
+    const response = await apiRequest<ApiResponse<Event>>(apiRoutes.adminEventPublish(eventId), { method: 'POST' })
     if (!response.success) {
       throw response
     }
@@ -335,7 +343,7 @@ async function publishEvent(eventId: number) {
 async function unpublishEvent(eventId: number) {
   try {
     loading.value = true
-    const response = await apiRequest(apiRoutes.adminEventUnpublish(eventId), { method: 'POST' })
+    const response = await apiRequest<ApiResponse<Event | undefined>>(apiRoutes.adminEventUnpublish(eventId), { method: 'POST' })
     if (!response.success) {
       throw response
     }

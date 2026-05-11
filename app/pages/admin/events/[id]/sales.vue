@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { CircleDollarSign, PieChart, Ticket, TrendingUp } from '@lucide/vue'
 import AdminChartCard from '@/components/admin/charts/AdminChartCard.vue'
+import { getDisplayDateLocale } from '@/lib/localizedEvents'
+import { AgeBracket } from '#shared/commonEnums'
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 
 const route = useRoute()
 const eventId = computed(() => Number(route.params.id))
@@ -33,10 +35,10 @@ const revenuePerSeat = computed(() => {
 })
 
 const audienceMix = computed(() => [
-  { label: '18–24', value: dashboard.value?.ageDistribution['18-24'] || 0 },
-  { label: '25–34', value: dashboard.value?.ageDistribution['25-34'] || 0 },
-  { label: '35–44', value: dashboard.value?.ageDistribution['35-44'] || 0 },
-  { label: '45+', value: dashboard.value?.ageDistribution['45+'] || 0 },
+  { label: '18–24', value: dashboard.value?.ageDistribution[AgeBracket.EighteenToTwentyFour] || 0 },
+  { label: '25–34', value: dashboard.value?.ageDistribution[AgeBracket.TwentyFiveToThirtyFour] || 0 },
+  { label: '35–44', value: dashboard.value?.ageDistribution[AgeBracket.ThirtyFiveToFortyFour] || 0 },
+  { label: '45+', value: dashboard.value?.ageDistribution[AgeBracket.FortyFivePlus] || 0 },
   { label: 'Unknown', value: dashboard.value?.ageDistribution.unknown || 0 },
 ])
 
@@ -70,6 +72,10 @@ const recentOrderSampleOption = computed(() => {
   })
 })
 
+function formatCurrency(cents: number) {
+  return `${Intl.NumberFormat(getDisplayDateLocale(locale.value)).format(cents / 100)} VND`
+}
+
 definePageMeta({
   title: 'Event sales',
   breadcrumb: 'Sales',
@@ -91,7 +97,7 @@ definePageMeta({
           <div class="flex items-center gap-3 text-muted-foreground">
             <CircleDollarSign class="size-4" /><span class="text-[11px] uppercase tracking-[0.22em]">{{ $t('admin_event_sales.revenue_label') }}</span>
           </div><p class="mt-4 text-2xl font-semibold tracking-[-0.05em] text-foreground">
-            {{ Intl.NumberFormat('en-US').format((dashboard.revenueCents || 0) / 100) }} VND
+            {{ formatCurrency(dashboard.revenueCents || 0) }}
           </p><p class="mt-2 text-sm text-muted-foreground">
             {{ $t('admin_event_sales.revenue_desc') }}
           </p>
@@ -113,7 +119,7 @@ definePageMeta({
           <div class="flex items-center gap-3 text-muted-foreground">
             <Ticket class="size-4" /><span class="text-[11px] uppercase tracking-[0.22em]">{{ $t('admin_event_sales.revenue_per_seat_label') }}</span>
           </div><p class="mt-4 text-2xl font-semibold tracking-[-0.05em] text-foreground">
-            {{ Intl.NumberFormat('en-US').format(revenuePerSeat / 100) }} VND
+            {{ formatCurrency(revenuePerSeat) }}
           </p><p class="mt-2 text-sm text-muted-foreground">
             {{ $t('admin_event_sales.revenue_per_seat_desc') }}
           </p>
@@ -167,7 +173,7 @@ definePageMeta({
         stat-label="Orders sampled"
       />
 
-      <Card class="h-full xl:col-span-8">
+      <Card class="h-full col-span-full">
         <CardHeader><CardTitle>{{ $t('admin_event_sales.recent_orders_title') }}</CardTitle></CardHeader>
         <CardContent class="space-y-3">
           <div
@@ -184,7 +190,7 @@ definePageMeta({
                 </p>
               </div>
               <p class="text-sm text-muted-foreground">
-                {{ Intl.NumberFormat('en-US').format(order.amountCents / 100) }} VND
+                {{ formatCurrency(order.amountCents) }}
               </p>
             </div>
           </div>
@@ -194,40 +200,6 @@ definePageMeta({
           >
             {{ $t('admin_event_sales.no_orders') }}
           </p>
-        </CardContent>
-      </Card>
-
-      <Card class="h-full xl:col-span-4">
-        <CardHeader><CardTitle>{{ $t('admin_event_sales.live_pressure_title') }}</CardTitle></CardHeader>
-        <CardContent class="grid gap-3 sm:grid-cols-2">
-          <div class="rounded-[1.25rem] border border-border bg-secondary/30 p-4">
-            <p class="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-              {{ $t('admin_event_sales.waiting') }}
-            </p><p class="mt-2 text-2xl font-semibold tracking-[-0.05em] text-foreground">
-              {{ dashboard.queueWaitingCount }}
-            </p>
-          </div>
-          <div class="rounded-[1.25rem] border border-border bg-secondary/30 p-4">
-            <p class="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-              {{ $t('admin_event_sales.admitted') }}
-            </p><p class="mt-2 text-2xl font-semibold tracking-[-0.05em] text-foreground">
-              {{ dashboard.queueAdmittedCount }}
-            </p>
-          </div>
-          <div class="rounded-[1.25rem] border border-border bg-secondary/30 p-4">
-            <p class="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-              {{ $t('admin_event_sales.active_holds') }}
-            </p><p class="mt-2 text-2xl font-semibold tracking-[-0.05em] text-foreground">
-              {{ dashboard.activeHoldsCount }}
-            </p>
-          </div>
-          <div class="rounded-[1.25rem] border border-border bg-secondary/30 p-4">
-            <p class="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-              {{ $t('admin_event_sales.available') }}
-            </p><p class="mt-2 text-2xl font-semibold tracking-[-0.05em] text-foreground">
-              {{ dashboard.availableSeatsCount }}
-            </p>
-          </div>
         </CardContent>
       </Card>
     </section>

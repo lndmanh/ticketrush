@@ -5,11 +5,12 @@ import { apiRequest } from '@/utils/apiRequest'
 import { parseApiError } from '@/utils/apiError'
 import { apiRoutes } from '#shared/apiRoutes'
 import { waitingRoomSettingsSchema } from '#shared/schemas/ticketingSchema'
+import type { ApiResponse } from '~~/types/api'
 import type { WaitingRoomSettingsInput } from '#shared/schemas/ticketingSchema'
 
 const isSaving = ref(false)
 
-const { data: settingsResponse, refresh } = await useAPI(() => apiRoutes.ADMIN_WAITING_ROOM_SETTINGS)
+const { data: settingsResponse, refresh } = await useAPI<ApiResponse<WaitingRoomSettingsInput>>(() => apiRoutes.ADMIN_WAITING_ROOM_SETTINGS)
 
 const defaultValues: WaitingRoomSettingsInput = {
   queueActivationThreshold: 250,

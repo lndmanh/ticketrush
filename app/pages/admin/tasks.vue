@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { toast } from 'vue-sonner'
 import { Clock, Database, Loader2, Play, Users } from '@lucide/vue'
-import type { AdminTaskResult } from '~~/types/admin-tasks'
+import type { ApiResponse } from '~~/types/api'
+import type { AdminTaskData, AdminTaskResult } from '~~/types/admin-tasks'
 import { apiRequest } from '@/utils/apiRequest'
 import { parseApiError } from '@/utils/apiError'
 
@@ -56,7 +57,7 @@ async function runTask(task: TaskDefinition) {
 
   runningTasks.value.add(task.id)
   try {
-    const response = await apiRequest(task.endpoint, { method: 'POST' })
+    const response = await apiRequest<ApiResponse<AdminTaskData>>(task.endpoint, { method: 'POST' })
     if (!response.success) {
       throw response
     }

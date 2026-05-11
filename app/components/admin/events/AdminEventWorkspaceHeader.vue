@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { Component } from 'vue'
+import { getDisplayDateLocale } from '@/lib/localizedEvents'
 
 interface AdminEventWorkspaceMetric {
   label: string
@@ -19,7 +20,8 @@ const props = defineProps<{
   metrics: AdminEventWorkspaceMetric[]
 }>()
 
-const formattedStartsAt = computed(() => new Date(props.startsAt).toLocaleString())
+const { locale } = useI18n()
+const formattedStartsAt = computed(() => new Date(props.startsAt).toLocaleString(getDisplayDateLocale(locale.value)))
 const formattedStatus = computed(() => props.eventStatus.replaceAll('_', ' '))
 </script>
 

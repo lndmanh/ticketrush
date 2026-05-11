@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { EChartsOption } from 'echarts'
+import type { ApiResponse } from '~~/types/api'
 import type { AdminDashboardResponse } from '~~/types/admin-dashboard'
 import { Eye, LineChart, Ticket, Users } from '@lucide/vue'
 import AdminChartCard from '@/components/admin/charts/AdminChartCard.vue'
@@ -7,6 +8,7 @@ import AdminDashboardKpiCard from '@/components/admin/dashboard/AdminDashboardKp
 import AdminDashboardSessionCalendar from '@/components/admin/dashboard/AdminDashboardSessionCalendar.vue'
 import DataTable from '@/components/DataTable.vue'
 import { createAdminDashboardColumns } from '@/components/admin/dashboard/columns'
+import { getDisplayDateLocale } from '@/lib/localizedEvents'
 import { apiRoutes } from '#shared/apiRoutes'
 
 const emptyDashboard: AdminDashboardResponse = {
@@ -27,7 +29,10 @@ const emptyDashboard: AdminDashboardResponse = {
   sessions: [],
 }
 
-const { data: dashboardResponse, refresh } = await useAPI(() => apiRoutes.ADMIN_DASHBOARD)
+const { locale } = useI18n()
+const { data: dashboardResponse, refresh } = await useAPI<ApiResponse<AdminDashboardResponse>>(() => apiRoutes.ADMIN_DASHBOARD, {
+  query: computed(() => ({ locale: locale.value })),
+})
 const { createDonutChartOption } = useAdminChartTheme()
 const colorMode = useColorMode()
 
@@ -188,7 +193,7 @@ function getIsoDate(date: Date) {
 }
 
 function formatCurrency(cents: number) {
-  return new Intl.NumberFormat('en-US', {
+  return new Intl.NumberFormat(getDisplayDateLocale(locale.value), {
     style: 'currency',
     currency: 'USD',
     maximumFractionDigits: 0,
@@ -196,7 +201,7 @@ function formatCurrency(cents: number) {
 }
 
 function formatCompactCurrency(cents: number) {
-  return new Intl.NumberFormat('en-US', {
+  return new Intl.NumberFormat(getDisplayDateLocale(locale.value), {
     style: 'currency',
     currency: 'USD',
     notation: 'compact',
@@ -205,14 +210,14 @@ function formatCompactCurrency(cents: number) {
 }
 
 function formatCompactNumber(value: number) {
-  return new Intl.NumberFormat('en-US', {
+  return new Intl.NumberFormat(getDisplayDateLocale(locale.value), {
     notation: 'compact',
     maximumFractionDigits: 1,
   }).format(value)
 }
 
 function formatPercent(value: number) {
-  return new Intl.NumberFormat('en-US', {
+  return new Intl.NumberFormat(getDisplayDateLocale(locale.value), {
     style: 'percent',
     maximumFractionDigits: 0,
   }).format(value)
@@ -231,10 +236,10 @@ definePageMeta({
     <section class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
       <div class="space-y-2">
         <h1 class="text-balance text-3xl font-semibold tracking-[-0.06em] text-foreground md:text-4xl">
-          Sales analytics at a glance.
+          {{ $t('admin.dashboard_analytics_title') }}
         </h1>
         <p class="text-sm text-muted-foreground md:text-base">
-          Track revenue, listed capacity, active launches, and session timing without opening each event workspace.
+          {{ $t('admin.dashboard_analytics_desc') }}
         </p>
       </div>
     </section>
@@ -243,8 +248,8 @@ definePageMeta({
       <AdminDashboardKpiCard
         label="Total revenue"
         :value="formatCurrency(summary.totalRevenueCents)"
-        description="Confirmed checkout revenue across every tracked event."
-        trend-label="Confirmed"
+        :description="$t('admin.dashboard_total_revenue_desc')"
+        :trend-label="$t('admin.dashboard_confirmed')"
         trend-direction="up"
       >
         <template #icon>
@@ -253,9 +258,9 @@ definePageMeta({
       </AdminDashboardKpiCard>
 
       <AdminDashboardKpiCard
-        label="Seats listed"
+        :label="$t('admin.dashboard_seats_listed')"
         :value="formatCompactNumber(summary.totalSeatsListed)"
-        description="Reserved and general inventory generated from venue maps."
+        :description="$t('admin.dashboard_seats_listed_desc')"
         :trend-label="`${summary.soldSeatsCount} sold`"
         trend-direction="neutral"
       >
@@ -265,9 +270,9 @@ definePageMeta({
       </AdminDashboardKpiCard>
 
       <AdminDashboardKpiCard
-        label="Tickets issued"
+        :label="$t('admin.dashboard_tickets_issued')"
         :value="formatCompactNumber(summary.ticketsIssuedCount)"
-        description="Digital passes created from completed buyer orders."
+        :description="$t('admin.dashboard_tickets_issued_desc')"
         :trend-label="occupancyLabel"
         trend-direction="up"
       >
@@ -277,9 +282,9 @@ definePageMeta({
       </AdminDashboardKpiCard>
 
       <AdminDashboardKpiCard
-        label="Total views"
+        :label="$t('admin.dashboard_total_views')"
         :value="formatCompactNumber(summary.totalViews)"
-        description="Traffic tracking is ready for the dashboard once view events are stored."
+        :description="$t('admin.dashboard_total_views_desc')"
         trend-label="Tracking pending"
         trend-direction="neutral"
       >
@@ -293,8 +298,8 @@ definePageMeta({
       <div class="space-y-6 xl:col-span-8">
         <div class="grid gap-6 lg:grid-cols-[minmax(0,1.45fr)_minmax(18rem,0.75fr)]">
           <AdminChartCard
-            title="Performance"
-            description="Monthly confirmed revenue and issued tickets from checkout activity."
+            :title="$t('admin.dashboard_performance')"
+            :description="$t('admin.dashboard_performance_desc')"
             :option="revenueChartOption"
             :height="320"
             :stat="formatCurrency(summary.totalRevenueCents)"
@@ -303,8 +308,8 @@ definePageMeta({
           />
 
           <AdminChartCard
-            title="Seat mix"
-            description="Sold inventory compared with remaining listed seats."
+            :title="$t('admin.dashboard_seat_mix')"
+            :description="$t('admin.dashboard_seat_mix_desc')"
             :option="seatMixOption"
             :height="320"
             :stat="formatPercent(summary.occupancyRate)"
@@ -316,10 +321,10 @@ definePageMeta({
         <Card class="overflow-hidden border-border/70 bg-card/90 shadow-sm">
           <CardHeader class="flex flex-col gap-3 border-b pb-4 lg:flex-row lg:items-center lg:justify-between">
             <div>
-              <CardTitle>Active listing</CardTitle>
-              <p class="mt-1 text-sm text-muted-foreground">
-                Search events, inspect revenue, and jump into the event workspace.
-              </p>
+              <CardTitle>{{ $t('admin.dashboard_active_listing') }}</CardTitle>
+              <CardDescription>
+               {{ $t('admin.dashboard_active_listing_desc') }}
+              </CardDescription>
             </div>
             <Badge
               variant="outline"
@@ -334,8 +339,8 @@ definePageMeta({
               :data="dashboard.events"
               :loading="isRefreshing"
               search-placeholder="Search events, venues, statuses"
-              empty-title="No events in the dashboard yet."
-              empty-description="Create or publish an event to start seeing analytics here."
+              :empty-title="$t('admin.dashboard_empty_title')"
+              :empty-description="$t('admin.dashboard_empty_desc')"
               @update:data="refreshDashboard"
             />
           </CardContent>

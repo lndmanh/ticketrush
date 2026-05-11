@@ -41,7 +41,7 @@ function isActive(target: string) {
 </script>
 
 <template>
-  <div class="surface-shell overflow-hidden">
+  <div class="surface-shell overflow-hidden rounded-xl!">
     <div class="surface-core flex flex-col gap-4 md:flex-row md:flex-wrap md:items-center md:justify-between">
       <div class="flex items-center gap-3">
         <div class="relative shrink-0">

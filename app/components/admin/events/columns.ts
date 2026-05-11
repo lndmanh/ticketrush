@@ -3,6 +3,7 @@ import type { ColumnDef } from '@tanstack/vue-table'
 import { ArrowUpDown, Eye, MoreHorizontal, Rocket, RotateCcw } from '@lucide/vue'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { EventStatus } from '#shared/commonEnums'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -10,6 +11,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { formatRelativeTime } from '@/lib/utils'
+import { getDisplayDateLocale } from '@/lib/localizedEvents'
 
 export interface EventTableRow {
   id: number
@@ -28,6 +30,12 @@ export function createColumns(
   onPublish: (eventId: number) => void,
   onUnpublish: (eventId: number) => void,
 ): ColumnDef<EventTableRow>[] {
+  const { locale } = useI18n()
+
+  function formatDateTime(value: string | Date) {
+    return new Date(value).toLocaleString(getDisplayDateLocale(locale.value))
+  }
+
   return [
     {
       accessorKey: 'title',
@@ -44,7 +52,7 @@ export function createColumns(
       accessorKey: 'status',
       header: 'Status',
       cell: ({ row }) => h(Badge, {
-        variant: row.original.status === 'draft' ? 'outline' : 'default',
+        variant: row.original.status === EventStatus.Draft ? 'outline' : 'default',
         class: 'capitalize',
       }, () => row.original.status.replaceAll('_', ' ')),
     },
@@ -59,12 +67,12 @@ export function createColumns(
         variant: 'ghost',
         onClick: () => column.toggleSorting(column.getIsSorted() === 'asc'),
       }, () => ['Starts', h(ArrowUpDown, { class: 'ml-2 h-4 w-4' })]),
-      cell: ({ row }) => h('div', { class: 'text-sm whitespace-nowrap text-muted-foreground' }, row.original.startsAt.toLocaleString()),
+      cell: ({ row }) => h('div', { class: 'text-sm whitespace-nowrap text-muted-foreground' }, formatDateTime(row.original.startsAt)),
     },
     {
       accessorKey: 'salesStartAt',
       header: 'Sales window',
-      cell: ({ row }) => h('div', { class: 'text-sm text-muted-foreground whitespace-nowrap' }, row.original.salesStartAt.toLocaleString()),
+      cell: ({ row }) => h('div', { class: 'text-sm text-muted-foreground whitespace-nowrap' }, formatDateTime(row.original.salesStartAt)),
     },
     {
       accessorKey: 'updatedAt',
@@ -96,7 +104,7 @@ export function createColumns(
                   h('span', {}, 'Open'),
                 ]),
               }),
-              row.original.status === 'draft'
+              row.original.status === EventStatus.Draft
                 ? h(DropdownMenuItem, { onClick: () => onPublish(row.original.id) }, {
                     default: () => h('div', { class: 'flex items-center gap-2' }, [
                       h(Rocket, { class: 'h-4 w-4' }),

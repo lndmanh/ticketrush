@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { Activity, LockKeyhole, ShoppingCart, Tickets } from '@lucide/vue'
 import AdminChartCard from '@/components/admin/charts/AdminChartCard.vue'
+import { getDisplayDateLocale } from '@/lib/localizedEvents'
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 
 const route = useRoute()
 const eventId = computed(() => Number(route.params.id))
@@ -56,6 +57,18 @@ const recentOrderSampleOption = computed(() => {
     maxItems: 6,
   })
 })
+
+function formatCurrency(cents: number) {
+  return `${Intl.NumberFormat(getDisplayDateLocale(locale.value)).format(cents / 100)} VND`
+}
+
+function formatTime(value: string | Date) {
+  return new Date(value).toLocaleTimeString(getDisplayDateLocale(locale.value))
+}
+
+function formatDateTime(value: string | Date) {
+  return new Date(value).toLocaleString(getDisplayDateLocale(locale.value))
+}
 
 definePageMeta({
   title: 'Event operations',
@@ -171,7 +184,7 @@ definePageMeta({
                 </p>
               </div>
               <p class="text-sm text-muted-foreground">
-                {{ Intl.NumberFormat('en-US').format(order.amountCents / 100) }} VND
+                {{ formatCurrency(order.amountCents) }}
               </p>
             </div>
           </div>
@@ -197,7 +210,7 @@ definePageMeta({
                 <p class="text-sm font-medium text-foreground">
                   {{ hold.publicId }}
                 </p><p class="text-sm text-muted-foreground">
-                  {{ hold.seatCount }} seat(s) · {{ $t('admin_event_ops.expires_label') }} {{ new Date(hold.expiresAt).toLocaleTimeString() }}
+                  {{ hold.seatCount }} seat(s) · {{ $t('admin_event_ops.expires_label') }} {{ formatTime(hold.expiresAt) }}
                 </p>
               </div>
               <p class="text-xs text-muted-foreground">
@@ -251,7 +264,7 @@ definePageMeta({
                 <p class="text-sm font-medium text-foreground">
                   {{ entry.customerKey }}
                 </p><p class="text-sm text-muted-foreground">
-                  {{ $t('admin_event_ops.created_label') }} {{ new Date(entry.createdAt).toLocaleString() }}
+                  {{ $t('admin_event_ops.created_label') }} {{ formatDateTime(entry.createdAt) }}
                 </p>
               </div>
               <p class="text-xs text-muted-foreground">

@@ -18,6 +18,7 @@ import {
   CalendarRoot,
 } from 'reka-ui'
 import { cn } from '@/lib/utils'
+import { getDisplayDateLocale } from '@/lib/localizedEvents'
 
 const props = defineProps<{
   selectedDate: string
@@ -28,6 +29,9 @@ const props = defineProps<{
 const emit = defineEmits<{
   (event: 'update:selectedDate', value: string): void
 }>()
+
+const { t, locale } = useI18n()
+const dateLocale = computed(() => getDisplayDateLocale(locale.value))
 
 function parseIsoDate(value: string) {
   const [yearText, monthText, dayText] = value.split('-')
@@ -62,7 +66,7 @@ function getDayNumber(day: DateValue) {
 }
 
 function formatSelectedDate(value: string) {
-  return new Date(`${value}T00:00:00`).toLocaleDateString('en-US', {
+  return new Date(`${value}T00:00:00`).toLocaleDateString(dateLocale.value, {
     weekday: 'long',
     month: 'short',
     day: 'numeric',
@@ -70,14 +74,14 @@ function formatSelectedDate(value: string) {
 }
 
 function formatTime(value: string | Date) {
-  return new Date(value).toLocaleTimeString('en-US', {
+  return new Date(value).toLocaleTimeString(dateLocale.value, {
     hour: 'numeric',
     minute: '2-digit',
   })
 }
 
 function formatCurrency(cents: number) {
-  return new Intl.NumberFormat('en-US', {
+  return new Intl.NumberFormat(dateLocale.value, {
     style: 'currency',
     currency: 'USD',
     maximumFractionDigits: 0,
@@ -90,14 +94,26 @@ function getStatusVariant(statusLabel: string): 'default' | 'outline' | 'seconda
   return 'secondary'
 }
 
+function getStatusLabel(session: AdminDashboardCalendarSession) {
+  const key = `event_card.status_${session.status}`
+  const translated = t(key)
+  return translated === key ? session.statusLabel : translated
+}
+
 function getSeatSummary(session: AdminDashboardCalendarSession) {
-  if (session.totalSeats === 0) return 'No seats listed'
-  return `${session.soldSeats}/${session.totalSeats} sold`
+  if (session.totalSeats === 0) return t('admin.dashboard_no_seats_listed')
+  return t('admin.dashboard_seat_summary', { sold: session.soldSeats, total: session.totalSeats })
 }
 
 function getOccupancyWidth(session: AdminDashboardCalendarSession) {
   if (session.totalSeats === 0) return '0%'
   return `${Math.round((session.soldSeats / session.totalSeats) * 100)}%`
+}
+
+function getVenueLabel(session: AdminDashboardCalendarSession) {
+  const venueName = session.venueName || t('admin.venue_pending')
+  const venueCity = session.venueCity
+  return `${venueName}${venueCity ? `, ${venueCity}` : ''}`
 }
 </script>
 
@@ -107,10 +123,10 @@ function getOccupancyWidth(session: AdminDashboardCalendarSession) {
       <div class="flex items-center justify-between gap-3">
         <div>
           <CardTitle class="text-base">
-            Session calendar
+            {{ $t('admin.dashboard_session_calendar') }}
           </CardTitle>
           <p class="mt-1 text-sm text-muted-foreground">
-            Pick a day to inspect launches and sales status.
+            {{ $t('admin.dashboard_session_calendar_desc') }}
           </p>
         </div>
       </div>
@@ -123,19 +139,20 @@ function getOccupancyWidth(session: AdminDashboardCalendarSession) {
         :week-starts-on="1"
         fixed-weeks
         prevent-deselect
+        :locale="dateLocale"
         class="w-full"
       >
         <CalendarHeader class="mb-4 flex items-center justify-between gap-3">
           <CalendarPrev
             class="inline-flex size-8 items-center justify-center rounded-md border bg-background text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            aria-label="Previous month"
+            :aria-label="$t('admin.dashboard_previous_month')"
           >
             <ChevronLeft class="size-4" />
           </CalendarPrev>
           <CalendarHeading class="text-sm font-semibold text-foreground" />
           <CalendarNext
             class="inline-flex size-8 items-center justify-center rounded-md border bg-background text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            aria-label="Next month"
+            :aria-label="$t('admin.dashboard_next_month')"
           >
             <ChevronRight class="size-4" />
           </CalendarNext>
@@ -200,7 +217,7 @@ function getOccupancyWidth(session: AdminDashboardCalendarSession) {
         <div class="mb-4 flex items-start justify-between gap-3">
           <div>
             <h3 class="text-base font-semibold tracking-[-0.02em] text-foreground">
-              Daily agenda
+              {{ $t('admin.dashboard_daily_agenda') }}
             </h3>
             <p class="mt-1 text-sm text-muted-foreground">
               {{ formatSelectedDate(props.selectedDate) }}
@@ -210,7 +227,7 @@ function getOccupancyWidth(session: AdminDashboardCalendarSession) {
             variant="outline"
             class="rounded-full"
           >
-            {{ sessions.length }} session{{ sessions.length === 1 ? '' : 's' }}
+            {{ $t('admin.dashboard_session_count', { count: sessions.length }) }}
           </Badge>
         </div>
 
@@ -234,14 +251,14 @@ function getOccupancyWidth(session: AdminDashboardCalendarSession) {
                 :variant="getStatusVariant(session.statusLabel)"
                 class="shrink-0 rounded-full"
               >
-                {{ session.statusLabel }}
+                {{ getStatusLabel(session) }}
               </Badge>
             </div>
 
             <div class="mt-4 grid gap-2 text-sm text-muted-foreground">
               <div class="flex items-center gap-2">
                 <MapPin class="size-3.5 shrink-0" />
-                <span class="truncate">{{ session.venueName || 'Venue pending' }}{{ session.venueCity ? `, ${session.venueCity}` : '' }}</span>
+                <span class="truncate">{{ getVenueLabel(session) }}</span>
               </div>
               <div class="flex items-center gap-2">
                 <Ticket class="size-3.5 shrink-0" />
@@ -266,9 +283,9 @@ function getOccupancyWidth(session: AdminDashboardCalendarSession) {
               <EmptyMedia variant="icon">
                 <CalendarClock class="size-5" />
               </EmptyMedia>
-              <EmptyTitle>No sessions on this day</EmptyTitle>
+              <EmptyTitle>{{ $t('admin.dashboard_no_sessions_day') }}</EmptyTitle>
               <EmptyDescription>
-                Select a marked date to inspect selling windows, capacity, and revenue.
+                {{ $t('admin.dashboard_no_sessions_day_desc') }}
               </EmptyDescription>
             </EmptyHeader>
           </Empty>
