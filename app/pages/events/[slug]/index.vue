@@ -2,12 +2,22 @@
 import { CalendarRange, MapPin, Ticket } from '@lucide/vue'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { getDisplayDateLocale } from '@/lib/localizedEvents'
 import { apiRoutes } from '#shared/apiRoutes'
+import type { EventDetailResponse } from '~~/types/events'
 
 const route = useRoute()
-const slug = computed(() => route.params.slug.toString())
+const slug = computed(() => {
+  const value = route.params.slug
+  if (typeof value === 'string') return value
+  if (Array.isArray(value)) return value[0] ?? ''
+  return ''
+})
+const { locale } = useI18n()
 
-const { data: detailResponse } = await useAPI(() => apiRoutes.event(slug.value))
+const { data: detailResponse } = await useAPI<ApiResponse<EventDetailResponse>>(() => apiRoutes.event(slug.value), {
+  query: computed(() => ({ locale: locale.value })),
+})
 
 const detail = computed(() => detailResponse.value?.success ? detailResponse.value.data : null)
 const event = computed(() => detail.value?.event ?? null)
@@ -28,16 +38,17 @@ const dateRangeLabel = computed(() => {
   const lastSession = sortedSessions.value[sortedSessions.value.length - 1]
   const firstDate = new Date(firstSession.startsAt)
   const lastDate = new Date(lastSession.startsAt)
+  const displayLocale = getDisplayDateLocale(locale.value)
 
   if (firstDate.toDateString() === lastDate.toDateString()) {
-    return firstDate.toLocaleDateString('en-US', {
+    return firstDate.toLocaleDateString(displayLocale, {
       weekday: 'long',
       month: 'long',
       day: 'numeric',
     })
   }
 
-  return `${firstDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – ${lastDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`
+  return `${firstDate.toLocaleDateString(displayLocale, { month: 'short', day: 'numeric' })} – ${lastDate.toLocaleDateString(displayLocale, { month: 'short', day: 'numeric' })}`
 })
 
 const venueLabel = computed(() => {
@@ -48,8 +59,8 @@ const venueLabel = computed(() => {
   return `${venue.value.name}, ${venue.value.city}`
 })
 
-const releaseCount = computed(() => {
-  return sortedSessions.value.reduce((total, session) => total + session.ticketTypes.length, 0)
+const sectionPriceCount = computed(() => {
+  return sortedSessions.value.reduce((total, session) => total + session.sectionPrices.length, 0)
 })
 
 if (!event.value) {
@@ -66,7 +77,7 @@ definePageMeta({
   <AppLayout
     v-if="event"
     :hide-header="true"
-    class-name="relative gap-8 overflow-hidden md:gap-10 max-w-[90rem] px-4 mt-16 pb-3 sm:px-6 lg:px-10"
+    class-name="relative gap-8 overflow-hidden md:gap-10 max-w-[90rem] px-4 pb-3 lg:px-8"
   >
     <div class="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[32rem] bg-[radial-gradient(circle_at_18%_12%,hsl(var(--primary)/0.18),transparent_34%),radial-gradient(circle_at_88%_4%,hsl(var(--muted-foreground)/0.14),transparent_30%)]" />
 
@@ -139,10 +150,10 @@ definePageMeta({
               <Ticket class="mt-0.5 size-4 text-primary" />
               <div>
                 <p class="text-sm font-medium leading-none">
-                  {{ $t('event_detail.ticket_releases_label') }}
+                  {{ $t('event_detail.section_pricing_label') }}
                 </p>
                 <p class="mt-1 text-sm text-muted-foreground">
-                  {{ releaseCount }} across {{ sortedSessions.length }} session{{ sortedSessions.length === 1 ? '' : 's' }}
+                  {{ sectionPriceCount }} section price option{{ sectionPriceCount === 1 ? '' : 's' }} across {{ sortedSessions.length }} session{{ sortedSessions.length === 1 ? '' : 's' }}
                 </p>
               </div>
             </div>
@@ -151,27 +162,13 @@ definePageMeta({
       </div>
     </section>
 
-    <section class="space-y-6">
+    <section class="space-y-6 pt-6">
       <div class="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div class="space-y-3">
           <span class="section-eyebrow">
             {{ $t('common.sessions') }}
           </span>
-          <div class="space-y-2">
-            <h2 class="text-3xl font-semibold tracking-[-0.05em] md:text-4xl">
-              {{ $t('event_detail.select_session_title') }}
-            </h2>
-            <p class="max-w-[42rem] text-sm leading-6 text-muted-foreground md:text-base md:leading-7">
-              {{ $t('event_detail.select_session_desc') }}
-            </p>
-          </div>
         </div>
-        <Badge
-          variant="secondary"
-          class="w-fit rounded-full"
-        >
-          {{ releaseCount }} {{ $t('event_detail.ticket_releases_label') }}
-        </Badge>
       </div>
 
       <div class="grid gap-4 lg:grid-cols-2">
@@ -179,7 +176,7 @@ definePageMeta({
           v-for="session in sortedSessions"
           :key="session.publicId"
           :session="session"
-          :ticket-types="session.ticketTypes"
+          :section-prices="session.sectionPrices"
           :event-slug="event.slug"
         />
       </div>

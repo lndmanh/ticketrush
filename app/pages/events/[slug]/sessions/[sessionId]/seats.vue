@@ -1,35 +1,38 @@
 <script setup lang="ts">
 import { toast } from 'vue-sonner'
-import { CheckCircle2, Clock3, RefreshCw, ShoppingBag, Sparkles, TicketCheck, TicketPlus, Trash2, Users } from '@lucide/vue'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import {
-  Item,
-  ItemActions,
-  ItemContent,
-  ItemDescription,
-  ItemGroup,
-  ItemMedia,
-  ItemTitle,
-} from '@/components/ui/item'
-import { ScrollArea } from '@/components/ui/scroll-area'
+import { ArrowLeft, CheckCircle2, ShoppingBag, Sparkles, TicketCheck, TicketPlus, Trash2, XCircle, RefreshCw } from '@lucide/vue'
+import NumberFlow from '@number-flow/vue'
 import { parseApiError } from '@/utils/apiError'
+import { getDisplayDateLocale } from '@/lib/localizedEvents'
 import { apiRoutes } from '#shared/apiRoutes'
 import { parseSeatmapRealtimeMessage } from '~~/types/seatmap-realtime'
 import type { SeatStatusDeltaChange } from '~~/types/seatmap-realtime'
+import type { ApiResponse } from '~~/types/api'
+import type { EventSessionDetailResponse } from '~~/types/events'
+import type { HoldData, EventSessionGateResponse } from '~~/types/ticketing'
+import type { SessionSeatMapResponse } from '~~/types/seatmap'
+import { SeatStatus } from '#shared/commonEnums'
 
 const route = useRoute()
-const slug = computed(() => route.params.slug.toString())
-const sessionPublicId = computed(() => route.params.sessionId.toString())
+const slug = computed(() => {
+  const value = route.params.slug
+  if (typeof value === 'string') return value
+  if (Array.isArray(value)) return value[0] ?? ''
+  return ''
+})
+const sessionPublicId = computed(() => typeof route.params.sessionId === 'string' ? route.params.sessionId : '')
 const passToken = computed(() => typeof route.query.pass === 'string' ? route.query.pass : undefined)
 const requestUrl = useRequestURL()
+const { locale } = useI18n()
 
-const { data: detailResponse } = await useAPI(() => apiRoutes.eventSession(sessionPublicId.value))
+const { data: detailResponse, error: detailFetchError } = await useAPI<ApiResponse<EventSessionDetailResponse>>(() => apiRoutes.eventSession(sessionPublicId.value), {
+  query: computed(() => ({ locale: locale.value })),
+})
 const detail = computed(() => detailResponse.value?.success ? detailResponse.value.data : null)
 const event = computed(() => detail.value?.event ?? null)
 const session = computed(() => detail.value?.session ?? null)
 
-const { data: gateResponse } = await useAPI(() => apiRoutes.eventSessionGate(sessionPublicId.value), {
+const { data: gateResponse, error: gateFetchError } = await useAPI<ApiResponse<EventSessionGateResponse>>(() => apiRoutes.eventSessionGate(sessionPublicId.value), {
   query: computed(() => passToken.value ? { pass: passToken.value } : {}),
 })
 
@@ -40,15 +43,20 @@ if (gateResponse.value?.success && gateResponse.value.data.shouldQueue) {
   })
 }
 
-const { data: seatMapResponse, refresh: refreshSeatMap } = await useAPI(() => apiRoutes.eventSessionSeatmap(sessionPublicId.value))
+const { data: seatMapResponse, refresh: refreshSeatMap, error: seatMapFetchError } = await useAPI<ApiResponse<SessionSeatMapResponse>>(() => apiRoutes.eventSessionSeatmap(sessionPublicId.value), {
+  query: computed(() => ({ locale: locale.value })),
+})
 const seatMap = computed(() => seatMapResponse.value?.success ? seatMapResponse.value.data : null)
 const selectedSeatIds = ref<number[]>([])
 const previewSeatId = ref<number | null>(null)
 const previewTicketItem = ref<HTMLElement | null>(null)
 const isSubmitting = ref(false)
+const checkoutUnavailableError = ref<ReturnType<typeof parseApiError> | null>(null)
 const realtimeStatus = ref<'connecting' | 'connected' | 'disconnected'>('connecting')
 const currentSeatmapVersion = ref(0)
 let fallbackRefreshTimer: ReturnType<typeof setInterval> | undefined
+let seatMapRefreshPromise: Promise<void> | null = null
+let seatMapRefreshQueued = false
 const socketUrl = computed(() => {
   const url = new URL(apiRoutes.eventSessionSeatmapSocket(sessionPublicId.value), requestUrl.origin)
   url.protocol = requestUrl.protocol === 'https:' ? 'wss:' : 'ws:'
@@ -64,17 +72,33 @@ const { open, close } = useWebSocket(socketUrl, {
   },
   immediate: false,
   async onConnected() {
-    await refreshSeatMap()
+    await refreshSeatMapSafely()
+    if (sessionUnavailableError.value) {
+      return
+    }
+
     currentSeatmapVersion.value = seatMap.value?.version ?? currentSeatmapVersion.value
     realtimeStatus.value = 'connected'
   },
   onDisconnected() {
+    if (sessionUnavailableError.value) {
+      realtimeStatus.value = 'disconnected'
+      return
+    }
+
     realtimeStatus.value = 'connecting'
+    void refreshSeatMapSafely()
   },
   onError() {
+    if (sessionUnavailableError.value) {
+      realtimeStatus.value = 'disconnected'
+      return
+    }
+
     if (realtimeStatus.value !== 'connected') {
       realtimeStatus.value = 'connecting'
     }
+    void refreshSeatMapSafely()
   },
   async onMessage(_ws, event) {
     if (typeof event.data === 'string') {
@@ -92,9 +116,9 @@ const inventorySummary = computed(() => {
   const seats = seatMap.value?.seats ?? []
 
   return {
-    available: seats.filter(seat => seat.status === 'available').length,
-    locked: seats.filter(seat => seat.status === 'locked').length,
-    sold: seats.filter(seat => seat.status === 'sold').length,
+    available: seats.filter(seat => seat.status === SeatStatus.Available).length,
+    locked: seats.filter(seat => seat.status === SeatStatus.Locked).length,
+    sold: seats.filter(seat => seat.status === SeatStatus.Sold).length,
   }
 })
 
@@ -105,7 +129,7 @@ const sessionTimeLabel = computed(() => {
     return 'Session time pending'
   }
 
-  return new Date(session.value.startsAt).toLocaleString('en-US', {
+  return new Date(session.value.startsAt).toLocaleString(getDisplayDateLocale(locale.value), {
     month: 'short',
     day: 'numeric',
     hour: 'numeric',
@@ -114,6 +138,21 @@ const sessionTimeLabel = computed(() => {
 })
 const selectedSeats = computed(() => {
   return (seatMap.value?.seats ?? []).filter(seat => selectedSeatIds.value.includes(seat.id))
+})
+
+const selectedSeatsBySection = computed(() => {
+  const groups = new Map<string, typeof selectedSeats.value>()
+  for (const seat of selectedSeats.value) {
+    const section = seat.sectionNameSnapshot
+    const existing = groups.get(section)
+    if (existing) {
+      existing.push(seat)
+    }
+    else {
+      groups.set(section, [seat])
+    }
+  }
+  return [...groups.entries()].map(([name, seats]) => ({ name, seats }))
 })
 
 const previewSeat = computed(() => {
@@ -144,6 +183,10 @@ const previewTotalValue = computed(() => {
   return totalValue.value + (previewSeat.value?.priceCents ?? 0)
 })
 
+const previewTotalCurrency = computed(() => {
+  return previewSeat.value?.currency ?? selectedSeats.value[0]?.currency ?? 'VND'
+})
+
 const inventoryStatusLabel = computed(() => {
   if (realtimeStatus.value === 'connected') {
     return 'Connected'
@@ -156,8 +199,72 @@ const inventoryStatusLabel = computed(() => {
   return 'Disconnected'
 })
 
+const sessionUnavailableError = computed(() => {
+  const parsedErrors = [
+    checkoutUnavailableError.value,
+    parseApiFetchState(detailResponse.value, detailFetchError.value),
+    parseApiFetchState(gateResponse.value, gateFetchError.value),
+    parseApiFetchState(seatMapResponse.value, seatMapFetchError.value),
+  ]
+
+  for (const parsedError of parsedErrors) {
+    if (parsedError && isSessionUnavailableError(parsedError)) {
+      return parsedError
+    }
+  }
+
+  return null
+})
+
+function parseApiFetchState(response: ApiResponse<unknown> | null | undefined, fetchError: unknown) {
+  if (fetchError) {
+    return parseApiError(fetchError)
+  }
+
+  if (response && !response.success) {
+    return parseApiError(response)
+  }
+
+  return null
+}
+
+function isSessionUnavailableError(error: ReturnType<typeof parseApiError>) {
+  return error.status === 404
+    || error.code === 'SESSION_NOT_FOUND'
+    || error.code === 'EVENT_NOT_FOUND'
+    || error.message === 'This session is not available for booking.'
+}
+
+function stopSeatMapRefresh() {
+  if (fallbackRefreshTimer) {
+    clearInterval(fallbackRefreshTimer)
+    fallbackRefreshTimer = undefined
+  }
+
+  close()
+}
+
+async function refreshSeatMapSafely() {
+  if (seatMapRefreshPromise) {
+    seatMapRefreshQueued = true
+    return seatMapRefreshPromise
+  }
+
+  do {
+    seatMapRefreshQueued = false
+    seatMapRefreshPromise = refreshSeatMap().then(() => undefined)
+
+    try {
+      await seatMapRefreshPromise
+    }
+    finally {
+      seatMapRefreshPromise = null
+    }
+  } while (seatMapRefreshQueued)
+}
+
 function formatCurrency(value: number, currency = 'VND') {
-  return `${Intl.NumberFormat('en-US').format(value / 100)} ${currency}`
+  return `${Intl.NumberFormat(getDisplayDateLocale(locale.value)).format(value / 100)} ${currency}`
 }
 
 function formatSeatLabel(seat: { sectionNameSnapshot: string, rowLabelSnapshot: string | null, seatLabelSnapshot: string }) {
@@ -203,6 +310,15 @@ function removeSelectedSeat(seatId: number) {
   if (previewSeatId.value === seatId) {
     previewSeatId.value = null
   }
+}
+
+function removeSectionSeats(seatIds: number[]) {
+  const removeSet = new Set(seatIds)
+  selectedSeatIds.value = selectedSeatIds.value.filter(id => !removeSet.has(id))
+}
+
+function removeAllSelectedSeats() {
+  selectedSeatIds.value = []
 }
 
 function toggleSeat(seatId: number) {
@@ -260,9 +376,13 @@ function applySeatChanges(changes: SeatStatusDeltaChange[], version: number) {
 }
 
 async function handleRealtimeMessage(rawValue: string) {
+  if (sessionUnavailableError.value) {
+    return
+  }
+
   const message = parseSeatmapRealtimeMessage(rawValue)
   if (!message || message.sessionPublicId !== sessionPublicId.value) {
-    await refreshSeatMap()
+    await refreshSeatMapSafely()
     currentSeatmapVersion.value = seatMap.value?.version ?? message?.version ?? currentSeatmapVersion.value
     return
   }
@@ -270,7 +390,7 @@ async function handleRealtimeMessage(rawValue: string) {
   if (message.type === 'seatmap-connected') {
     realtimeStatus.value = 'connected'
     if (message.version > currentSeatmapVersion.value) {
-      await refreshSeatMap()
+      await refreshSeatMapSafely()
       currentSeatmapVersion.value = seatMap.value?.version ?? message.version
       return
     }
@@ -280,14 +400,14 @@ async function handleRealtimeMessage(rawValue: string) {
   }
 
   if (message.version !== currentSeatmapVersion.value + 1) {
-    await refreshSeatMap()
+    await refreshSeatMapSafely()
     currentSeatmapVersion.value = seatMap.value?.version ?? message.version
     return
   }
 
   if (message.type === 'seat-status-delta') {
     if (!applySeatChanges(message.changes, message.version)) {
-      await refreshSeatMap()
+      await refreshSeatMapSafely()
       currentSeatmapVersion.value = seatMap.value?.version ?? message.version
       return
     }
@@ -296,19 +416,19 @@ async function handleRealtimeMessage(rawValue: string) {
     return
   }
 
-  await refreshSeatMap()
+  await refreshSeatMapSafely()
   currentSeatmapVersion.value = seatMap.value?.version ?? message.version
 }
 
 async function reserveSeats() {
-  if (!session.value || selectedSeatIds.value.length === 0) {
+  if (!session.value || sessionUnavailableError.value || selectedSeatIds.value.length === 0) {
     return
   }
 
   isSubmitting.value = true
 
   try {
-    const holdResponse = await apiRequest(apiRoutes.eventSessionHolds(sessionPublicId.value), {
+    const holdResponse = await apiRequest<ApiResponse<HoldData>>(apiRoutes.eventSessionHolds(sessionPublicId.value), {
       method: 'POST',
       body: {
         eventSeatIds: selectedSeatIds.value,
@@ -339,6 +459,12 @@ async function reserveSeats() {
     const statusCode = parsedError.status
     const message = parsedError.message
 
+    if (isSessionUnavailableError(parsedError)) {
+      checkoutUnavailableError.value = parsedError
+      toast.error('This session is no longer available for booking.')
+      return
+    }
+
     if (statusCode === 409) {
       toast.error('Some of the selected seats are no longer available. We refreshed the map for you.')
       return
@@ -358,18 +484,35 @@ async function reserveSeats() {
   }
   finally {
     isSubmitting.value = false
-    await refreshSeatMap()
+    if (!sessionUnavailableError.value) {
+      await refreshSeatMapSafely()
+    }
   }
 }
 
+watch(sessionUnavailableError, (value) => {
+  if (!value) {
+    return
+  }
+
+  selectedSeatIds.value = []
+  previewSeatId.value = null
+  realtimeStatus.value = 'disconnected'
+  stopSeatMapRefresh()
+}, { immediate: true })
+
 watch(seatMap, (value) => {
+  if (sessionUnavailableError.value) {
+    return
+  }
+
   if (value) {
     currentSeatmapVersion.value = value.version
   }
 
   const availableSeatIds = new Set(
     (value?.seats ?? [])
-      .filter(seat => seat.status === 'available')
+      .filter(seat => seat.status === SeatStatus.Available)
       .map(seat => seat.id),
   )
 
@@ -391,9 +534,13 @@ watch(seatMap, (value) => {
 }, { deep: true, immediate: true })
 
 onMounted(() => {
+  if (sessionUnavailableError.value) {
+    return
+  }
+
   fallbackRefreshTimer = setInterval(() => {
-    if (realtimeStatus.value !== 'connected') {
-      void refreshSeatMap()
+    if (!sessionUnavailableError.value) {
+      void refreshSeatMapSafely()
     }
   }, 15000)
   open()
@@ -409,60 +556,119 @@ onUnmounted(() => {
 definePageMeta({
   title: 'Choose seats',
   breadcrumb: 'Seat selection',
-  layout: 'dashboard',
+  layout: 'empty',
   middleware: ['auth'],
 })
 </script>
 
 <template>
   <main
-    v-if="detail && event && session && seatMap"
-    class="flex h-[calc(100dvh-var(--header-height,3.5rem)-2rem)] min-h-0 flex-col overflow-hidden md:h-[calc(100dvh-var(--header-height,3.5rem)-3rem)]"
+    v-if="sessionUnavailableError"
+    aria-live="polite"
+    class="relative flex min-h-[100dvh] items-center justify-center overflow-hidden bg-background px-4 py-10 text-foreground"
   >
-    <section class="grid min-h-0 flex-1 gap-4 overflow-y-auto lg:grid-cols-[minmax(0,1fr)_minmax(24rem,28rem)] lg:grid-rows-1 lg:overflow-hidden">
-      <div class="flex min-h-0 flex-col overflow-hidden rounded-[1.75rem] border bg-background/95 shadow-sm">
-        <div class="shrink-0 border-b bg-muted/20 p-4 md:p-5">
-          <div class="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-            <div class="min-w-0">
-              <p class="text-xs font-medium uppercase tracking-[0.24em] text-muted-foreground">
-                Live seat selection
-              </p>
-              <h1 class="mt-2 truncate text-2xl font-semibold tracking-tight text-foreground">
-                {{ event.title }}
-              </h1>
-              <p class="mt-1 text-sm text-muted-foreground">
-                {{ session.label }} &middot; {{ venueName }}, {{ venueCity }} &middot; {{ sessionTimeLabel }}
-              </p>
-            </div>
+    <div class="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_18%,hsl(var(--destructive)/0.12),transparent_30%),radial-gradient(circle_at_82%_12%,hsl(var(--primary)/0.10),transparent_28%)]" />
 
-            <div class="grid grid-cols-3 gap-2 text-sm sm:min-w-[18rem]">
-              <div class="rounded-2xl border bg-background/80 px-3 py-2">
-                <span class="text-xs text-muted-foreground">{{ $t('common.available') }}</span>
-                <p class="font-semibold tabular-nums text-foreground">{{ inventorySummary.available }}</p>
-              </div>
-              <div class="rounded-2xl border bg-background/80 px-3 py-2">
-                <span class="text-xs text-muted-foreground">{{ $t('common.held') }}</span>
-                <p class="font-semibold tabular-nums text-foreground">{{ inventorySummary.locked }}</p>
-              </div>
-              <div class="rounded-2xl border bg-background/80 px-3 py-2">
-                <span class="text-xs text-muted-foreground">{{ $t('common.sold') }}</span>
-                <p class="font-semibold tabular-nums text-foreground">{{ inventorySummary.sold }}</p>
-              </div>
-            </div>
-          </div>
+    <Empty class="relative w-full max-w-xl rounded-[1.75rem] border bg-background/95 px-6 py-10 text-center shadow-sm">
+      <EmptyHeader>
+        <EmptyMedia
+          variant="icon"
+          class="border-destructive/20 bg-destructive/10 text-destructive"
+        >
+          <XCircle class="size-7" />
+        </EmptyMedia>
+        <EmptyTitle>This session is no longer available</EmptyTitle>
+        <EmptyDescription>
+          The organizer has made this session unavailable while you were choosing seats. Your selection has been cleared and checkout is closed for this session.
+        </EmptyDescription>
+      </EmptyHeader>
 
-          <p
-            v-if="realtimeStatus !== 'connected'"
-            class="mt-3 text-xs text-muted-foreground"
-          >
-            {{ realtimeStatus === 'connecting' ? 'Reconnecting live updates…' : 'Live updates unavailable.' }}
-          </p>
+      <EmptyContent class="space-y-5">
+        <div class="rounded-2xl border bg-muted/30 px-4 py-3 text-sm text-muted-foreground">
+          You can browse other available events, or check again later if the organizer republishes this event.
         </div>
 
+        <div class="flex flex-col gap-2 sm:flex-row sm:justify-center">
+          <Button as-child>
+            <NuxtLink to="/events">
+              <ArrowLeft class="size-4" />
+              Browse events
+            </NuxtLink>
+          </Button>
+          <Button
+            as-child
+            variant="outline"
+          >
+            <NuxtLink to="/">
+              Go home
+            </NuxtLink>
+          </Button>
+        </div>
+      </EmptyContent>
+    </Empty>
+  </main>
+
+  <main
+    v-else-if="detail && event && session && seatMap"
+    class="grid h-[100dvh] max-h-[100dvh] grid-rows-[auto_minmax(0,1fr)] overflow-hidden bg-background text-foreground"
+  >
+    <header class="border-b bg-background px-4 py-2">
+      <div class="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+        <div class="flex items-start gap-3">
+          <Button
+            as-child
+            variant="outline"
+            size="icon-sm"
+          >
+            <NuxtLink
+              :to="`/events/${slug}`"
+              :aria-label="$t('common.back')"
+            >
+              <ArrowLeft />
+            </NuxtLink>
+          </Button>
+
+          <div class="min-w-0">
+            <h1 class="truncate text-xl font-semibold">
+              {{ event.title }}
+            </h1>
+            <p class="text-sm text-muted-foreground">
+              {{ session.label }} &middot; {{ venueName }}, {{ venueCity }} &middot; {{ sessionTimeLabel }}
+            </p>
+          </div>
+        </div>
+
+        <div class="flex flex-col gap-3 sm:flex-row sm:items-center xl:justify-end">
+          <div class="flex flex-wrap gap-2 text-xs text-muted-foreground">
+            <div class="inline-flex items-center gap-2 rounded-md border bg-muted/30 px-2.5 py-1.5">
+              <span class="font-medium text-foreground">{{ inventorySummary.available }}</span>
+              <span>{{ $t('common.available') }}</span>
+            </div>
+            <div class="inline-flex items-center gap-2 rounded-md border bg-muted/30 px-2.5 py-1.5">
+              <span class="font-medium text-foreground">{{ inventorySummary.locked }}</span>
+              <span>{{ $t('common.held') }}</span>
+            </div>
+            <div class="inline-flex items-center gap-2 rounded-md border bg-muted/30 px-2.5 py-1.5">
+              <span class="font-medium text-foreground">{{ inventorySummary.sold }}</span>
+              <span>{{ $t('common.sold') }}</span>
+            </div>
+            <div class="inline-flex items-center gap-2 rounded-md border bg-muted/30 px-2.5 py-1.5">
+              <RefreshCw :class="['size-3.5', realtimeStatus === 'connecting' ? 'animate-spin' : '']" />
+              <span>{{ inventoryStatusLabel }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <section class="grid min-h-0 gap-3 overflow-hidden p-3 md:p-4 lg:grid-cols-[minmax(0,1fr)_minmax(24rem,28rem)]">
+      <div class="flex min-h-0 flex-col overflow-hidden rounded-[1.75rem] border bg-background/95 shadow-sm">
         <div class="min-h-0 flex-1 overflow-hidden p-3 md:p-4 [&>section]:flex [&>section]:h-full [&>section]:min-h-0 [&>section]:flex-col [&_[data-slot=scroll-area]]:min-h-0">
           <TicketEventSeatMapExperience
             :seats="seatMap.seats"
-            :ticket-types="seatMap.ticketTypes"
+            :ticket-types="seatMap.ticketTypes ?? []"
+            :section-prices="seatMap.sectionPrices"
+            :seat-overrides="seatMap.seatOverrides"
             :selected-seat-ids="seatMapSelectedSeatIds"
             :interactive="true"
             :action-label="null"
@@ -471,38 +677,15 @@ definePageMeta({
         </div>
       </div>
 
-      <Card class="flex min-h-0 overflow-hidden rounded-[1.75rem]">
-        <CardHeader class="shrink-0 border-b p-4 md:p-5">
-          <div class="flex items-start gap-3">
-            <div class="flex size-11 items-center justify-center rounded-2xl border bg-primary/10 text-primary">
-              <ShoppingBag class="size-5" />
+      <Card class="flex min-h-0 overflow-hidden">
+        <CardHeader class="shrink-0 border-b py-3">
+          <div class="flex items-center gap-2.5">
+            <div class="flex size-8 shrink-0 items-center justify-center rounded-xl border bg-primary/10 text-primary">
+              <ShoppingBag class="size-4" />
             </div>
-            <div class="min-w-0 flex-1">
-              <CardTitle>{{ $t('seats.selection_summary') }}</CardTitle>
-              <p class="mt-1 text-sm text-muted-foreground">
-                Choose a seat, review the preview ticket, then confirm it into your checkout selection.
-              </p>
-            </div>
-          </div>
-
-          <div class="grid gap-2 pt-4 sm:grid-cols-3 lg:grid-cols-1 xl:grid-cols-3">
-            <div class="rounded-2xl border bg-muted/30 p-3">
-              <Users class="mb-2 size-4 text-muted-foreground" />
-              <p class="text-xs text-muted-foreground">{{ $t('common.selected') }}</p>
-              <p class="text-sm font-medium text-foreground">
-                {{ $t('seats.selected_seats', { count: selectedTicketCount }) }}
-              </p>
-            </div>
-            <div class="rounded-2xl border bg-muted/30 p-3">
-              <Clock3 class="mb-2 size-4 text-muted-foreground" />
-              <p class="text-xs text-muted-foreground">{{ $t('seats.hold_window') }}</p>
-              <p class="text-sm font-medium text-foreground">{{ $t('seats.hold_minutes') }}</p>
-            </div>
-            <div class="rounded-2xl border bg-muted/30 p-3">
-              <RefreshCw :class="['mb-2 size-4 text-muted-foreground', realtimeStatus === 'connecting' ? 'animate-spin' : '']" />
-              <p class="text-xs text-muted-foreground">{{ $t('seats.inventory') }}</p>
-              <p class="text-sm font-medium text-foreground">{{ inventoryStatusLabel }}</p>
-            </div>
+            <CardTitle class="text-base">
+              {{ $t('seats.selection_summary') }}
+            </CardTitle>
           </div>
         </CardHeader>
 
@@ -516,32 +699,62 @@ definePageMeta({
               >
                 <div class="mb-2 flex items-center justify-between gap-3">
                   <div>
-                    <p class="text-xs font-medium uppercase tracking-[0.22em] text-primary">Preview ticket</p>
-                    <p class="text-sm text-muted-foreground">Confirm this seat to include it at checkout.</p>
+                    <p class="text-xs font-medium uppercase tracking-[0.22em] text-primary">
+                      Preview ticket
+                    </p>
+                    <p class="text-sm text-muted-foreground">
+                      Confirm this seat to include it at checkout.
+                    </p>
                   </div>
-                  <span class="inline-flex items-center gap-1 rounded-full border border-primary/20 bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
-                    <Sparkles class="size-3.5" />
-                    New
-                  </span>
+                  <div class="flex items-center gap-1">
+                    <Button
+                      type="button"
+                      size="icon-sm"
+                      variant="ghost"
+                      class="text-muted-foreground hover:text-destructive"
+                      title="Cancel preview"
+                      :aria-label="'Cancel preview seat'"
+                      @click="clearPreviewSeat"
+                    >
+                      <XCircle class="size-4" />
+                    </Button>
+                    <Button
+                      type="button"
+                      size="icon-sm"
+                      variant="ghost"
+                      class="text-primary"
+                      title="Confirm preview seat"
+                      :aria-label="'Confirm preview seat'"
+                      @click="confirmPreviewSeat"
+                    >
+                      <CheckCircle2 class="size-4" />
+                    </Button>
+                    <span class="ml-1 inline-flex items-center gap-1 rounded-full border border-primary/20 bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
+                      <Sparkles class="size-3.5" />
+                      New
+                    </span>
+                  </div>
                 </div>
 
                 <ItemGroup>
                   <Item class="relative isolate overflow-hidden border-dashed border-primary/40 bg-gradient-to-br from-primary/15 via-background to-background shadow-[0_18px_60px_-36px_hsl(var(--primary))]">
                     <div class="pointer-events-none absolute -right-10 -top-10 size-28 rounded-full bg-primary/15 blur-2xl" />
-                    <ItemMedia variant="icon" class="border-primary/25 bg-primary text-primary-foreground">
+                    <ItemMedia
+                      variant="icon"
+                      class="border-primary/25 bg-primary text-primary-foreground"
+                    >
                       <TicketPlus class="size-4" />
                     </ItemMedia>
                     <ItemContent class="relative">
                       <ItemTitle>{{ formatSeatLabel(previewSeat) }}</ItemTitle>
-                      <ItemDescription class="line-clamp-none">
-                        Preview only. Confirm it to add this ticket to checkout.
-                      </ItemDescription>
                     </ItemContent>
                     <div class="relative ml-auto text-right">
                       <p class="font-mono text-sm font-semibold text-foreground">
                         {{ formatCurrency(previewSeat.priceCents, previewSeat.currency) }}
                       </p>
-                      <p class="text-xs text-muted-foreground">Expected add-on</p>
+                      <p class="text-xs text-muted-foreground">
+                        Expected add-on
+                      </p>
                     </div>
                     <ItemActions class="relative w-full justify-end sm:w-auto">
                       <Button
@@ -566,97 +779,128 @@ definePageMeta({
               </section>
 
               <section v-if="selectedSeats.length > 0">
-                <div class="mb-2">
-                  <p class="text-xs font-medium uppercase tracking-[0.22em] text-muted-foreground">Confirmed tickets</p>
-                  <p class="text-sm text-muted-foreground">These seats will be held together when you continue.</p>
+                <div class="mb-2 flex items-center justify-between gap-3">
+                  <div>
+                    <p class="text-xs font-medium uppercase tracking-[0.22em] text-muted-foreground">
+                      Confirmed tickets
+                    </p>
+                    <p class="text-sm text-muted-foreground">
+                      These seats will be held together when you continue.
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    size="icon-sm"
+                    variant="ghost"
+                    class="text-muted-foreground hover:text-destructive"
+                    title="Remove all confirmed seats"
+                    :aria-label="'Remove all confirmed seats'"
+                    @click="removeAllSelectedSeats"
+                  >
+                    <Trash2 class="size-4" />
+                  </Button>
                 </div>
 
-                <ItemGroup>
-                  <Item
-                    v-for="seat in selectedSeats"
-                    :key="seat.id"
-                    variant="outline"
-                    class="bg-background/80"
+                <div class="space-y-4">
+                  <div
+                    v-for="group in selectedSeatsBySection"
+                    :key="group.name"
                   >
-                    <ItemMedia variant="icon">
-                      <TicketCheck class="size-4" />
-                    </ItemMedia>
-                    <ItemContent>
-                      <ItemTitle>{{ formatSeatLabel(seat) }}</ItemTitle>
-                      <ItemDescription>{{ $t('seats.reserved_for_checkout') }}</ItemDescription>
-                    </ItemContent>
-                    <div class="ml-auto text-right">
-                      <p class="font-mono text-sm font-semibold text-foreground">
-                        {{ formatCurrency(seat.priceCents, seat.currency) }}
+                    <div class="mb-1.5 flex items-center justify-between gap-2">
+                      <p class="text-xs font-medium text-muted-foreground">
+                        {{ group.name }}
+                        <span class="ml-1 tabular-nums text-foreground/60">{{ group.seats.length }}</span>
                       </p>
-                    </div>
-                    <ItemActions class="w-full justify-end sm:w-auto">
                       <Button
                         type="button"
                         size="icon-sm"
                         variant="ghost"
-                        class="text-muted-foreground hover:text-destructive"
-                        :aria-label="`Remove ${formatSeatLabel(seat)}`"
-                        @click="removeSelectedSeat(seat.id)"
+                        class="size-6 text-muted-foreground hover:text-destructive"
+                        :title="`Remove all seats in ${group.name}`"
+                        :aria-label="`Remove all seats in ${group.name}`"
+                        @click="removeSectionSeats(group.seats.map(s => s.id))"
                       >
-                        <Trash2 class="size-4" />
+                        <Trash2 class="size-3.5" />
                       </Button>
-                    </ItemActions>
-                  </Item>
-                </ItemGroup>
+                    </div>
+
+                    <ItemGroup>
+                      <Item
+                        v-for="seat in group.seats"
+                        :key="seat.id"
+                        variant="outline"
+                        class="bg-background/80"
+                      >
+                        <ItemMedia variant="icon">
+                          <TicketCheck class="size-4" />
+                        </ItemMedia>
+                        <ItemContent>
+                          <ItemTitle>{{ seat.rowLabelSnapshot ? `${seat.rowLabelSnapshot}-${seat.seatLabelSnapshot}` : seat.seatLabelSnapshot }}</ItemTitle>
+                        </ItemContent>
+                        <div class="ml-auto text-right">
+                          <p class="font-mono text-sm font-semibold text-foreground">
+                            {{ formatCurrency(seat.priceCents, seat.currency) }}
+                          </p>
+                        </div>
+                        <ItemActions class="w-full justify-end sm:w-auto">
+                          <Button
+                            type="button"
+                            size="icon-sm"
+                            variant="ghost"
+                            class="text-muted-foreground hover:text-destructive"
+                            :aria-label="`Remove ${formatSeatLabel(seat)}`"
+                            @click="removeSelectedSeat(seat.id)"
+                          >
+                            <Trash2 class="size-4" />
+                          </Button>
+                        </ItemActions>
+                      </Item>
+                    </ItemGroup>
+                  </div>
+                </div>
               </section>
 
-              <div
+              <Empty
                 v-if="!previewSeat && selectedSeats.length === 0"
-                class="rounded-[1.5rem] border border-dashed bg-muted/20 p-6 text-center"
+                class="border border-dashed"
               >
-                <div class="mx-auto flex size-12 items-center justify-center rounded-full border bg-background">
-                  <TicketPlus class="size-5 text-muted-foreground" />
-                </div>
-                <p class="mt-4 text-sm font-medium text-foreground">{{ $t('seats.pick_seats_prompt') }}</p>
-                <p class="mt-2 text-sm text-muted-foreground">
-                  Click a seat on the map to create a preview ticket here.
-                </p>
-              </div>
+                <EmptyHeader>
+                  <EmptyMedia variant="icon">
+                    <TicketPlus />
+                  </EmptyMedia>
+                  <EmptyTitle>{{ $t('seats.pick_seats_prompt') }}</EmptyTitle>
+                  <EmptyDescription>
+                    Click a seat on the map to create a preview ticket here.
+                  </EmptyDescription>
+                </EmptyHeader>
+                <EmptyContent />
+              </Empty>
             </div>
           </ScrollArea>
 
-          <div class="shrink-0 border-t bg-background/95 p-4 md:p-5">
-            <div class="rounded-[1.5rem] border bg-muted/25 p-4">
-              <div class="flex items-center justify-between gap-4 text-sm">
-                <span class="text-muted-foreground">Original price</span>
-                <span class="font-mono font-medium text-muted-foreground">
-                  {{ formatCurrency(totalValue) }}
-                </span>
-              </div>
-              <div class="mt-3 flex items-end justify-between gap-4">
-                <div>
-                  <p class="text-xs text-muted-foreground">Expected price</p>
-                  <p class="text-xs text-muted-foreground">Includes the preview ticket after confirmation.</p>
-                </div>
-                <p class="text-2xl font-semibold tracking-tight text-foreground">
-                  {{ formatCurrency(previewTotalValue) }}
+          <div class="shrink-0 border-t bg-background/95 px-4 pb-4 pt-3 md:px-5">
+            <div class="flex items-end justify-between gap-3">
+              <div class="min-w-0">
+                <p class="text-xs text-muted-foreground">
+                  {{ $t('seats.selected_seats', { count: selectedTicketCount }) }}
                 </p>
+                <div class="mt-0.5 flex items-baseline gap-1.5">
+                  <NumberFlow
+                    class="text-2xl font-semibold tabular-nums tracking-tight text-foreground"
+                    :value="previewTotalValue / 100"
+                    :format="{ style: 'decimal', minimumFractionDigits: 0, maximumFractionDigits: 0 }"
+                  />
+                  <span class="text-sm font-medium text-muted-foreground">{{ previewTotalCurrency }}</span>
+                </div>
               </div>
-            </div>
 
-            <div class="mt-4 grid gap-3">
               <Button
-                class="w-full"
                 size="lg"
                 :disabled="selectedSeatIds.length === 0"
                 :is-loading="isSubmitting"
                 @click="reserveSeats"
               >
                 {{ $t('seats.continue_to_checkout') }}
-              </Button>
-              <Button
-                class="w-full"
-                size="lg"
-                variant="outline"
-                @click="refreshSeatMap"
-              >
-                {{ $t('seats.refresh_map') }}
               </Button>
             </div>
           </div>

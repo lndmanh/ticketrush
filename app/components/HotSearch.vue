@@ -67,7 +67,7 @@ watch([Meta_K, Ctrl_K], (v) => {
                 :is="feature.icon"
                 class="mr-2 h-4 w-4"
               />
-              <span>{{ feature.title }}</span>
+              <span>{{ $t(feature.title) }}</span>
             </CommandItem>
           </CommandGroup>
 

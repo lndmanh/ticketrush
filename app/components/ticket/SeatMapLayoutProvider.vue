@@ -1,15 +1,20 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import type { SeatMapSeat, SeatMapTicketType } from '~~/types/seatmap'
+import type { SeatMapSeat, SeatMapSeatOverrideSummary, SeatMapSectionPriceSummary, SeatMapTicketType } from '~~/types/seatmap'
 import { buildSeatMapLayout, getRowStyle, getTintStyle } from '@/lib/seatmapLayout'
+import { SeatStatus } from '#shared/commonEnums'
 
 const props = withDefaults(defineProps<{
   seats: SeatMapSeat[]
   ticketTypes: SeatMapTicketType[]
+  sectionPrices?: SeatMapSectionPriceSummary[]
+  seatOverrides?: SeatMapSeatOverrideSummary[]
   selectedSeatIds?: number[]
   defaultSection?: string
 }>(), {
   selectedSeatIds: () => [],
+  sectionPrices: () => [],
+  seatOverrides: () => [],
   defaultSection: 'all',
 })
 
@@ -17,7 +22,7 @@ const selectedSection = ref(props.defaultSection)
 const zoomLevel = ref(100)
 const activeSeatId = ref<number | null>(null)
 
-const layout = computed(() => buildSeatMapLayout(props.seats, props.ticketTypes))
+const layout = computed(() => buildSeatMapLayout(props.seats, props.ticketTypes, props.sectionPrices, props.seatOverrides))
 
 const sectionOptions = computed(() => layout.value.sections.map(section => ({
   value: section.key,
@@ -40,7 +45,7 @@ const activeSeat = computed(() => {
     return selectedSeat
   }
 
-  return visibleSeats.value.find(seat => seat.status === 'available') ?? visibleSeats.value[0] ?? null
+  return visibleSeats.value.find(seat => seat.status === SeatStatus.Available) ?? visibleSeats.value[0] ?? null
 })
 
 const highlightedSection = computed(() => {

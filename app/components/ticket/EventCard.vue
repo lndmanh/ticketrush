@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { ArrowRight, CalendarRange, MapPin, Ticket } from '@lucide/vue'
+import { getDisplayDateLocale } from '@/lib/localizedEvents'
+import { EventStatus } from '#shared/commonEnums'
 
 interface EventCardProps {
   event: {
@@ -22,7 +24,11 @@ interface EventCardProps {
 }
 
 const props = defineProps<EventCardProps>()
-const { t } = useI18n()
+const { t, locale } = useI18n()
+const localePath = useLocalePath()
+
+const localizedVenueName = computed(() => props.event.venue?.name)
+const localizedCityName = computed(() => props.event.venue?.city)
 
 const firstSessionStartsAt = computed(() => {
   const sessions = props.event.sessions ?? []
@@ -34,7 +40,7 @@ const firstSessionStartsAt = computed(() => {
 })
 
 const startsAtLabel = computed(() => {
-  return new Date(firstSessionStartsAt.value).toLocaleString('en-US', {
+  return new Date(firstSessionStartsAt.value).toLocaleString(getDisplayDateLocale(locale.value), {
     month: 'short',
     day: 'numeric',
     hour: 'numeric',
@@ -59,9 +65,9 @@ const sessionCountLabel = computed(() => {
 // Dynamic status badge color
 const statusBadgeClass = computed(() => {
   const status = props.event.status
-  if (status === 'on_sale') return 'border-amber-400/30 bg-amber-400/18 text-amber-300'
-  if (status === 'published') return 'border-emerald-400/30 bg-emerald-400/18 text-emerald-300'
-  if (status === 'sold_out') return 'border-rose-400/30 bg-rose-400/18 text-rose-300'
+  if (status === EventStatus.OnSale) return 'border-amber-400/30 bg-amber-400/18 text-amber-300'
+  if (status === EventStatus.Published) return 'border-emerald-400/30 bg-emerald-400/18 text-emerald-300'
+  if (status === EventStatus.SoldOut) return 'border-rose-400/30 bg-rose-400/18 text-rose-300'
   return 'border-white/15 bg-white/10 text-white/75'
 })
 </script>
@@ -129,14 +135,14 @@ const statusBadgeClass = computed(() => {
                         {{ $t('event_card.venue_label') }}
                       </p>
                       <p class="truncate text-sm font-medium leading-6 text-white/90 md:text-base">
-                        {{ event.venue?.name || $t('event_card.venue_tba') }}
+                        {{ localizedVenueName || $t('event_card.venue_tba') }}
                       </p>
                     </div>
                   </div>
 
                   <div class="flex flex-wrap gap-2">
                     <span class="inline-flex max-w-full items-center rounded-full border border-white/10 bg-white/8 px-3 py-1.5 text-xs text-white/70">
-                      {{ event.venue?.city || $t('event_card.live_badge') }}
+                      {{ localizedCityName || $t('event_card.live_badge') }}
                     </span>
                     <span class="inline-flex max-w-full items-center gap-1.5 rounded-full border border-white/10 bg-white/8 px-3 py-1.5 text-xs text-white/70">
                       <Ticket class="size-3.5" />

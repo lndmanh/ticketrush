@@ -2,16 +2,18 @@
 import { CalendarDays, ChevronLeft, ChevronRight, Search, SlidersHorizontal, X, MapPin, Calendar as CalendarIcon } from '@lucide/vue'
 import { DateFormatter, getLocalTimeZone, parseDate } from '@internationalized/date'
 import type { DateValue } from '@internationalized/date'
-import type { EventCatalogLocationOptions, EventCatalogSort } from '~~/types/events'
+import type { ApiResponse, PaginatedApiResponse } from '~~/types/api'
+import type { EventCatalogItem, EventCatalogLocationOptions } from '~~/types/events'
+import { EventCatalogSort } from '#shared/commonEnums'
 
 const EVENTS_PAGE_SIZE = 9
 
 const { t, locale } = useI18n()
 
 const sortOptions = computed<Array<{ label: string, value: EventCatalogSort }>>(() => [
-  { label: t('events.sort_soonest'), value: 'soonest' },
-  { label: t('events.sort_newest_releases'), value: 'newest' },
-  { label: t('events.sort_ending_soon'), value: 'ending_soon' },
+  { label: t('events.sort_soonest'), value: EventCatalogSort.Soonest },
+  { label: t('events.sort_newest'), value: EventCatalogSort.Newest },
+  { label: t('events.sort_ending_soon'), value: EventCatalogSort.EndingSoon },
 ])
 
 const router = useRouter()
@@ -34,7 +36,7 @@ function isCatalogSort(value: string): value is EventCatalogSort {
 
 function getSortFromRoute() {
   const value = getQueryString(route.query.sort)
-  return isCatalogSort(value) ? value : 'soonest'
+  return isCatalogSort(value) ? value : EventCatalogSort.Soonest
 }
 
 const keywordInput = ref(getQueryString(route.query.q))
@@ -87,7 +89,7 @@ function buildCatalogQuery(page: number) {
   const trimmedDate = selectedDate.value.trim()
   if (trimmedDate) query.date = trimmedDate
 
-  if (activeSort.value !== 'soonest') query.sort = activeSort.value
+  if (activeSort.value !== EventCatalogSort.Soonest) query.sort = activeSort.value
   if (page > 1) query.page = String(page)
 
   return query
@@ -108,7 +110,7 @@ async function resetFilters() {
   keywordInput.value = ''
   locationInput.value = ''
   selectedDate.value = ''
-  activeSort.value = 'soonest'
+  activeSort.value = EventCatalogSort.Soonest
   await replaceCatalogQuery(1)
 }
 
@@ -127,19 +129,22 @@ async function goToPage(page: number) {
 watch(() => route.query, syncStateFromRoute, { deep: true })
 
 const catalogQuery = computed(() => ({
+  locale: locale.value,
   q: activeKeyword.value || undefined,
   location: activeLocation.value || undefined,
   date: activeDate.value || undefined,
-  sort: activeSort.value === 'soonest' ? undefined : activeSort.value,
+  sort: activeSort.value === EventCatalogSort.Soonest ? undefined : activeSort.value,
   page: activePage.value,
   pageSize: EVENTS_PAGE_SIZE,
 }))
 
-const { data: catalogResponse, pending, error: catalogFetchError } = await useAPI(() => '/api/events', {
+const { data: catalogResponse, pending, error: catalogFetchError } = await useAPI<PaginatedApiResponse<EventCatalogItem[]>>(() => '/api/events', {
   query: catalogQuery,
 })
 
-const { data: locationResponse } = await useAPI(() => '/api/events/locations')
+const { data: locationResponse } = await useAPI<ApiResponse<EventCatalogLocationOptions>>(() => '/api/events/locations', {
+  query: computed(() => ({ locale: locale.value })),
+})
 
 const catalog = computed(() => {
   const response = catalogResponse.value
