@@ -43,7 +43,6 @@ export function useSeo(options: UseSeoOptions) {
   const route = useRoute()
   const site = useSiteConfig()
   const { locale, locales } = useI18n()
-  const switchLocalePath = useSwitchLocalePath()
 
   const title = computed(() => toValue(options.title))
   const description = computed(() => toValue(options.description))
@@ -87,24 +86,18 @@ export function useSeo(options: UseSeoOptions) {
       }
 
       // Hreflang tags for i18n
-      for (const loc of locales.value) {
-        const localePath = switchLocalePath(loc.code)
-        if (localePath) {
+      if (canonicalUrl.value) {
+        for (const loc of locales.value) {
           links.push({
             rel: 'alternate',
             hreflang: loc.code,
-            href: joinURL(baseUrl.value, localePath),
+            href: canonicalUrl.value,
           })
         }
-      }
-
-      // x-default hreflang (points to default locale)
-      const defaultLocalePath = switchLocalePath(locales.value[0]?.code || 'en')
-      if (defaultLocalePath) {
         links.push({
           rel: 'alternate',
           hreflang: 'x-default',
-          href: joinURL(baseUrl.value, defaultLocalePath),
+          href: canonicalUrl.value,
         })
       }
 

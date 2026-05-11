@@ -1,9 +1,12 @@
 <script setup lang="ts">
 import { toast } from 'vue-sonner'
+import type { QueueEntry } from '#shared/db'
+import type { ApiResponse } from '~~/types/api'
 import type { QueueState } from '~~/types/ticketing'
 import { apiRequest } from '@/utils/apiRequest'
 import { parseApiError } from '@/utils/apiError'
 import { apiRoutes } from '#shared/apiRoutes'
+import { QueueStatus } from '#shared/commonEnums'
 
 const route = useRoute()
 const { t } = useI18n()
@@ -31,7 +34,7 @@ const estimatedWaitLabel = computed(() => {
 
 const passWindowLabel = computed(() => {
   const expiresAt = queueState.value?.entry?.expiresAt
-  if (!expiresAt || queueState.value?.entry?.status !== 'admitted') {
+  if (!expiresAt || queueState.value?.entry?.status !== QueueStatus.Admitted) {
     return null
   }
 
@@ -47,7 +50,7 @@ const queueProgress = computed(() => {
     return 0
   }
 
-  if (queueState.value.entry?.status === 'admitted') {
+  if (queueState.value.entry?.status === QueueStatus.Admitted) {
     return 100
   }
 
@@ -68,7 +71,7 @@ async function refreshQueueStatus() {
   }
 
   try {
-    const response = await apiRequest(apiRoutes.eventSessionQueueStatus(sessionPublicId.value))
+    const response = await apiRequest<ApiResponse<QueueState | null>>(apiRoutes.eventSessionQueueStatus(sessionPublicId.value))
     if (!response.success) {
       throw response
     }
@@ -76,7 +79,7 @@ async function refreshQueueStatus() {
     queueState.value = response.data
     queueError.value = ''
 
-    if (queueState.value?.entry?.status === 'admitted' && queueState.value.entry.passToken && slug.value) {
+    if (queueState.value?.entry?.status === QueueStatus.Admitted && queueState.value.entry.passToken && slug.value) {
       await navigateTo(`/events/${slug.value}/sessions/${sessionPublicId.value}/seats?pass=${queueState.value.entry.passToken}`)
     }
   }
@@ -93,7 +96,7 @@ async function leaveQueue() {
   isLeaving.value = true
 
   try {
-    const response = await apiRequest(apiRoutes.eventSessionQueueLeave(sessionPublicId.value), { method: 'POST' })
+    const response = await apiRequest<ApiResponse<QueueEntry | null>>(apiRoutes.eventSessionQueueLeave(sessionPublicId.value), { method: 'POST' })
     if (!response.success) {
       throw response
     }
@@ -116,7 +119,7 @@ async function leaveQueue() {
 
 onMounted(async () => {
   try {
-    const response = await apiRequest(apiRoutes.eventSessionQueueJoin(sessionPublicId.value), { method: 'POST', body: {} })
+    const response = await apiRequest<ApiResponse<QueueState | null>>(apiRoutes.eventSessionQueueJoin(sessionPublicId.value), { method: 'POST', body: {} })
     if (!response.success) {
       throw response
     }

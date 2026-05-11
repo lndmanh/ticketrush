@@ -12,18 +12,21 @@ import {
   UsersRound,
 } from '@lucide/vue'
 import { Motion, motion } from 'motion-v'
-import type { EventCatalogQueryOptions } from '~~/types/events'
+import type { PaginatedApiResponse } from '~~/types/api'
+import type { EventCatalogItem, EventCatalogQueryOptions } from '~~/types/events'
+import { EventCatalogSort } from '#shared/commonEnums'
 
 const { t, locale } = useI18n()
 
 const FEATURED_EVENT_LIMIT = 8
 const STADIUM_IMAGE = 'https://images.pexels.com/photos/31007653/pexels-photo-31007653.jpeg'
 
-const featuredEventsQuery: Pick<EventCatalogQueryOptions, 'page' | 'pageSize' | 'sort'> = {
+const featuredEventsQuery = computed<Pick<EventCatalogQueryOptions, 'locale' | 'page' | 'pageSize' | 'sort'>>(() => ({
+  locale: locale.value,
   page: 1,
   pageSize: FEATURED_EVENT_LIMIT,
-  sort: 'soonest',
-}
+  sort: EventCatalogSort.Soonest,
+}))
 
 const featuredSectionRef = ref<HTMLElement | null>(null)
 const carouselRef = ref<HTMLElement | null>(null)
@@ -34,7 +37,7 @@ const {
   data: featuredEventsResponse,
   pending: featuredEventsPending,
   error: featuredEventsFetchError,
-} = await useAPI(() => '/api/events', {
+} = await useAPI<PaginatedApiResponse<EventCatalogItem[]>>(() => '/api/events', {
   query: featuredEventsQuery,
 })
 
