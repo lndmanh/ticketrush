@@ -1,11 +1,12 @@
-export const locales = ['en', 'vi']
-export type Locale = (typeof locales)[number]
+export type Locale = 'vi' | 'en'
+export const locales: readonly Locale[] = ['vi', 'en']
 
-export const defaultLocale: Locale = 'en'
-export const fallbackLocales: Locale[] = ['en']
-export const browserFallbackLocale: Locale = 'en'
+export const sourceLocale: Locale = 'vi'
+export const defaultLocale: Locale = sourceLocale
+export const fallbackLocales: Locale[] = [sourceLocale]
+export const browserFallbackLocale: Locale = sourceLocale
 
-export const lanugageNames: { [locale in Locale]: string } = {
-  en: 'English',
+export const languageNames: { [locale in Locale]: string } = {
   vi: 'Tiếng Việt',
+  en: 'English',
 }

@@ -1,6 +1,6 @@
 import { APP_MANIFEST, SEO_CONFIG } from './shared/constants/manifest'
 import { routeRules } from './shared/apiRoutes'
-import { defaultLocale, browserFallbackLocale, lanugageNames, locales } from './i18n-constants'
+import { defaultLocale, browserFallbackLocale, fallbackLocales, languageNames, locales } from './i18n-constants'
 import { DOCS_CONFIG } from './docs.config'
 
 export default defineNuxtConfig({
@@ -193,13 +193,14 @@ export default defineNuxtConfig({
   },
 
   i18n: {
-    strategy: 'prefix_except_default',
+    strategy: 'no_prefix',
     defaultLocale,
+    fallbackLocale: fallbackLocales,
     detectBrowserLanguage: {
       fallbackLocale: browserFallbackLocale,
     },
     locales: locales.map(locale => ({
-      name: lanugageNames[locale],
+      name: languageNames[locale],
       code: locale,
       file: `${locale}.json`,
     })),
