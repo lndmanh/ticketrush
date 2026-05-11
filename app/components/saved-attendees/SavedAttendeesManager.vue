@@ -6,9 +6,13 @@ import { apiRequest } from '@/utils/apiRequest'
 import { parseApiError } from '@/utils/apiError'
 import { apiRoutes } from '#shared/apiRoutes'
 import { savedAttendeeFormSchema } from '#shared/schemas/savedAttendeeSchema'
+import { SavedAttendeeGender } from '#shared/commonEnums'
+import type { ApiResponse } from '~~/types/api'
+import type { DeletedPayload } from '~~/types/common'
+import type { SavedAttendeeModel } from '~~/types/models/saved-attendee'
 import { PlusIcon, UserIcon, Trash2Icon, Edit2Icon, ShieldIcon } from '@lucide/vue'
 
-const { data: attendeesResponse, refresh, status, error: fetchError } = useAPI(() => apiRoutes.SAVED_ATTENDEES)
+const { data: attendeesResponse, refresh, status, error: fetchError } = useAPI<ApiResponse<SavedAttendeeModel[]>>(() => apiRoutes.SAVED_ATTENDEES)
 const attendees = computed(() => attendeesResponse.value?.data || [])
 const loading = computed(() => status.value === 'pending')
 
@@ -22,7 +26,7 @@ type AttendeeFormValues = {
   email?: string
   phone?: string
   birthDate?: string
-  gender: string
+  gender: SavedAttendeeGender
   guardianName?: string
   guardianEmail?: string
   guardianPhone?: string
@@ -37,7 +41,7 @@ const defaultValues: AttendeeFormValues = {
   email: '',
   phone: '',
   birthDate: undefined,
-  gender: 'prefer-not-to-say',
+  gender: SavedAttendeeGender.PreferNotToSay,
   guardianName: '',
   guardianEmail: '',
   guardianPhone: '',
@@ -66,7 +70,7 @@ type AttendeeItem = {
   email?: string | null
   phone?: string | null
   birthDate?: string | Date | null
-  gender?: 'female' | 'male' | 'non-binary' | 'prefer-not-to-say' | null
+  gender?: SavedAttendeeGender | null
   guardianName?: string | null
   guardianEmail?: string | null
   guardianPhone?: string | null
@@ -92,7 +96,7 @@ function openEditDialog(attendee: AttendeeItem) {
     email: attendee.email || undefined,
     phone: attendee.phone || undefined,
     birthDate: formattedBirthDate,
-    gender: attendee.gender || 'prefer-not-to-say',
+    gender: attendee.gender || SavedAttendeeGender.PreferNotToSay,
     guardianName: attendee.guardianName || undefined,
     guardianEmail: attendee.guardianEmail || undefined,
     guardianPhone: attendee.guardianPhone || undefined,
@@ -120,7 +124,7 @@ const onSubmit = handleSubmit(async (values) => {
   isSubmitting.value = true
   try {
     if (editingId.value) {
-      const response = await apiRequest(apiRoutes.savedAttendee(editingId.value), {
+      const response = await apiRequest<ApiResponse<SavedAttendeeModel | null>>(apiRoutes.savedAttendee(editingId.value), {
         method: 'PATCH',
         body: values,
       })
@@ -152,7 +156,7 @@ async function deleteAttendee(id: number) {
   }
 
   try {
-    const response = await apiRequest(apiRoutes.savedAttendee(id), {
+    const response = await apiRequest<ApiResponse<DeletedPayload>>(apiRoutes.savedAttendee(id), {
       method: 'DELETE',
     })
     if (!response.success) throw response
@@ -200,14 +204,14 @@ function isMinor(birthDate?: Date | string | null) {
           :disabled="loading"
           @click="createFromProfile"
         >
-          <UserIcon class="w-4 h-4 mr-2" />
+          <UserIcon class="size-4" />
           Add Myself
         </Button>
         <Button
           :disabled="loading"
           @click="openCreateDialog"
         >
-          <PlusIcon class="w-4 h-4 mr-2" />
+          <PlusIcon class="size-4" />
           Add Attendee
         </Button>
       </div>
@@ -523,16 +527,16 @@ function isMinor(birthDate?: Date | string | null) {
                       <SelectValue :placeholder="$t('saved_attendees.gender_placeholder')" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="female">
+                      <SelectItem :value="SavedAttendeeGender.Female">
                         {{ $t('saved_attendees.gender_female') }}
                       </SelectItem>
-                      <SelectItem value="male">
+                      <SelectItem :value="SavedAttendeeGender.Male">
                         {{ $t('saved_attendees.gender_male') }}
                       </SelectItem>
-                      <SelectItem value="non-binary">
+                      <SelectItem :value="SavedAttendeeGender.NonBinary">
                         {{ $t('saved_attendees.gender_non_binary') }}
                       </SelectItem>
-                      <SelectItem value="prefer-not-to-say">
+                      <SelectItem :value="SavedAttendeeGender.PreferNotToSay">
                         {{ $t('saved_attendees.gender_prefer_not') }}
                       </SelectItem>
                     </SelectContent>

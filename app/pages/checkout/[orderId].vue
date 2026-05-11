@@ -1,14 +1,20 @@
 <script setup lang="ts">
 import { apiRoutes } from '#shared/apiRoutes'
 import { Field as VeeField, useForm } from 'vee-validate'
-import type { SavedAttendeeFormInput, SavedAttendeeGender } from '#shared/schemas/savedAttendeeSchema'
+import type { SavedAttendeeFormInput, SavedAttendeeGender as SavedAttendeeGenderInput } from '#shared/schemas/savedAttendeeSchema'
 import { checkoutCustomerSchema } from '#shared/schemas/ticketingSchema'
 import type { CheckoutCustomerInput, CheckoutTicketHolderInput } from '#shared/schemas/ticketingSchema'
+import type { ApiResponse } from '~~/types/api'
+import type { CheckoutDetailData } from '~~/types/ticketing'
+import type { SavedAttendeeModel } from '~~/types/models/saved-attendee'
 import { toast } from 'vue-sonner'
 import { apiRequest } from '@/utils/apiRequest'
 import { parseApiError } from '@/utils/apiError'
+import { getDisplayDateLocale } from '@/lib/localizedEvents'
+import { AgeBracket, OrderStatus, SavedAttendeeGender, TicketHolderSource } from '#shared/commonEnums'
 
 const route = useRoute()
+const { locale } = useI18n()
 const orderId = computed(() => route.params.orderId.toString())
 const holdPublicId = computed(() => typeof route.query.hold === 'string' ? route.query.hold : '')
 const isSubmitting = ref(false)
@@ -16,13 +22,13 @@ const currentTime = ref(Date.now())
 let holdClockIntervalId: number | null = null
 let checkoutRefreshIntervalId: number | null = null
 
-const { data: checkoutResponse, refresh } = await useAPI(() => `/api/checkout/${orderId.value}`)
+const { data: checkoutResponse, refresh } = await useAPI<ApiResponse<CheckoutDetailData>>(() => `/api/checkout/${orderId.value}`, {
+  query: computed(() => ({ locale: locale.value })),
+})
 const checkout = computed(() => checkoutResponse.value?.data ?? null)
 
-const { data: savedAttendeesResponse } = await useAPI(() => '/api/saved-attendees')
+const { data: savedAttendeesResponse } = await useAPI<ApiResponse<SavedAttendeeModel[]>>(() => '/api/saved-attendees')
 const savedAttendees = computed(() => savedAttendeesResponse.value?.data ?? [])
-
-type TicketHolderSource = 'account' | 'saved-attendee' | 'manual'
 
 interface TicketHolderDraft {
   eventSeatId: number
@@ -42,8 +48,8 @@ const defaultValues: CheckoutCustomerInput = {
   customerName: '',
   customerEmail: '',
   customerPhone: '',
-  customerAgeBracket: '25-34',
-  customerGender: 'prefer-not-to-say',
+  customerAgeBracket: AgeBracket.TwentyFiveToThirtyFour,
+  customerGender: SavedAttendeeGender.PreferNotToSay,
 }
 
 const { handleSubmit, resetForm, values: formValues, meta: formMeta } = useForm({
@@ -53,12 +59,20 @@ const { handleSubmit, resetForm, values: formValues, meta: formMeta } = useForm(
 
 const formInitializedOrderId = ref<number | null>(null)
 
-function getValidGender(value: string | undefined | null): SavedAttendeeGender {
-  if (value === 'female' || value === 'male' || value === 'non-binary' || value === 'prefer-not-to-say') {
+function formatCurrency(cents: number) {
+  return `${Intl.NumberFormat(getDisplayDateLocale(locale.value)).format(cents / 100)} VND`
+}
+
+function formatDateTime(value: string | Date) {
+  return new Date(value).toLocaleString(getDisplayDateLocale(locale.value))
+}
+
+function getValidGender(value: string | undefined | null): SavedAttendeeGenderInput {
+  if (value === SavedAttendeeGender.Female || value === SavedAttendeeGender.Male || value === SavedAttendeeGender.NonBinary || value === SavedAttendeeGender.PreferNotToSay) {
     return value
   }
 
-  return 'prefer-not-to-say'
+  return SavedAttendeeGender.PreferNotToSay
 }
 
 function createAccountHolderDraft(): DraftTicketHolder {
@@ -78,7 +92,7 @@ function createAccountHolderDraft(): DraftTicketHolder {
   }
 }
 
-function createDraft(eventSeatId: number, source: TicketHolderSource = 'account'): TicketHolderDraft {
+function createDraft(eventSeatId: number, source: TicketHolderSource = TicketHolderSource.Account): TicketHolderDraft {
   return {
     eventSeatId,
     source,
@@ -122,8 +136,8 @@ watch(checkout, (value) => {
       customerName: value.order.customerName ?? '',
       customerEmail: value.order.customerEmail ?? '',
       customerPhone: value.order.customerPhone ?? '',
-      customerAgeBracket: value.order.customerAgeBracket ?? '25-34',
-      customerGender: value.order.customerGender ?? 'prefer-not-to-say',
+      customerAgeBracket: value.order.customerAgeBracket ?? AgeBracket.TwentyFiveToThirtyFour,
+      customerGender: value.order.customerGender ?? SavedAttendeeGender.PreferNotToSay,
     },
   })
 }, { immediate: true })
@@ -134,7 +148,7 @@ watch(() => checkout.value?.items, () => {
 
 watch(formValues, () => {
   for (const draft of ticketHolderDrafts.value) {
-    if (draft.source !== 'account') {
+    if (draft.source !== TicketHolderSource.Account) {
       continue
     }
 
@@ -144,7 +158,7 @@ watch(formValues, () => {
 
 watch(() => ticketHolderDrafts.value.map(draft => `${draft.eventSeatId}:${draft.source}:${draft.savedAttendeeId ?? ''}`), () => {
   for (const draft of ticketHolderDrafts.value) {
-    if (draft.source !== 'account') {
+    if (draft.source !== TicketHolderSource.Account) {
       continue
     }
 
@@ -153,13 +167,13 @@ watch(() => ticketHolderDrafts.value.map(draft => `${draft.eventSeatId}:${draft.
 }, { immediate: true })
 
 function validateDrafts() {
-  const savedAttendeeDraft = ticketHolderDrafts.value.find(draft => draft.source === 'saved-attendee' && !draft.savedAttendeeId)
+  const savedAttendeeDraft = ticketHolderDrafts.value.find(draft => draft.source === TicketHolderSource.SavedAttendee && !draft.savedAttendeeId)
   if (savedAttendeeDraft) {
     return 'Please select a saved attendee for every ticket using that option.'
   }
 
   const manualDraft = ticketHolderDrafts.value.find((draft) => {
-    if (draft.source !== 'manual') {
+    if (draft.source !== TicketHolderSource.Manual) {
       return false
     }
 
@@ -177,7 +191,7 @@ function validateDrafts() {
 }
 
 function toPayloadHolder(draft: TicketHolderDraft): CheckoutTicketHolderInput {
-  if (draft.source === 'saved-attendee') {
+  if (draft.source === TicketHolderSource.SavedAttendee) {
     return {
       eventSeatId: draft.eventSeatId,
       source: draft.source,
@@ -213,7 +227,7 @@ const holdTimeRemainingMs = computed(() => {
   const expiresAt = checkout.value?.hold?.expiresAt
   const status = checkout.value?.order?.status
 
-  if (!expiresAt || status === 'confirmed') {
+  if (!expiresAt || status === OrderStatus.Confirmed) {
     return null
   }
 
@@ -314,7 +328,7 @@ definePageMeta({
       <div class="space-y-4">
         <div class="space-y-3">
           <h1 class="text-3xl font-semibold tracking-tight">
-            {{ checkout.order.status === 'confirmed' ? 'Order confirmed.' : 'Review your order.' }}
+            {{ checkout.order.status === OrderStatus.Confirmed ? 'Order confirmed.' : 'Review your order.' }}
           </h1>
           <p class="max-w-[40rem] text-base leading-8 text-muted-foreground">
             This demo checkout does not connect to a live payment provider. Confirming the order finalizes your held seats and issues QR tickets immediately.
@@ -325,7 +339,7 @@ definePageMeta({
       <div class="overflow-hidden rounded-xl border bg-card text-card-foreground shadow-sm">
         <div class="space-y-4 p-6 md:p-8">
           <div
-            v-if="holdCountdownLabel && checkout.order.status !== 'confirmed'"
+            v-if="holdCountdownLabel && checkout.order.status !== OrderStatus.Confirmed"
             :class="[
               'rounded-[1.5rem] px-5 py-4',
               isHoldExpired
@@ -359,7 +373,7 @@ definePageMeta({
                 </p>
               </div>
               <p class="font-mono text-sm">
-                {{ Intl.NumberFormat('en-US').format(item.unitPriceCents / 100) }} VND
+                {{ formatCurrency(item.unitPriceCents) }}
               </p>
             </div>
           </div>
@@ -369,7 +383,7 @@ definePageMeta({
               Order total
             </p>
             <p class="mt-2 text-4xl font-semibold tracking-[-0.06em]">
-              {{ Intl.NumberFormat('en-US').format(checkout.order.amountCents / 100) }} VND
+              {{ formatCurrency(checkout.order.amountCents) }}
             </p>
           </div>
 
@@ -381,7 +395,7 @@ definePageMeta({
               {{ checkout.event.title }}
             </p>
             <p class="mt-1">
-              {{ checkoutSessionStartsAt ? new Date(checkoutSessionStartsAt).toLocaleString() : 'Session time will be announced by the organizer.' }}
+              {{ checkoutSessionStartsAt ? formatDateTime(checkoutSessionStartsAt) : 'Session time will be announced by the organizer.' }}
             </p>
           </div>
         </div>
@@ -389,7 +403,7 @@ definePageMeta({
     </section>
 
     <section
-      v-if="checkout.order.status !== 'confirmed'"
+      v-if="checkout.order.status !== OrderStatus.Confirmed"
       class="overflow-hidden rounded-xl border bg-card text-card-foreground shadow-sm"
     >
       <form
@@ -497,16 +511,16 @@ definePageMeta({
                         <SelectValue :placeholder="field.value ? undefined : $t('checkout.age_bracket_placeholder')" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="18-24">
+                        <SelectItem :value="AgeBracket.EighteenToTwentyFour">
                           18–24
                         </SelectItem>
-                        <SelectItem value="25-34">
+                        <SelectItem :value="AgeBracket.TwentyFiveToThirtyFour">
                           25–34
                         </SelectItem>
-                        <SelectItem value="35-44">
+                        <SelectItem :value="AgeBracket.ThirtyFiveToFortyFour">
                           35–44
                         </SelectItem>
-                        <SelectItem value="45+">
+                        <SelectItem :value="AgeBracket.FortyFivePlus">
                           45+
                         </SelectItem>
                       </SelectContent>
@@ -538,16 +552,16 @@ definePageMeta({
                         <SelectValue :placeholder="field.value ? undefined : $t('checkout.gender_placeholder')" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="female">
+                        <SelectItem :value="SavedAttendeeGender.Female">
                           {{ $t('checkout.gender_female') }}
                         </SelectItem>
-                        <SelectItem value="male">
+                        <SelectItem :value="SavedAttendeeGender.Male">
                           {{ $t('checkout.gender_male') }}
                         </SelectItem>
-                        <SelectItem value="non-binary">
+                        <SelectItem :value="SavedAttendeeGender.NonBinary">
                           {{ $t('checkout.gender_non_binary') }}
                         </SelectItem>
-                        <SelectItem value="prefer-not-to-say">
+                        <SelectItem :value="SavedAttendeeGender.PreferNotToSay">
                           {{ $t('checkout.gender_prefer_not') }}
                         </SelectItem>
                       </SelectContent>
@@ -600,13 +614,13 @@ definePageMeta({
                       <SelectValue :placeholder="$t('checkout.assignment_placeholder')" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="account">
+                      <SelectItem :value="TicketHolderSource.Account">
                         {{ $t('checkout.use_buyer_details') }}
                       </SelectItem>
-                      <SelectItem value="saved-attendee">
+                      <SelectItem :value="TicketHolderSource.SavedAttendee">
                         {{ $t('checkout.select_saved_attendee') }}
                       </SelectItem>
-                      <SelectItem value="manual">
+                      <SelectItem :value="TicketHolderSource.Manual">
                         {{ $t('checkout.enter_manually') }}
                       </SelectItem>
                     </SelectContent>
@@ -614,14 +628,14 @@ definePageMeta({
                 </div>
 
                 <div
-                  v-if="draft.source === 'account'"
+                  v-if="draft.source === TicketHolderSource.Account"
                   class="rounded-xl border border-black/5 bg-accent/50 p-4 text-sm text-muted-foreground dark:border-white/10"
                 >
                   {{ $t('checkout.auto_synced_note') }}
                 </div>
 
                 <div
-                  v-if="draft.source === 'saved-attendee'"
+                  v-if="draft.source === TicketHolderSource.SavedAttendee"
                   class="space-y-2"
                 >
                   <FieldLabel :for="`attendee-${draft.eventSeatId}`">
@@ -644,7 +658,7 @@ definePageMeta({
                 </div>
 
                 <div
-                  v-if="draft.source !== 'saved-attendee'"
+                  v-if="draft.source !== TicketHolderSource.SavedAttendee"
                   class="grid gap-4 md:grid-cols-2"
                 >
                   <div class="space-y-2">
@@ -654,7 +668,7 @@ definePageMeta({
                     <Input
                       :id="`name-${draft.eventSeatId}`"
                       v-model="draft.holder.legalName"
-                      :readonly="draft.source === 'account'"
+                      :readonly="draft.source === TicketHolderSource.Account"
                       :placeholder="$t('checkout.legal_name')"
                     />
                   </div>
@@ -667,7 +681,7 @@ definePageMeta({
                       :id="`email-${draft.eventSeatId}`"
                       v-model="draft.holder.email"
                       type="email"
-                      :readonly="draft.source === 'account'"
+                      :readonly="draft.source === TicketHolderSource.Account"
                       :placeholder="$t('checkout.email')"
                     />
                   </div>
@@ -679,7 +693,7 @@ definePageMeta({
                     <Input
                       :id="`phone-${draft.eventSeatId}`"
                       v-model="draft.holder.phone"
-                      :readonly="draft.source === 'account'"
+                      :readonly="draft.source === TicketHolderSource.Account"
                       :placeholder="$t('checkout.phone')"
                     />
                   </div>
@@ -690,22 +704,22 @@ definePageMeta({
                     </FieldLabel>
                     <Select
                       v-model="draft.holder.gender"
-                      :disabled="draft.source === 'account'"
+                      :disabled="draft.source === TicketHolderSource.Account"
                     >
                       <SelectTrigger :id="`gender-${draft.eventSeatId}`">
                         <SelectValue :placeholder="$t('checkout.gender_placeholder')" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="female">
+                        <SelectItem :value="SavedAttendeeGender.Female">
                           {{ $t('checkout.gender_female') }}
                         </SelectItem>
-                        <SelectItem value="male">
+                        <SelectItem :value="SavedAttendeeGender.Male">
                           {{ $t('checkout.gender_male') }}
                         </SelectItem>
-                        <SelectItem value="non-binary">
+                        <SelectItem :value="SavedAttendeeGender.NonBinary">
                           {{ $t('checkout.gender_non_binary') }}
                         </SelectItem>
-                        <SelectItem value="prefer-not-to-say">
+                        <SelectItem :value="SavedAttendeeGender.PreferNotToSay">
                           {{ $t('checkout.gender_prefer_not') }}
                         </SelectItem>
                       </SelectContent>
@@ -792,7 +806,7 @@ definePageMeta({
                   </div>
 
                   <div
-                    v-if="draft.source === 'manual'"
+                    v-if="draft.source === TicketHolderSource.Manual"
                     class="flex items-center justify-between rounded-xl border border-black/5 bg-accent/30 p-4 md:col-span-2 dark:border-white/10"
                   >
                     <div class="space-y-0.5">
