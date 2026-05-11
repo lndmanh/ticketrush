@@ -166,11 +166,16 @@ function duplicateRow(sectionIndex: number, rowIndex: number) {
 
   const nextRows = [...section.rows]
   nextRows.splice(rowIndex + 1, 0, {
-    ...row,
     label: `${row.label}*`,
+    sortOrder: row.sortOrder,
     seats: row.seats.map((seat, seatIndex) => ({
-      ...seat,
+      label: seat.label,
+      seatNumber: seat.seatNumber,
+      x: seat.x,
+      y: seat.y,
       sortOrder: seatIndex,
+      accessibilityLabel: seat.accessibilityLabel ?? '',
+      isAccessible: seat.isAccessible,
     })),
   })
 
