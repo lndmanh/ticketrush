@@ -1,15 +1,21 @@
 <script setup lang="ts">
 import { CircleDollarSign, LayoutGrid, LockKeyhole, Ticket, TrendingUp, Users } from '@lucide/vue'
+import type { Event } from '#shared/db'
+import type { ApiResponse } from '~~/types/api'
 import AdminChartCard from '@/components/admin/charts/AdminChartCard.vue'
 import { apiRequest } from '@/utils/apiRequest'
 import { parseApiError } from '@/utils/apiError'
+import { getDisplayDateLocale } from '@/lib/localizedEvents'
 import { apiRoutes } from '#shared/apiRoutes'
+import { EventStatus, SeatStatus } from '#shared/commonEnums'
+import { toast } from 'vue-sonner'
+import type { AdminEventWorkspaceSession } from '~~/types/admin-events'
 
 const route = useRoute()
 const eventId = computed(() => Number(route.params.id))
-const { t } = useI18n()
+const { t, locale } = useI18n()
 
-const { detail, dashboard, refreshAll } = await useAdminEventWorkspace(eventId, {
+const { detail, dashboard, refreshAll, fetchVenueLayoutSyncPreview, applyVenueLayoutSync } = await useAdminEventWorkspace(eventId, {
   poll: true,
   includeOps: false,
 })
@@ -18,6 +24,8 @@ const { createBarChartOption, createDonutChartOption } = useAdminChartTheme()
 
 const isPublishing = ref(false)
 const isUnpublishing = ref(false)
+const syncDialogOpen = ref(false)
+const syncDialogSessionId = ref<number | null>(null)
 
 const recentOrders = computed(() => dashboard.value?.recentOrders?.slice(0, 4) ?? [])
 const topSections = computed(() => {
@@ -30,11 +38,38 @@ const topSections = computed(() => {
     .slice(0, 4)
 })
 
-const availableSeats = computed(() => detail.value?.seats.filter(seat => seat.status === 'available').length ?? 0)
-const heldSeats = computed(() => detail.value?.seats.filter(seat => seat.status === 'locked').length ?? 0)
-const soldSeats = computed(() => detail.value?.seats.filter(seat => seat.status === 'sold').length ?? 0)
-const totalTicketCapacity = computed(() => detail.value?.ticketTypes.reduce((total, ticketType) => total + ticketType.capacity, 0) ?? 0)
-const reservedReleases = computed(() => detail.value?.ticketTypes.filter(ticketType => ticketType.isReservedSeating).length ?? 0)
+const primarySession = computed(() => {
+  if (!detail.value) {
+    return null
+  }
+
+  return detail.value.sessions.find(session => session.id === detail.value.primarySessionId) ?? detail.value.sessions[0] ?? null
+})
+
+const primarySeats = computed(() => primarySession.value?.seats ?? [])
+const primarySectionPrices = computed(() => primarySession.value?.sectionPrices ?? [])
+const isPrimarySessionStale = computed(() => primarySession.value?.venueSyncStatus === 'stale' && detail.value?.event.status === EventStatus.Draft)
+const selectedSyncSession = computed(() => {
+  const sessionId = syncDialogSessionId.value
+  if (!detail.value || sessionId === null) {
+    return null
+  }
+
+  return detail.value.sessions.find(session => session.id === sessionId) ?? null
+})
+
+const availableSeats = computed(() => primarySeats.value.filter(seat => seat.status === SeatStatus.Available).length)
+const heldSeats = computed(() => primarySeats.value.filter(seat => seat.status === SeatStatus.Locked).length)
+const soldSeats = computed(() => primarySeats.value.filter(seat => seat.status === SeatStatus.Sold).length)
+const totalSeatCapacity = computed(() => {
+  if (primarySeats.value.length > 0) {
+    return primarySeats.value.filter(seat => seat.status !== SeatStatus.Unavailable).length
+  }
+
+  return detail.value?.venue?.capacity ?? 0
+})
+const configuredSectionCount = computed(() => primarySectionPrices.value.length)
+const sectionReleaseCount = computed(() => primarySectionPrices.value.length)
 
 const launchChecklist = computed(() => {
   if (!detail.value?.event) {
@@ -43,24 +78,24 @@ const launchChecklist = computed(() => {
 
   return [
     {
-      label: t('admin.event_checklist_releases_staged'),
-      value: detail.value.ticketTypes.length > 0,
-      hint: detail.value.ticketTypes.length > 0
-        ? t('admin.event_checklist_releases_staged_ok', { count: detail.value.ticketTypes.length })
-        : t('admin.event_checklist_releases_staged_fail'),
+      label: t('admin.event_checklist_sections_configured'),
+      value: configuredSectionCount.value > 0,
+      hint: configuredSectionCount.value > 0
+        ? t('admin.event_checklist_sections_configured_ok', { count: configuredSectionCount.value })
+        : t('admin.event_checklist_sections_configured_fail'),
     },
     {
       label: t('admin.event_checklist_sales_window'),
       value: Boolean(detail.value.event.salesStartAt && detail.value.event.salesEndAt),
       hint: detail.value.event.salesStartAt && detail.value.event.salesEndAt
-        ? t('admin.event_checklist_sales_window_ok', { date: new Date(detail.value.event.salesStartAt).toLocaleString() })
+        ? t('admin.event_checklist_sales_window_ok', { date: formatDateTime(detail.value.event.salesStartAt) })
         : t('admin.event_checklist_sales_window_fail'),
     },
     {
       label: t('admin.event_checklist_inventory'),
-      value: detail.value.seats.length > 0,
-      hint: detail.value.seats.length > 0
-        ? t('admin.event_checklist_inventory_ok', { count: detail.value.seats.length })
+      value: totalSeatCapacity.value > 0,
+      hint: totalSeatCapacity.value > 0
+        ? t('admin.event_checklist_inventory_ok', { count: totalSeatCapacity.value })
         : t('admin.event_checklist_inventory_fail'),
     },
   ]
@@ -87,10 +122,37 @@ const seatStatusOption = computed(() => {
   })
 })
 
+function formatCurrency(cents: number) {
+  return `${Intl.NumberFormat(getDisplayDateLocale(locale.value)).format(cents / 100)} VND`
+}
+
+function formatDateTime(value: string | Date) {
+  return new Date(value).toLocaleString(getDisplayDateLocale(locale.value))
+}
+
+function openVenueSync(session: AdminEventWorkspaceSession | null) {
+  if (!session) {
+    return
+  }
+
+  syncDialogSessionId.value = session.id
+  syncDialogOpen.value = true
+}
+
+async function handleVenueSyncApplied() {
+  toast.success(t('admin_event_sync.synced'))
+  await refreshAll()
+}
+
 async function publishEvent() {
+  if (isPrimarySessionStale.value) {
+    openVenueSync(primarySession.value)
+    return
+  }
+
   isPublishing.value = true
   try {
-    const response = await apiRequest(apiRoutes.adminEventPublish(eventId.value), { method: 'POST' })
+    const response = await apiRequest<ApiResponse<Event>>(apiRoutes.adminEventPublish(eventId.value), { method: 'POST' })
     if (!response.success) throw response
     await refreshAll()
   }
@@ -105,7 +167,7 @@ async function publishEvent() {
 async function unpublishEvent() {
   isUnpublishing.value = true
   try {
-    const response = await apiRequest(apiRoutes.adminEventUnpublish(eventId.value), { method: 'POST' })
+    const response = await apiRequest<ApiResponse<Event | undefined>>(apiRoutes.adminEventUnpublish(eventId.value), { method: 'POST' })
     if (!response.success) throw response
     await refreshAll()
   }
@@ -132,6 +194,24 @@ definePageMeta({
   >
     <AdminEventsAdminEventNav :event-id="eventId" />
 
+    <Alert
+      v-if="isPrimarySessionStale"
+      variant="destructive"
+    >
+      <AlertTitle>{{ $t('admin_event_sync.dashboard_stale_title') }}</AlertTitle>
+      <AlertDescription class="mt-2 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <span>{{ $t('admin_event_sync.dashboard_stale_desc') }}</span>
+        <Button
+          size="sm"
+          variant="secondary"
+          class="w-fit"
+          @click="openVenueSync(primarySession)"
+        >
+          {{ $t('admin_event_sync.sync_button') }}
+        </Button>
+      </AlertDescription>
+    </Alert>
+
     <section class="grid gap-4 xl:grid-cols-[minmax(0,1.4fr)_repeat(2,minmax(0,1fr))] xl:auto-rows-fr">
       <Card class="h-full">
         <CardContent class="flex h-full flex-col justify-between gap-6">
@@ -139,7 +219,7 @@ definePageMeta({
             <div class="flex flex-wrap items-center gap-2 text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
               <span>{{ detail.event.status.replaceAll('_', ' ') }}</span>
               <span class="h-1 w-1 rounded-full bg-border" />
-              <span>{{ new Date(detail.event.startsAt).toLocaleString() }}</span>
+              <span>{{ formatDateTime(detail.event.startsAt) }}</span>
             </div>
             <div>
               <h1 class="text-balance text-3xl font-semibold tracking-[-0.06em] text-foreground md:text-4xl">
@@ -153,9 +233,10 @@ definePageMeta({
 
           <div class="flex flex-wrap gap-3">
             <Button
-              v-if="detail.event.status === 'draft'"
+              v-if="detail.event.status === EventStatus.Draft"
+              :disabled="isPrimarySessionStale"
               :is-loading="isPublishing"
-              class="rounded-full"
+
               @click="publishEvent"
             >
               Publish event
@@ -164,7 +245,7 @@ definePageMeta({
               v-else
               variant="outline"
               :is-loading="isUnpublishing"
-              class="rounded-full"
+
               @click="unpublishEvent"
             >
               Move to draft
@@ -172,10 +253,10 @@ definePageMeta({
             <Button
               as-child
               variant="outline"
-              class="rounded-full"
             >
               <NuxtLink :to="`/admin/events/${eventId}/pricing`">{{ $t('admin.event_open_pricing') }}</NuxtLink>
             </Button>
+            <AdminLocalizationAdminEventLocalizationPanel :event-id="eventId" />
           </div>
         </CardContent>
       </Card>
@@ -185,7 +266,7 @@ definePageMeta({
           <div class="flex items-center gap-3 text-muted-foreground">
             <CircleDollarSign class="size-4" /><span class="text-[11px] uppercase tracking-[0.22em]">{{ $t('admin.event_stat_revenue') }}</span>
           </div><p class="mt-4 text-2xl font-semibold tracking-[-0.05em] text-foreground">
-            {{ Intl.NumberFormat('en-US').format((dashboard.revenueCents || 0) / 100) }} VND
+            {{ formatCurrency(dashboard.revenueCents || 0) }}
           </p><p class="mt-2 text-sm text-muted-foreground">
             {{ dashboard.soldSeatsCount }} seats converted so far.
           </p>
@@ -210,9 +291,9 @@ definePageMeta({
           <div class="flex items-center gap-3 text-muted-foreground">
             <LayoutGrid class="size-4" /><span class="text-[11px] uppercase tracking-[0.22em]">{{ $t('admin.event_stat_releases') }}</span>
           </div><p class="mt-4 text-2xl font-semibold tracking-[-0.05em] text-foreground">
-            {{ detail.ticketTypes.length }}
+            {{ sectionReleaseCount }}
           </p><p class="mt-2 text-sm text-muted-foreground">
-            {{ reservedReleases }} reserved release(s).
+            {{ configuredSectionCount }} configured section price(s).
           </p>
         </CardContent>
       </Card>
@@ -221,9 +302,9 @@ definePageMeta({
           <div class="flex items-center gap-3 text-muted-foreground">
             <Ticket class="size-4" /><span class="text-[11px] uppercase tracking-[0.22em]">{{ $t('admin.event_stat_ticket_capacity') }}</span>
           </div><p class="mt-4 text-2xl font-semibold tracking-[-0.05em] text-foreground">
-            {{ totalTicketCapacity }}
+            {{ totalSeatCapacity }}
           </p><p class="mt-2 text-sm text-muted-foreground">
-            Total tickets represented in pricing.
+            Total seats represented in the primary session.
           </p>
         </CardContent>
       </Card>
@@ -257,31 +338,27 @@ definePageMeta({
           <CardTitle>{{ $t('admin.event_launch_readiness') }}</CardTitle><span class="rounded-full border border-border bg-muted px-3 py-1 text-xs text-muted-foreground">{{ $t('admin.event_launch_ready_count', { ready: launchChecklist.filter(item => item.value).length, total: launchChecklist.length }) }}</span>
         </CardHeader>
         <CardContent class="space-y-3">
-          <div
+          <Item
             v-for="item in launchChecklist"
             :key="item.label"
-            class="rounded-[1.25rem] border border-border p-4"
+            variant="outline"
           >
+            <ItemContent>
+              <ItemTitle>{{ item.label }}</ItemTitle>
+              <ItemDescription>{{ item.hint }}</ItemDescription>
+            </ItemContent>
             <div class="flex items-start justify-between gap-3">
-              <div>
-                <p class="text-sm font-medium text-foreground">
-                  {{ item.label }}
-                </p>
-                <p class="mt-1 text-sm leading-6 text-muted-foreground">
-                  {{ item.hint }}
-                </p>
-              </div>
               <span
                 :class="item.value ? 'border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300' : 'border-border bg-background text-muted-foreground'"
                 class="rounded-full border px-3 py-1 text-xs font-medium"
               >{{ item.value ? 'Ready' : 'Pending' }}</span>
             </div>
-          </div>
+          </Item>
         </CardContent>
       </Card>
 
       <AdminChartCard
-        class="xl:col-span-4"
+        class="xl:col-span-7"
         eyebrow="Inventory"
         :title="$t('admin.event_chart_seat_status')"
         description="Current inventory split across available, held, and sold seats."
@@ -292,7 +369,7 @@ definePageMeta({
         stat-label="Ready now"
       />
       <AdminChartCard
-        class="xl:col-span-3"
+        class="xl:col-span-4"
         eyebrow="Commercial"
         :title="$t('admin.event_chart_revenue_section')"
         description="Top performing sections by confirmed revenue."
@@ -302,40 +379,6 @@ definePageMeta({
         :stat="`${topSections.length}`"
         stat-label="Tracked sections"
       />
-
-      <Card class="h-full xl:col-span-5">
-        <CardHeader><CardTitle>{{ $t('admin.event_ticket_stats') }}</CardTitle></CardHeader>
-        <CardContent class="grid gap-3 md:grid-cols-2">
-          <div class="rounded-[1.25rem] border border-border bg-secondary/30 p-4">
-            <p class="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-              Sold seats
-            </p><p class="mt-2 text-2xl font-semibold tracking-[-0.05em] text-foreground">
-              {{ soldSeats }}
-            </p>
-          </div>
-          <div class="rounded-[1.25rem] border border-border bg-secondary/30 p-4">
-            <p class="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-              Held seats
-            </p><p class="mt-2 text-2xl font-semibold tracking-[-0.05em] text-foreground">
-              {{ heldSeats }}
-            </p>
-          </div>
-          <div class="rounded-[1.25rem] border border-border bg-secondary/30 p-4">
-            <p class="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-              Queue waiting
-            </p><p class="mt-2 text-2xl font-semibold tracking-[-0.05em] text-foreground">
-              {{ dashboard.queueWaitingCount }}
-            </p>
-          </div>
-          <div class="rounded-[1.25rem] border border-border bg-secondary/30 p-4">
-            <p class="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-              Admitted
-            </p><p class="mt-2 text-2xl font-semibold tracking-[-0.05em] text-foreground">
-              {{ dashboard.queueAdmittedCount }}
-            </p>
-          </div>
-        </CardContent>
-      </Card>
 
       <Card class="h-full xl:col-span-4">
         <CardHeader><CardTitle>{{ $t('admin.event_top_sections') }}</CardTitle></CardHeader>
@@ -354,7 +397,7 @@ definePageMeta({
                 </p>
               </div>
               <p class="text-sm font-medium text-foreground">
-                {{ Intl.NumberFormat('en-US').format(row.revenueCents / 100) }} VND
+                {{ formatCurrency(row.revenueCents) }}
               </p>
             </div>
           </div>
@@ -367,7 +410,7 @@ definePageMeta({
         </CardContent>
       </Card>
 
-      <Card class="h-full xl:col-span-3">
+      <Card class="h-full xl:col-span-4">
         <CardHeader><CardTitle>{{ $t('admin.event_recent_buyers') }}</CardTitle></CardHeader>
         <CardContent class="space-y-3">
           <div
@@ -384,7 +427,7 @@ definePageMeta({
                 </p>
               </div>
               <p class="text-sm text-muted-foreground">
-                {{ Intl.NumberFormat('en-US').format(order.amountCents / 100) }} VND
+                {{ formatCurrency(order.amountCents) }}
               </p>
             </div>
           </div>
@@ -397,5 +440,14 @@ definePageMeta({
         </CardContent>
       </Card>
     </section>
+
+    <AdminEventsAdminVenueLayoutSyncDialog
+      v-model:open="syncDialogOpen"
+      :session-id="syncDialogSessionId"
+      :session-label="selectedSyncSession?.label"
+      :load-preview="fetchVenueLayoutSyncPreview"
+      :apply-sync="applyVenueLayoutSync"
+      @applied="handleVenueSyncApplied"
+    />
   </div>
 </template>

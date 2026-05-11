@@ -3,12 +3,15 @@ import type { z } from 'zod'
 import { Field as VeeField, useForm } from 'vee-validate'
 import { toast } from 'vue-sonner'
 import { createVenueSchema } from '#shared/schemas/ticketingSchema'
+import type { Event } from '#shared/db'
 import type { VenueSectionDraftInput } from '#shared/schemas/ticketingSchema'
+import type { ApiResponse } from '~~/types/api'
 import type { VenueDetail } from '~~/types/venues'
 import { ArrowLeft, Building2, CalendarRange, LayoutGrid, LayoutDashboardIcon, Rows3, Save, Users } from '@lucide/vue'
 import AdminVenuesVenueSeatLayoutEditor from '@/components/admin/venues/VenueSeatLayoutEditor.vue'
 import { apiRequest } from '@/utils/apiRequest'
 import { parseApiError } from '@/utils/apiError'
+import { getDisplayDateLocale } from '@/lib/localizedEvents'
 import { apiRoutes } from '#shared/apiRoutes'
 
 interface AdminEventListItem {
@@ -17,6 +20,12 @@ interface AdminEventListItem {
   status: string
   venueId: number
   startsAt: string | Date
+}
+
+const { locale } = useI18n()
+
+function formatDateTime(value: string | Date) {
+  return new Date(value).toLocaleString(getDisplayDateLocale(locale.value))
 }
 
 interface VisualizationSeat {
@@ -57,8 +66,8 @@ interface VenueBlueprintPreset {
 const route = useRoute()
 const venueId = computed(() => Number(route.params.id))
 
-const { data: venueResponse, refresh: refreshVenue } = await useAPI(() => apiRoutes.adminVenue(venueId.value))
-const { data: eventsResponse } = await useAPI(() => apiRoutes.ADMIN_EVENTS)
+const { data: venueResponse, refresh: refreshVenue } = await useAPI<ApiResponse<VenueDetail>>(() => apiRoutes.adminVenue(venueId.value))
+const { data: eventsResponse } = await useAPI<ApiResponse<Event[]>>(() => apiRoutes.ADMIN_EVENTS)
 
 const venueDetail = computed<VenueDetail | null>(() => venueResponse.value?.success ? venueResponse.value.data : null)
 const linkedEvents = computed<AdminEventListItem[]>(() => {
@@ -201,14 +210,17 @@ watch(venueDetail, (value) => {
   }
 
   const layoutValues = value.sections.map((section, sectionIndex) => ({
+    id: section.id,
     code: section.code,
     name: section.name,
     color: section.color,
     sortOrder: sectionIndex,
     rows: section.rows.map((row, rowIndex) => ({
+      id: row.id,
       label: row.label,
       sortOrder: rowIndex,
       seats: row.seats.map((seat, seatIndex) => ({
+        id: seat.id,
         label: seat.label,
         seatNumber: seat.seatNumber,
         x: seat.x,
@@ -497,7 +509,7 @@ const onSubmit = handleSubmit(
 
     isSaving.value = true
     try {
-      const response = await apiRequest(apiRoutes.adminVenue(venueId.value), {
+      const response = await apiRequest<ApiResponse<VenueDetail>>(apiRoutes.adminVenue(venueId.value), {
         method: 'PUT',
         body: validation.data,
       })
@@ -967,6 +979,8 @@ definePageMeta({
                   </Field>
                 </VeeField>
               </FieldGroup>
+
+              <AdminLocalizationAdminVenueLocalizationPanel :venue-id="venueDetail.venue.id" />
             </div>
 
             <div
@@ -1084,7 +1098,7 @@ definePageMeta({
                       >
                         <div>
                           <p class="text-sm font-medium">{{ event.title }}</p>
-                          <p class="text-xs text-muted-foreground">{{ new Date(event.startsAt).toLocaleString() }}</p>
+                          <p class="text-xs text-muted-foreground">{{ formatDateTime(event.startsAt) }}</p>
                         </div>
                         <p class="text-xs text-muted-foreground">{{ event.status }}</p>
                       </NuxtLink>
