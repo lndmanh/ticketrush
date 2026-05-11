@@ -6,15 +6,26 @@ import { toast } from 'vue-sonner'
 import { Check, Circle, Cloud, CloudAlert, Dot, Loader2 } from '@lucide/vue'
 import { apiRequest } from '@/utils/apiRequest'
 import { parseApiError } from '@/utils/apiError'
+import { getDisplayDateLocale } from '@/lib/localizedEvents'
 import { apiRoutes } from '#shared/apiRoutes'
 import { eventComposerSchema, getEventSessionTimingIssues } from '#shared/schemas/ticketingSchema'
+import type { Venue } from '#shared/db'
 import type { EventAutosaveDraftInput, EventComposerInput } from '#shared/schemas/ticketingSchema'
-import type { AutosaveDraftDetail } from '~~/types/admin-events'
-import type { VenueDetail } from '~~/types/venues'
+import type { ApiResponse } from '~~/types/api'
+import type { AutosaveDraftDeleteData, AutosaveDraftDetail } from '~~/types/admin-events'
+import type { SeatMapSeat } from '~~/types/seatmap'
+import type { VenueDetail, VenueDetailSection } from '~~/types/venues'
+import { EventStatus, PricingMode, SeatPricingSource, SeatStatus } from '#shared/commonEnums'
 
 interface VenueOption {
   id: number
   name: string
+}
+
+const { locale } = useI18n()
+
+function formatDateTime(value: string | Date) {
+  return new Date(value).toLocaleString(getDisplayDateLocale(locale.value))
 }
 
 interface EventCreationStep {
@@ -46,7 +57,7 @@ const stepSchemas = {
   }),
 }
 
-const { data: venuesResponse } = await useAPI(() => apiRoutes.ADMIN_VENUES)
+const { data: venuesResponse } = await useAPI<ApiResponse<Venue[]>>(() => apiRoutes.ADMIN_VENUES)
 const venues = computed<VenueOption[]>(() => venuesResponse.value?.data ?? [])
 const selectedVenueDetail = ref<VenueDetail | null>(null)
 const currentStep = ref(1)
@@ -66,6 +77,8 @@ const isAutosaveInFlight = ref(false)
 const hasQueuedAutosave = ref(false)
 let autosaveRequestId = 0
 let autosaveTimerId: number | null = null
+let venueLoadRequestId = 0
+const autosaveIdleResolvers: Array<() => void> = []
 
 const defaultValues: EventComposerInput = {
   slug: '',
@@ -146,18 +159,63 @@ function buildAutosavePayload() {
       endsAt: session.endsAt,
       salesStartAt: session.salesStartAt,
       salesEndAt: session.salesEndAt,
-      ticketTypes: (session.ticketTypes ?? []).map(ticketType => ({
-        name: ticketType.name,
-        venueSectionId: ticketType.venueSectionId ?? null,
-        priceCents: ticketType.priceCents,
-        currency: ticketType.currency,
-        color: ticketType.color,
-        isReservedSeating: ticketType.isReservedSeating,
-        capacity: ticketType.capacity,
-        sortOrder: ticketType.sortOrder,
+      pricingMode: session.pricingMode,
+      currency: session.currency,
+      sectionPrices: session.sectionPrices.map(sectionPrice => ({
+        venueSectionId: sectionPrice.venueSectionId,
+        priceCents: sectionPrice.priceCents,
+        currency: sectionPrice.currency,
+        sortOrder: sectionPrice.sortOrder,
+      })),
+      seatOverrides: session.seatOverrides.map(seatOverride => ({
+        venueSeatId: seatOverride.venueSeatId,
+        venueSectionId: seatOverride.venueSectionId,
+        priceCents: seatOverride.priceCents,
+        currency: seatOverride.currency,
+        isDisabled: seatOverride.isDisabled,
       })),
     })),
   }
+}
+
+function buildSectionPricesFromVenueSections(sections: VenueDetailSection[], currency = 'VND'): EventComposerInput['sessions'][number]['sectionPrices'] {
+  return sections.map((section, sectionIndex) => ({
+    venueSectionId: section.id,
+    priceCents: 0,
+    currency,
+    sortOrder: sectionIndex,
+  }))
+}
+
+function buildDefaultSessionForVenue(venueId: number, sections: VenueDetailSection[]): EventComposerInput['sessions'][number] {
+  return {
+    label: 'Default session',
+    venueId,
+    status: EventStatus.Draft,
+    queueEnabled: false,
+    startsAt: '',
+    endsAt: '',
+    salesStartAt: '',
+    salesEndAt: '',
+    pricingMode: PricingMode.Uniform,
+    currency: 'VND',
+    sectionPrices: buildSectionPricesFromVenueSections(sections),
+    seatOverrides: [],
+  }
+}
+
+function rebuildSessionsForVenue(venueId: number, sections: VenueDetailSection[]): EventComposerInput['sessions'] {
+  const sessions = values.sessions ?? []
+  if (!sessions.length) {
+    return [buildDefaultSessionForVenue(venueId, sections)]
+  }
+
+  return sessions.map(session => ({
+    ...session,
+    venueId,
+    sectionPrices: buildSectionPricesFromVenueSections(sections, session.currency || 'VND'),
+    seatOverrides: [],
+  }))
 }
 
 function normalizeAutosavePayload(payload: EventAutosaveDraftInput['payload']) {
@@ -171,21 +229,26 @@ function normalizeAutosavePayload(payload: EventAutosaveDraftInput['payload']) {
     sessions: (payload.sessions ?? []).map((session, sessionIndex) => ({
       label: session.label ?? `Session ${sessionIndex + 1}`,
       venueId: session.venueId ?? payload.venueId ?? 0,
-      status: session.status ?? 'draft',
+      status: session.status ?? EventStatus.Draft,
       queueEnabled: session.queueEnabled ?? false,
       startsAt: session.startsAt ?? '',
       endsAt: session.endsAt ?? '',
       salesStartAt: session.salesStartAt ?? '',
       salesEndAt: session.salesEndAt ?? '',
-      ticketTypes: (session.ticketTypes ?? []).map((ticketType, ticketIndex) => ({
-        name: ticketType.name ?? `Ticket release ${ticketIndex + 1}`,
-        venueSectionId: ticketType.venueSectionId ?? null,
-        priceCents: ticketType.priceCents ?? 0,
-        currency: ticketType.currency ?? 'VND',
-        color: ticketType.color ?? '#3b82f6',
-        isReservedSeating: ticketType.isReservedSeating ?? false,
-        capacity: ticketType.capacity ?? 100,
-        sortOrder: ticketType.sortOrder ?? ticketIndex,
+      pricingMode: session.pricingMode ?? PricingMode.Uniform,
+      currency: session.currency ?? 'VND',
+      sectionPrices: (session.sectionPrices ?? []).map((sectionPrice, sectionIndex) => ({
+        venueSectionId: sectionPrice.venueSectionId,
+        priceCents: sectionPrice.priceCents,
+        currency: sectionPrice.currency ?? session.currency ?? 'VND',
+        sortOrder: sectionPrice.sortOrder ?? sectionIndex,
+      })),
+      seatOverrides: (session.seatOverrides ?? []).map(seatOverride => ({
+        venueSeatId: seatOverride.venueSeatId,
+        venueSectionId: seatOverride.venueSectionId,
+        priceCents: seatOverride.priceCents ?? null,
+        currency: seatOverride.currency ?? null,
+        isDisabled: seatOverride.isDisabled ?? false,
       })),
     })),
   }
@@ -196,7 +259,7 @@ function normalizeAutosavePayload(payload: EventAutosaveDraftInput['payload']) {
 async function loadAutosaveDraft(draftKey: string, restoreImmediately: boolean) {
   isLoadingAutosaveDraft.value = true
   try {
-    const response = await apiRequest(apiRoutes.adminEventAutosave(draftKey))
+    const response = await apiRequest<ApiResponse<AutosaveDraftDetail>>(apiRoutes.adminEventAutosave(draftKey))
     if (!response.success) {
       throw response
     }
@@ -275,7 +338,7 @@ async function _discardAutosaveDraft() {
   }
 
   try {
-    const response = await apiRequest(apiRoutes.adminEventAutosave(draft.draftKey), { method: 'DELETE' })
+    const response = await apiRequest<ApiResponse<AutosaveDraftDeleteData>>(apiRoutes.adminEventAutosave(draft.draftKey), { method: 'DELETE' })
     if (!response.success) {
       throw response
     }
@@ -292,6 +355,25 @@ async function _discardAutosaveDraft() {
   catch (error) {
     toast.error(parseApiError(error, 'Failed to discard autosave draft').message)
   }
+}
+
+function resolveAutosaveIdleWaiters() {
+  while (autosaveIdleResolvers.length > 0) {
+    const resolve = autosaveIdleResolvers.shift()
+    if (resolve) {
+      resolve()
+    }
+  }
+}
+
+function waitForAutosaveIdle() {
+  if (!isAutosaveInFlight.value) {
+    return Promise.resolve()
+  }
+
+  return new Promise<void>((resolve) => {
+    autosaveIdleResolvers.push(resolve)
+  })
 }
 
 async function saveAutosaveDraft() {
@@ -328,11 +410,12 @@ async function saveAutosaveDraft() {
       throw response
     }
 
+    autosaveDraftKey.value = response.data.draftKey
+
     if (autosaveDisabled.value || requestId !== autosaveRequestId) {
       return
     }
 
-    autosaveDraftKey.value = response.data.draftKey
     lastAutosavedAt.value = response.data.updatedAt ? new Date(response.data.updatedAt) : new Date()
     lastAutosaveSignature.value = signature
     autosaveStatus.value = 'saved'
@@ -353,7 +436,10 @@ async function saveAutosaveDraft() {
     if (hasQueuedAutosave.value && !autosaveDisabled.value) {
       hasQueuedAutosave.value = false
       void saveAutosaveDraft()
+      return
     }
+
+    resolveAutosaveIdleWaiters()
   }
 }
 
@@ -373,12 +459,20 @@ function queueAutosave(delay = 900) {
 }
 
 watch(() => values.venueId, async (venueId) => {
+  venueLoadRequestId += 1
+  const requestId = venueLoadRequestId
+  const previousVenueId = selectedVenueDetail.value?.venue.id
+
   if (!venueId) {
     selectedVenueDetail.value = null
     return
   }
 
-  const detail = await apiRequest(apiRoutes.adminVenue(venueId))
+  const detail = await apiRequest<ApiResponse<VenueDetail>>(apiRoutes.adminVenue(venueId))
+  if (requestId !== venueLoadRequestId) {
+    return
+  }
+
   if (!detail.success) {
     toast.error(parseApiError(detail).message)
     selectedVenueDetail.value = null
@@ -387,42 +481,45 @@ watch(() => values.venueId, async (venueId) => {
 
   selectedVenueDetail.value = detail.data
 
-  if (!values.sessions || values.sessions.length === 0) {
-    setFieldValue('sessions', [{
-      label: 'Default session',
-      venueId: venueId,
-      status: 'draft',
-      queueEnabled: false,
-      startsAt: '',
-      endsAt: '',
-      salesStartAt: '',
-      salesEndAt: '',
-      ticketTypes: [],
-    }])
+  const sessions = values.sessions ?? []
+  const shouldRebuildSessions = !sessions.length
+    || sessions.some(session => session.venueId !== venueId)
+    || (previousVenueId !== undefined && previousVenueId !== venueId)
+
+  if (shouldRebuildSessions) {
+    setFieldValue('sessions', rebuildSessionsForVenue(venueId, detail.data.sections))
+    if (Object.keys(sessionValidationErrors.value).length) {
+      clearSessionValidationErrors()
+      sessionValidationErrors.value = buildSessionValidationErrors()
+    }
   }
 })
 
-const previewSeats = computed(() => {
+const previewSeats = computed<SeatMapSeat[]>(() => {
   if (!selectedVenueDetail.value) {
     return []
   }
 
-  const firstSessionTickets = values.sessions?.[0]?.ticketTypes ?? []
-  const priceBySectionId = new Map(firstSessionTickets.map(ticketType => [ticketType.venueSectionId, ticketType.priceCents]))
+  const firstSession = values.sessions?.[0]
 
-  return selectedVenueDetail.value.sections.flatMap(section => section.rows.flatMap((row, rowIndex) => row.seats.map(seat => ({
-    id: seat.id,
-    venueSectionId: section.id,
-    ticketTypeId: undefined,
-    sectionNameSnapshot: section.name,
-    rowLabelSnapshot: row.label,
-    seatLabelSnapshot: seat.label,
-    displayX: Math.max(seat.seatNumber - 1, 0),
-    displayY: rowIndex,
-    status: 'available',
-    priceCents: priceBySectionId.get(section.id) ?? 0,
-    currency: 'VND',
-  }))))
+  return selectedVenueDetail.value.sections.flatMap(section => section.rows.flatMap((row, rowIndex) => row.seats.map((seat) => {
+    const sectionPrice = firstSession?.sectionPrices.find(price => price.venueSectionId === section.id)
+
+    return {
+      id: seat.id,
+      venueSectionId: section.id,
+      ticketTypeId: null,
+      sectionNameSnapshot: section.name,
+      rowLabelSnapshot: row.label,
+      seatLabelSnapshot: seat.label,
+      displayX: Math.max(seat.seatNumber - 1, 0),
+      displayY: rowIndex,
+      status: SeatStatus.Available,
+      priceCents: sectionPrice?.priceCents ?? 0,
+      currency: sectionPrice?.currency ?? firstSession?.currency ?? 'VND',
+      pricingSource: SeatPricingSource.Section,
+    }
+  })))
 })
 
 const totalRows = computed(() => selectedVenueDetail.value?.sections.reduce((count, section) => count + section.rows.length, 0) ?? 0)
@@ -432,8 +529,8 @@ function getSessionFieldPath(sessionIndex: number, fieldName: string) {
   return `sessions.${sessionIndex}.${fieldName}`
 }
 
-function getTicketFieldPath(sessionIndex: number, ticketIndex: number, fieldName: string) {
-  return `sessions.${sessionIndex}.ticketTypes.${ticketIndex}.${fieldName}`
+function getSectionPriceFieldPath(sessionIndex: number, sectionIndex: number, fieldName: string) {
+  return `sessions.${sessionIndex}.sectionPrices.${sectionIndex}.${fieldName}`
 }
 
 function addSessionValidationError(errors: Record<string, string>, path: string, message: string) {
@@ -460,27 +557,15 @@ function buildSessionValidationErrors(sessions = values.sessions ?? []) {
       addSessionValidationError(errors, getSessionFieldPath(sessionIndex, issue.field), issue.message)
     }
 
-    if (!session.ticketTypes.length) {
-      addSessionValidationError(errors, getSessionFieldPath(sessionIndex, 'ticketTypes'), `${sessionLabel}: Add at least one ticket release`)
+    if (!session.sectionPrices.length) {
+      addSessionValidationError(errors, getSessionFieldPath(sessionIndex, 'sectionPrices'), `${sessionLabel}: Add section pricing before continuing`)
     }
 
-    session.ticketTypes.forEach((ticketType, ticketIndex) => {
-      const releaseLabel = `${sessionLabel}, ticket release ${ticketIndex + 1}`
+    session.sectionPrices.forEach((sectionPrice, sectionIndex) => {
+      const sectionLabel = `${sessionLabel}, section ${sectionIndex + 1}`
 
-      if (!ticketType.name?.trim()) {
-        addSessionValidationError(errors, getTicketFieldPath(sessionIndex, ticketIndex, 'name'), `${releaseLabel}: Name is required`)
-      }
-
-      if (ticketType.isReservedSeating && !ticketType.venueSectionId) {
-        addSessionValidationError(errors, getTicketFieldPath(sessionIndex, ticketIndex, 'venueSectionId'), `${releaseLabel}: Section is required for reserved seating`)
-      }
-
-      if (ticketType.priceCents < 0) {
-        addSessionValidationError(errors, getTicketFieldPath(sessionIndex, ticketIndex, 'priceCents'), `${releaseLabel}: Price cannot be negative`)
-      }
-
-      if (ticketType.capacity <= 0) {
-        addSessionValidationError(errors, getTicketFieldPath(sessionIndex, ticketIndex, 'capacity'), `${releaseLabel}: Capacity must be at least 1`)
+      if (sectionPrice.priceCents < 0) {
+        addSessionValidationError(errors, getSectionPriceFieldPath(sessionIndex, sectionIndex, 'priceCents'), `${sectionLabel}: Price cannot be negative`)
       }
     })
   })
@@ -639,6 +724,8 @@ const onSubmit = handleSubmit(
       autosaveTimerId = null
     }
 
+    await waitForAutosaveIdle()
+
     try {
       const response = await apiRequest(apiRoutes.ADMIN_EVENTS, {
         method: 'POST',
@@ -650,15 +737,23 @@ const onSubmit = handleSubmit(
           venueId: formValues.venueId,
           coverImage: formValues.coverImage,
           sessions: formValues.sessions.map(session => ({
-            ...session,
+            label: session.label,
+            venueId: session.venueId,
+            status: session.status,
+            pricingMode: session.pricingMode,
+            currency: session.currency,
+            queueEnabled: session.queueEnabled,
             startsAt: new Date(session.startsAt),
             endsAt: session.endsAt ? new Date(session.endsAt) : undefined,
             salesStartAt: new Date(session.salesStartAt),
             salesEndAt: new Date(session.salesEndAt),
-            ticketTypes: session.ticketTypes.map((ticketType, tIndex) => ({
-              ...ticketType,
-              sortOrder: tIndex,
+            sectionPrices: session.sectionPrices.map((sectionPrice, sectionIndex) => ({
+              venueSectionId: sectionPrice.venueSectionId,
+              priceCents: sectionPrice.priceCents,
+              currency: sectionPrice.currency || session.currency,
+              sortOrder: sectionIndex,
             })),
+            seatOverrides: session.seatOverrides,
           })),
         },
       })
@@ -669,15 +764,15 @@ const onSubmit = handleSubmit(
 
       if (autosaveDraftKey.value) {
         try {
-          const convertResponse = await apiRequest(apiRoutes.adminEventAutosaveConvert(autosaveDraftKey.value), {
-            method: 'POST',
+          const discardResponse = await apiRequest<ApiResponse<AutosaveDraftDeleteData>>(apiRoutes.adminEventAutosave(autosaveDraftKey.value), {
+            method: 'DELETE',
           })
-          if (!convertResponse.success) {
-            throw convertResponse
+          if (!discardResponse.success) {
+            throw discardResponse
           }
         }
         catch (error) {
-          toast.warning(parseApiError(error, 'Event saved, but the autosave draft could not be marked as converted').message)
+          toast.warning(parseApiError(error, 'Event saved, but the autosave draft could not be discarded').message)
         }
       }
 
@@ -762,7 +857,7 @@ onUnmounted(() => {
         <AlertDialogHeader>
           <AlertDialogTitle>{{ $t('admin.event_create.restore_dialog_title') }}</AlertDialogTitle>
           <AlertDialogDescription>
-            {{ $t('admin.event_create.restore_dialog_desc', { title: pendingAutosaveDraft?.payload.title || $t('admin.events.untitled_event'), step: pendingAutosaveDraft?.lastSavedStep ?? 1, date: pendingAutosaveDraft?.updatedAt ? $t('admin.event_create.restore_dialog_date', { date: new Date(pendingAutosaveDraft.updatedAt).toLocaleString() }) : '' }) }}
+            {{ $t('admin.event_create.restore_dialog_desc', { title: pendingAutosaveDraft?.payload.title || $t('admin.events.untitled_event'), step: pendingAutosaveDraft?.lastSavedStep ?? 1, date: pendingAutosaveDraft?.updatedAt ? $t('admin.event_create.restore_dialog_date', { date: formatDateTime(pendingAutosaveDraft.updatedAt) }) : '' }) }}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
@@ -1076,7 +1171,7 @@ onUnmounted(() => {
               <div class="rounded-3xl border bg-muted/20 p-4">
                 <TicketEventSeatMapExperience
                   :seats="previewSeats"
-                  :ticket-types="values.sessions?.[0]?.ticketTypes ?? []"
+                  :ticket-types="[]"
                   :action-label="null"
                   mode="admin"
                 />
@@ -1087,7 +1182,7 @@ onUnmounted(() => {
               v-else
               class="rounded-3xl border border-dashed px-5 py-10 text-center text-sm text-muted-foreground"
             >
-              Choose a venue to generate ticket releases and preview the layout.
+              Choose a venue to generate section pricing and preview the layout.
             </div>
           </CardContent>
         </Card>
