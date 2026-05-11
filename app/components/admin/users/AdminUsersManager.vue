@@ -282,6 +282,8 @@ import type {
   AdminUserEditFormInput,
 } from '#shared/schemas/userSchema'
 import type { User } from '#shared/db'
+import type { ApiResponse } from '~~/types/api'
+import type { AdminUserModel } from '~~/types/models/profile'
 import { InfoIcon, Trash2Icon, UserPlus } from '@lucide/vue'
 import DataTable from '@/components/DataTable.vue'
 import { apiRequest } from '@/utils/apiRequest'
@@ -421,7 +423,7 @@ const onSubmit = handleSubmit(
           isAdmin: values.isAdmin,
         }
 
-        const response = await apiRequest(apiRoutes.adminUser(editingUserId.value), {
+        const response = await apiRequest<ApiResponse<{ user: AdminUserModel }>>(apiRoutes.adminUser(editingUserId.value), {
           method: 'PUT',
           body: payload,
         })
@@ -568,7 +570,7 @@ async function confirmSingleDelete() {
 async function handleDelete(userId: number) {
   try {
     loading.value = true
-    const response = await apiRequest(apiRoutes.adminUser(userId), {
+    const response = await apiRequest<ApiResponse<Record<string, never>>>(apiRoutes.adminUser(userId), {
       method: 'DELETE',
     })
     if (!response.success) throw response

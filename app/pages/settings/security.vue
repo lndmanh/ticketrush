@@ -455,7 +455,7 @@
           >
             <Loader2
               v-if="unlinkingProvider !== null"
-              class="w-4 h-4 mr-2 animate-spin"
+              class="size-4 animate-spin"
             />
             Unlink
           </AlertDialogAction>
@@ -489,7 +489,9 @@ import { formatRelativeTime } from '@/lib/utils'
 import { AUTH_ERROR_MESSAGES, AUTH_SUCCESS_MESSAGES } from '#shared/constants/authMessages'
 import { AVAILABLE_PROVIDERS } from '#shared/constants/oauthProviders'
 
+import type { ApiResponse } from '~~/types/api'
 import type { PasskeyModel } from '~~/types/models/passkey'
+import type { UserProfileModel } from '~~/types/models/profile'
 import { apiRoutes } from '#shared/apiRoutes'
 import { parseApiError } from '@/utils/apiError'
 
@@ -583,7 +585,7 @@ onMounted(() => {
 const {
   data: profileResponse,
   refresh: refreshProfile,
-} = await useAPI(() => apiRoutes.MY_PROFILE)
+} = await useAPI<ApiResponse<UserProfileModel>>(() => apiRoutes.MY_PROFILE)
 
 const profile = computed(() => profileResponse.value?.success ? profileResponse.value.data : null)
 
@@ -593,7 +595,7 @@ const {
   pending: passkeysLoading,
   error: passkeysError,
   refresh: refreshPasskeys,
-} = await useAPI(() => apiRoutes.MY_PASSKEYS)
+} = await useAPI<ApiResponse<PasskeyModel[]>>(() => apiRoutes.MY_PASSKEYS)
 
 const passkeys = computed(() => passkeysResponse.value?.success ? passkeysResponse.value.data : [])
 
