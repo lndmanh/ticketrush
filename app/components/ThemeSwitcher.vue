@@ -1,11 +1,7 @@
 <script setup lang="ts">
 import { Monitor, Moon, Sun } from '@lucide/vue'
-import {
-  DropdownMenuItem,
-} from '@/components/ui/dropdown-menu'
 
 const colorMode = useColorMode()
-
 const themeOptions = [
   {
     value: 'light' as const,

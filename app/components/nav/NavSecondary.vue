@@ -1,11 +1,4 @@
 <script setup lang="ts">
-import {
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-} from '@/components/ui/sidebar'
 import type { SidebarItem } from '~~/types/common'
 
 defineProps<{
@@ -27,7 +20,7 @@ defineProps<{
           >
             <nuxt-link :to="item.url">
               <component :is="item.icon" />
-              <span>{{ item.title }}</span>
+              <span>{{ $t(item.title) }}</span>
             </nuxt-link>
           </SidebarMenuButton>
         </SidebarMenuItem>

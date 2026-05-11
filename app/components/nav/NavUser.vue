@@ -1,24 +1,12 @@
 <script setup lang="ts">
-import { ChevronsUpDown, LogOut, SunMoon, Settings, LogIn, UserIcon, UsersIcon } from '@lucide/vue'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuItem,
-  DropdownMenuPortal,
-  DropdownMenuSeparator,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-import {
-  SidebarMenuButton,
-} from '@/components/ui/sidebar'
+import { ChevronsUpDown, LogOut, SunMoon, Settings, LogIn, UserIcon, UsersIcon, LanguagesIcon } from '@lucide/vue'
+import { useLocalStorage } from '@vueuse/core'
 import ThemeSwitcher from '@/components/ThemeSwitcher.vue'
 
 const { user, clear, loggedIn } = useUserSession()
+const { locale: i18nLocale, locales, setLocale } = useI18n()
+const storedLocale = useLocalStorage('ticketrush:locale', i18nLocale.value)
+const currentLocale = computed(() => i18nLocale.value)
 
 function getInitials(name: string) {
   return name.split(' ').map(n => n[0]).join('').toUpperCase()
@@ -28,6 +16,13 @@ function logout() {
   clear().then(() => {
     location.reload()
   })
+}
+
+async function updateLocale(code: string) {
+  if (currentLocale.value === code) return
+
+  await setLocale(code)
+  storedLocale.value = code
 }
 </script>
 
@@ -104,6 +99,33 @@ function logout() {
           <DropdownMenuPortal>
             <DropdownMenuSubContent>
               <ThemeSwitcher />
+            </DropdownMenuSubContent>
+          </DropdownMenuPortal>
+        </DropdownMenuSub>
+      </DropdownMenuGroup>
+      <DropdownMenuGroup>
+        <DropdownMenuSub>
+          <DropdownMenuSubTrigger>
+            <LanguagesIcon />
+            {{ $t('common.lang') }}
+          </DropdownMenuSubTrigger>
+          <DropdownMenuPortal>
+            <DropdownMenuSubContent>
+              <DropdownMenuItem
+                v-for="l in locales"
+                :key="l.code"
+                :class="[
+                  'flex items-center gap-2 cursor-pointer transition-colors text-accent-foreground',
+                  currentLocale === l.code ? 'bg-accent' : '',
+                ]"
+                @click="updateLocale(l.code)"
+              >
+                <span class="flex-1 truncate">{{ l.name }}</span>
+                <span
+                  v-if="currentLocale === l.code"
+                  class="ml-auto text-xs font-bold"
+                >✓</span>
+              </DropdownMenuItem>
             </DropdownMenuSubContent>
           </DropdownMenuPortal>
         </DropdownMenuSub>

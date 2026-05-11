@@ -6,17 +6,7 @@ import NavMain from '@/components/nav/NavMain.vue'
 import NavSecondary from '@/components/nav/NavSecondary.vue'
 import NavUser from '@/components/nav/NavUser.vue'
 import type { SidebarProps } from '@/components/ui/sidebar'
-import {
-  Sidebar,
-  SidebarContent,
-  SidebarFooter,
-  SidebarHeader,
-  SidebarMenu,
-  SidebarMenuItem,
-  SidebarMenuButton,
-} from '@/components/ui/sidebar'
 import { useSidebar } from '@/components/ui/sidebar/utils'
-import { Separator } from './ui/separator'
 
 const props = withDefaults(defineProps<SidebarProps>(), {
   variant: 'inset',
@@ -48,6 +38,7 @@ const config = useRuntimeConfig()
               size="lg"
             >
               <SearchIcon />
+              <span class="ml-2">{{ $t('nav.quick_search') }}</span>
               <KbdGroup class="ml-auto">
                 <Kbd>Ctrl</Kbd>
                 <span>+</span>
@@ -78,7 +69,7 @@ const config = useRuntimeConfig()
                   @click="showMainSidebar"
                 >
                   <ArrowLeft />
-                  <span>Back</span>
+                  <span>{{ $t('common.back') }}</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
             </SidebarMenu>

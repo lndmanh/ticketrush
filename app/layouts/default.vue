@@ -45,7 +45,11 @@
             />
 
             <!-- Language Switcher Dropdown -->
-            <LangSwitcher v-if="i18nEnabled" />
+            <LangSwitcher
+              v-if="i18nEnabled"
+              :trigger-type="triggerType"
+              :dropdown-type="dropdownType"
+            />
 
             <!-- Theme Switcher -->
             <DropdownMenu>
@@ -89,7 +93,11 @@
               :placeholder="headerSearch.placeholder"
             />
 
-            <LangSwitcher v-if="i18nEnabled" />
+            <LangSwitcher
+              v-if="i18nEnabled"
+              :trigger-type="triggerType"
+              :dropdown-type="dropdownType"
+            />
 
             <!-- Theme Switcher (mobile) -->
             <DropdownMenu>
@@ -453,7 +461,6 @@ import { computed, ref, watch, onMounted, onUnmounted } from 'vue'
 import { useWindowScroll } from '@vueuse/core'
 import { Menu, X, ChevronLeft, ChevronRight, ArrowRight, SunIcon, MoonIcon, MailIcon } from '@lucide/vue'
 import { cn } from '@/lib/utils'
-import { defaultLocale } from '~~/i18n-constants'
 import { APP_MANIFEST } from '#shared/constants/manifest'
 
 const config = useConfig()
@@ -474,8 +481,7 @@ function closeSubmenu() {
   activeSubmenu.value = null
 }
 
-const { locale } = useI18n()
-const { i18nEnabled } = useI18nDocs()
+const { enable: i18nEnabled, triggerType, dropdownType } = useConfig().value.header.languageSwitcher
 const { loggedIn } = useUserSession()
 const isMobileMenuOpen = ref(false)
 
@@ -508,7 +514,7 @@ watch(isMobileMenuOpen, (isOpen) => {
 })
 
 function localeSectionLink(sectionId: string): string {
-  return locale.value === defaultLocale ? `/#${sectionId}` : `/${locale.value}/#${sectionId}`
+  return `/#${sectionId}`
 }
 
 function handleHeaderCtaClick() {

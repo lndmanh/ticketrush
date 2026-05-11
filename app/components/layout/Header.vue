@@ -32,7 +32,11 @@
             :style="config.search.style"
             :placeholder="config.search.placeholder"
           />
-          <LangSwitcher v-if="i18nEnabled" />
+          <LangSwitcher
+            v-if="i18nEnabled"
+            :trigger-type="triggerType"
+            :dropdown-type="dropdownType"
+          />
           <ThemePopover v-if="config.theme.customizable" />
           <DropdownMenu>
             <DropdownMenuTrigger as-child>
@@ -72,21 +76,6 @@
         </div>
       </div>
     </div>
-    <div
-      v-if="baseRouteName !== 'index' && config.aside.levelStyle === 'header'"
-      class="md:mt-2 md:px-8"
-      :class="{
-        'md:container md:max-w-screen-2xl': config.main.padded,
-      }"
-    >
-      <LayoutHeaderTopLevelNav />
-    </div>
-    <div
-      v-if="showToc"
-      class="lg:hidden"
-    >
-      <LayoutToc is-small />
-    </div>
   </header>
 </template>
 
@@ -95,13 +84,5 @@ import CtIcon from '@/components/content/CtIcon.vue'
 import { SunIcon, MoonIcon } from '@lucide/vue'
 
 const config = useConfig()
-const { i18nEnabled } = useI18nDocs()
-
-const showToc = computed(() => {
-  return config.value.toc.enable
-    && config.value.toc.enableInMobile
-})
-
-const route = useRoute()
-const baseRouteName = computed(() => useRouteBaseName()(route))
+const { enable: i18nEnabled, triggerType, dropdownType } = useConfig().value.header.languageSwitcher
 </script>

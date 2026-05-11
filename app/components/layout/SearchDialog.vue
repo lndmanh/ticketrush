@@ -171,6 +171,7 @@ const open = computed({
 })
 const { setOpen } = store
 const colorMode = useColorMode()
+const { locale } = useI18n()
 const { placeholderDetailed } = useConfig().value.search
 
 const input = ref('')
@@ -220,6 +221,7 @@ const debouncedSearch = useDebounceFn(async () => {
     const response = await apiRequest(apiRoutes.EVENT_SEARCH, {
       query: {
         query: term,
+        locale: locale.value,
         limit: 10,
       },
     })
@@ -262,14 +264,25 @@ watch(input, (val) => {
 })
 
 function highlightMatches(text: string) {
-  if (!text || !input.value) return text
+  const escapedText = escapeHtml(text)
+  if (!text || !input.value) return escapedText
   const searchTerms = input.value.trim().split(/\s+/).filter(t => t.length > 0)
-  if (searchTerms.length === 0) return text
+  if (searchTerms.length === 0) return escapedText
 
-  const escapedTerms = searchTerms.map(t => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+  const escapedTerms = searchTerms.map(t => escapeHtml(t).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
   const regex = new RegExp(`(${escapedTerms.join('|')})`, 'gi')
 
-  return text.replace(regex, '<mark class="bg-primary/20 text-primary rounded px-0.5">$1</mark>')
+  return escapedText.replace(regex, '<mark class="bg-primary/20 text-primary rounded px-0.5">$1</mark>')
+}
+
+function escapeHtml(text: string) {
+  return text.replace(/[&<>"']/g, (character) => {
+    if (character === '&') return '&amp;'
+    if (character === '<') return '&lt;'
+    if (character === '>') return '&gt;'
+    if (character === '"') return '&quot;'
+    return '&#39;'
+  })
 }
 
 const { primarySections, secondarySections } = useSidebarContext()
