@@ -1,7 +1,20 @@
+import { and, eq, inArray } from 'drizzle-orm'
+import { z } from 'zod'
 import type { AdminDashboardResponse, AdminDashboardChartPoint, AdminDashboardEventRow, AdminDashboardCalendarSession } from '~~/types/admin-dashboard'
 import { success } from '~~/server/utils/apiResponse'
+import { localeSchema } from '#shared/schemas/ticketingSchema'
+import { sourceLocale } from '~~/i18n-constants'
+import { getDisplayDateLocale } from '~~/shared/utils/locales'
+import { localizeEvent, localizeVenue, mapEventTranslationsByEventId, mapVenueTranslationsByVenueId, resolveContentLocale } from '~~/server/utils/i18n/content-localization'
+import { EventStatus, HoldStatus, OrderStatus, QueueStatus, SeatStatus } from '#shared/commonEnums'
 
-export default defineEventHandler(async () => {
+const adminDashboardQuerySchema = z.object({
+  locale: localeSchema.default(sourceLocale).catch(sourceLocale),
+})
+
+export default defineEventHandler(async (event) => {
+  const query = await getValidatedQuery(event, rawQuery => adminDashboardQuerySchema.parse(rawQuery))
+  const contentLocale = resolveContentLocale(query.locale)
   const db = useDB()
   const [events, venues, eventSessions, eventSeats, orders, tickets, seatHolds, queueEntries] = await Promise.all([
     db.select().from(tables.events).all(),
@@ -14,8 +27,34 @@ export default defineEventHandler(async () => {
     db.select().from(tables.queueEntries).all(),
   ])
 
-  const venueById = new Map(venues.map(venue => [venue.id, venue]))
-  const eventById = new Map(events.map(event => [event.id, event]))
+  const eventIds = events.map(eventItem => eventItem.id)
+  const venueIds = venues.map(venue => venue.id)
+  const eventTranslations = contentLocale === sourceLocale || eventIds.length === 0
+    ? []
+    : await db
+        .select()
+        .from(tables.eventTranslations)
+        .where(and(
+          inArray(tables.eventTranslations.eventId, eventIds),
+          eq(tables.eventTranslations.locale, contentLocale),
+        ))
+        .all()
+  const venueTranslations = contentLocale === sourceLocale || venueIds.length === 0
+    ? []
+    : await db
+        .select()
+        .from(tables.venueTranslations)
+        .where(and(
+          inArray(tables.venueTranslations.venueId, venueIds),
+          eq(tables.venueTranslations.locale, contentLocale),
+        ))
+        .all()
+  const eventTranslationByEventId = mapEventTranslationsByEventId(eventTranslations)
+  const venueTranslationByVenueId = mapVenueTranslationsByVenueId(venueTranslations)
+  const localizedEvents = events.map(eventItem => localizeEvent(eventItem, eventTranslationByEventId.get(eventItem.id)))
+  const localizedVenues = venues.map(venue => localizeVenue(venue, venueTranslationByVenueId.get(venue.id)))
+  const venueById = new Map(localizedVenues.map(venue => [venue.id, venue]))
+  const eventById = new Map(localizedEvents.map(eventItem => [eventItem.id, eventItem]))
   const seatsByEventId = new Map<number, typeof eventSeats>()
   const seatsBySessionId = new Map<number, typeof eventSeats>()
   for (const seat of eventSeats) {
@@ -44,7 +83,7 @@ export default defineEventHandler(async () => {
     ticketsByOrderId.set(ticket.orderId, current)
   }
 
-  const confirmedOrders = orders.filter(order => order.status === 'confirmed')
+  const confirmedOrders = orders.filter(order => order.status === OrderStatus.Confirmed)
   const confirmedOrdersByEventId = new Map<number, typeof confirmedOrders>()
   const confirmedOrdersBySessionId = new Map<number, typeof confirmedOrders>()
   for (const order of confirmedOrders) {
@@ -60,16 +99,16 @@ export default defineEventHandler(async () => {
   }
   const now = new Date()
   const totalSeats = eventSeats.length
-  const soldSeatsCount = eventSeats.filter(seat => seat.status === 'sold').length
-  const activeEventsCount = events.filter(event => event.status !== 'draft').length
-  const activeSessionsCount = eventSessions.filter(session => session.status !== 'draft').length
-  const activeHoldsCount = seatHolds.filter(hold => hold.status === 'active').length
-  const queueWaitingCount = queueEntries.filter(entry => entry.status === 'waiting').length
+  const soldSeatsCount = eventSeats.filter(seat => seat.status === SeatStatus.Sold).length
+  const activeEventsCount = events.filter(event => event.status !== EventStatus.Draft).length
+  const activeSessionsCount = eventSessions.filter(session => session.status !== EventStatus.Draft).length
+  const activeHoldsCount = seatHolds.filter(hold => hold.status === HoldStatus.Active).length
+  const queueWaitingCount = queueEntries.filter(entry => entry.status === QueueStatus.Waiting).length
 
   const chartByMonth = new Map<string, { label: string, sortAt: number, revenueCents: number, ticketsSold: number }>()
   for (const order of confirmedOrders) {
     const orderDate = new Date(order.confirmedAt ?? order.createdAt)
-    const monthLabel = orderDate.toLocaleDateString('en-US', { month: 'short' })
+    const monthLabel = orderDate.toLocaleDateString(getDisplayDateLocale(contentLocale), { month: 'short' })
     const monthKey = `${orderDate.getFullYear()}-${String(orderDate.getMonth() + 1).padStart(2, '0')}`
     const current = chartByMonth.get(monthKey) ?? { label: monthLabel, sortAt: orderDate.getTime(), revenueCents: 0, ticketsSold: 0 }
     current.revenueCents += order.amountCents
@@ -99,7 +138,7 @@ export default defineEventHandler(async () => {
       queueWaitingCount,
     },
     chart,
-    events: events.map((event) => {
+    events: localizedEvents.map((event) => {
       const venue = venueById.get(event.venueId)
       const eventSeatsForEvent = seatsByEventId.get(event.id) ?? []
       const eventSessionsForEvent = sessionsByEventId.get(event.id) ?? []
@@ -108,7 +147,7 @@ export default defineEventHandler(async () => {
         .sort((left, right) => new Date(left.startsAt).getTime() - new Date(right.startsAt).getTime())[0]
 
       const totalSeatsForEvent = eventSeatsForEvent.length
-      const soldSeatsForEvent = eventSeatsForEvent.filter(seat => seat.status === 'sold').length
+      const soldSeatsForEvent = eventSeatsForEvent.filter(seat => seat.status === SeatStatus.Sold).length
       const eventOrders = confirmedOrdersByEventId.get(event.id) ?? []
       const revenueCents = eventOrders.reduce((total, order) => total + order.amountCents, 0)
 
@@ -134,7 +173,7 @@ export default defineEventHandler(async () => {
       const sessionSeats = seatsBySessionId.get(session.id) ?? []
       const sessionOrders = confirmedOrdersBySessionId.get(session.id) ?? []
       const totalSeatsForSession = sessionSeats.length
-      const soldSeatsForSession = sessionSeats.filter(seat => seat.status === 'sold').length
+      const soldSeatsForSession = sessionSeats.filter(seat => seat.status === SeatStatus.Sold).length
       const revenueCents = sessionOrders.reduce((total, order) => total + order.amountCents, 0)
       const statusLabel = getSessionStatusLabel(session, now)
 
@@ -171,7 +210,7 @@ function getSessionStatusLabel(session: typeof tables.eventSessions.$inferSelect
   const salesStartTime = new Date(session.salesStartAt).getTime()
   const salesEndTime = new Date(session.salesEndAt).getTime()
 
-  if (session.status === 'draft') {
+  if (session.status === EventStatus.Draft) {
     return 'Draft'
   }
 
@@ -179,7 +218,7 @@ function getSessionStatusLabel(session: typeof tables.eventSessions.$inferSelect
     return 'Ended'
   }
 
-  if (endsAtTime === null && nowTime > startsAtTime && session.status !== 'published' && session.status !== 'on_sale') {
+  if (endsAtTime === null && nowTime > startsAtTime && session.status !== EventStatus.Published && session.status !== EventStatus.OnSale) {
     return 'Ended'
   }
 
