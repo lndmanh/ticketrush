@@ -243,6 +243,8 @@ definePageMeta({
     class-name="relative gap-8 overflow-hidden md:gap-10 max-w-[90rem] px-4 mt-16 pb-3 sm:px-6 lg:px-10"
   >
     <div class="relative space-y-5 py-3">
+      <TicketCheckoutRecoveryBanner />
+
       <form
         class="space-y-3"
         @submit.prevent="applySearch"

@@ -1,4 +1,4 @@
-import { and, eq } from 'drizzle-orm'
+import { and, desc, eq, gt } from 'drizzle-orm'
 import type { CheckoutTicketHolderInput } from '#shared/schemas/ticketingSchema'
 import type { SavedAttendeeGender } from '#shared/schemas/savedAttendeeSchema'
 import { createPublicOrderId, createPublicTicketId, createQrToken } from '~~/server/utils/ticketing/ids'
@@ -255,6 +255,93 @@ class CheckoutService {
             .where(eq(tables.eventSessions.id, order.eventSessionId))
             .get()
         : null,
+    }
+  }
+
+  async getActiveCheckoutForUser(userId: number) {
+    const now = new Date()
+    const pendingOrders = await this.db
+      .select()
+      .from(tables.orders)
+      .where(and(
+        eq(tables.orders.userId, userId),
+        eq(tables.orders.status, 'pending'),
+      ))
+      .orderBy(desc(tables.orders.updatedAt))
+      .all()
+
+    for (const order of pendingOrders) {
+      if (!order.holdId) {
+        continue
+      }
+
+      const hold = await this.db
+        .select()
+        .from(tables.seatHolds)
+        .where(and(
+          eq(tables.seatHolds.id, order.holdId),
+          eq(tables.seatHolds.status, 'active'),
+          gt(tables.seatHolds.expiresAt, now),
+        ))
+        .get()
+
+      if (!hold) {
+        continue
+      }
+
+      return this.getCheckoutByPublicId(order.publicId)
+    }
+
+    return null
+  }
+
+  async cancelPendingCheckout(orderPublicId: string, userId: number, sessionKey: string, realtimeNamespace?: SeatmapRealtimeNamespace) {
+    const checkout = await this.getCheckoutByPublicId(orderPublicId)
+    const now = new Date()
+
+    if (!checkout || checkout.order.userId !== userId) {
+      throw createError({ statusCode: 404, statusMessage: 'Checkout not found.' })
+    }
+
+    if (checkout.order.status !== 'pending') {
+      throw createError({ statusCode: 409, statusMessage: 'Only pending checkouts can be cancelled.' })
+    }
+
+    if (!checkout.hold) {
+      throw createError({ statusCode: 409, statusMessage: 'Checkout hold could not be found.' })
+    }
+
+    if (checkout.hold.sessionKey !== sessionKey) {
+      throw createError({ statusCode: 404, statusMessage: 'Checkout not found.' })
+    }
+
+    if (checkout.hold.status !== 'active' || checkout.hold.expiresAt.getTime() <= now.getTime()) {
+      throw createError({ statusCode: 409, statusMessage: 'Checkout hold is no longer active.' })
+    }
+
+    const cancelledOrder = await this.db
+      .update(tables.orders)
+      .set({
+        status: 'cancelled',
+        cancelledAt: now,
+        updatedAt: now,
+      })
+      .where(and(
+        eq(tables.orders.id, checkout.order.id),
+        eq(tables.orders.status, 'pending'),
+      ))
+      .returning()
+      .get()
+
+    if (!cancelledOrder) {
+      throw createError({ statusCode: 409, statusMessage: 'Checkout is no longer pending.' })
+    }
+
+    const releasedHold = await holdService.releaseHold(checkout.hold.publicId, sessionKey, realtimeNamespace)
+
+    return {
+      order: cancelledOrder,
+      hold: releasedHold,
     }
   }
 
