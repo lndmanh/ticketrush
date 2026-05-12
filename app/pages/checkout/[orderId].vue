@@ -336,11 +336,11 @@ async function cancelCheckout() {
       throw response
     }
 
-    toast.success('Checkout cancelled.')
+    toast.success(t('checkout.cancelled_toast'))
     await navigateTo(checkout.value.event?.slug ? `/events/${checkout.value.event.slug}` : '/events')
   }
   catch (error) {
-    toast.error(parseApiError(error, 'Failed to cancel checkout. Please try again.').message)
+    toast.error(parseApiError(error, t('checkout.cancel_error')).message)
     isCancelling.value = false
   }
 }
@@ -773,7 +773,7 @@ definePageMeta({
               {{ $t('checkout.tickets_in_wallet') }}
             </h2>
             <p class="mt-2 max-w-xl text-sm leading-6 text-white/60">
-              Quét QR code tại cổng vào. Thông tin bên dưới đã được đồng bộ với đơn hàng của bạn.
+              {{ $t('checkout.qr_ready_checkout_desc') }}
             </p>
           </div>
 
@@ -796,10 +796,10 @@ definePageMeta({
               <div class="space-y-4">
                 <div class="rounded-[1.5rem] border border-white/10 bg-white/[0.04] p-5 shadow-xl shadow-black/20">
                   <p class="text-sm font-semibold text-white">
-                    Quét QR code tại cổng vào
+                    {{ $t('checkout.qr_gate_title') }}
                   </p>
                   <p class="mt-2 text-sm leading-7 text-white/60">
-                    Mở màn hình này khi đến cổng. Nhân viên sẽ đối chiếu QR, email và thông tin vé trước khi cho vào khu vực sự kiện.
+                    {{ $t('checkout.qr_gate_desc') }}
                   </p>
                 </div>
 
@@ -847,7 +847,7 @@ definePageMeta({
               </div>
               <div>
                 <p class="text-xs font-semibold uppercase tracking-[0.22em] text-violet-300">
-                  Summary
+                  {{ $t('checkout.summary_label') }}
                 </p>
                 <CardTitle class="mt-1 text-2xl tracking-[-0.04em] text-white">
                   {{ $t('checkout.order_total') }}
@@ -1033,20 +1033,20 @@ definePageMeta({
               </AlertDialogTrigger>
               <AlertDialogContent>
                 <AlertDialogHeader>
-                  <AlertDialogTitle>Cancel checkout?</AlertDialogTitle>
+                  <AlertDialogTitle>{{ $t('checkout.cancel_checkout_title') }}</AlertDialogTitle>
                   <AlertDialogDescription>
-                    This will release your held tickets and return you to the event page.
+                    {{ $t('checkout.cancel_checkout_desc') }}
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                   <AlertDialogCancel :disabled="isCancelling">
-                    Keep checkout
+                    {{ $t('checkout.keep_checkout') }}
                   </AlertDialogCancel>
                   <AlertDialogAction
                     :disabled="isCancelling"
                     @click="cancelCheckout"
                   >
-                    Confirm cancel
+                    {{ $t('checkout.confirm_cancel') }}
                   </AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>
