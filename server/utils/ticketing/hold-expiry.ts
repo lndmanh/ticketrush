@@ -10,7 +10,7 @@ export interface HoldExpiryCandidate {
   publicId: string
   eventSessionId: number | null
   sessionKey: string
-  status: string
+  status: HoldStatus
   expiresAt: Date
 }
 
