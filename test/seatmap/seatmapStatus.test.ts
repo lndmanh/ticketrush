@@ -7,11 +7,11 @@ describe('seatmap status colors', () => {
     expect(getSeatMapStatusColor(SeatStatus.Available, true)).toEqual(seatMapStatusPalette.selected)
   })
 
-  it('uses held color for locked seats', () => {
-    expect(getSeatMapStatusColor(SeatStatus.Locked, false).label).toBe('Held')
+  it('uses held label key for locked seats', () => {
+    expect(getSeatMapStatusColor(SeatStatus.Locked, false).labelKey).toBe('seatmap.status_locked')
   })
 
-  it('uses sold color for sold seats', () => {
-    expect(getSeatMapStatusColor(SeatStatus.Sold, false).label).toBe('Sold')
+  it('uses sold label key for sold seats', () => {
+    expect(getSeatMapStatusColor(SeatStatus.Sold, false).labelKey).toBe('seatmap.status_sold')
   })
 })

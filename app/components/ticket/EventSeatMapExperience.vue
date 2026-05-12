@@ -33,6 +33,8 @@ const emit = defineEmits<{
   seatClick: [payload: SeatMapSeatClickPayload]
 }>()
 
+const { t } = useI18n()
+
 const selectedSection = ref('all')
 const zoomLevel = ref(100)
 const keyboardSeatIndex = ref(0)
@@ -113,7 +115,7 @@ function inspectKeyboardSeat() {
 }
 
 function getKeyboardSeatLabel(seat: SeatMapRenderSeat) {
-  return `${seat.sectionName} · Row ${seat.rowLabel} · Seat ${seat.label} · ${seat.color.label}`
+  return `${seat.sectionName} · Row ${seat.rowLabel} · Seat ${seat.label} · ${t(seat.color.labelKey)}`
 }
 
 function handleSeatClick(renderSeat: SeatMapRenderSeat) {
@@ -261,7 +263,7 @@ function handleSeatClick(renderSeat: SeatMapRenderSeat) {
       <div class="pointer-events-none absolute inset-x-0 bottom-0 flex flex-wrap gap-2 p-3 md:p-4">
         <Badge
           v-for="item in legendItems"
-          :key="item.label"
+          :key="item.labelKey"
           variant="outline"
           class="gap-2 bg-background/90 backdrop-blur"
         >
@@ -269,7 +271,7 @@ function handleSeatClick(renderSeat: SeatMapRenderSeat) {
             class="size-2.5 rounded-full"
             :style="{ backgroundColor: item.fill }"
           />
-          {{ item.label }}
+          {{ $t(item.labelKey) }}
         </Badge>
       </div>
     </template>

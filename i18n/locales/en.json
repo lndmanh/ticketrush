@@ -523,6 +523,7 @@
     "status_locked": "Temporarily held",
     "status_sold": "Already sold",
     "status_unavailable": "Not currently offered",
+    "status_selected": "Selected",
     "desc_available_interactive": "This seat can be added to the current checkout selection.",
     "desc_available": "This seat can still be secured once you enter live selection.",
     "desc_locked": "Another buyer is holding this seat during an active checkout window.",

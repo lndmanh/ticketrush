@@ -2,7 +2,7 @@ import type { SeatMapStatus } from '~~/types/seatmap'
 import { SeatStatus } from '#shared/commonEnums'
 
 export interface SeatMapStatusColor {
-  label: string
+  labelKey: string
   fill: string
   stroke: string
   text: string
@@ -17,35 +17,35 @@ function hexToNumber(hex: string) {
 
 export const seatMapStatusPalette: Record<SeatMapStatusColorKey, SeatMapStatusColor> = {
   [SeatStatus.Available]: {
-    label: 'Available',
+    labelKey: 'seatmap.status_available',
     fill: '#22C55E',
     stroke: '#15803D',
     text: '#052E16',
     hexNumber: hexToNumber('#22C55E'),
   },
   [SeatStatus.Locked]: {
-    label: 'Held',
+    labelKey: 'seatmap.status_locked',
     fill: '#F59E0B',
     stroke: '#B45309',
     text: '#451A03',
     hexNumber: hexToNumber('#F59E0B'),
   },
   [SeatStatus.Sold]: {
-    label: 'Sold',
+    labelKey: 'seatmap.status_sold',
     fill: '#475569',
     stroke: '#1E293B',
     text: '#F8FAFC',
     hexNumber: hexToNumber('#475569'),
   },
   [SeatStatus.Unavailable]: {
-    label: 'Unavailable',
+    labelKey: 'seatmap.status_unavailable',
     fill: '#CBD5E1',
     stroke: '#94A3B8',
     text: '#334155',
     hexNumber: hexToNumber('#CBD5E1'),
   },
   selected: {
-    label: 'Selected',
+    labelKey: 'seatmap.status_selected',
     fill: '#0F172A',
     stroke: '#020617',
     text: '#F8FAFC',
