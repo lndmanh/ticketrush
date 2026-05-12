@@ -5,6 +5,7 @@ import queueService from '~~/server/utils/ticketing/queue'
 import eventSessionService from '~~/server/utils/database/event-session'
 import { broadcastSeatStatusDelta, createSeatStatusChanges } from '~~/server/utils/ticketing/seatmap-realtime'
 import type { SeatmapRealtimeNamespace } from '~~/server/utils/ticketing/seatmap-realtime'
+import { isExpiredActiveHold } from '~~/server/utils/ticketing/hold-expiry'
 import { EventStatus, HoldStatus, SeatPricingSource, SeatStatus } from '#shared/commonEnums'
 
 const HOLD_DURATION_MS = 10 * 60 * 1000
@@ -103,6 +104,53 @@ class HoldService {
       })
       .where(eq(tables.eventSeats.holdId, holdId))
     await this.db.delete(tables.seatHolds).where(eq(tables.seatHolds.id, holdId))
+  }
+
+  private async expireHold(hold: typeof tables.seatHolds.$inferSelect, now: Date, realtimeNamespace?: SeatmapRealtimeNamespace) {
+    const expiredHold = await this.db
+      .update(tables.seatHolds)
+      .set({
+        status: HoldStatus.Expired,
+        releasedAt: now,
+        updatedAt: now,
+      })
+      .where(and(
+        eq(tables.seatHolds.id, hold.id),
+        eq(tables.seatHolds.status, HoldStatus.Active),
+        eq(tables.seatHolds.expiresAt, hold.expiresAt),
+      ))
+      .returning()
+      .get()
+
+    if (!expiredHold) {
+      return null
+    }
+
+    const releasedSeats = await this.db
+      .update(tables.eventSeats)
+      .set({
+        status: SeatStatus.Available,
+        holdId: null,
+        lockedAt: null,
+        updatedAt: now,
+      })
+      .where(and(
+        eq(tables.eventSeats.holdId, hold.id),
+        eq(tables.eventSeats.status, SeatStatus.Locked),
+      ))
+      .returning({ id: tables.eventSeats.id })
+
+    if (hold.eventSessionId && releasedSeats.length > 0) {
+      const session = await eventSessionService.getById(hold.eventSessionId)
+      if (session) {
+        await broadcastSeatStatusDelta(realtimeNamespace, {
+          eventSessionId: session.id,
+          sessionPublicId: session.publicId,
+        }, createSeatStatusChanges(releasedSeats.map(seat => seat.id), SeatStatus.Available))
+      }
+    }
+
+    return expiredHold
   }
 
   async createHold(input: CreateSeatHoldInput & { sessionKey: string }, userId?: number, realtimeNamespace?: SeatmapRealtimeNamespace) {
@@ -370,78 +418,53 @@ class HoldService {
       .from(tables.seatHolds)
       .all()
 
-    const expiredHolds = holds.filter(hold => hold.status === HoldStatus.Active && hold.expiresAt.getTime() <= now.getTime())
-    const sessionIds = Array.from(new Set(expiredHolds.map(hold => hold.eventSessionId).filter((eventSessionId): eventSessionId is number => eventSessionId !== null)))
-    const sessionsById = new Map<number, { id: number, publicId: string }>()
-
-    for (const eventSessionId of sessionIds) {
-      const session = await eventSessionService.getById(eventSessionId)
-      if (session) {
-        sessionsById.set(session.id, {
-          id: session.id,
-          publicId: session.publicId,
-        })
-      }
-    }
-
-    const releasedSeatIdsBySessionPublicId = new Map<string, { seatIds: number[], sessionId: number }>()
-
+    const expiredHolds = holds.filter(hold => isExpiredActiveHold(hold, now))
     for (const hold of expiredHolds) {
-      const releasedHold = await this.db
-        .update(tables.seatHolds)
-        .set({
-          status: HoldStatus.Expired,
-          releasedAt: now,
-          updatedAt: now,
-        })
-        .where(and(
-          eq(tables.seatHolds.id, hold.id),
-          eq(tables.seatHolds.status, HoldStatus.Active),
-          eq(tables.seatHolds.expiresAt, hold.expiresAt),
-        ))
-        .returning()
-        .get()
-
-      if (!releasedHold) {
+      const expiredHold = await this.expireHold(hold, now, realtimeNamespace)
+      if (!expiredHold) {
         continue
       }
-
-      const releasedSeats = await this.db
-        .update(tables.eventSeats)
-        .set({
-          status: SeatStatus.Available,
-          holdId: null,
-          lockedAt: null,
-          updatedAt: now,
-        })
-        .where(and(
-          eq(tables.eventSeats.holdId, hold.id),
-          eq(tables.eventSeats.status, SeatStatus.Locked),
-        ))
-        .returning({ id: tables.eventSeats.id })
-
-      if (hold.eventSessionId && releasedSeats.length > 0) {
-        const session = sessionsById.get(hold.eventSessionId)
-        if (session) {
-          const existing = releasedSeatIdsBySessionPublicId.get(session.publicId)
-          const nextSeatIds = existing ? existing.seatIds : []
-          nextSeatIds.push(...releasedSeats.map(seat => seat.id))
-          releasedSeatIdsBySessionPublicId.set(session.publicId, {
-            seatIds: nextSeatIds,
-            sessionId: session.id,
-          })
-        }
-      }
-    }
-
-    for (const [sessionPublicId, value] of releasedSeatIdsBySessionPublicId.entries()) {
-      await broadcastSeatStatusDelta(realtimeNamespace, {
-        eventSessionId: value.sessionId,
-        sessionPublicId,
-      }, createSeatStatusChanges(value.seatIds, SeatStatus.Available))
     }
 
     return expiredHolds.length
+  }
+
+  async expireStaleHoldsForSession(eventSessionId: number, realtimeNamespace?: SeatmapRealtimeNamespace) {
+    const now = new Date()
+    const holds = await this.db
+      .select()
+      .from(tables.seatHolds)
+      .where(eq(tables.seatHolds.eventSessionId, eventSessionId))
+      .all()
+
+    let expiredCount = 0
+    for (const hold of holds) {
+      if (!isExpiredActiveHold(hold, now, { eventSessionId })) {
+        continue
+      }
+
+      const expiredHold = await this.expireHold(hold, now, realtimeNamespace)
+      if (expiredHold) {
+        expiredCount += 1
+      }
+    }
+
+    return expiredCount
+  }
+
+  async expireStaleHoldByPublicId(holdPublicId: string, sessionKey: string, realtimeNamespace?: SeatmapRealtimeNamespace) {
+    const now = new Date()
+    const hold = await this.db
+      .select()
+      .from(tables.seatHolds)
+      .where(eq(tables.seatHolds.publicId, holdPublicId))
+      .get()
+
+    if (!hold || !isExpiredActiveHold(hold, now, { holdPublicId, sessionKey })) {
+      return null
+    }
+
+    return this.expireHold(hold, now, realtimeNamespace)
   }
 }
 

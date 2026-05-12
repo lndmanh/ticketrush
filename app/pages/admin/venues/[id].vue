@@ -6,9 +6,11 @@ import { createVenueSchema } from '#shared/schemas/ticketingSchema'
 import type { Event } from '#shared/db'
 import type { VenueSectionDraftInput } from '#shared/schemas/ticketingSchema'
 import type { ApiResponse } from '~~/types/api'
+import type { SeatMapSeatClickPayload } from '~~/types/seatmap'
 import type { VenueDetail } from '~~/types/venues'
-import { ArrowLeft, Building2, CalendarRange, LayoutGrid, LayoutDashboardIcon, Rows3, Save, Users } from '@lucide/vue'
+import { ArrowLeft, Building2, CalendarRange, LayoutGrid, Rows3, Save, Users, X } from '@lucide/vue'
 import AdminVenuesVenueSeatLayoutEditor from '@/components/admin/venues/VenueSeatLayoutEditor.vue'
+import { createVenueSeatMapPreviewSeats } from '@/lib/venueSeatMapPreview'
 import { apiRequest } from '@/utils/apiRequest'
 import { parseApiError } from '@/utils/apiError'
 import { getDisplayDateLocale } from '@/lib/localizedEvents'
@@ -26,29 +28,6 @@ const { locale } = useI18n()
 
 function formatDateTime(value: string | Date) {
   return new Date(value).toLocaleString(getDisplayDateLocale(locale.value))
-}
-
-interface VisualizationSeat {
-  label: string
-  x: number
-  sortOrder: number
-  isAccessible: boolean
-}
-
-interface VisualizationRow {
-  label: string
-  seats: VisualizationSeat[]
-  columnCount: number
-}
-
-interface VisualizationSection {
-  code: string
-  name: string
-  color: string
-  rowCount: number
-  capacity: number
-  accessibleSeats: number
-  rows: VisualizationRow[]
 }
 
 type ConfigTab = 'details' | 'layout' | 'events'
@@ -92,10 +71,11 @@ const { handleSubmit, resetForm, values } = useForm<VenueIdentityInput>({
 })
 
 const sectionLayouts = ref<VenueSectionDraftInput[]>([])
+const inspectedVenueSeat = ref<SeatMapSeatClickPayload | null>(null)
+const venuePreviewSeats = computed(() => createVenueSeatMapPreviewSeats(sectionLayouts.value))
 const savedVenueSnapshot = ref('')
 const isSaving = ref(false)
 const activeConfigTab = ref<ConfigTab>('details')
-const selectedVisualizationSection = ref<'all' | string>('all')
 const workspaceRef = ref<HTMLElement | null>(null)
 const viewportWidth = ref(0)
 const desktopVisualizationSize = ref(58)
@@ -234,6 +214,7 @@ watch(venueDetail, (value) => {
 
   resetForm({ values: identityValues })
   sectionLayouts.value = layoutValues
+  inspectedVenueSeat.value = null
   savedVenueSnapshot.value = createVenueSnapshot(identityValues, layoutValues)
 }, { immediate: true })
 
@@ -259,7 +240,6 @@ const largestSection = computed(() => [...sectionSummaries.value].sort((left, ri
 
 const totalRows = computed(() => sectionSummaries.value.reduce((total, section) => total + section.rowCount, 0))
 const totalCapacity = computed(() => sectionSummaries.value.reduce((total, section) => total + section.capacity, 0))
-const totalAccessibleSeats = computed(() => sectionSummaries.value.reduce((total, section) => total + section.accessibleSeats, 0))
 const totalSections = computed(() => sectionLayouts.value.length)
 const isDesktopViewport = computed(() => viewportWidth.value >= 1024)
 
@@ -275,70 +255,6 @@ const currentVenueSnapshot = computed(() => createVenueSnapshot({
 
 const isChanged = computed(() => savedVenueSnapshot.value !== '' && currentVenueSnapshot.value !== savedVenueSnapshot.value)
 
-const visualizationSections = computed<VisualizationSection[]>(() => {
-  return sectionLayouts.value.map((section) => {
-    const rows = [...section.rows]
-      .sort((left, right) => left.sortOrder - right.sortOrder)
-      .map((row) => {
-        const seats = [...row.seats]
-          .sort((left, right) => {
-            if (left.x !== right.x) {
-              return left.x - right.x
-            }
-
-            return left.sortOrder - right.sortOrder
-          })
-          .map(seat => ({
-            label: seat.label,
-            x: seat.x,
-            sortOrder: seat.sortOrder,
-            isAccessible: seat.isAccessible,
-          }))
-
-        return {
-          label: row.label,
-          seats,
-          columnCount: Math.max(...seats.map(seat => seat.x + 1), seats.length, 1),
-        }
-      })
-
-    return {
-      code: section.code,
-      name: section.name,
-      color: section.color,
-      rowCount: rows.length,
-      capacity: rows.reduce((total, row) => total + row.seats.length, 0),
-      accessibleSeats: rows.flatMap(row => row.seats).filter(seat => seat.isAccessible).length,
-      rows,
-    }
-  })
-})
-
-const visibleVisualizationSections = computed(() => {
-  if (selectedVisualizationSection.value === 'all') {
-    return visualizationSections.value
-  }
-
-  return visualizationSections.value.filter(section => section.code === selectedVisualizationSection.value)
-})
-
-const visualizationFilterOptions = computed(() => {
-  return sectionSummaries.value.map(section => ({
-    value: section.code,
-    label: section.name,
-    color: section.color,
-    capacity: section.capacity,
-  }))
-})
-
-const highlightedSection = computed(() => {
-  if (selectedVisualizationSection.value === 'all') {
-    return visualizationFilterOptions.value[0] ?? null
-  }
-
-  return visualizationFilterOptions.value.find(section => section.value === selectedVisualizationSection.value) ?? null
-})
-
 const workspaceStyle = computed(() => {
   if (isDesktopViewport.value) {
     return {
@@ -348,19 +264,6 @@ const workspaceStyle = computed(() => {
 
   return {
     gridTemplateRows: `minmax(0, ${mobileVisualizationSize.value}%) 0.875rem minmax(0, ${100 - mobileVisualizationSize.value}%)`,
-  }
-})
-
-const stageStyle = computed(() => {
-  const rgb = colorToRgb(highlightedSection.value?.color ?? sectionLayouts.value[0]?.color ?? '#6366F1')
-  if (!rgb) {
-    return {}
-  }
-
-  return {
-    backgroundImage: `linear-gradient(180deg, rgba(${rgb}, 0.28), rgba(${rgb}, 0.08) 58%, rgba(255,255,255,0) 100%)`,
-    borderColor: `rgba(${rgb}, 0.32)`,
-    boxShadow: `0 24px 60px -42px rgba(${rgb}, 0.55)`,
   }
 })
 
@@ -417,66 +320,6 @@ function stopResizing() {
   resizingAxis.value = null
 }
 
-function colorToRgb(color: string) {
-  const normalized = color.trim().replace('#', '')
-
-  if (normalized.length === 3) {
-    const [red, green, blue] = normalized.split('')
-    const expanded = `${red}${red}${green}${green}${blue}${blue}`
-    const parsed = Number.parseInt(expanded, 16)
-    if (Number.isNaN(parsed)) {
-      return null
-    }
-
-    return `${(parsed >> 16) & 255}, ${(parsed >> 8) & 255}, ${parsed & 255}`
-  }
-
-  if (normalized.length !== 6) {
-    return null
-  }
-
-  const parsed = Number.parseInt(normalized, 16)
-  if (Number.isNaN(parsed)) {
-    return null
-  }
-
-  return `${(parsed >> 16) & 255}, ${(parsed >> 8) & 255}, ${parsed & 255}`
-}
-
-function getSectionPanelStyle(color: string) {
-  const rgb = colorToRgb(color)
-  if (!rgb) {
-    return {}
-  }
-
-  return {
-    borderColor: `rgba(${rgb}, 0.22)`,
-    backgroundImage: `linear-gradient(180deg, rgba(${rgb}, 0.18), rgba(${rgb}, 0.06) 52%, rgba(255,255,255,0) 100%)`,
-    boxShadow: `0 24px 60px -48px rgba(${rgb}, 0.48)`,
-  }
-}
-
-function getMiniSeatStyle(color: string, seat: VisualizationSeat) {
-  const rgb = colorToRgb(color)
-  if (!rgb) {
-    return {
-      gridColumn: `${seat.x + 1}`,
-    }
-  }
-
-  return {
-    gridColumn: `${seat.x + 1}`,
-    backgroundColor: seat.isAccessible ? `rgba(${rgb}, 0.18)` : `rgba(${rgb}, 0.92)`,
-    borderColor: seat.isAccessible ? `rgba(${rgb}, 0.75)` : `rgba(${rgb}, 0.36)`,
-  }
-}
-
-function getMiniRowStyle(row: VisualizationRow) {
-  return {
-    gridTemplateColumns: `repeat(${row.columnCount}, minmax(0, 0.95rem))`,
-  }
-}
-
 function applyBlueprintPreset(preset: VenueBlueprintPreset) {
   sectionLayouts.value = preset.sections.map((section, sectionIndex) => ({
     ...section,
@@ -490,7 +333,7 @@ function applyBlueprintPreset(preset: VenueBlueprintPreset) {
       })),
     })),
   }))
-  selectedVisualizationSection.value = 'all'
+  inspectedVenueSeat.value = null
   activeConfigTab.value = 'layout'
 }
 
@@ -628,146 +471,14 @@ definePageMeta({
       :style="workspaceStyle"
       :class="resizingAxis ? 'select-none' : ''"
     >
-      <Card class="h-full min-h-0 overflow-hidden py-0">
-        <div class="border-b px-4 py-3">
-          <div class="overflow-x-auto pb-2">
-            <div class="flex w-max min-w-full flex-nowrap gap-2">
-              <Button
-                type="button"
-                size="sm"
-                :variant="selectedVisualizationSection === 'all' ? 'default' : 'outline'"
-                @click="selectedVisualizationSection = 'all'"
-              >
-                <LayoutDashboardIcon class="size-4" />
-                {{ $t('admin_venue_detail.all') }}
-              </Button>
-              <Button
-                v-for="section in visualizationFilterOptions"
-                :key="section.value"
-                type="button"
-                size="sm"
-                :variant="selectedVisualizationSection === section.value ? 'default' : 'outline'"
-                @click="selectedVisualizationSection = section.value"
-              >
-                {{ section.label }}
-              </Button>
-            </div>
-          </div>
-        </div>
-
-        <CardContent class="min-h-0 flex-1 overflow-y-auto">
-          <div class="space-y-4">
-            <Card
-              class="gap-3 border-dashed py-4"
-              :style="stageStyle"
-            >
-              <CardContent class="px-4 text-center">
-                <p class="text-sm font-medium">
-                  {{ $t('admin_venue_detail.stage') }}
-                </p>
-                <p class="text-xs text-muted-foreground">
-                  {{ $t('admin_venue_detail.front_of_house') }}
-                </p>
-              </CardContent>
-            </Card>
-
-            <div class="grid gap-3 md:grid-cols-3">
-              <Card class="gap-2 py-3">
-                <CardContent class="px-4">
-                  <p class="text-xs text-muted-foreground">
-                    {{ $t('admin_venue_detail.focus_label') }}
-                  </p>
-                  <p class="text-sm font-medium">
-                    {{ highlightedSection?.label ?? $t('common.all_sections') }}
-                  </p>
-                </CardContent>
-              </Card>
-              <Card class="gap-2 py-3">
-                <CardContent class="px-4">
-                  <p class="text-xs text-muted-foreground">
-                    {{ $t('admin_venue_detail.largest_label') }}
-                  </p>
-                  <p class="text-sm font-medium">
-                    {{ largestSection?.name ?? $t('common.not_set') }}
-                  </p>
-                </CardContent>
-              </Card>
-              <Card class="gap-2 py-3">
-                <CardContent class="px-4">
-                  <p class="text-xs text-muted-foreground">
-                    {{ $t('admin_venue_detail.accessible_label') }}
-                  </p>
-                  <p class="text-sm font-medium">
-                    {{ totalAccessibleSeats }}
-                  </p>
-                </CardContent>
-              </Card>
-            </div>
-
-            <div class="grid gap-4 xl:grid-cols-2">
-              <Card
-                v-for="section in visibleVisualizationSections"
-                :key="section.code"
-                class="gap-4 py-4"
-                :style="getSectionPanelStyle(section.color)"
-              >
-                <CardContent class="space-y-4 px-4">
-                  <div class="flex items-start justify-between gap-3">
-                    <div class="flex items-start gap-3">
-                      <span
-                        class="mt-2 h-2.5 w-2.5 rounded-full"
-                        :style="{ backgroundColor: section.color }"
-                      />
-                      <div>
-                        <p class="text-xs text-muted-foreground">
-                          {{ section.code }}
-                        </p>
-                        <p class="text-sm font-medium">
-                          {{ section.name }}
-                        </p>
-                        <p class="text-xs text-muted-foreground">
-                          {{ $t('admin_venue_detail.capacity_seats', { count: section.capacity }) }} · {{ section.rowCount }} {{ $t('admin_venue_detail.rows_stat') }}
-                        </p>
-                      </div>
-                    </div>
-                    <p class="text-xs text-muted-foreground">
-                      {{ $t('admin_venue_detail.accessible_count', { count: section.accessibleSeats }) }}
-                    </p>
-                  </div>
-
-                  <Separator />
-
-                  <div class="space-y-3">
-                    <div
-                      v-for="row in section.rows"
-                      :key="`${section.code}-${row.label}`"
-                      class="grid grid-cols-[2rem_minmax(0,1fr)] items-start gap-3"
-                    >
-                      <div class="flex h-8 items-center justify-center rounded-md border bg-muted/40 text-xs font-medium">
-                        {{ row.label }}
-                      </div>
-                      <div class="overflow-x-auto pb-1">
-                        <div
-                          class="grid min-w-max gap-1.5"
-                          :style="getMiniRowStyle(row)"
-                        >
-                          <div
-                            v-for="seat in row.seats"
-                            :key="`${section.code}-${row.label}-${seat.label}-${seat.sortOrder}`"
-                            class="h-[0.95rem] w-[0.95rem] rounded-[4px] border"
-                            :style="getMiniSeatStyle(section.color, seat)"
-                            :title="`${section.name} · Row ${row.label} · Seat ${seat.label}${seat.isAccessible ? ' · Accessible' : ''}`"
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      <div class="h-full min-h-0 overflow-hidden border bg-background [&>section]:h-full [&>section]:min-h-0">
+        <TicketEventSeatMapExperience
+          :seats="venuePreviewSeats"
+          :action-label="null"
+          mode="admin"
+          @seat-click="inspectedVenueSeat = $event"
+        />
+      </div>
 
       <div
         role="separator"
@@ -819,6 +530,28 @@ definePageMeta({
           </CardHeader>
 
           <CardContent class="min-h-0 flex-1 overflow-y-auto py-4">
+            <Alert
+              v-if="inspectedVenueSeat"
+              class="relative mb-4 pr-12"
+            >
+              <AlertTitle>
+                {{ inspectedVenueSeat.section.name }} · Row {{ inspectedVenueSeat.row.label }} · Seat {{ inspectedVenueSeat.seat.seatLabelSnapshot }}
+              </AlertTitle>
+              <AlertDescription>
+                X {{ inspectedVenueSeat.seat.displayX ?? 0 }} · Y {{ inspectedVenueSeat.seat.displayY ?? 0 }}
+              </AlertDescription>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                class="absolute right-2 top-2"
+                aria-label="Dismiss inspected seat"
+                @click="inspectedVenueSeat = null"
+              >
+                <X />
+              </Button>
+            </Alert>
+
             <div
               v-if="activeConfigTab === 'details'"
               class="space-y-4"

@@ -85,9 +85,9 @@ export function buildSeatMapLayout(
 
   for (const seat of seats) {
     const sectionName = seat.sectionNameSnapshot || options.fallbackSectionName
-    const key = typeof seat.venueSectionId === 'number'
+    const key = seat.sectionKeySnapshot || (typeof seat.venueSectionId === 'number'
       ? `section-${seat.venueSectionId}`
-      : `name-${sectionName}`
+      : `name-${sectionName}`)
     const currentSection = sectionMap.get(key) ?? { name: sectionName, seats: [] }
     currentSection.seats.push(seat)
     sectionMap.set(key, currentSection)
@@ -113,15 +113,49 @@ export function buildSeatMapLayout(
 
           return left.seatLabelSnapshot.localeCompare(right.seatLabelSnapshot, undefined, { numeric: true })
         })
-        const normalizedSeats = sortedSeats.map((seat, seatIndex) => ({
-          ...seat,
-          displayX: seatIndex,
+        const usedDisplayColumns = new Set(sortedSeats.flatMap(seat => {
+          return typeof seat.displayX === 'number' ? [seat.displayX] : []
         }))
+        let nextDisplayColumn = 0
+        const seatsWithDisplayColumns = sortedSeats.map(seat => {
+          if (typeof seat.displayX === 'number') {
+            return {
+              ...seat,
+              displayX: seat.displayX,
+            }
+          }
+
+          while (usedDisplayColumns.has(nextDisplayColumn)) {
+            nextDisplayColumn += 1
+          }
+
+          const displayX = nextDisplayColumn
+          usedDisplayColumns.add(displayX)
+          nextDisplayColumn += 1
+
+          return {
+            ...seat,
+            displayX,
+          }
+        })
+        const normalizedSeats = [...seatsWithDisplayColumns].sort((left, right) => {
+          if (left.displayX !== right.displayX) {
+            return (left.displayX ?? Number.MAX_SAFE_INTEGER) - (right.displayX ?? Number.MAX_SAFE_INTEGER)
+          }
+
+          return left.seatLabelSnapshot.localeCompare(right.seatLabelSnapshot, undefined, { numeric: true })
+        })
+
+        const columnCount = Math.max(
+          ...normalizedSeats.map(seat => (seat.displayX ?? 0) + 1),
+          normalizedSeats.length,
+          1,
+        )
 
         return {
           label: rowLabel,
           seats: normalizedSeats,
-          columnCount: Math.max(normalizedSeats.length, 1),
+          columnCount,
         }
       })
       .sort((left, right) => {
@@ -138,6 +172,7 @@ export function buildSeatMapLayout(
     const normalizedSectionSeats = rows.flatMap(row => row.seats)
 
     const sectionSeat = sectionSeats.find(seat => typeof seat.venueSectionId === 'number')
+    const sectionColorSnapshot = sectionSeats.find(seat => seat.sectionColorSnapshot)?.sectionColorSnapshot
     const sectionPrice = typeof sectionSeat?.venueSectionId === 'number'
       ? sectionPriceBySectionId.get(sectionSeat.venueSectionId)
       : undefined
@@ -149,7 +184,7 @@ export function buildSeatMapLayout(
       key: sectionKey,
       code: buildSectionCode(sectionEntry.name, sectionIndex),
       name: sectionEntry.name,
-      color: sectionTicketType?.color || sectionPrice?.sectionColorSnapshot || fallbackSectionColors[sectionIndex % fallbackSectionColors.length] || fallbackSectionColors[0],
+      color: sectionTicketType?.color || sectionPrice?.sectionColorSnapshot || sectionColorSnapshot || fallbackSectionColors[sectionIndex % fallbackSectionColors.length] || fallbackSectionColors[0],
       seats: normalizedSectionSeats,
       rows,
       metrics: {

@@ -10,7 +10,9 @@ export interface SeatMapSeat {
   venueSeatId?: number | null
   venueSectionId?: number | null
   ticketTypeId?: number | null
+  sectionKeySnapshot?: string | null
   sectionNameSnapshot: string
+  sectionColorSnapshot?: string | null
   rowLabelSnapshot: string | null
   seatLabelSnapshot: string
   displayX?: number | null
@@ -86,6 +88,19 @@ export interface SeatMapLayout {
   seatOverrideBySeatId: Map<number, SeatMapSeatOverrideSummary>
   ticketTypeById: Map<number, SeatMapTicketType>
   ticketTypeBySectionId: Map<number, SeatMapTicketType>
+}
+
+export interface SeatMapSeatClickPayload {
+  seat: SeatMapSeat
+  section: {
+    key: string
+    code: string
+    name: string
+  }
+  row: {
+    label: string
+  }
+  selected: boolean
 }
 
 export interface SessionSeatMapSeat extends SeatMapSeat {

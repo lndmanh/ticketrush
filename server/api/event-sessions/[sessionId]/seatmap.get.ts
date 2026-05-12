@@ -7,6 +7,8 @@ import { localeSchema } from '#shared/schemas/ticketingSchema'
 import { sourceLocale } from '~~/i18n-constants'
 import { resolveSessionSeatPrice } from '~~/server/utils/ticketing/pricing'
 import { EventStatus, SeatStatus } from '#shared/commonEnums'
+import holdService from '~~/server/utils/ticketing/holds'
+import { getSeatmapRealtimeEnv } from '~~/server/utils/ticketing/seatmap-realtime'
 
 const seatMapQuerySchema = z.object({
   locale: localeSchema.default(sourceLocale).catch(sourceLocale),
@@ -88,6 +90,8 @@ export default defineEventHandler(async (event) => {
   getTicketingSessionKey(event)
 
   await getValidatedQuery(event, rawQuery => seatMapQuerySchema.parse(rawQuery))
+  const realtimeNamespace = getSeatmapRealtimeEnv(event).SEATMAP_REALTIME_ROOM
+  await holdService.expireStaleHoldsForSession(session.id, realtimeNamespace)
   const seatMap = await eventSessionService.getSeatMap(session.id)
   const response: SessionSeatMapResponse = mapSeatMap({
     ...seatMap,

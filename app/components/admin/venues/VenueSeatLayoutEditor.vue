@@ -280,7 +280,7 @@ function removeSeat(sectionIndex: number, rowIndex: number, seatIndex: number) {
         class="dashboard-list-item space-y-4"
       >
         <div class="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-          <div class="grid flex-1 gap-3 md:grid-cols-3">
+          <div class="grid flex-1 gap-3 md:grid-cols-2">
             <div class="space-y-2">
               <label class="text-xs uppercase tracking-[0.18em] text-muted-foreground">{{ $t('admin.columns.code') }}</label>
               <Input
@@ -293,13 +293,6 @@ function removeSeat(sectionIndex: number, rowIndex: number, seatIndex: number) {
               <Input
                 :model-value="section.name"
                 @update:model-value="updateSection(sectionIndex, 'name', $event)"
-              />
-            </div>
-            <div class="space-y-2">
-              <label class="text-xs uppercase tracking-[0.18em] text-muted-foreground">{{ $t('admin.columns.color') }}</label>
-              <Input
-                :model-value="section.color"
-                @update:model-value="updateSection(sectionIndex, 'color', $event)"
               />
             </div>
           </div>
