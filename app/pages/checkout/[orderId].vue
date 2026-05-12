@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { apiRoutes } from '#shared/apiRoutes'
 import { Field as VeeField, useForm } from 'vee-validate'
+import { ArrowLeft, ChevronDown, UserRound, UsersRound, PencilLine, Ticket } from '@lucide/vue'
 import type { SavedAttendeeFormInput, SavedAttendeeGender as SavedAttendeeGenderInput } from '#shared/schemas/savedAttendeeSchema'
 import { checkoutCustomerSchema } from '#shared/schemas/ticketingSchema'
 import type { CheckoutCustomerInput, CheckoutTicketHolderInput } from '#shared/schemas/ticketingSchema'
@@ -14,10 +15,12 @@ import { getDisplayDateLocale } from '@/lib/localizedEvents'
 import { AgeBracket, OrderStatus, SavedAttendeeGender, TicketHolderSource } from '#shared/commonEnums'
 
 const route = useRoute()
-const { locale } = useI18n()
+const { locale, t } = useI18n()
+const { user } = useUserSession()
 const orderId = computed(() => route.params.orderId.toString())
 const holdPublicId = computed(() => typeof route.query.hold === 'string' ? route.query.hold : '')
 const isSubmitting = ref(false)
+const isCancelling = ref(false)
 const currentTime = ref(Date.now())
 let holdClockIntervalId: number | null = null
 let checkoutRefreshIntervalId: number | null = null
@@ -43,6 +46,7 @@ type DraftTicketHolder = Omit<SavedAttendeeFormInput, 'birthDate'> & {
 }
 
 const ticketHolderDrafts = ref<TicketHolderDraft[]>([])
+const expandedDraftSeatIds = ref<number[]>([])
 
 const defaultValues: CheckoutCustomerInput = {
   customerName: '',
@@ -58,6 +62,12 @@ const { handleSubmit, resetForm, values: formValues, meta: formMeta } = useForm(
 })
 
 const formInitializedOrderId = ref<number | null>(null)
+
+const userProfile = computed(() => ({
+  name: user.value?.name ?? '',
+  email: user.value?.email ?? '',
+  phone: '',
+}))
 
 function formatCurrency(cents: number) {
   return `${Intl.NumberFormat(getDisplayDateLocale(locale.value)).format(cents / 100)} VND`
@@ -77,10 +87,10 @@ function getValidGender(value: string | undefined | null): SavedAttendeeGenderIn
 
 function createAccountHolderDraft(): DraftTicketHolder {
   return {
-    legalName: formValues.customerName ?? '',
+    legalName: formValues.customerName ?? userProfile.value.name,
     preferredName: undefined,
-    email: formValues.customerEmail ?? '',
-    phone: formValues.customerPhone ?? '',
+    email: formValues.customerEmail ?? userProfile.value.email,
+    phone: formValues.customerPhone ?? userProfile.value.phone,
     birthDate: undefined,
     gender: getValidGender(formValues.customerGender),
     guardianName: undefined,
@@ -118,6 +128,57 @@ function syncDraftsWithItems() {
   })
 
   ticketHolderDrafts.value = nextDrafts
+  const seatIds = nextDrafts.map(draft => draft.eventSeatId)
+  expandedDraftSeatIds.value = expandedDraftSeatIds.value.filter(seatId => seatIds.includes(seatId))
+  if (expandedDraftSeatIds.value.length === 0 && seatIds.length > 0) {
+    expandedDraftSeatIds.value = [seatIds[0]]
+  }
+}
+
+function isDraftExpanded(eventSeatId: number) {
+  return expandedDraftSeatIds.value.includes(eventSeatId)
+}
+
+function toggleDraftExpanded(eventSeatId: number) {
+  if (isDraftExpanded(eventSeatId)) {
+    expandedDraftSeatIds.value = expandedDraftSeatIds.value.filter(id => id !== eventSeatId)
+    return
+  }
+
+  expandedDraftSeatIds.value = [...expandedDraftSeatIds.value, eventSeatId]
+}
+
+function setDraftSource(draft: TicketHolderDraft, source: string) {
+  if (source === TicketHolderSource.Account) {
+    draft.source = TicketHolderSource.Account
+    draft.savedAttendeeId = null
+    draft.holder = createAccountHolderDraft()
+    return
+  }
+
+  if (source === TicketHolderSource.SavedAttendee) {
+    draft.source = TicketHolderSource.SavedAttendee
+    const firstSavedAttendee = savedAttendees.value[0]
+    draft.savedAttendeeId = firstSavedAttendee ? String(firstSavedAttendee.id) : null
+    return
+  }
+
+  draft.source = TicketHolderSource.Manual
+  draft.savedAttendeeId = null
+  draft.holder = {
+    legalName: '',
+    preferredName: undefined,
+    email: '',
+    phone: '',
+    birthDate: undefined,
+    gender: SavedAttendeeGender.PreferNotToSay,
+    guardianName: undefined,
+    guardianEmail: undefined,
+    guardianPhone: undefined,
+    notes: undefined,
+    accessibilityNeeds: undefined,
+    isSelf: false,
+  }
 }
 
 watch(checkout, (value) => {
@@ -169,7 +230,7 @@ watch(() => ticketHolderDrafts.value.map(draft => `${draft.eventSeatId}:${draft.
 function validateDrafts() {
   const savedAttendeeDraft = ticketHolderDrafts.value.find(draft => draft.source === TicketHolderSource.SavedAttendee && !draft.savedAttendeeId)
   if (savedAttendeeDraft) {
-    return 'Please select a saved attendee for every ticket using that option.'
+    return t('checkout.saved_attendee_required')
   }
 
   const manualDraft = ticketHolderDrafts.value.find((draft) => {
@@ -184,7 +245,7 @@ function validateDrafts() {
   })
 
   if (manualDraft) {
-    return 'Please provide a legal name and at least one contact method for each manual ticket holder.'
+    return t('checkout.manual_holder_required')
   }
 
   return null
@@ -222,6 +283,18 @@ function toPayloadHolder(draft: TicketHolderDraft): CheckoutTicketHolderInput {
 }
 
 const checkoutSessionStartsAt = computed(() => checkout.value?.eventSession?.startsAt ?? null)
+const primaryCheckoutItem = computed(() => checkout.value?.items[0] ?? null)
+const confirmedTicketLabels = computed(() => {
+  if (!checkout.value) {
+    return []
+  }
+
+  return checkout.value.items.map(item => `${item.ticketLabel} · ${item.sectionLabel} ${item.seatLabel}`)
+})
+const orderConfirmedAtLabel = computed(() => {
+  const confirmedAt = checkout.value?.order.confirmedAt ?? checkout.value?.order.updatedAt ?? null
+  return confirmedAt ? formatDateTime(confirmedAt) : t('tickets.detail_unknown')
+})
 
 const holdTimeRemainingMs = computed(() => {
   const expiresAt = checkout.value?.hold?.expiresAt
@@ -247,10 +320,35 @@ const holdCountdownLabel = computed(() => {
 
 const isHoldExpired = computed(() => holdTimeRemainingMs.value === 0)
 
+async function cancelCheckout() {
+  if (!checkout.value?.order || isCancelling.value) {
+    return
+  }
+
+  isCancelling.value = true
+
+  try {
+    const response = await apiRequest<ApiResponse<unknown>>(`/api/checkout/${orderId.value}`, {
+      method: 'DELETE',
+    })
+
+    if (!response.success) {
+      throw response
+    }
+
+    toast.success('Checkout cancelled.')
+    await navigateTo(checkout.value.event?.slug ? `/events/${checkout.value.event.slug}` : '/events')
+  }
+  catch (error) {
+    toast.error(parseApiError(error, 'Failed to cancel checkout. Please try again.').message)
+    isCancelling.value = false
+  }
+}
+
 const onSubmit = handleSubmit(
   async (values) => {
     if (!checkout.value?.order || !holdPublicId.value || isHoldExpired.value) {
-      toast.error('Your seat hold has expired. Please return to the event and choose seats again.')
+      toast.error(t('checkout.hold_expired_toast'))
       return
     }
 
@@ -275,18 +373,18 @@ const onSubmit = handleSubmit(
       })
       if (!response.success) throw response
 
-      toast.success('Order confirmed')
+      toast.success(t('checkout.order_confirmed_toast'))
       await refresh()
     }
     catch (error) {
-      toast.error(parseApiError(error, 'We could not confirm the order').message)
+      toast.error(parseApiError(error, t('checkout.order_confirm_error')).message)
     }
     finally {
       isSubmitting.value = false
     }
   },
   ({ errors }) => {
-    const firstError = Object.values(errors).flat().filter(Boolean)[0] || 'Please fix the highlighted fields'
+    const firstError = Object.values(errors).flat().filter(Boolean)[0] || t('checkout.fix_highlighted')
     toast.error(firstError)
   },
 )
@@ -312,9 +410,9 @@ onUnmounted(() => {
 })
 
 definePageMeta({
-  title: 'Checkout',
-  breadcrumb: 'Checkout',
-  layout: 'dashboard',
+  title: 'checkout.page_title',
+  breadcrumb: 'checkout.breadcrumb',
+  layout: 'empty',
   middleware: ['auth'],
 })
 </script>
@@ -322,557 +420,640 @@ definePageMeta({
 <template>
   <main
     v-if="checkout"
-    class="space-y-8 pb-8 pt-6"
+    class="min-h-screen bg-[#050605] text-foreground"
   >
-    <section class="grid gap-6 xl:grid-cols-[1fr_0.92fr]">
-      <div class="space-y-4">
-        <div class="space-y-3">
-          <h1 class="text-3xl font-semibold tracking-tight">
-            {{ checkout.order.status === OrderStatus.Confirmed ? 'Order confirmed.' : 'Review your order.' }}
-          </h1>
-          <p class="max-w-[40rem] text-base leading-8 text-muted-foreground">
-            This demo checkout does not connect to a live payment provider. Confirming the order finalizes your held seats and issues QR tickets immediately.
-          </p>
-        </div>
-      </div>
-
-      <div class="overflow-hidden rounded-xl border bg-card text-card-foreground shadow-sm">
-        <div class="space-y-4 p-6 md:p-8">
-          <div
-            v-if="holdCountdownLabel && checkout.order.status !== OrderStatus.Confirmed"
-            :class="[
-              'rounded-[1.5rem] px-5 py-4',
-              isHoldExpired
-                ? 'bg-rose-50 text-rose-950 dark:bg-rose-500/10 dark:text-rose-100'
-                : 'bg-accent text-foreground',
-            ]"
-          >
-            <p class="text-sm text-muted-foreground">
-              Hold timer
-            </p>
-            <p class="mt-2 text-3xl font-semibold tracking-[-0.05em]">
-              {{ holdCountdownLabel }}
-            </p>
-            <p class="mt-2 text-sm leading-7 text-muted-foreground">
-              {{ isHoldExpired ? 'The hold expired. Return to the event and choose seats again.' : 'Seats remain reserved while this countdown is active.' }}
-            </p>
-          </div>
-
-          <div
-            v-for="item in checkout.items"
-            :key="item.id"
-            class="rounded-[1.5rem] border border-black/5 bg-white/70 px-4 py-4 dark:border-white/10 dark:bg-white/[0.03]"
-          >
-            <div class="flex items-center justify-between gap-3">
-              <div>
-                <p class="font-medium">
-                  {{ item.ticketLabel }}
-                </p>
-                <p class="text-sm text-muted-foreground">
-                  {{ item.sectionLabel }} · {{ item.rowLabel }} · {{ item.seatLabel }}
-                </p>
-              </div>
-              <p class="font-mono text-sm">
-                {{ formatCurrency(item.unitPriceCents) }}
-              </p>
-            </div>
-          </div>
-
-          <div class="rounded-[1.75rem] bg-accent px-5 py-5">
-            <p class="text-sm text-muted-foreground">
-              Order total
-            </p>
-            <p class="mt-2 text-4xl font-semibold tracking-[-0.06em]">
-              {{ formatCurrency(checkout.order.amountCents) }}
-            </p>
-          </div>
-
-          <div
-            v-if="checkout.event"
-            class="rounded-[1.5rem] border border-black/5 bg-white/70 px-4 py-4 text-sm text-muted-foreground dark:border-white/10 dark:bg-white/[0.03]"
-          >
-            <p class="font-medium text-foreground">
-              {{ checkout.event.title }}
-            </p>
-            <p class="mt-1">
-              {{ checkoutSessionStartsAt ? formatDateTime(checkoutSessionStartsAt) : 'Session time will be announced by the organizer.' }}
-            </p>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <section
-      v-if="checkout.order.status !== OrderStatus.Confirmed"
-      class="overflow-hidden rounded-xl border bg-card text-card-foreground shadow-sm"
-    >
-      <form
-        class="space-y-6 p-6 md:p-8"
-        @submit.prevent="onSubmit"
-      >
-        <div class="grid gap-8 lg:grid-cols-2">
-          <div class="space-y-3">
-            <h2 class="text-3xl font-semibold tracking-[-0.05em]">
-              Finish the order inside your hold window.
-            </h2>
-            <p class="text-sm leading-7 text-muted-foreground">
-              We use this information for the digital ticket payload and dashboard demographics. You can keep optional fields minimal if you prefer.
-            </p>
-          </div>
-
-          <div class="space-y-4">
-            <FieldGroup>
-              <VeeField
-                v-slot="{ field, errors }"
-                name="customerName"
-              >
-                <Field :data-invalid="!!errors.length">
-                  <FieldLabel for="checkout-customer-name">
-                    {{ $t('checkout.full_name') }}
-                  </FieldLabel>
-                  <Input
-                    id="checkout-customer-name"
-                    :model-value="field.value"
-                    :placeholder="$t('checkout.full_name')"
-                    :aria-invalid="!!errors.length"
-                    @update:model-value="field.onChange"
-                  />
-                  <FieldError
-                    v-if="errors.length"
-                    :errors="errors"
-                  />
-                </Field>
-              </VeeField>
-
-              <VeeField
-                v-slot="{ field, errors }"
-                name="customerEmail"
-              >
-                <Field :data-invalid="!!errors.length">
-                  <FieldLabel for="checkout-customer-email">
-                    {{ $t('checkout.email') }}
-                  </FieldLabel>
-                  <Input
-                    id="checkout-customer-email"
-                    :model-value="field.value"
-                    type="email"
-                    placeholder="you@example.com"
-                    :aria-invalid="!!errors.length"
-                    @update:model-value="field.onChange"
-                  />
-                  <FieldError
-                    v-if="errors.length"
-                    :errors="errors"
-                  />
-                </Field>
-              </VeeField>
-
-              <VeeField
-                v-slot="{ field, errors }"
-                name="customerPhone"
-              >
-                <Field :data-invalid="!!errors.length">
-                  <FieldLabel for="checkout-customer-phone">
-                    {{ $t('checkout.phone') }}
-                  </FieldLabel>
-                  <Input
-                    id="checkout-customer-phone"
-                    :model-value="field.value"
-                    placeholder="+84 90 000 0000"
-                    :aria-invalid="!!errors.length"
-                    @update:model-value="field.onChange"
-                  />
-                  <FieldDescription>{{ $t('checkout.phone_desc') }}</FieldDescription>
-                  <FieldError
-                    v-if="errors.length"
-                    :errors="errors"
-                  />
-                </Field>
-              </VeeField>
-
-              <div class="grid gap-4 md:grid-cols-2">
-                <VeeField
-                  v-slot="{ field, errors }"
-                  name="customerAgeBracket"
-                >
-                  <Field :data-invalid="!!errors.length">
-                    <FieldLabel for="checkout-age-bracket">
-                      {{ $t('checkout.age_bracket') }}
-                    </FieldLabel>
-                    <Select
-                      :model-value="field.value"
-                      @update:model-value="field.onChange"
-                    >
-                      <SelectTrigger
-                        id="checkout-age-bracket"
-                        :aria-invalid="!!errors.length"
-                        @blur="field.onBlur"
-                      >
-                        <SelectValue :placeholder="field.value ? undefined : $t('checkout.age_bracket_placeholder')" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem :value="AgeBracket.EighteenToTwentyFour">
-                          18–24
-                        </SelectItem>
-                        <SelectItem :value="AgeBracket.TwentyFiveToThirtyFour">
-                          25–34
-                        </SelectItem>
-                        <SelectItem :value="AgeBracket.ThirtyFiveToFortyFour">
-                          35–44
-                        </SelectItem>
-                        <SelectItem :value="AgeBracket.FortyFivePlus">
-                          45+
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FieldError
-                      v-if="errors.length"
-                      :errors="errors"
-                    />
-                  </Field>
-                </VeeField>
-
-                <VeeField
-                  v-slot="{ field, errors }"
-                  name="customerGender"
-                >
-                  <Field :data-invalid="!!errors.length">
-                    <FieldLabel for="checkout-customer-gender">
-                      {{ $t('checkout.gender') }}
-                    </FieldLabel>
-                    <Select
-                      :model-value="field.value"
-                      @update:model-value="field.onChange"
-                    >
-                      <SelectTrigger
-                        id="checkout-customer-gender"
-                        :aria-invalid="!!errors.length"
-                        @blur="field.onBlur"
-                      >
-                        <SelectValue :placeholder="field.value ? undefined : $t('checkout.gender_placeholder')" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem :value="SavedAttendeeGender.Female">
-                          {{ $t('checkout.gender_female') }}
-                        </SelectItem>
-                        <SelectItem :value="SavedAttendeeGender.Male">
-                          {{ $t('checkout.gender_male') }}
-                        </SelectItem>
-                        <SelectItem :value="SavedAttendeeGender.NonBinary">
-                          {{ $t('checkout.gender_non_binary') }}
-                        </SelectItem>
-                        <SelectItem :value="SavedAttendeeGender.PreferNotToSay">
-                          {{ $t('checkout.gender_prefer_not') }}
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FieldError
-                      v-if="errors.length"
-                      :errors="errors"
-                    />
-                  </Field>
-                </VeeField>
-              </div>
-            </FieldGroup>
-          </div>
-        </div>
-
-        <div class="space-y-6 border-t border-border pt-8">
-          <div class="space-y-2">
-            <h3 class="text-2xl font-semibold tracking-[-0.04em]">
+    <section class="grid items-start gap-4 bg-[radial-gradient(circle_at_10%_0%,rgba(124,58,237,0.16),transparent_30%),radial-gradient(circle_at_90%_15%,rgba(14,165,233,0.08),transparent_28%)] p-3 md:p-4 lg:grid-cols-[minmax(28rem,0.95fr)_minmax(24rem,0.85fr)]">
+      <div class="rounded-[1.75rem] border border-white/10 bg-[#090a08]/95 shadow-2xl shadow-black/30">
+        <form
+          v-if="checkout.order.status !== OrderStatus.Confirmed"
+          id="checkout-information-form"
+          @submit.prevent="onSubmit"
+        >
+          <div class="border-b px-4 py-4 md:px-5">
+            <p class="text-xs font-medium uppercase tracking-[0.22em] text-primary">
               {{ $t('checkout.ticket_assignments_title') }}
-            </h3>
-            <p class="text-sm leading-7 text-muted-foreground">
+            </p>
+            <h2 class="mt-1 text-2xl font-semibold tracking-tight">
+              {{ $t('checkout.finish_order_title') }}
+            </h2>
+            <p class="mt-1 max-w-3xl text-sm text-muted-foreground">
               {{ $t('checkout.ticket_assignments_desc') }}
             </p>
           </div>
 
-          <div class="space-y-4">
-            <div
-              v-for="draft in ticketHolderDrafts"
-              :key="draft.eventSeatId"
-              class="rounded-[1.5rem] border border-black/5 bg-white/70 p-5 dark:border-white/10 dark:bg-white/[0.03]"
-            >
-              <div class="mb-4 flex items-center justify-between gap-3 border-b border-border pb-4">
-                <div>
-                  <p class="font-medium">
-                    {{ checkout.items.find(item => item.eventSeatId === draft.eventSeatId)?.ticketLabel }}
+          <div class="px-4 py-4 md:px-5">
+            <div class="space-y-4 pb-4">
+              <section class="rounded-[1.5rem] border bg-muted/20 p-4">
+                <div class="mb-4">
+                  <p class="text-xs font-medium uppercase tracking-[0.22em] text-muted-foreground">
+                    {{ $t('checkout.review_order') }}
                   </p>
-                  <p class="text-sm text-muted-foreground">
-                    {{ checkout.items.find(item => item.eventSeatId === draft.eventSeatId)?.sectionLabel }} · {{ checkout.items.find(item => item.eventSeatId === draft.eventSeatId)?.rowLabel }} · {{ checkout.items.find(item => item.eventSeatId === draft.eventSeatId)?.seatLabel }}
+                  <p class="mt-1 text-sm text-muted-foreground">
+                    {{ $t('checkout.finish_order_desc') }}
                   </p>
                 </div>
-              </div>
 
-              <div class="space-y-4">
-                <div class="space-y-2">
-                  <FieldLabel :for="`source-${draft.eventSeatId}`">
-                    {{ $t('checkout.assignment_method') }}
-                  </FieldLabel>
-                  <Select v-model="draft.source">
-                    <SelectTrigger :id="`source-${draft.eventSeatId}`">
-                      <SelectValue :placeholder="$t('checkout.assignment_placeholder')" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem :value="TicketHolderSource.Account">
-                        {{ $t('checkout.use_buyer_details') }}
-                      </SelectItem>
-                      <SelectItem :value="TicketHolderSource.SavedAttendee">
-                        {{ $t('checkout.select_saved_attendee') }}
-                      </SelectItem>
-                      <SelectItem :value="TicketHolderSource.Manual">
-                        {{ $t('checkout.enter_manually') }}
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div
-                  v-if="draft.source === TicketHolderSource.Account"
-                  class="rounded-xl border border-black/5 bg-accent/50 p-4 text-sm text-muted-foreground dark:border-white/10"
-                >
-                  {{ $t('checkout.auto_synced_note') }}
-                </div>
-
-                <div
-                  v-if="draft.source === TicketHolderSource.SavedAttendee"
-                  class="space-y-2"
-                >
-                  <FieldLabel :for="`attendee-${draft.eventSeatId}`">
-                    {{ $t('checkout.saved_attendee_label') }}
-                  </FieldLabel>
-                  <Select v-model="draft.savedAttendeeId">
-                    <SelectTrigger :id="`attendee-${draft.eventSeatId}`">
-                      <SelectValue :placeholder="$t('checkout.attendee_placeholder')" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem
-                        v-for="attendee in savedAttendees"
-                        :key="attendee.id"
-                        :value="String(attendee.id)"
-                      >
-                        {{ attendee.legalName }}<span v-if="attendee.email"> · {{ attendee.email }}</span>
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div
-                  v-if="draft.source !== TicketHolderSource.SavedAttendee"
-                  class="grid gap-4 md:grid-cols-2"
-                >
-                  <div class="space-y-2">
-                    <FieldLabel :for="`name-${draft.eventSeatId}`">
-                      {{ $t('checkout.legal_name') }}
-                    </FieldLabel>
-                    <Input
-                      :id="`name-${draft.eventSeatId}`"
-                      v-model="draft.holder.legalName"
-                      :readonly="draft.source === TicketHolderSource.Account"
-                      :placeholder="$t('checkout.legal_name')"
-                    />
-                  </div>
-
-                  <div class="space-y-2">
-                    <FieldLabel :for="`email-${draft.eventSeatId}`">
-                      {{ $t('checkout.email') }}
-                    </FieldLabel>
-                    <Input
-                      :id="`email-${draft.eventSeatId}`"
-                      v-model="draft.holder.email"
-                      type="email"
-                      :readonly="draft.source === TicketHolderSource.Account"
-                      :placeholder="$t('checkout.email')"
-                    />
-                  </div>
-
-                  <div class="space-y-2">
-                    <FieldLabel :for="`phone-${draft.eventSeatId}`">
-                      {{ $t('checkout.phone') }}
-                    </FieldLabel>
-                    <Input
-                      :id="`phone-${draft.eventSeatId}`"
-                      v-model="draft.holder.phone"
-                      :readonly="draft.source === TicketHolderSource.Account"
-                      :placeholder="$t('checkout.phone')"
-                    />
-                  </div>
-
-                  <div class="space-y-2">
-                    <FieldLabel :for="`gender-${draft.eventSeatId}`">
-                      {{ $t('checkout.gender') }}
-                    </FieldLabel>
-                    <Select
-                      v-model="draft.holder.gender"
-                      :disabled="draft.source === TicketHolderSource.Account"
+                <FieldGroup>
+                  <div class="grid gap-4 md:grid-cols-2">
+                    <VeeField
+                      v-slot="{ field, errors }"
+                      name="customerName"
                     >
-                      <SelectTrigger :id="`gender-${draft.eventSeatId}`">
-                        <SelectValue :placeholder="$t('checkout.gender_placeholder')" />
+                      <Field :data-invalid="!!errors.length">
+                        <FieldLabel for="checkout-customer-name">{{ $t('checkout.full_name') }}</FieldLabel>
+                        <Input
+                          id="checkout-customer-name"
+                          :model-value="field.value"
+                          :placeholder="$t('checkout.full_name')"
+                          :aria-invalid="!!errors.length"
+                          @update:model-value="field.onChange"
+                        />
+                        <FieldError
+                          v-if="errors.length"
+                          :errors="errors"
+                        />
+                      </Field>
+                    </VeeField>
+
+                    <VeeField
+                      v-slot="{ field, errors }"
+                      name="customerEmail"
+                    >
+                      <Field :data-invalid="!!errors.length">
+                        <FieldLabel for="checkout-customer-email">{{ $t('checkout.email') }}</FieldLabel>
+                        <Input
+                          id="checkout-customer-email"
+                          :model-value="field.value"
+                          type="email"
+                          placeholder="you@example.com"
+                          :aria-invalid="!!errors.length"
+                          @update:model-value="field.onChange"
+                        />
+                        <FieldError
+                          v-if="errors.length"
+                          :errors="errors"
+                        />
+                      </Field>
+                    </VeeField>
+
+                    <VeeField
+                      v-slot="{ field, errors }"
+                      name="customerPhone"
+                    >
+                      <Field :data-invalid="!!errors.length">
+                        <FieldLabel for="checkout-customer-phone">{{ $t('checkout.phone') }}</FieldLabel>
+                        <Input
+                          id="checkout-customer-phone"
+                          :model-value="field.value"
+                          placeholder="+84 90 000 0000"
+                          :aria-invalid="!!errors.length"
+                          @update:model-value="field.onChange"
+                        />
+                        <FieldError
+                          v-if="errors.length"
+                          :errors="errors"
+                        />
+                      </Field>
+                    </VeeField>
+
+                    <VeeField
+                      v-slot="{ field, errors }"
+                      name="customerGender"
+                    >
+                      <Field :data-invalid="!!errors.length">
+                        <FieldLabel for="checkout-customer-gender">{{ $t('checkout.gender') }}</FieldLabel>
+                        <Select
+                          :model-value="field.value"
+                          @update:model-value="field.onChange"
+                        >
+                          <SelectTrigger
+                            id="checkout-customer-gender"
+                            :aria-invalid="!!errors.length"
+                            @blur="field.onBlur"
+                          >
+                            <SelectValue :placeholder="field.value ? undefined : $t('checkout.gender_placeholder')" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem :value="SavedAttendeeGender.Female">{{ $t('checkout.gender_female') }}</SelectItem>
+                            <SelectItem :value="SavedAttendeeGender.Male">{{ $t('checkout.gender_male') }}</SelectItem>
+                            <SelectItem :value="SavedAttendeeGender.NonBinary">{{ $t('checkout.gender_non_binary') }}</SelectItem>
+                            <SelectItem :value="SavedAttendeeGender.PreferNotToSay">{{ $t('checkout.gender_prefer_not') }}</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FieldError
+                          v-if="errors.length"
+                          :errors="errors"
+                        />
+                      </Field>
+                    </VeeField>
+                  </div>
+                </FieldGroup>
+              </section>
+
+              <article
+                v-for="draft in ticketHolderDrafts"
+                :key="draft.eventSeatId"
+                class="overflow-hidden rounded-[1.5rem] border bg-card shadow-sm"
+              >
+                <button
+                  type="button"
+                  class="flex w-full items-center justify-between gap-4 border-b px-4 py-4 text-left md:px-5"
+                  @click="toggleDraftExpanded(draft.eventSeatId)"
+                >
+                  <div class="min-w-0">
+                    <p class="font-medium">
+                      {{ checkout.items.find(item => item.eventSeatId === draft.eventSeatId)?.ticketLabel }}
+                    </p>
+                    <p class="text-sm text-muted-foreground">
+                      {{ checkout.items.find(item => item.eventSeatId === draft.eventSeatId)?.sectionLabel }} · {{ checkout.items.find(item => item.eventSeatId === draft.eventSeatId)?.rowLabel }} · {{ checkout.items.find(item => item.eventSeatId === draft.eventSeatId)?.seatLabel }}
+                    </p>
+                  </div>
+
+                  <div class="flex items-center gap-3 text-xs text-muted-foreground">
+                    <span class="inline-flex items-center gap-1 rounded-full border bg-muted/30 px-2.5 py-1">
+                      <UserRound
+                        v-if="draft.source === TicketHolderSource.Account"
+                        class="size-3.5"
+                      />
+                      <UsersRound
+                        v-else-if="draft.source === TicketHolderSource.SavedAttendee"
+                        class="size-3.5"
+                      />
+                      <PencilLine
+                        v-else
+                        class="size-3.5"
+                      />
+                      {{ draft.source === TicketHolderSource.Account ? $t('checkout.use_buyer_details') : draft.source === TicketHolderSource.SavedAttendee ? $t('checkout.select_saved_attendee') : $t('checkout.enter_manually') }}
+                    </span>
+                    <ChevronDown
+                      class="size-4 transition-transform"
+                      :class="isDraftExpanded(draft.eventSeatId) ? 'rotate-180' : ''"
+                    />
+                  </div>
+                </button>
+
+                <div
+                  v-if="isDraftExpanded(draft.eventSeatId)"
+                  class="space-y-4 px-4 pb-5 pt-4 md:px-5"
+                >
+                  <div class="grid gap-3 md:grid-cols-3">
+                    <button
+                      type="button"
+                      :class="[
+                        'inline-flex items-center justify-center gap-2 rounded-xl border px-3 py-2 text-sm font-medium transition',
+                        draft.source === TicketHolderSource.Account ? 'border-primary/30 bg-primary/10 text-primary' : 'bg-muted/20 text-muted-foreground hover:text-foreground',
+                      ]"
+                      @click="setDraftSource(draft, TicketHolderSource.Account)"
+                    >
+                      <UserRound class="size-4" />
+                      {{ $t('checkout.use_buyer_details') }}
+                    </button>
+                    <button
+                      type="button"
+                      :class="[
+                        'inline-flex items-center justify-center gap-2 rounded-xl border px-3 py-2 text-sm font-medium transition',
+                        draft.source === TicketHolderSource.SavedAttendee ? 'border-primary/30 bg-primary/10 text-primary' : 'bg-muted/20 text-muted-foreground hover:text-foreground',
+                      ]"
+                      @click="setDraftSource(draft, TicketHolderSource.SavedAttendee)"
+                    >
+                      <UsersRound class="size-4" />
+                      {{ $t('checkout.select_saved_attendee') }}
+                    </button>
+                    <button
+                      type="button"
+                      :class="[
+                        'inline-flex items-center justify-center gap-2 rounded-xl border px-3 py-2 text-sm font-medium transition',
+                        draft.source === TicketHolderSource.Manual ? 'border-primary/30 bg-primary/10 text-primary' : 'bg-muted/20 text-muted-foreground hover:text-foreground',
+                      ]"
+                      @click="setDraftSource(draft, TicketHolderSource.Manual)"
+                    >
+                      <PencilLine class="size-4" />
+                      {{ $t('checkout.enter_manually') }}
+                    </button>
+                  </div>
+
+                  <div
+                    v-if="draft.source === TicketHolderSource.SavedAttendee"
+                    class="space-y-2"
+                  >
+                    <FieldLabel :for="`attendee-${draft.eventSeatId}`">{{ $t('checkout.saved_attendee_label') }}</FieldLabel>
+                    <Select v-model="draft.savedAttendeeId">
+                      <SelectTrigger :id="`attendee-${draft.eventSeatId}`">
+                        <SelectValue :placeholder="$t('checkout.attendee_placeholder')" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem :value="SavedAttendeeGender.Female">
-                          {{ $t('checkout.gender_female') }}
-                        </SelectItem>
-                        <SelectItem :value="SavedAttendeeGender.Male">
-                          {{ $t('checkout.gender_male') }}
-                        </SelectItem>
-                        <SelectItem :value="SavedAttendeeGender.NonBinary">
-                          {{ $t('checkout.gender_non_binary') }}
-                        </SelectItem>
-                        <SelectItem :value="SavedAttendeeGender.PreferNotToSay">
-                          {{ $t('checkout.gender_prefer_not') }}
+                        <SelectItem
+                          v-for="attendee in savedAttendees"
+                          :key="attendee.id"
+                          :value="String(attendee.id)"
+                        >
+                          {{ attendee.legalName }}<span v-if="attendee.email"> · {{ attendee.email }}</span>
                         </SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
 
-                  <div class="space-y-2">
-                    <FieldLabel :for="`birth-${draft.eventSeatId}`">
-                      {{ $t('checkout.birth_date') }}
-                    </FieldLabel>
-                    <Input
-                      :id="`birth-${draft.eventSeatId}`"
-                      v-model="draft.holder.birthDate"
-                      type="date"
-                      :placeholder="$t('checkout.birth_date')"
-                    />
-                  </div>
-
-                  <div class="space-y-2">
-                    <FieldLabel :for="`preferred-${draft.eventSeatId}`">
-                      {{ $t('checkout.preferred_name') }}
-                    </FieldLabel>
-                    <Input
-                      :id="`preferred-${draft.eventSeatId}`"
-                      v-model="draft.holder.preferredName"
-                      :placeholder="$t('checkout.preferred_name')"
-                    />
-                  </div>
-
-                  <div class="space-y-2">
-                    <FieldLabel :for="`guardian-name-${draft.eventSeatId}`">
-                      {{ $t('checkout.guardian_name') }}
-                    </FieldLabel>
-                    <Input
-                      :id="`guardian-name-${draft.eventSeatId}`"
-                      v-model="draft.holder.guardianName"
-                      :placeholder="$t('checkout.guardian_name')"
-                    />
-                  </div>
-
-                  <div class="space-y-2">
-                    <FieldLabel :for="`guardian-email-${draft.eventSeatId}`">
-                      {{ $t('checkout.guardian_email') }}
-                    </FieldLabel>
-                    <Input
-                      :id="`guardian-email-${draft.eventSeatId}`"
-                      v-model="draft.holder.guardianEmail"
-                      type="email"
-                      :placeholder="$t('checkout.guardian_email')"
-                    />
-                  </div>
-
-                  <div class="space-y-2">
-                    <FieldLabel :for="`guardian-phone-${draft.eventSeatId}`">
-                      {{ $t('checkout.guardian_phone') }}
-                    </FieldLabel>
-                    <Input
-                      :id="`guardian-phone-${draft.eventSeatId}`"
-                      v-model="draft.holder.guardianPhone"
-                      :placeholder="$t('checkout.guardian_phone')"
-                    />
-                  </div>
-
-                  <div class="space-y-2 md:col-span-2">
-                    <FieldLabel :for="`notes-${draft.eventSeatId}`">
-                      {{ $t('checkout.notes') }}
-                    </FieldLabel>
-                    <Input
-                      :id="`notes-${draft.eventSeatId}`"
-                      v-model="draft.holder.notes"
-                      :placeholder="$t('checkout.notes')"
-                    />
-                  </div>
-
-                  <div class="space-y-2 md:col-span-2">
-                    <FieldLabel :for="`access-${draft.eventSeatId}`">
-                      {{ $t('checkout.accessibility_needs') }}
-                    </FieldLabel>
-                    <Input
-                      :id="`access-${draft.eventSeatId}`"
-                      v-model="draft.holder.accessibilityNeeds"
-                      :placeholder="$t('checkout.accessibility_needs')"
-                    />
-                  </div>
-
                   <div
-                    v-if="draft.source === TicketHolderSource.Manual"
-                    class="flex items-center justify-between rounded-xl border border-black/5 bg-accent/30 p-4 md:col-span-2 dark:border-white/10"
+                    v-if="draft.source !== TicketHolderSource.SavedAttendee"
+                    class="grid gap-4 md:grid-cols-2"
                   >
-                    <div class="space-y-0.5">
-                      <FieldLabel
-                        :for="`save-${draft.eventSeatId}`"
-                        class="text-base"
-                      >
-                        {{ $t('checkout.save_as_attendee_label') }}
-                      </FieldLabel>
-                      <p class="text-sm text-muted-foreground">
-                        {{ $t('checkout.save_as_attendee_desc') }}
-                      </p>
+                    <div class="space-y-2">
+                      <FieldLabel :for="`name-${draft.eventSeatId}`">{{ $t('checkout.legal_name') }}</FieldLabel>
+                      <Input
+                        :id="`name-${draft.eventSeatId}`"
+                        v-model="draft.holder.legalName"
+                        :readonly="draft.source === TicketHolderSource.Account"
+                        :placeholder="$t('checkout.legal_name')"
+                      />
                     </div>
-                    <Switch
-                      :id="`save-${draft.eventSeatId}`"
-                      v-model="draft.saveAsAttendee"
-                    />
+                    <div class="space-y-2">
+                      <FieldLabel :for="`email-${draft.eventSeatId}`">{{ $t('checkout.email') }}</FieldLabel>
+                      <Input
+                        :id="`email-${draft.eventSeatId}`"
+                        v-model="draft.holder.email"
+                        type="email"
+                        :readonly="draft.source === TicketHolderSource.Account"
+                        :placeholder="$t('checkout.email')"
+                      />
+                    </div>
+                    <div class="space-y-2">
+                      <FieldLabel :for="`phone-${draft.eventSeatId}`">{{ $t('checkout.phone') }}</FieldLabel>
+                      <Input
+                        :id="`phone-${draft.eventSeatId}`"
+                        v-model="draft.holder.phone"
+                        :readonly="draft.source === TicketHolderSource.Account"
+                        :placeholder="$t('checkout.phone')"
+                      />
+                    </div>
+                    <div class="space-y-2">
+                      <FieldLabel :for="`gender-${draft.eventSeatId}`">{{ $t('checkout.gender') }}</FieldLabel>
+                      <Select
+                        v-model="draft.holder.gender"
+                        :disabled="draft.source === TicketHolderSource.Account"
+                      >
+                        <SelectTrigger :id="`gender-${draft.eventSeatId}`">
+                          <SelectValue :placeholder="$t('checkout.gender_placeholder')" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem :value="SavedAttendeeGender.Female">{{ $t('checkout.gender_female') }}</SelectItem>
+                          <SelectItem :value="SavedAttendeeGender.Male">{{ $t('checkout.gender_male') }}</SelectItem>
+                          <SelectItem :value="SavedAttendeeGender.NonBinary">{{ $t('checkout.gender_non_binary') }}</SelectItem>
+                          <SelectItem :value="SavedAttendeeGender.PreferNotToSay">{{ $t('checkout.gender_prefer_not') }}</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div class="space-y-2">
+                      <FieldLabel :for="`birth-${draft.eventSeatId}`">{{ $t('checkout.birth_date') }}</FieldLabel>
+                      <Input
+                        :id="`birth-${draft.eventSeatId}`"
+                        v-model="draft.holder.birthDate"
+                        type="date"
+                      />
+                    </div>
+                    <div class="space-y-2">
+                      <FieldLabel :for="`preferred-${draft.eventSeatId}`">{{ $t('checkout.preferred_name') }}</FieldLabel>
+                      <Input
+                        :id="`preferred-${draft.eventSeatId}`"
+                        v-model="draft.holder.preferredName"
+                        :placeholder="$t('checkout.preferred_name')"
+                      />
+                    </div>
+                    <div class="space-y-2">
+                      <FieldLabel :for="`guardian-name-${draft.eventSeatId}`">{{ $t('checkout.guardian_name') }}</FieldLabel>
+                      <Input
+                        :id="`guardian-name-${draft.eventSeatId}`"
+                        v-model="draft.holder.guardianName"
+                      />
+                    </div>
+                    <div class="space-y-2">
+                      <FieldLabel :for="`guardian-email-${draft.eventSeatId}`">{{ $t('checkout.guardian_email') }}</FieldLabel>
+                      <Input
+                        :id="`guardian-email-${draft.eventSeatId}`"
+                        v-model="draft.holder.guardianEmail"
+                        type="email"
+                      />
+                    </div>
+                    <div class="space-y-2 md:col-span-2">
+                      <FieldLabel :for="`guardian-phone-${draft.eventSeatId}`">{{ $t('checkout.guardian_phone') }}</FieldLabel>
+                      <Input
+                        :id="`guardian-phone-${draft.eventSeatId}`"
+                        v-model="draft.holder.guardianPhone"
+                      />
+                    </div>
+                    <div class="space-y-2 md:col-span-2">
+                      <FieldLabel :for="`notes-${draft.eventSeatId}`">{{ $t('checkout.notes') }}</FieldLabel>
+                      <Input
+                        :id="`notes-${draft.eventSeatId}`"
+                        v-model="draft.holder.notes"
+                      />
+                    </div>
+                    <div class="space-y-2 md:col-span-2">
+                      <FieldLabel :for="`access-${draft.eventSeatId}`">{{ $t('checkout.accessibility_needs') }}</FieldLabel>
+                      <Input
+                        :id="`access-${draft.eventSeatId}`"
+                        v-model="draft.holder.accessibilityNeeds"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </article>
+            </div>
+          </div>
+        </form>
+
+        <section
+          v-else
+          class="overflow-hidden"
+        >
+          <div class="border-b border-white/10 px-5 py-5 md:px-6">
+            <p class="text-xs font-semibold uppercase tracking-[0.24em] text-violet-300">
+              {{ $t('checkout.order_confirmed') }}
+            </p>
+            <h2 class="mt-2 text-3xl font-semibold tracking-[-0.04em] text-white">
+              {{ $t('checkout.tickets_in_wallet') }}
+            </h2>
+            <p class="mt-2 max-w-xl text-sm leading-6 text-white/60">
+              Quét QR code tại cổng vào. Thông tin bên dưới đã được đồng bộ với đơn hàng của bạn.
+            </p>
+          </div>
+
+          <div class="px-5 py-5 md:px-6">
+            <div class="grid items-start gap-5 xl:grid-cols-[minmax(17rem,21rem)_minmax(0,1fr)]">
+              <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-1">
+                <TicketQrCard
+                  v-for="(ticket, ticketIndex) in checkout.tickets"
+                  :key="ticket.id"
+                  class="h-full min-w-0"
+                  :payload="ticket.qrToken"
+                  :title="$t('tickets.digital_entry_pass')"
+                  :subtitle="ticket.attendeeEmail"
+                  :ticket-label="confirmedTicketLabels[ticketIndex] ?? null"
+                  :instruction="null"
+                  :show-payload="false"
+                />
+              </div>
+
+              <div class="space-y-4">
+                <div class="rounded-[1.5rem] border border-white/10 bg-white/[0.04] p-5 shadow-xl shadow-black/20">
+                  <p class="text-sm font-semibold text-white">
+                    Quét QR code tại cổng vào
+                  </p>
+                  <p class="mt-2 text-sm leading-7 text-white/60">
+                    Mở màn hình này khi đến cổng. Nhân viên sẽ đối chiếu QR, email và thông tin vé trước khi cho vào khu vực sự kiện.
+                  </p>
+                </div>
+
+                <div class="grid gap-3 sm:grid-cols-3 xl:grid-cols-1">
+                  <div class="rounded-2xl border border-emerald-400/20 bg-emerald-500/10 p-4">
+                    <p class="text-xs uppercase tracking-[0.18em] text-emerald-300">
+                      {{ $t('common.status') }}
+                    </p>
+                    <p class="mt-2 text-base font-semibold text-emerald-100">
+                      {{ checkout.order.status }}
+                    </p>
+                  </div>
+                  <div class="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
+                    <p class="text-xs uppercase tracking-[0.18em] text-white/45">
+                      {{ $t('checkout.ticket_assignments_title') }}
+                    </p>
+                    <p class="mt-2 text-base font-semibold text-white">
+                      {{ checkout.tickets.length }}
+                    </p>
+                  </div>
+                  <div class="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
+                    <p class="text-xs uppercase tracking-[0.18em] text-white/45">
+                      Email
+                    </p>
+                    <p class="mt-2 truncate text-base font-semibold text-white">
+                      {{ checkout.tickets[0]?.attendeeEmail ?? checkout.order.customerEmail }}
+                    </p>
                   </div>
                 </div>
               </div>
             </div>
           </div>
-        </div>
+        </section>
+      </div>
 
-        <Button
-          type="submit"
-          class="w-full rounded-full"
-          size="lg"
-          :is-loading="isSubmitting"
-          :disabled="isHoldExpired"
-        >
-          Confirm order
-        </Button>
-      </form>
-    </section>
+      <Card
+        v-if="checkout.order.status === OrderStatus.Confirmed"
+        class="overflow-hidden border-white/10 bg-[#10110e]/95 text-white shadow-2xl shadow-black/35"
+      >
+        <CardHeader class="border-b border-white/10 px-6 py-6">
+          <div class="flex items-center justify-between gap-4">
+            <div class="flex items-center gap-3">
+              <div class="flex size-10 shrink-0 items-center justify-center rounded-2xl border border-violet-400/25 bg-violet-500/10 text-violet-300">
+                <Ticket class="size-5" />
+              </div>
+              <div>
+                <p class="text-xs font-semibold uppercase tracking-[0.22em] text-violet-300">
+                  Summary
+                </p>
+                <CardTitle class="mt-1 text-2xl tracking-[-0.04em] text-white">
+                  {{ $t('checkout.order_total') }}
+                </CardTitle>
+              </div>
+            </div>
+            <span class="rounded-full border border-emerald-400/20 bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-200">
+              {{ checkout.order.status }}
+            </span>
+          </div>
+        </CardHeader>
 
-    <section
-      v-else
-      class="grid gap-6 lg:grid-cols-2"
-    >
-      <TicketQrCard
-        v-for="ticket in checkout.tickets"
-        :key="ticket.id"
-        :payload="ticket.qrToken"
-        :title="ticket.publicId"
-        :subtitle="ticket.attendeeEmail"
-      />
+        <CardContent class="space-y-4 p-6">
+          <div
+            v-if="primaryCheckoutItem"
+            class="rounded-[1.5rem] border border-white/10 bg-black/25 p-5"
+          >
+            <div class="flex items-start justify-between gap-4">
+              <div class="min-w-0">
+                <p class="text-lg font-semibold text-white">
+                  {{ primaryCheckoutItem.ticketLabel }}
+                </p>
+                <p class="mt-1 text-sm text-white/55">
+                  {{ primaryCheckoutItem.sectionLabel }} · {{ primaryCheckoutItem.rowLabel }} · {{ primaryCheckoutItem.seatLabel }}
+                </p>
+              </div>
+              <p class="shrink-0 font-mono text-sm font-semibold text-white">
+                {{ formatCurrency(primaryCheckoutItem.unitPriceCents) }}
+              </p>
+            </div>
+          </div>
 
-      <div class="rounded-xl border bg-card text-card-foreground shadow-sm lg:col-span-2">
-        <div class="flex flex-col gap-4 p-6 md:flex-row md:items-center md:justify-between md:p-8">
-          <div>
-            <p class="mt-3 text-sm text-muted-foreground">
-              Your issued tickets are now available in your account wallet.
+          <div class="rounded-[1.5rem] bg-[#1b1d15] p-5 shadow-inner shadow-white/5">
+            <p class="text-sm text-white/55">
+              {{ $t('checkout.order_total') }}
+            </p>
+            <p class="mt-2 text-4xl font-semibold tracking-[-0.06em] text-white">
+              {{ formatCurrency(checkout.order.amountCents) }}
             </p>
           </div>
 
-          <Button
-            as-child
-            class="rounded-full"
+          <div class="rounded-[1.5rem] border border-white/10 bg-black/25 p-5">
+            <p class="text-sm font-semibold text-white">
+              {{ checkout.event?.title ?? $t('checkout.page_title') }}
+            </p>
+            <p class="mt-1 text-sm text-white/55">
+              {{ orderConfirmedAtLabel }}
+            </p>
+            <p class="mt-2 text-xs text-white/40">
+              {{ $t('checkout.order_confirmed') }}
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card
+        v-else
+        class="flex flex-col lg:sticky lg:top-4 lg:max-h-[calc(100dvh-2rem)] lg:overflow-hidden"
+      >
+        <CardHeader class="border-b py-4">
+          <div class="space-y-4">
+            <div class="flex items-start gap-3">
+              <Button
+                as-child
+                variant="outline"
+                size="icon-sm"
+                class="shrink-0"
+              >
+                <NuxtLink
+                  :to="checkout.event?.slug ? `/events/${checkout.event.slug}` : '/events'"
+                  :aria-label="$t('common.back')"
+                >
+                  <ArrowLeft />
+                </NuxtLink>
+              </Button>
+
+              <div class="min-w-0">
+                <CardTitle class="truncate text-xl">
+                  {{ checkout.event?.title ?? $t('checkout.page_title') }}
+                </CardTitle>
+                <p class="mt-1 text-sm text-muted-foreground">
+                  {{ checkout.eventSession?.label ?? 'Session' }} &middot; {{ checkoutSessionStartsAt ? formatDateTime(checkoutSessionStartsAt) : $t('checkout.session_time_tba') }}
+                </p>
+              </div>
+            </div>
+
+            <div class="flex flex-wrap gap-2 text-xs text-muted-foreground">
+              <div class="inline-flex items-center gap-2 rounded-md border bg-muted/30 px-2.5 py-1.5">
+                <span class="font-medium text-foreground">{{ checkout.items.length }}</span>
+                <span>{{ $t('common.held') }}</span>
+              </div>
+              <div class="inline-flex items-center gap-2 rounded-md border bg-muted/30 px-2.5 py-1.5">
+                <span class="font-medium text-foreground">{{ ticketHolderDrafts.length }}</span>
+                <span>{{ $t('checkout.ticket_assignments_title') }}</span>
+              </div>
+              <div class="inline-flex items-center gap-2 rounded-md border bg-muted/30 px-2.5 py-1.5">
+                <span class="font-medium text-foreground">{{ checkout.order.status }}</span>
+                <span>{{ $t('common.status') }}</span>
+              </div>
+            </div>
+
+            <div class="flex items-center gap-2.5 pt-1">
+              <div class="flex size-8 shrink-0 items-center justify-center rounded-xl border bg-primary/10 text-primary">
+                <Ticket class="size-4" />
+              </div>
+              <p class="text-base font-semibold">
+                {{ $t('checkout.order_total') }}
+              </p>
+            </div>
+          </div>
+        </CardHeader>
+
+        <CardContent class="flex min-h-0 flex-1 flex-col p-0">
+          <ScrollArea class="min-h-0 flex-1 px-4 py-4 md:px-5">
+            <div class="space-y-3 pb-2">
+              <div
+                v-if="holdCountdownLabel && checkout.order.status !== OrderStatus.Confirmed"
+                :class="[
+                  'rounded-[1.5rem] px-5 py-4',
+                  isHoldExpired ? 'bg-destructive/10 text-destructive' : 'bg-muted/50 text-foreground',
+                ]"
+              >
+                <p class="text-sm text-muted-foreground">{{ $t('checkout.hold_timer') }}</p>
+                <p class="mt-2 text-3xl font-semibold tracking-[-0.05em]">{{ holdCountdownLabel }}</p>
+                <p class="mt-2 text-sm leading-7 text-muted-foreground">
+                  {{ isHoldExpired ? $t('checkout.hold_expired_note') : $t('checkout.hold_active_note') }}
+                </p>
+              </div>
+
+              <ItemGroup>
+                <Item
+                  v-for="item in checkout.items"
+                  :key="item.id"
+                  variant="outline"
+                  class="bg-background/80"
+                >
+                  <ItemMedia variant="icon">
+                    <Ticket class="size-4" />
+                  </ItemMedia>
+                  <ItemContent>
+                    <ItemTitle>{{ item.ticketLabel }}</ItemTitle>
+                    <ItemDescription>{{ item.sectionLabel }} · {{ item.rowLabel }} · {{ item.seatLabel }}</ItemDescription>
+                  </ItemContent>
+                  <div class="ml-auto text-right">
+                    <p class="font-mono text-sm font-semibold text-foreground">{{ formatCurrency(item.unitPriceCents) }}</p>
+                  </div>
+                </Item>
+              </ItemGroup>
+
+              <div class="rounded-[1.5rem] bg-muted/50 px-5 py-4">
+                <p class="text-sm text-muted-foreground">{{ $t('checkout.order_total') }}</p>
+                <p class="mt-2 text-3xl font-semibold tracking-[-0.05em]">{{ formatCurrency(checkout.order.amountCents) }}</p>
+              </div>
+            </div>
+          </ScrollArea>
+
+          <div
+            v-if="checkout.order.status !== OrderStatus.Confirmed"
+            class="shrink-0 space-y-2 border-t bg-background/95 px-4 pb-4 pt-3 md:px-5"
           >
-            <NuxtLink to="/tickets">
-              Open my tickets
-            </NuxtLink>
-          </Button>
-        </div>
-      </div>
+            <Button
+              type="submit"
+              form="checkout-information-form"
+              class="w-full rounded-full shadow-[0_10px_30px_-10px_hsl(var(--primary)/0.75)]"
+              size="lg"
+              :is-loading="isSubmitting"
+              :disabled="isHoldExpired || isCancelling"
+            >
+              {{ $t('checkout.confirm_order') }}
+            </Button>
+
+            <AlertDialog>
+              <AlertDialogTrigger as-child>
+                <Button
+                  type="button"
+                  variant="outline"
+                  class="w-full rounded-full"
+                  size="lg"
+                  :disabled="isSubmitting || isCancelling"
+                >
+                  {{ $t('common.cancel') }}
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Cancel checkout?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This will release your held tickets and return you to the event page.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel :disabled="isCancelling">
+                    Keep checkout
+                  </AlertDialogCancel>
+                  <AlertDialogAction
+                    :disabled="isCancelling"
+                    @click="cancelCheckout"
+                  >
+                    Confirm cancel
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
+        </CardContent>
+      </Card>
     </section>
   </main>
 </template>
