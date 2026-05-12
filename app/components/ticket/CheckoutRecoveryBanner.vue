@@ -62,7 +62,6 @@ async function cancelCheckout() {
   <AlertBox
     v-if="checkout"
     variant="warning"
-    class="rounded-[1.25rem] shadow-sm"
   >
     <AlertTriangle class="mt-0.5 size-5 shrink-0 text-yellow-600 dark:text-yellow-300" />
 
@@ -87,10 +86,9 @@ async function cancelCheckout() {
         <Button
           as-child
           size="sm"
-          class="rounded-full"
         >
           <NuxtLink :to="checkoutPath">
-            Continue checkout
+            Continue
             <ArrowRight class="size-4" />
           </NuxtLink>
         </Button>
@@ -99,21 +97,13 @@ async function cancelCheckout() {
           type="button"
           variant="outline"
           size="sm"
-          class="rounded-full"
-          :disabled="isCancelling"
+          :is-loading="isCancelling"
           @click="cancelCheckout"
         >
-          <Loader2
-            v-if="isCancelling"
-            class="size-4 animate-spin"
-            aria-hidden="true"
-          />
           <X
-            v-else
             class="size-4"
-            aria-hidden="true"
           />
-          Cancel checkout
+          Cancel
         </Button>
       </AlertBoxActions>
     </AlertBoxContent>
