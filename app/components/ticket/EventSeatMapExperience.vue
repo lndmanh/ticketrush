@@ -78,12 +78,7 @@ function updateZoomLevel(value: number) {
 }
 
 function zoomAtCenter(multiplier: number) {
-  const renderer = rendererRef.value
-  if (!renderer) {
-    return
-  }
-
-  renderer.applyZoom(zoomLevel.value / 100 * multiplier, { x: 240, y: 240 })
+  rendererRef.value?.zoomAtViewportCenter(multiplier)
 }
 
 function resetView() {

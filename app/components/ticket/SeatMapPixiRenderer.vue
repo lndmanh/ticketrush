@@ -200,6 +200,18 @@ function applyZoom(nextZoom: number, center: { x: number, y: number }) {
   syncLabels()
 }
 
+function zoomAtViewportCenter(multiplier: number) {
+  const host = hostRef.value
+  if (!host) {
+    return
+  }
+
+  applyZoom(zoom.value * multiplier, {
+    x: host.clientWidth / 2,
+    y: host.clientHeight / 2,
+  })
+}
+
 function getPinchDistance() {
   const values = Array.from(pointers.values())
   const first = values[0]
@@ -394,6 +406,7 @@ watch(() => props.model, () => {
 defineExpose({
   fitToModel,
   applyZoom,
+  zoomAtViewportCenter,
 })
 </script>
 
