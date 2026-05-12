@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import 'pixi.js/unsafe-eval'
 import { Application, Container, Graphics, Text } from 'pixi.js'
 import type { SeatMapRenderModel, SeatMapRenderSeat } from '@/lib/seatmapRender'
 
