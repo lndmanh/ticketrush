@@ -17,15 +17,12 @@
         </div>
       </SidebarInset>
     </SidebarProvider>
-    <BackToTop />
   </div>
 </template>
 
 <script setup lang="ts">
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar'
 import HotSearch from '@/components/HotSearch.vue'
-
-import BackToTop from '@/components/BackToTop.vue'
 import AppLayout from '@/components/AppLayout.vue'
 import AppSidebar from '@/components/AppSidebar.vue'
 
