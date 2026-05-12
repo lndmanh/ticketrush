@@ -32,16 +32,23 @@ describe('createSeatMapRenderModel', () => {
 
     expect(model.seats.map(seat => seat.x)).toEqual([0, 72])
     expect(model.seats[1]?.selected).toBe(true)
-    expect(model.bounds.width).toBe(86)
+    expect(model.bounds.width).toBe(94)
   })
 
-  it('creates radius-inclusive bounds for a single seat', () => {
+  it('creates icon-inclusive bounds for a single seat', () => {
     const layout = buildSeatMapLayout([createSeat(1, 0, 0)], [])
 
     const model = createSeatMapRenderModel(layout, [])
+    const seat = model.seats[0]
 
-    expect(model.bounds.width).toBe(14)
-    expect(model.bounds.height).toBe(14)
+    expect(seat).toBeDefined()
+
+    if (seat) {
+      expect(seat.width).toBe(22)
+      expect(seat.height).toBe(18)
+      expect(model.bounds.width).toBe(22)
+      expect(model.bounds.height).toBe(18)
+    }
   })
 
   it('keeps later sections below empty sections', () => {

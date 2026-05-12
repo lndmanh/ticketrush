@@ -29,7 +29,9 @@ export interface SeatMapRenderSeat {
   seatId: number
   x: number
   y: number
-  radius: number
+  width: number
+  height: number
+  cornerRadius: number
   label: string
   status: SeatMapStatus
   selected: boolean
@@ -48,10 +50,14 @@ export interface SeatMapRenderModel {
 }
 
 const defaultRenderOptions: SeatMapRenderOptions = {
-  seatSpacing: 26,
-  rowSpacing: 30,
+  seatSpacing: 30,
+  rowSpacing: 32,
   sectionGap: 84,
 }
+
+const seatIconWidth = 22
+const seatIconHeight = 18
+const seatIconCornerRadius = 6
 
 function createEmptyBounds(): SeatMapRenderBounds {
   return { minX: 0, minY: 0, maxX: 0, maxY: 0, width: 0, height: 0 }
@@ -78,8 +84,8 @@ function createBoundsFromSeats(seats: SeatMapRenderSeat[]): SeatMapRenderBounds 
   }
 
   return createBounds(seats.flatMap(seat => [
-    { x: seat.x - seat.radius, y: seat.y - seat.radius },
-    { x: seat.x + seat.radius, y: seat.y + seat.radius },
+    { x: seat.x - seat.width / 2, y: seat.y - seat.height / 2 },
+    { x: seat.x + seat.width / 2, y: seat.y + seat.height / 2 },
   ]))
 }
 
@@ -103,7 +109,9 @@ export function createSeatMapRenderModel(layout: SeatMapLayout, selectedSeatIds:
           seatId: seat.id,
           x: displayX * options.seatSpacing,
           y: sectionOffsetY + displayY * options.rowSpacing,
-          radius: 7,
+          width: seatIconWidth,
+          height: seatIconHeight,
+          cornerRadius: seatIconCornerRadius,
           label: seat.seatLabelSnapshot,
           status: seat.status,
           selected,

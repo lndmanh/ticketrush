@@ -29,8 +29,10 @@ let viewportSignature = ''
 let areLabelsVisible = false
 
 const tapMoveThreshold = 6
-const labelZoomThreshold = 1.55
-const maxLabelledSeats = 2500
+const labelZoomThreshold = 1
+const maxLabelledSeats = 900
+const seatBackrestInset = 3
+const minFitZoom = 0.75
 
 const pointers = new Map<number, { x: number, y: number }>()
 const zoom = ref(1)
@@ -87,6 +89,20 @@ function drawSections() {
       .stroke({ width: 1, color: 0xCBD5E1, alpha: 0.75 })
 
     sectionLayer.addChild(panel)
+
+    const sectionLabel = new Text({
+      text: section.name,
+      style: {
+        fill: '#334155',
+        fontFamily: 'Geist, system-ui, sans-serif',
+        fontSize: 16,
+        fontWeight: '700',
+      },
+    })
+    sectionLabel.x = section.bounds.minX - padding + 14
+    sectionLabel.y = section.bounds.minY - padding + 10
+    sectionLabel.eventMode = 'none'
+    sectionLayer.addChild(sectionLabel)
   }
 }
 
@@ -97,10 +113,16 @@ function drawSeats() {
   }
 
   for (const renderSeat of props.model.seats) {
+    const x = -renderSeat.width / 2
+    const y = -renderSeat.height / 2
+    const backrestY = y + 5
     const seat = new Graphics()
-      .circle(0, 0, renderSeat.radius)
+      .roundRect(x, y, renderSeat.width, renderSeat.height, renderSeat.cornerRadius)
       .fill({ color: renderSeat.color.hexNumber })
       .stroke({ width: renderSeat.selected ? 2 : 1, color: 0xFFFFFF, alpha: renderSeat.selected ? 1 : 0.78 })
+      .moveTo(x + seatBackrestInset, backrestY)
+      .lineTo(x + renderSeat.width - seatBackrestInset, backrestY)
+      .stroke({ width: 1, color: renderSeat.color.text, alpha: 0.38 })
 
     seat.x = renderSeat.x
     seat.y = renderSeat.y
@@ -126,8 +148,8 @@ function drawLabels() {
       style: {
         fill: renderSeat.color.text,
         fontFamily: 'Geist, system-ui, sans-serif',
-        fontSize: 9,
-        fontWeight: '600',
+        fontSize: 12,
+        fontWeight: '700',
       },
     })
     label.anchor.set(0.5)
@@ -175,7 +197,7 @@ function fitToModel() {
   const width = Math.max(props.model.bounds.width + padding * 2, 1)
   const height = Math.max(props.model.bounds.height + padding * 2, 1)
   const nextZoom = Math.min(host.clientWidth / width, host.clientHeight / height, 2)
-  zoom.value = Math.max(nextZoom, 0.25)
+  zoom.value = Math.max(nextZoom, minFitZoom)
   layer.scale.set(zoom.value)
   layer.x = (host.clientWidth - props.model.bounds.width * zoom.value) / 2 - props.model.bounds.minX * zoom.value
   layer.y = (host.clientHeight - props.model.bounds.height * zoom.value) / 2 - props.model.bounds.minY * zoom.value
