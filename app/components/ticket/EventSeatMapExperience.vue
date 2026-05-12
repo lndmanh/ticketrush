@@ -115,7 +115,12 @@ function inspectKeyboardSeat() {
 }
 
 function getKeyboardSeatLabel(seat: SeatMapRenderSeat) {
-  return `${seat.sectionName} · Row ${seat.rowLabel} · Seat ${seat.label} · ${t(seat.color.labelKey)}`
+  return t('seatmap.keyboard_seat_label', {
+    section: seat.sectionName,
+    row: seat.rowLabel,
+    seat: seat.label,
+    status: t(seat.color.labelKey),
+  })
 }
 
 function handleSeatClick(renderSeat: SeatMapRenderSeat) {
@@ -144,7 +149,7 @@ function handleSeatClick(renderSeat: SeatMapRenderSeat) {
 
     <template v-else>
       <p class="sr-only">
-        Interactive pan-and-zoom seat map. Use the visible zoom controls to change scale, or tab to the keyboard seat controls to move between seats and inspect the focused seat.
+        {{ $t('seatmap.keyboard_instructions') }}
       </p>
 
       <ClientOnly>
@@ -163,7 +168,7 @@ function handleSeatClick(renderSeat: SeatMapRenderSeat) {
 
       <div class="sr-only focus-within:not-sr-only focus-within:pointer-events-auto focus-within:absolute focus-within:left-3 focus-within:top-20 focus-within:z-10 focus-within:flex focus-within:max-w-sm focus-within:flex-col focus-within:gap-2 focus-within:rounded-2xl focus-within:border focus-within:bg-background focus-within:p-3 focus-within:shadow-lg">
         <p class="text-sm font-medium">
-          Keyboard seat controls
+          {{ $t('seatmap.keyboard_controls') }}
         </p>
         <p
           class="text-xs text-muted-foreground"
@@ -178,7 +183,7 @@ function handleSeatClick(renderSeat: SeatMapRenderSeat) {
             size="sm"
             @click="moveKeyboardSeat(-1)"
           >
-            Previous
+            {{ $t('seatmap.previous_seat') }}
           </Button>
           <Button
             type="button"
@@ -186,7 +191,7 @@ function handleSeatClick(renderSeat: SeatMapRenderSeat) {
             size="sm"
             @click="moveKeyboardSeat(1)"
           >
-            Next
+            {{ $t('seatmap.next_seat') }}
           </Button>
           <Button
             type="button"
