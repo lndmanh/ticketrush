@@ -40,11 +40,28 @@ export const DOCS_CONFIG = {
       triggerType: 'icon',
       dropdownType: 'select',
     },
-    nav: [{
-      title: 'Events',
-      to: '/events',
-      showLinkIcon: false,
-    }],
+    nav: [
+      {
+        title: 'nav.events',
+        to: '/events',
+        showLinkIcon: false,
+      },
+      {
+        title: 'footer.about_us',
+        to: '/#about',
+        showLinkIcon: false,
+      },
+      {
+        title: 'footer.faq',
+        to: '/#faq',
+        showLinkIcon: false,
+      },
+      {
+        title: 'footer.contact',
+        to: '/#contact',
+        showLinkIcon: false,
+      },
+    ],
     links: [
       {
         icon: 'lucide:github',
