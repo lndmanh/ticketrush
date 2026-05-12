@@ -352,7 +352,7 @@ definePageMeta({
 
       <div
         v-if="activeFilterChips.length > 0"
-        class="flex flex-wrap items-center gap-2 rounded-[1.25rem] border bg-background/70 p-3"
+        class="flex flex-wrap items-center gap-2 rounded-lg border bg-background/70 p-3"
       >
         <span class="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
           {{ $t('events.active_filters_label') }}
@@ -374,7 +374,7 @@ definePageMeta({
     <section class="space-y-5">
       <div
         v-if="events.length > 0"
-        class="flex flex-col gap-3 rounded-[1.5rem] border bg-card/60 p-3 md:flex-row md:items-center md:justify-between"
+        class="flex flex-col gap-3 rounded-lg border bg-card/60 p-3 md:flex-row md:items-center md:justify-between"
       >
         <div class="flex flex-wrap items-center gap-2">
           <Badge
