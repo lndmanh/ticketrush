@@ -31,7 +31,7 @@ function clearSelectedDate() {
       </p>
     </div>
 
-    <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
+    <div class="ml-auto flex w-full flex-col items-end gap-2 sm:w-auto sm:flex-row sm:items-center sm:justify-end">
       <label
         for="ticket-date-filter"
         class="text-xs font-medium text-muted-foreground"
