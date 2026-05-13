@@ -214,7 +214,7 @@ definePageMeta({
             class="max-w-4xl space-y-8"
           >
             <div class="space-y-5">
-              <h1 class="max-w-5xl text-balance text-5xl font-semibold leading-[0.94] tracking-[-0.075em] text-white sm:text-6xl lg:text-8xl">
+              <h1 class="max-w-5xl text-balance text-5xl font-semibold leading-[1.04] tracking-[-0.035em] text-white sm:text-6xl lg:text-8xl">
                 {{ $t('home.title') }}
               </h1>
               <p class="max-w-2xl font-semibold text-base text-white md:text-lg">
