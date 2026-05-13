@@ -287,6 +287,8 @@
     "session_count_many": "{count} suất diễn",
     "schedule_pending": "Lịch diễn đang được cập nhật",
     "live_badge": "Trực tiếp",
+    "event_code": "Mã sự kiện",
+    "first_session": "Suất đầu",
     "view_event": "Xem sự kiện",
     "status_draft": "Bản nháp",
     "status_published": "Sắp diễn ra",

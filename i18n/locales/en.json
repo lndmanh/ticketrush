@@ -287,6 +287,8 @@
     "session_count_many": "{count} sessions",
     "schedule_pending": "Schedule pending",
     "live_badge": "Live",
+    "event_code": "Event code",
+    "first_session": "First session",
     "view_event": "View event",
     "status_draft": "Draft",
     "status_published": "Upcoming",
