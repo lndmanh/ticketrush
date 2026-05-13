@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { SavedAttendeeGender } from '#shared/commonEnums'
 import { emailSchema } from '#shared/schemas/userSchema'
 import userService from '~~/server/utils/database/user'
 import { getAuthorizedUserId } from '~~/server/utils/authorization'
@@ -8,6 +9,9 @@ import type { UserProfileModel } from '~~/types/models/profile'
 const updateProfileSchema = z.object({
   name: z.string().min(1, 'Name is required').trim(),
   email: emailSchema,
+  phone: z.string().trim().nullable(),
+  birthDate: z.string().trim().nullable(),
+  gender: z.enum(SavedAttendeeGender).nullable(),
 })
 
 export default defineEventHandler(async (event) => {
@@ -28,17 +32,23 @@ export default defineEventHandler(async (event) => {
     id: userId,
     name: result.data.name,
     email: result.data.email,
+    phone: result.data.phone || null,
+    birthDate: result.data.birthDate ? new Date(result.data.birthDate) : null,
+    gender: result.data.gender,
   })
 
   if (!updatedUser) {
     throw apiError({ status: 500, statusText: 'Internal Server Error', code: 'PROFILE_UPDATE_FAILED', message: 'Failed to update the user profile.' })
   }
 
-  const response: Pick<UserProfileModel, 'id' | 'username' | 'name' | 'email'> = {
+  const response: Pick<UserProfileModel, 'id' | 'username' | 'name' | 'email' | 'phone' | 'birthDate' | 'gender'> = {
     id: updatedUser.id,
     username: updatedUser.username,
     name: updatedUser.name,
     email: updatedUser.email,
+    phone: updatedUser.phone,
+    birthDate: updatedUser.birthDate,
+    gender: updatedUser.gender,
   }
 
   return success(response)

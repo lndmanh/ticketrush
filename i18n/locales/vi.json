@@ -215,6 +215,7 @@
     "my_tickets": "Vé của tôi",
     "home": "Trang chủ",
     "discover": "Khám phá",
+    "account_info": "Thông tin tài khoản",
     "saved_attendees": "Người tham dự đã lưu",
     "admin": "Quản trị",
     "admin_dashboard": "Bảng điều khiển quản trị",
@@ -683,6 +684,25 @@
     "completed_count": "{completed}/{total} vé đã đủ thông tin",
     "continue_payment": "Tiếp tục thanh toán",
     "confirm_order": "Xác nhận đơn hàng"
+  },
+  "account_page": {
+    "title": "Thông tin tài khoản",
+    "breadcrumb": "Thông tin tài khoản",
+    "account_of": "Tài khoản của",
+    "description": "Cung cấp thông tin chính xác sẽ hỗ trợ bạn trong quá trình mua vé hoặc khi cần xác thực vé.",
+    "change_avatar": "Đổi ảnh đại diện",
+    "full_name": "Họ và tên",
+    "phone": "Số điện thoại",
+    "clear_phone": "Xóa số điện thoại",
+    "email": "Email",
+    "birth_date": "Ngày tháng năm sinh",
+    "gender": "Giới tính",
+    "gender_male": "Nam",
+    "gender_female": "Nữ",
+    "gender_other": "Khác",
+    "complete": "Hoàn thành",
+    "saved_toast": "Đã cập nhật thông tin tài khoản",
+    "save_error": "Không thể cập nhật thông tin tài khoản"
   },
   "tickets": {
     "page_title": "Vé của tôi",

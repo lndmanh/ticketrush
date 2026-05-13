@@ -12,6 +12,7 @@ import {
   ShieldCheck,
   Ticket,
   UserCog2Icon,
+  UserRound,
   UsersIcon,
 } from '@lucide/vue'
 
@@ -25,6 +26,7 @@ export const SIDEBAR_CONTEXTS: SidebarContext[] = [
       {
         title: 'nav.account',
         items: [
+          { title: 'nav.account_info', url: '/settings/account', icon: UserRound },
           { title: 'nav.security', url: '/settings/security', icon: Shield },
           { title: 'nav.saved_attendees', url: '/settings/saved-attendees', icon: ContactRound },
         ],
@@ -72,6 +74,7 @@ export const SIDEBAR_CONTEXTS: SidebarContext[] = [
           { title: 'nav.home', url: '/', icon: Home },
           { title: 'nav.events', url: '/events', icon: CalendarRange },
           { title: 'nav.my_tickets', url: '/tickets', icon: Ticket },
+          { title: 'nav.account_info', url: '/settings/account', icon: UserRound },
           { title: 'nav.saved_attendees', url: '/tickets/saved-attendees', icon: ContactRound },
           { title: 'nav.security', url: '/settings/security', icon: Settings },
         ],
@@ -87,7 +90,7 @@ export const SIDEBAR_CONTEXTS: SidebarContext[] = [
         title: 'nav.support',
         secondary: true,
         items: [
-          { title: 'nav.help_support', url: '/support', icon: UserCog2Icon },
+          { title: 'nav.help_support', url: '/settings/security', icon: UserCog2Icon },
         ],
       },
     ],

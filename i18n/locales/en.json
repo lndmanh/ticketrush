@@ -215,6 +215,7 @@
     "my_tickets": "My tickets",
     "home": "Home",
     "discover": "Discover",
+    "account_info": "Account information",
     "saved_attendees": "Saved Attendees",
     "admin": "Admin",
     "admin_dashboard": "Admin Dashboard",
@@ -682,6 +683,25 @@
     "completed_count": "{completed}/{total} tickets complete",
     "continue_payment": "Continue to payment",
     "confirm_order": "Confirm order"
+  },
+  "account_page": {
+    "title": "Account information",
+    "breadcrumb": "Account information",
+    "account_of": "Account of",
+    "description": "Providing accurate information helps us support ticket purchases and ticket verification when needed.",
+    "change_avatar": "Change avatar",
+    "full_name": "Full name",
+    "phone": "Phone number",
+    "clear_phone": "Clear phone number",
+    "email": "Email",
+    "birth_date": "Date of birth",
+    "gender": "Gender",
+    "gender_male": "Male",
+    "gender_female": "Female",
+    "gender_other": "Other",
+    "complete": "Complete",
+    "saved_toast": "Account information updated",
+    "save_error": "Could not update account information"
   },
   "tickets": {
     "page_title": "My tickets",
