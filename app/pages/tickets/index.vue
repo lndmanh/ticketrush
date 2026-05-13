@@ -1,14 +1,102 @@
 <script setup lang="ts">
-import { ArrowRight, CalendarRange, MapPin, Ticket, UserRound } from '@lucide/vue'
+import { Ticket } from '@lucide/vue'
 import type { ApiResponse } from '~~/types/api'
 import type { TicketListItem } from '~~/types/ticketing'
 import { getDisplayDateLocale } from '@/lib/localizedEvents'
+import type { TicketStatusFilter } from '@/components/ticket/TicketStatusTabs.vue'
 
-const { locale } = useI18n()
+interface TicketEventGroupData {
+  id: string
+  title: string
+  subtitle: string | null
+  eventTime: string
+  startsAt: string | Date | null | undefined
+  coverImage: string | null
+  tickets: TicketListItem[]
+}
+
+const { locale, t } = useI18n()
+const selectedDate = ref('')
+const selectedStatus = ref<TicketStatusFilter>('all')
+const expandedEventIds = ref<string[]>([])
+
 const { data: ticketsResponse } = await useAPI<ApiResponse<TicketListItem[]>>(() => '/api/tickets', {
   query: computed(() => ({ locale: locale.value })),
 })
+
 const tickets = computed(() => ticketsResponse.value?.data ?? [])
+const issuedTicketsCount = computed(() => tickets.value.filter(ticket => normalizeStatus(ticket.status) === 'issued').length)
+const upcomingTicketsCount = computed(() => {
+  const now = Date.now()
+  return tickets.value.filter((ticket) => {
+    if (!ticket.event?.startsAt) {
+      return false
+    }
+
+    return new Date(ticket.event.startsAt).getTime() >= now
+  }).length
+})
+
+// Client-side date filtering keeps the ticket wallet responsive without extra API calls.
+const filteredTickets = computed(() => {
+  return tickets.value.filter((ticket) => {
+    if (!matchesStatusFilter(ticket.status, selectedStatus.value)) {
+      return false
+    }
+
+    if (!selectedDate.value) {
+      return true
+    }
+
+    if (!ticket.event?.startsAt) {
+      return false
+    }
+
+    return toDateInputValue(ticket.event.startsAt) === selectedDate.value
+  })
+})
+
+const ticketEventGroups = computed<TicketEventGroupData[]>(() => {
+  const groups = new Map<string, TicketEventGroupData>()
+
+  for (const ticket of filteredTickets.value) {
+    const id = ticket.event?.publicId ?? ticket.event?.id?.toString() ?? ticket.publicId
+    const existingGroup = groups.get(id)
+
+    if (existingGroup) {
+      existingGroup.tickets.push(ticket)
+      continue
+    }
+
+    groups.set(id, {
+      id,
+      title: ticket.event?.title || ticket.publicId,
+      subtitle: ticket.event?.subtitle ?? null,
+      eventTime: formatEventTime(ticket.event?.startsAt),
+      startsAt: ticket.event?.startsAt,
+      coverImage: ticket.event?.coverImage ?? null,
+      tickets: [ticket],
+    })
+  }
+
+  return [...groups.values()].sort((firstGroup, secondGroup) => {
+    if (!firstGroup.startsAt || !secondGroup.startsAt) {
+      return 0
+    }
+
+    return new Date(firstGroup.startsAt).getTime() - new Date(secondGroup.startsAt).getTime()
+  })
+})
+
+watch(ticketEventGroups, (groups) => {
+  const visibleIds = groups.map(group => group.id)
+  expandedEventIds.value = expandedEventIds.value.filter(id => visibleIds.includes(id))
+
+  const firstVisibleId = visibleIds[0]
+  if (expandedEventIds.value.length === 0 && firstVisibleId) {
+    expandedEventIds.value = [firstVisibleId]
+  }
+}, { immediate: true })
 
 function formatIssuedAt(value: string | Date) {
   return new Date(value).toLocaleDateString(getDisplayDateLocale(locale.value), {
@@ -20,7 +108,7 @@ function formatIssuedAt(value: string | Date) {
 
 function formatEventTime(value: string | Date | null | undefined) {
   if (!value) {
-    return 'Time to be announced'
+    return t('common.dates_tba')
   }
 
   return new Date(value).toLocaleString(getDisplayDateLocale(locale.value), {
@@ -35,129 +123,142 @@ function getShortTicketId(value: string) {
   return value.length > 10 ? value.slice(-10) : value
 }
 
+function normalizeStatus(status: string) {
+  return status.toLowerCase().replaceAll(' ', '_')
+}
+
+function getStatusLabel(status: string) {
+  const key = `tickets.status_${normalizeStatus(status)}`
+  const translated = t(key)
+  return translated === key ? status.replaceAll('_', ' ') : translated
+}
+
+function toDateInputValue(value: string | Date) {
+  const date = new Date(value)
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+function isEventExpanded(eventId: string) {
+  return expandedEventIds.value.includes(eventId)
+}
+
+function toggleEventGroup(eventId: string) {
+  if (isEventExpanded(eventId)) {
+    expandedEventIds.value = expandedEventIds.value.filter(id => id !== eventId)
+    return
+  }
+
+  expandedEventIds.value = [...expandedEventIds.value, eventId]
+}
+
+function matchesStatusFilter(status: string, filter: TicketStatusFilter) {
+  const normalizedStatus = normalizeStatus(status)
+
+  if (filter === 'all') {
+    return true
+  }
+
+  if (filter === 'success') {
+    return ['issued', 'paid', 'confirmed', 'success', 'completed'].includes(normalizedStatus)
+  }
+
+  if (filter === 'processing') {
+    return ['pending', 'processing', 'held', 'reserved', 'draft'].includes(normalizedStatus)
+  }
+
+  return ['cancelled', 'canceled', 'refunded', 'void', 'expired', 'failed'].includes(normalizedStatus)
+}
+
 definePageMeta({
-  title: 'My tickets',
-  breadcrumb: 'Tickets',
+  title: 'tickets.page_title',
+  breadcrumb: 'nav.my_tickets',
   layout: 'dashboard',
   middleware: ['auth'],
 })
 </script>
 
 <template>
-  <main class="space-y-6 pb-8 pt-6">
+  <main class="relative mx-auto w-full max-w-[100rem] space-y-5 overflow-hidden pb-8 pt-5">
+    <div class="pointer-events-none absolute inset-x-0 top-0 -z-10 h-56 bg-[radial-gradient(circle_at_12%_0%,hsl(var(--primary)/0.14),transparent_34%),radial-gradient(circle_at_86%_18%,hsl(var(--chart-2)/0.10),transparent_30%)]" />
+
+    <TicketHeader
+      :total-tickets="tickets.length"
+      :issued-tickets="issuedTicketsCount"
+      :upcoming-tickets="upcomingTicketsCount"
+    />
+
+    <TicketFilter
+      v-model:selected-date="selectedDate"
+      :total-tickets="tickets.length"
+      :filtered-tickets="filteredTickets.length"
+    />
+
+    <TicketStatusTabs v-model="selectedStatus" />
+
     <section
-      v-if="tickets.length > 0"
-      class="grid gap-5 sm:grid-cols-2 xl:grid-cols-3"
+      v-if="ticketEventGroups.length > 0"
+      class="space-y-4"
     >
-      <NuxtLink
-        v-for="ticket in tickets"
-        :key="ticket.id"
-        :to="`/tickets/${ticket.publicId}`"
-        class="group relative block overflow-hidden rounded-2xl border bg-card text-card-foreground shadow-sm outline-none transition-all duration-300 hover:-translate-y-1 hover:border-primary/50 hover:shadow-md focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+      <TicketEventGroup
+        v-for="(group, groupIndex) in ticketEventGroups"
+        :key="group.id"
+        :title="group.title"
+        :subtitle="group.subtitle"
+        :event-time="group.eventTime"
+        :cover-image="group.coverImage"
+        :venue-name="null"
+        :venue-city="null"
+        :ticket-count="group.tickets.length"
+        :expanded="isEventExpanded(group.id)"
+        :tone="groupIndex"
+        @toggle="toggleEventGroup(group.id)"
       >
-        <div class="h-1.5 bg-gradient-to-r from-primary via-primary/55 to-transparent" />
-
-        <div class="space-y-5 p-5">
-          <div class="flex items-start justify-between gap-4">
-            <div class="min-w-0 space-y-3">
-              <Badge
-                variant="secondary"
-                class="w-fit capitalize"
-              >
-                {{ ticket.status }}
-              </Badge>
-              <h2 class="line-clamp-2 text-xl font-semibold tracking-tight">
-                {{ ticket.event?.title || ticket.publicId }}
-              </h2>
-              <p class="flex items-center gap-2 truncate text-sm text-muted-foreground">
-                <UserRound class="size-3.5 shrink-0" />
-                <span class="truncate">{{ ticket.attendeeEmail }}</span>
-              </p>
-            </div>
-
-            <div class="rounded-lg border bg-muted/30 px-2.5 py-2 text-right">
-              <p class="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-                {{ $t('tickets.detail_issued') }}
-              </p>
-              <p class="mt-1 whitespace-nowrap font-mono text-xs">
-                {{ formatIssuedAt(ticket.issuedAt) }}
-              </p>
-            </div>
-          </div>
-
-          <div class="relative border-t border-dashed pt-5">
-            <span class="absolute -left-8 -top-3 size-6 rounded-full border bg-background transition-colors duration-300 group-hover:border-primary/50" />
-            <span class="absolute -right-8 -top-3 size-6 rounded-full border bg-background transition-colors duration-300 group-hover:border-primary/50" />
-
-            <div class="grid gap-3 text-sm">
-              <div class="flex items-start gap-3 rounded-xl bg-muted/30 p-3">
-                <CalendarRange class="mt-0.5 size-4 shrink-0 text-muted-foreground" />
-                <div class="min-w-0">
-                  <p class="text-xs text-muted-foreground">{{ $t('tickets.event_time') }}</p>
-                  <p class="truncate font-medium">
-                    {{ formatEventTime(ticket.event?.startsAt) }}
-                  </p>
-                </div>
-              </div>
-
-              <div class="grid gap-3 sm:grid-cols-2">
-                <div class="flex items-start gap-3 rounded-xl bg-muted/30 p-3">
-                  <MapPin class="mt-0.5 size-4 shrink-0 text-muted-foreground" />
-                  <div class="min-w-0">
-                    <p class="text-xs text-muted-foreground">{{ $t('tickets.seat_label') }}</p>
-                    <p class="truncate font-medium">
-                      {{ ticket.orderItem?.sectionLabel || $t('tickets.detail_general_admission') }} · {{ ticket.orderItem?.seatLabel || $t('tickets.ga') }}
-                    </p>
-                  </div>
-                </div>
-
-                <div class="flex items-start gap-3 rounded-xl bg-muted/30 p-3">
-                  <Ticket class="mt-0.5 size-4 shrink-0 text-muted-foreground" />
-                  <div class="min-w-0">
-                    <p class="text-xs text-muted-foreground">{{ $t('tickets.ticket_label') }}</p>
-                    <p class="truncate font-mono text-xs font-medium">
-                      #{{ getShortTicketId(ticket.publicId) }}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div class="mt-5 flex items-center justify-between gap-3 text-sm">
-              <span class="text-muted-foreground">
-                {{ $t('tickets.open_digital_pass') }}
-              </span>
-              <span class="inline-flex items-center gap-1 font-medium text-primary transition-transform duration-300 group-hover:translate-x-1">
-                {{ $t('tickets.view_pass') }}
-                <ArrowRight class="size-4" />
-              </span>
-            </div>
-          </div>
+        <div class="grid gap-4 lg:grid-cols-2 2xl:grid-cols-3">
+          <TicketCard
+            v-for="ticket in group.tickets"
+            :key="ticket.id"
+            :ticket="ticket"
+            :issued-at-label="formatIssuedAt(ticket.issuedAt)"
+            :event-time-label="formatEventTime(ticket.event?.startsAt)"
+            :status-label="getStatusLabel(ticket.status)"
+            :short-ticket-id="getShortTicketId(ticket.publicId)"
+          />
         </div>
-      </NuxtLink>
+      </TicketEventGroup>
     </section>
 
     <Empty
       v-else
-      class="rounded-xl border bg-card/60 py-16"
+      class="rounded-[1.75rem] border bg-card/60 py-16"
     >
       <EmptyHeader>
         <EmptyMedia variant="icon">
           <Ticket class="size-5" />
         </EmptyMedia>
-        <EmptyTitle>Your first issued ticket will appear here.</EmptyTitle>
+        <EmptyTitle>{{ selectedDate ? $t('tickets.filter_empty_title') : $t('tickets.empty_title') }}</EmptyTitle>
         <EmptyDescription>
-          This wallet stores the QR pass, seat assignment, and event timing.
+          {{ selectedDate ? $t('tickets.filter_empty_desc') : $t('tickets.empty_subtitle') }}
         </EmptyDescription>
       </EmptyHeader>
       <EmptyContent>
-        <div class="flex gap-2">
+        <div class="flex flex-wrap justify-center gap-2">
+          <Button
+            v-if="selectedDate"
+            variant="outline"
+            class="rounded-full"
+            @click="selectedDate = ''"
+          >
+            {{ $t('tickets.clear_date_filter') }}
+          </Button>
           <Button
             as-child
             class="rounded-full"
           >
             <NuxtLink to="/events">
-              Browse events
+              {{ $t('tickets.browse_events') }}
             </NuxtLink>
           </Button>
         </div>
