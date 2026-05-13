@@ -42,13 +42,13 @@ export const DOCS_CONFIG = {
     },
     nav: [
       {
-        title: 'Events',
-        to: '/events',
+        title: 'Home',
+        to: '/',
         showLinkIcon: false,
       },
       {
-        title: 'My tickets',
-        to: '/tickets',
+        title: 'Events',
+        to: '/events',
         showLinkIcon: false,
       },
     ],
