@@ -127,20 +127,8 @@ async function saveProfile() {
 
 <template>
   <div class="min-h-[calc(100dvh-8rem)] rounded-[2rem] border bg-[#202123] px-4 py-8 text-white shadow-2xl shadow-black/20 sm:px-6 lg:px-10">
-    <div class="mx-auto grid max-w-5xl gap-8 lg:grid-cols-[14rem_minmax(0,1fr)]">
-      <aside class="hidden lg:block">
-        <div class="flex items-center gap-3 rounded-2xl bg-white/[0.03] p-4">
-          <div class="flex size-11 items-center justify-center rounded-full bg-pink-600 text-lg font-semibold text-white">
-            {{ initial }}
-          </div>
-          <div class="min-w-0">
-            <p class="text-xs text-white/60">{{ $t('account_page.account_of') }}</p>
-            <p class="truncate font-semibold">{{ form.name || profile?.username }}</p>
-          </div>
-        </div>
-      </aside>
-
-      <section class="min-w-0">
+    <div class="mx-auto max-w-5xl">
+      <section>
         <div class="border-b border-white/10 pb-4">
           <h1 class="text-3xl font-bold tracking-tight text-white">
             {{ $t('account_page.title') }}
@@ -148,24 +136,24 @@ async function saveProfile() {
         </div>
 
         <form
-          class="mx-auto mt-8 max-w-md space-y-6"
+          class="mx-auto mt-8 max-w-md space-y-6 pb-24"
           @submit.prevent="saveProfile"
         >
-          <div class="flex flex-col items-center gap-5 text-center">
+          <div class="space-y-5">
             <div class="relative">
-              <div class="flex size-32 items-center justify-center rounded-full bg-pink-600 text-7xl font-light text-white shadow-[0_18px_60px_-18px_rgba(219,39,119,0.9)]">
+              <div class="mx-auto flex size-32 items-center justify-center rounded-full bg-pink-600 text-7xl font-light text-white shadow-[0_18px_60px_-18px_rgba(219,39,119,0.9)]">
                 {{ initial }}
               </div>
               <button
                 type="button"
-                class="absolute bottom-2 right-1 flex size-9 items-center justify-center rounded-full border-2 border-[#202123] bg-emerald-500 text-white shadow-lg transition hover:bg-emerald-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300"
+                class="absolute bottom-2 right-[calc(50%-4rem)] flex size-9 items-center justify-center rounded-full border-2 border-[#202123] bg-emerald-500 text-white shadow-lg transition hover:bg-emerald-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300"
                 :aria-label="$t('account_page.change_avatar')"
               >
                 <Camera class="size-4" />
               </button>
             </div>
 
-            <p class="max-w-sm text-sm leading-7 text-white/80">
+            <p class="text-left text-sm leading-7 text-white/80">
               {{ $t('account_page.description') }}
             </p>
           </div>
@@ -175,7 +163,7 @@ async function saveProfile() {
             <Input
               id="account-name"
               v-model="form.name"
-              class="h-12 border-white/10 bg-white text-slate-950 placeholder:text-slate-400"
+              class="h-12 border-white/10 bg-white text-slate-950 placeholder:text-slate-400 disabled:opacity-100 disabled:text-slate-700"
               :placeholder="$t('account_page.full_name')"
             />
           </div>
@@ -222,7 +210,7 @@ async function saveProfile() {
               <Input
                 id="account-email"
                 v-model="form.email"
-                class="h-12 border-white/10 bg-white pr-10 text-slate-950 placeholder:text-slate-400"
+                class="h-12 border-white/10 bg-white pr-10 text-slate-950 placeholder:text-slate-400 disabled:opacity-100 disabled:text-slate-700"
                 type="email"
                 :placeholder="$t('account_page.email')"
               />
