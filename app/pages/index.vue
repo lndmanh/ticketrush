@@ -205,7 +205,7 @@ definePageMeta({
         <div class="absolute inset-x-0 bottom-0 h-56 bg-gradient-to-t from-background via-background/70 to-transparent" />
         <div class="pointer-events-none absolute left-[12%] top-[18%] h-64 w-64 rounded-full bg-sky-400/12 blur-3xl" />
 
-        <div class="relative mx-auto flex min-h-[100dvh] w-full max-w-7xl flex-col justify-end px-4 pb-28 pt-28 sm:px-6 lg:px-8 lg:pb-32">
+        <div class="relative mx-auto flex min-h-[100dvh] w-full max-w-[90rem] flex-col justify-end px-4 pb-28 pt-28 sm:px-6 lg:px-10 lg:pb-32">
           <Motion
             as="div"
             :initial="{ opacity: 0, y: 26 }"
@@ -269,7 +269,7 @@ definePageMeta({
         ref="featuredSectionRef"
         class="relative -mx-4 bg-background px-4 py-16 md:-mx-6 md:px-6 md:py-24 lg:-mx-10 lg:px-10"
       >
-        <div class="mx-auto max-w-7xl space-y-10">
+        <div class="mx-auto max-w-[90rem] space-y-10">
           <Motion
             as="div"
             :initial="{ opacity: 0, y: 24 }"
