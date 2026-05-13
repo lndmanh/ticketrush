@@ -47,7 +47,7 @@ export const DOCS_CONFIG = {
         showLinkIcon: false,
       },
       {
-        title: 'nav.my_tickets',
+        title: 'My tickets',
         to: '/tickets',
         showLinkIcon: false,
       },
