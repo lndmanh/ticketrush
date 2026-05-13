@@ -32,7 +32,15 @@
               @click="handleClose"
             >
               <CommandItem :value="child.path">
-                <FileIcon class="mr-2 size-4" />
+                <component
+                  :is="child.icon"
+                  v-if="child.icon"
+                  class="mr-2 size-4"
+                />
+                <FileIcon
+                  v-else
+                  class="mr-2 size-4"
+                />
                 <span>{{ child.title }}</span>
               </CommandItem>
             </NuxtLink>
@@ -40,7 +48,7 @@
           <CommandSeparator v-if="item.children" />
         </template>
         <CommandGroup
-          heading="Theme"
+          :heading="$t('common.theme')"
           class="p-1.5"
         >
           <CommandItem
@@ -171,7 +179,7 @@ const open = computed({
 })
 const { setOpen } = store
 const colorMode = useColorMode()
-const { locale } = useI18n()
+const { locale, t } = useI18n()
 const { placeholderDetailed } = useConfig().value.search
 
 const input = ref('')
@@ -198,7 +206,7 @@ function resetState() {
 }
 
 function toSearchTitles(item: EventSearchApiItem) {
-  const titles = ['Events']
+  const titles = [t('Events')]
   if (item.venueName) {
     titles.push(item.venueName)
   }
@@ -292,13 +300,15 @@ const navigation = computed(() => {
   return sections
     .map(section => ({
       path: section.title,
-      title: section.title,
+      title: t(section.title),
       children: section.items
         .filter(hasSidebarUrl)
+        .filter(item => item.url !== '/events' && item.url !== '/tickets')
         .map(item => ({
           stem: item.url,
           path: item.url,
-          title: item.title,
+          title: t(item.title),
+          icon: item.icon,
         })),
     }))
     .filter(section => section.children.length > 0)
