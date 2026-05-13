@@ -24,10 +24,10 @@ const filters: { value: TicketStatusFilter, label: string }[] = [
         v-for="filter in filters"
         :key="filter.value"
         type="button"
-        class="rounded-full px-4 py-2.5 text-sm font-semibold transition-all duration-300"
+        class="rounded-full px-4 py-2.5 text-sm font-extrabold tracking-tight transition-all duration-300"
         :class="modelValue === filter.value
-          ? 'bg-emerald-400 text-emerald-950 shadow-lg shadow-emerald-500/25'
-          : 'bg-[#303128] text-muted-foreground hover:bg-[#3a3b31] hover:text-foreground'"
+          ? 'bg-emerald-400 text-black shadow-lg shadow-emerald-500/25'
+          : 'bg-[#303128] text-foreground/85 hover:bg-[#3a3b31] hover:text-foreground'"
         @click="emit('update:modelValue', filter.value)"
       >
         {{ $t(filter.label) }}
