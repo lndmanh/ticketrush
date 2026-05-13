@@ -8,6 +8,7 @@ import type { BreadcrumbItemType } from '~~/types/common'
 
 const router = useRouter()
 const route = useRoute()
+const { t } = useI18n()
 
 function getRouteTitle(meta: { breadcrumb?: unknown, title?: unknown } | undefined) {
   if (!meta) return null
@@ -15,6 +16,15 @@ function getRouteTitle(meta: { breadcrumb?: unknown, title?: unknown } | undefin
   if (typeof meta.title === 'string' && meta.title.length > 0) return meta.title
 
   return null
+}
+
+function getBreadcrumbTitle(title: string) {
+  if (title === 'Home') {
+    return t('nav.home')
+  }
+
+  const translated = t(title)
+  return translated === title ? title : translated
 }
 
 const breadcrumbs = computed<BreadcrumbItemType[]>(() => {
@@ -119,7 +129,7 @@ const { loggedIn, user } = useUserSession()
               class="hidden md:inline-flex"
             >
               <BreadcrumbLink :href="breadcrumbs[0].href">
-                {{ breadcrumbs[0].title }}
+                {{ getBreadcrumbTitle(breadcrumbs[0].title) }}
               </BreadcrumbLink>
             </BreadcrumbItem>
             <BreadcrumbSeparator
@@ -169,7 +179,7 @@ const { loggedIn, user } = useUserSession()
                       class="cursor-pointer"
                       @click="navigateTo(crumb.href)"
                     >
-                      {{ crumb.title }}
+                      {{ getBreadcrumbTitle(crumb.title) }}
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -182,7 +192,7 @@ const { loggedIn, user } = useUserSession()
             >
               <BreadcrumbItem class="hidden md:inline-flex">
                 <BreadcrumbLink :href="crumb.href">
-                  {{ crumb.title }}
+                  {{ getBreadcrumbTitle(crumb.title) }}
                 </BreadcrumbLink>
               </BreadcrumbItem>
               <BreadcrumbSeparator class="hidden md:block" />
@@ -192,7 +202,7 @@ const { loggedIn, user } = useUserSession()
               class="hidden md:inline-flex"
             >
               <BreadcrumbPage>
-                {{ currentBreadcrumb.title }}
+                {{ getBreadcrumbTitle(currentBreadcrumb.title) }}
               </BreadcrumbPage>
             </BreadcrumbItem>
             <BreadcrumbItem
@@ -200,7 +210,7 @@ const { loggedIn, user } = useUserSession()
               class="md:hidden"
             >
               <BreadcrumbPage class="max-w-28 truncate">
-                {{ currentBreadcrumb.title }}
+                {{ getBreadcrumbTitle(currentBreadcrumb.title) }}
               </BreadcrumbPage>
             </BreadcrumbItem>
           </BreadcrumbList>
