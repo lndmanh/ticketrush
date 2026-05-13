@@ -1,23 +1,29 @@
 <script setup lang="ts">
-import { CalendarRange, X } from '@lucide/vue'
+import { CalendarRange } from '@lucide/vue'
 
-defineProps<{
-  selectedDate: string
+export type TicketDateRangeFilter = 'last_24h' | 'last_7_days' | 'last_30_days' | 'all_time'
+
+const props = defineProps<{
+  selectedRange: TicketDateRangeFilter
   totalTickets: number
   filteredTickets: number
 }>()
 
+const dateRangeOptions: { value: TicketDateRangeFilter, label: string }[] = [
+  { value: 'last_24h', label: 'tickets.filter_range_last_24h' },
+  { value: 'last_7_days', label: 'tickets.filter_range_last_7_days' },
+  { value: 'last_30_days', label: 'tickets.filter_range_last_30_days' },
+  { value: 'all_time', label: 'tickets.filter_range_all_time' },
+]
+
 const emit = defineEmits<{
-  (event: 'update:selectedDate', value: string): void
+  (event: 'update:selectedRange', value: TicketDateRangeFilter): void
 }>()
 
-function updateSelectedDate(value: string | number) {
-  emit('update:selectedDate', String(value))
-}
-
-function clearSelectedDate() {
-  emit('update:selectedDate', '')
-}
+const selectedRangeModel = computed({
+  get: () => props.selectedRange,
+  set: (value: TicketDateRangeFilter) => emit('update:selectedRange', value),
+})
 </script>
 
 <template>
@@ -40,22 +46,23 @@ function clearSelectedDate() {
       </label>
       <div class="relative min-w-56">
         <CalendarRange class="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-primary" />
-        <Input
-          id="ticket-date-filter"
-          :model-value="selectedDate"
-          type="date"
-          class="h-10 rounded-full border-border/70 bg-background/80 pl-9 pr-10 text-sm text-foreground shadow-inner shadow-black/10 [color-scheme:dark] focus-visible:border-primary/50 focus-visible:ring-primary/20"
-          @update:model-value="updateSelectedDate"
-        />
-        <button
-          v-if="selectedDate"
-          type="button"
-          class="absolute right-2 top-1/2 inline-flex size-6 -translate-y-1/2 items-center justify-center rounded-full text-muted-foreground transition hover:bg-secondary hover:text-foreground"
-          :aria-label="$t('tickets.clear_date_filter')"
-          @click="clearSelectedDate"
-        >
-          <X class="size-3.5" />
-        </button>
+        <Select v-model="selectedRangeModel">
+          <SelectTrigger
+            id="ticket-date-filter"
+            class="h-10 rounded-full border-border/70 bg-background/80 pl-9 text-sm font-semibold text-foreground shadow-inner shadow-black/10 focus:border-primary/50 focus:ring-primary/20"
+          >
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent align="end">
+            <SelectItem
+              v-for="option in dateRangeOptions"
+              :key="option.value"
+              :value="option.value"
+            >
+              {{ $t(option.label) }}
+            </SelectItem>
+          </SelectContent>
+        </Select>
       </div>
     </div>
   </section>

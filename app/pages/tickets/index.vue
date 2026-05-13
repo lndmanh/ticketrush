@@ -3,6 +3,7 @@ import { Ticket } from '@lucide/vue'
 import type { ApiResponse } from '~~/types/api'
 import type { TicketListItem } from '~~/types/ticketing'
 import { getDisplayDateLocale } from '@/lib/localizedEvents'
+import type { TicketDateRangeFilter } from '@/components/ticket/TicketFilter.vue'
 import type { TicketStatusFilter } from '@/components/ticket/TicketStatusTabs.vue'
 
 interface TicketEventGroupData {
@@ -16,7 +17,7 @@ interface TicketEventGroupData {
 }
 
 const { locale, t } = useI18n()
-const selectedDate = ref('')
+const selectedRange = ref<TicketDateRangeFilter>('last_7_days')
 const selectedStatus = ref<TicketStatusFilter>('all')
 const expandedEventIds = ref<string[]>([])
 
@@ -44,15 +45,11 @@ const filteredTickets = computed(() => {
       return false
     }
 
-    if (!selectedDate.value) {
+    if (selectedRange.value === 'all_time') {
       return true
     }
 
-    if (!ticket.event?.startsAt) {
-      return false
-    }
-
-    return toDateInputValue(ticket.event.startsAt) === selectedDate.value
+    return isWithinDateRange(ticket.issuedAt, selectedRange.value)
   })
 })
 
@@ -133,16 +130,27 @@ function getStatusLabel(status: string) {
   return translated === key ? status.replaceAll('_', ' ') : translated
 }
 
-function toDateInputValue(value: string | Date) {
-  const date = new Date(value)
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  return `${year}-${month}-${day}`
-}
-
 function isEventExpanded(eventId: string) {
   return expandedEventIds.value.includes(eventId)
+}
+
+function isWithinDateRange(value: string | Date, range: TicketDateRangeFilter) {
+  const issuedAt = new Date(value).getTime()
+  const now = Date.now()
+
+  if (!Number.isFinite(issuedAt)) {
+    return false
+  }
+
+  if (range === 'last_24h') {
+    return issuedAt >= now - 24 * 60 * 60 * 1000
+  }
+
+  if (range === 'last_7_days') {
+    return issuedAt >= now - 7 * 24 * 60 * 60 * 1000
+  }
+
+  return issuedAt >= now - 30 * 24 * 60 * 60 * 1000
 }
 
 function toggleEventGroup(eventId: string) {
@@ -191,7 +199,7 @@ definePageMeta({
     />
 
     <TicketFilter
-      v-model:selected-date="selectedDate"
+      v-model:selected-range="selectedRange"
       :total-tickets="tickets.length"
       :filtered-tickets="filteredTickets.length"
     />
@@ -238,18 +246,18 @@ definePageMeta({
         <EmptyMedia variant="icon">
           <Ticket class="size-5" />
         </EmptyMedia>
-        <EmptyTitle>{{ selectedDate ? $t('tickets.filter_empty_title') : $t('tickets.empty_title') }}</EmptyTitle>
+        <EmptyTitle>{{ selectedRange !== 'all_time' ? $t('tickets.filter_empty_title') : $t('tickets.empty_title') }}</EmptyTitle>
         <EmptyDescription>
-          {{ selectedDate ? $t('tickets.filter_empty_desc') : $t('tickets.empty_subtitle') }}
+          {{ selectedRange !== 'all_time' ? $t('tickets.filter_empty_desc') : $t('tickets.empty_subtitle') }}
         </EmptyDescription>
       </EmptyHeader>
       <EmptyContent>
         <div class="flex flex-wrap justify-center gap-2">
           <Button
-            v-if="selectedDate"
+            v-if="selectedRange !== 'all_time'"
             variant="outline"
             class="rounded-full"
-            @click="selectedDate = ''"
+            @click="selectedRange = 'all_time'"
           >
             {{ $t('tickets.clear_date_filter') }}
           </Button>
