@@ -114,10 +114,10 @@ const sessionCountLabel = computed(() => {
 
 // Dynamic status badge color
 const statusBadgeClass = computed(() => {
-  if (eventTiming.value === 'ongoing') return 'border-emerald-400/30 bg-emerald-400/18 text-emerald-300'
-  if (eventTiming.value === 'past') return 'border-white/15 bg-white/10 text-white/65'
-  if (eventTiming.value === 'upcoming') return 'border-sky-400/30 bg-sky-400/18 text-sky-300'
-  return 'border-white/15 bg-white/10 text-white/75'
+  if (eventTiming.value === 'ongoing') return 'border-emerald-200/60 bg-emerald-600/90 text-white shadow-emerald-950/30 ring-1 ring-white/25'
+  if (eventTiming.value === 'past') return 'border-zinc-200/60 bg-zinc-800/90 text-white shadow-black/30 ring-1 ring-white/20'
+  if (eventTiming.value === 'upcoming') return 'border-sky-100/70 bg-sky-600/95 text-white shadow-sky-950/35 ring-1 ring-white/25'
+  return 'border-white/35 bg-black/75 text-white shadow-black/30 ring-1 ring-white/20'
 })
 </script>
 
@@ -148,13 +148,13 @@ const statusBadgeClass = computed(() => {
           <div class="flex flex-wrap items-start justify-between gap-3">
             <!-- Dynamic status badge -->
             <span
-              class="inline-flex items-center rounded-full border px-3 py-1 font-mono text-[10px] uppercase tracking-[0.16em] capitalize backdrop-blur-md transition-all duration-300"
+              class="inline-flex items-center rounded-full border px-3 py-1 font-mono text-[10px] font-bold uppercase tracking-[0.16em] capitalize shadow-lg backdrop-blur-xl transition-all duration-300 [text-shadow:0_1px_2px_rgba(0,0,0,0.45)]"
               :class="statusBadgeClass"
             >
               {{ statusLabel }}
             </span>
 
-            <span class="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-black/35 px-3 py-1.5 font-mono text-[11px] text-white/80 backdrop-blur-md">
+            <span class="inline-flex items-center gap-1.5 rounded-full border border-white/35 bg-black/70 px-3 py-1.5 font-mono text-[11px] font-semibold text-white shadow-lg shadow-black/25 ring-1 ring-white/15 backdrop-blur-xl [text-shadow:0_1px_2px_rgba(0,0,0,0.55)]">
               <CalendarRange class="size-3.5" />
               {{ startsAtLabel }}
             </span>
@@ -166,7 +166,7 @@ const statusBadgeClass = computed(() => {
                 {{ event.title }}
               </h3>
               <div class="flex flex-wrap gap-2">
-                <span class="inline-flex max-w-full items-center rounded-full border border-white/10 bg-black/35 px-3 py-1.5 text-xs text-white/80 backdrop-blur-md">
+                <span class="inline-flex max-w-full items-center rounded-full border border-white/30 bg-black/68 px-3 py-1.5 text-xs font-semibold text-white shadow-md shadow-black/20 ring-1 ring-white/10 backdrop-blur-xl [text-shadow:0_1px_2px_rgba(0,0,0,0.55)]">
                   {{ $t('event_card.first_session') }} · {{ firstSessionLabel }}
                 </span>
               </div>
