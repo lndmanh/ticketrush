@@ -41,7 +41,7 @@ import { apiRoutes } from '#shared/apiRoutes'
 import { getDisplayDateLocale } from '@/lib/localizedEvents'
 import { createColumns } from './columns'
 
-const { locale } = useI18n()
+const { locale, t } = useI18n()
 const transactions = ref<AdminTransactionRow[]>([])
 const loading = ref(false)
 
@@ -58,7 +58,7 @@ async function fetchTransactions() {
     transactions.value = response.data
   }
   catch (error) {
-    toast.error(parseApiError(error, 'Failed to load transaction records').message)
+    toast.error(parseApiError(error, t('admin.transactions.load_failed')).message)
   }
   finally {
     loading.value = false

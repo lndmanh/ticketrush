@@ -5,6 +5,8 @@ import type { ApiResponse } from '~~/types/api'
 import type { AdminTaskData, AdminTaskResult } from '~~/types/admin-tasks'
 import { apiRequest } from '@/utils/apiRequest'
 import { parseApiError } from '@/utils/apiError'
+import { getUiFallbackText } from '@/utils/uiText'
+import { getDisplayDateLocale } from '@/lib/localizedEvents'
 
 interface TaskDefinition {
   id: string
@@ -57,46 +59,75 @@ const tasks: TaskDefinition[] = [
 
 const runningTasks = ref<Set<string>>(new Set())
 const taskResults = ref<Record<string, AdminTaskResult>>({})
-const { t } = useI18n()
+const { locale, t } = useI18n()
+
+function tx(key: string) {
+  const translated = t(key)
+  return translated === key ? getUiFallbackText(key) : translated
+}
+
+function txParams(key: string, params: Record<string, string | number>) {
+  const translated = t(key, params)
+  if (translated !== key) {
+    return translated
+  }
+
+  return Object.entries(params).reduce(
+    (message, [paramKey, paramValue]) => message.replaceAll(`{${paramKey}}`, String(paramValue)),
+    getUiFallbackText(key),
+  )
+}
+
+function getTaskTitle(task: TaskDefinition) {
+  return tx(task.titleKey)
+}
+
+function formatRanAt() {
+  return new Date().toLocaleTimeString(getDisplayDateLocale(locale.value), {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  })
+}
 
 const localizedTasks = computed(() => tasks.map(task => ({
   ...task,
-  title: t(task.titleKey),
-  description: t(task.descriptionKey),
+  title: tx(task.titleKey),
+  description: tx(task.descriptionKey),
 })))
 
 function getTaskResultMessage(taskId: string, data: AdminTaskData) {
   if (taskId === 'release-holds' && 'releasedCount' in data) {
     return data.releasedCount > 0
-      ? t('admin.tasks.result_release_holds_done', { count: data.releasedCount })
-      : t('admin.tasks.result_release_holds_empty')
+      ? txParams('admin.tasks.result_release_holds_done', { count: data.releasedCount })
+      : tx('admin.tasks.result_release_holds_empty')
   }
 
   if (taskId === 'admit-queue' && 'admissionSummary' in data) {
     const admittedTotal = data.admissionSummary.reduce((total, item) => total + item.admittedCount, 0)
     return admittedTotal > 0
-      ? t('admin.tasks.result_admit_queue_done', { count: admittedTotal })
-      : t('admin.tasks.result_admit_queue_empty')
+      ? txParams('admin.tasks.result_admit_queue_done', { count: admittedTotal })
+      : tx('admin.tasks.result_admit_queue_empty')
   }
 
   if (taskId === 'seed-admin' && 'admin' in data) {
     return data.admin.isAdmin
-      ? t('admin.tasks.result_seed_admin_ready', { username: data.admin.username })
-      : t('admin.tasks.result_seed_admin_checked', { username: data.admin.username })
+      ? txParams('admin.tasks.result_seed_admin_ready', { username: data.admin.username })
+      : txParams('admin.tasks.result_seed_admin_checked', { username: data.admin.username })
   }
 
   if (taskId === 'reseed-events' && 'eventsCreated' in data) {
-    return t('admin.tasks.result_reseed_events_done', { count: data.eventsCreated })
+    return txParams('admin.tasks.result_reseed_events_done', { count: data.eventsCreated })
   }
 
-  return t('admin.tasks.result_completed')
+  return tx('admin.tasks.result_completed')
 }
 
 function getTaskResultSummary(taskId: string, data: AdminTaskData): ResultSummaryItem[] {
   if (taskId === 'release-holds' && 'releasedCount' in data) {
     return [
-      { label: t('admin.tasks.metric_released_tickets'), value: String(data.releasedCount) },
-      { label: t('admin.tasks.metric_events_updated'), value: String(data.eventsRecomputed) },
+      { label: tx('admin.tasks.metric_released_tickets'), value: String(data.releasedCount) },
+      { label: tx('admin.tasks.metric_events_updated'), value: String(data.eventsRecomputed) },
     ]
   }
 
@@ -104,25 +135,25 @@ function getTaskResultSummary(taskId: string, data: AdminTaskData): ResultSummar
     const admittedTotal = data.admissionSummary.reduce((total, item) => total + item.admittedCount, 0)
     const activeSessions = data.admissionSummary.filter(item => item.admittedCount > 0).length
     return [
-      { label: t('admin.tasks.metric_admitted'), value: String(admittedTotal) },
-      { label: t('admin.tasks.metric_changed_sessions'), value: String(activeSessions) },
-      { label: t('admin.tasks.metric_expired_holds'), value: String(data.expiredCount) },
+      { label: tx('admin.tasks.metric_admitted'), value: String(admittedTotal) },
+      { label: tx('admin.tasks.metric_changed_sessions'), value: String(activeSessions) },
+      { label: tx('admin.tasks.metric_expired_holds'), value: String(data.expiredCount) },
     ]
   }
 
   if (taskId === 'seed-admin' && 'admin' in data) {
     return [
-      { label: t('admin.tasks.metric_account'), value: data.admin.username },
-      { label: t('admin.tasks.metric_display_name'), value: data.admin.name ?? t('common.not_set') },
-      { label: t('admin.tasks.metric_admin_role'), value: data.admin.isAdmin ? t('admin.tasks.enabled') : t('admin.tasks.disabled') },
+      { label: tx('admin.tasks.metric_account'), value: data.admin.username },
+      { label: tx('admin.tasks.metric_display_name'), value: data.admin.name ?? tx('common.not_set') },
+      { label: tx('admin.tasks.metric_admin_role'), value: data.admin.isAdmin ? tx('admin.tasks.enabled') : tx('admin.tasks.disabled') },
     ]
   }
 
   if (taskId === 'reseed-events' && 'eventsCreated' in data) {
     return [
-      { label: t('admin.tasks.metric_created_events'), value: String(data.eventsCreated) },
-      { label: t('admin.tasks.metric_venues'), value: String(data.venuesCreated) },
-      { label: t('admin.tasks.metric_cities'), value: String(data.cities.length) },
+      { label: tx('admin.tasks.metric_created_events'), value: String(data.eventsCreated) },
+      { label: tx('admin.tasks.metric_venues'), value: String(data.venuesCreated) },
+      { label: tx('admin.tasks.metric_cities'), value: String(data.cities.length) },
     ]
   }
 
@@ -142,18 +173,18 @@ async function runTask(task: TaskDefinition) {
     taskResults.value[task.id] = {
       success: true,
       data: response.data,
-      ranAt: new Date().toLocaleTimeString(),
+      ranAt: formatRanAt(),
     }
-    toast.success(t('admin.tasks.completed', { title: task.title }))
+    toast.success(txParams('admin.tasks.completed', { title: getTaskTitle(task) }))
   }
   catch (err) {
-    const message = parseApiError(err, t('admin.tasks.failed')).message
+    const message = parseApiError(err, tx('admin.tasks.failed')).message
     taskResults.value[task.id] = {
       success: false,
       error: message,
-      ranAt: new Date().toLocaleTimeString(),
+      ranAt: formatRanAt(),
     }
-    toast.error(t('admin.tasks.task_failed', { title: task.title, message }))
+    toast.error(txParams('admin.tasks.task_failed', { title: getTaskTitle(task), message }))
   }
   finally {
     runningTasks.value.delete(task.id)
@@ -172,10 +203,10 @@ definePageMeta({
   <div class="space-y-6">
     <div class="space-y-1">
       <h1 class="text-2xl font-semibold text-foreground">
-        {{ $t('admin.tasks.title') }}
+        {{ tx('admin.tasks.title') }}
       </h1>
       <p class="text-sm text-muted-foreground">
-        {{ $t('admin.tasks.desc') }}
+        {{ tx('admin.tasks.desc') }}
       </p>
     </div>
 
@@ -194,12 +225,12 @@ definePageMeta({
               />
             </div>
             <div class="min-w-0 flex-1">
-              <CardTitle class="text-sm">
+              <CardTitle class="text-sm leading-5 break-words">
                 {{ task.title }}
               </CardTitle>
             </div>
           </div>
-          <CardDescription class="text-xs">
+          <CardDescription class="text-xs break-words">
             {{ task.description }}
           </CardDescription>
         </CardHeader>
@@ -212,9 +243,9 @@ definePageMeta({
           >
             <div class="flex items-center justify-between gap-3">
               <p class="font-semibold">
-                {{ taskResults[task.id]?.success ? $t('admin.tasks.success') : $t('admin.tasks.failed') }}
+                {{ taskResults[task.id]?.success ? tx('admin.tasks.success') : tx('admin.tasks.failed') }}
               </p>
-              <span class="shrink-0 text-[11px] font-normal text-muted-foreground">{{ $t('admin.tasks.at') }} {{ taskResults[task.id]?.ranAt }}</span>
+              <span class="shrink-0 text-[11px] font-normal text-muted-foreground">{{ tx('admin.tasks.at') }} {{ taskResults[task.id]?.ranAt }}</span>
             </div>
 
             <div
@@ -242,7 +273,7 @@ definePageMeta({
 
               <details class="rounded-lg border border-current/10 bg-background/50">
                 <summary class="cursor-pointer px-3 py-2 text-[11px] font-medium text-muted-foreground hover:text-foreground">
-                  {{ $t('admin.tasks.technical_details') }}
+                  {{ tx('admin.tasks.technical_details') }}
                 </summary>
                 <pre class="max-h-32 overflow-auto whitespace-pre-wrap break-words border-t border-current/10 px-3 py-2 font-mono text-[11px] leading-5 text-muted-foreground [scrollbar-color:hsl(var(--muted-foreground)/0.35)_transparent] [scrollbar-width:thin]">{{ JSON.stringify(taskResults[task.id]?.data, null, 2) }}</pre>
               </details>
@@ -270,7 +301,7 @@ definePageMeta({
               v-else
               class="size-4"
             />
-            {{ runningTasks.has(task.id) ? $t('admin.tasks.running') : $t('admin.tasks.run') }}
+            {{ runningTasks.has(task.id) ? tx('admin.tasks.running') : tx('admin.tasks.run') }}
           </Button>
         </CardContent>
       </Card>

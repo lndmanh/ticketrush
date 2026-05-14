@@ -978,7 +978,22 @@
       "search": "Tìm đơn hàng, người mua, ghế, trạng thái",
       "count": "{count} giao dịch",
       "empty_title": "Chưa có giao dịch.",
-      "empty_desc": "Các đơn hàng đang chờ và đã hoàn tất sẽ xuất hiện tại đây khi có hoạt động checkout."
+      "empty_desc": "Các đơn hàng đang chờ và đã hoàn tất sẽ xuất hiện tại đây khi có hoạt động checkout.",
+      "order_id": "Mã đơn hàng",
+      "buyer_info": "Thông tin người mua",
+      "seat_info": "Thông tin ghế",
+      "total_amount": "Tổng tiền",
+      "payment_time": "Thời gian thanh toán",
+      "status": "Trạng thái giao dịch",
+      "no_buyer_name": "Chưa có tên",
+      "no_buyer_email": "Chưa có email",
+      "no_seats": "Không có ghế",
+      "unpaid": "Chưa thanh toán",
+      "load_failed": "Không thể tải danh sách giao dịch",
+      "status_confirmed": "Đã xác nhận",
+      "status_pending": "Đang chờ",
+      "status_cancelled": "Đã hủy",
+      "status_expired": "Đã hết hạn"
     },
     "localization": {
       "edit": "Chỉnh bản dịch",
