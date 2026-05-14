@@ -118,6 +118,17 @@ function ttParams(key: string, params: Record<string, string | number>, fallback
   return txParams(key, params, fallback)
 }
 
+function localizeEventCreateValidationMessage(message: string) {
+  const messageMap: Record<string, string> = {
+    'Event title is required': tt('admin.event_create.validation_title_required'),
+    'Event slug is required': tt('admin.event_create.validation_slug_required'),
+    'Event description is required': tt('admin.event_create.validation_description_required'),
+    'At least one session is required': tt('admin.event_session.validation_add_session'),
+  }
+
+  return messageMap[message] ?? message
+}
+
 const stepSchemas = {
   1: eventComposerSchema.pick({
     title: true,
@@ -741,8 +752,9 @@ function applyStepErrors(step: number) {
   for (const issue of result.error.issues) {
     const pathPart = issue.path[0]
     if (typeof pathPart === 'string') {
-      setFieldError(pathPart, issue.message)
-      messages.push(issue.message)
+      const localizedMessage = localizeEventCreateValidationMessage(issue.message)
+      setFieldError(pathPart, localizedMessage)
+      messages.push(localizedMessage)
     }
   }
 
@@ -907,7 +919,8 @@ const onSubmit = handleSubmit(
       }
     }
 
-    const firstError = Object.values(errors).flat().filter(Boolean)[0] || tt('admin.event_create.fix_fields')
+    const firstRawError = Object.values(errors).flat().filter(Boolean)[0]
+    const firstError = firstRawError ? localizeEventCreateValidationMessage(firstRawError) : tt('admin.event_create.fix_fields')
     toast.error(firstError)
   },
 )
