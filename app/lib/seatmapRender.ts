@@ -1,4 +1,6 @@
 import type { SeatMapLayout, SeatMapSeat, SeatMapSeatClickPayload, SeatMapStatus } from '~~/types/seatmap'
+import { SeatLayoutMode } from '#shared/commonEnums'
+import { createAutomaticSeatPositions } from '@/lib/seatmapGrid'
 import { getSeatMapStatusColor, type SeatMapStatusColor } from '@/lib/seatmapStatus'
 
 export interface SeatMapRenderOptions {
@@ -21,7 +23,27 @@ export interface SeatMapRenderSection {
   code: string
   name: string
   color: string
+  contentBounds: SeatMapRenderBounds
   bounds: SeatMapRenderBounds
+  rowLabels: SeatMapRenderRowLabel[]
+  availability: SeatMapRenderAvailabilityLabel
+}
+
+export interface SeatMapRenderRowLabel {
+  label: string
+  x: number
+  y: number
+}
+
+export interface SeatMapRenderAvailabilityLabel {
+  label: string
+  x: number
+  y: number
+}
+
+export interface SeatMapRenderStage {
+  bounds: SeatMapRenderBounds
+  label: string
 }
 
 export interface SeatMapRenderSeat {
@@ -44,6 +66,7 @@ export interface SeatMapRenderSeat {
 }
 
 export interface SeatMapRenderModel {
+  stage: SeatMapRenderStage
   sections: SeatMapRenderSection[]
   seats: SeatMapRenderSeat[]
   bounds: SeatMapRenderBounds
@@ -58,6 +81,10 @@ const defaultRenderOptions: SeatMapRenderOptions = {
 const seatIconWidth = 22
 const seatIconHeight = 18
 const seatIconCornerRadius = 6
+const gridCellWidth = 72
+const gridCellHeight = 72
+const stageBandHeight = 44
+const stageGap = 24
 
 function createEmptyBounds(): SeatMapRenderBounds {
   return { minX: 0, minY: 0, maxX: 0, maxY: 0, width: 0, height: 0 }
@@ -89,26 +116,93 @@ function createBoundsFromSeats(seats: SeatMapRenderSeat[]): SeatMapRenderBounds 
   ]))
 }
 
+function mergeBounds(a: SeatMapRenderBounds, b: SeatMapRenderBounds): SeatMapRenderBounds {
+  if (a.width === 0 && a.height === 0) {
+    return b
+  }
+
+  if (b.width === 0 && b.height === 0) {
+    return a
+  }
+
+  const minX = Math.min(a.minX, b.minX)
+  const minY = Math.min(a.minY, b.minY)
+  const maxX = Math.max(a.maxX, b.maxX)
+  const maxY = Math.max(a.maxY, b.maxY)
+
+  return { minX, minY, maxX, maxY, width: maxX - minX, height: maxY - minY }
+}
+
 export function createSeatMapRenderModel(layout: SeatMapLayout, selectedSeatIds: number[], partialOptions: Partial<SeatMapRenderOptions> = {}): SeatMapRenderModel {
   const options = { ...defaultRenderOptions, ...partialOptions }
   const selectedSeatIdSet = new Set(selectedSeatIds)
   const sections: SeatMapRenderSection[] = []
   const seats: SeatMapRenderSeat[] = []
-  let sectionOffsetY = 0
+  const stage: SeatMapRenderStage = {
+    label: 'Stage',
+    bounds: { minX: 0, minY: 0, maxX: 0, maxY: stageBandHeight, width: 0, height: stageBandHeight },
+  }
 
   for (const section of layout.sections) {
-    const sectionSeats: SeatMapRenderSeat[] = []
+    const sectionMinX = section.gridX * gridCellWidth
+    const sectionMinY = stageBandHeight + stageGap + (section.gridY * gridCellHeight)
+    const sectionMaxX = sectionMinX + (section.gridW * gridCellWidth)
+    const sectionMaxY = sectionMinY + (section.gridH * gridCellHeight)
+    const sectionGridBounds = {
+      minX: sectionMinX,
+      minY: sectionMinY,
+      maxX: sectionMaxX,
+      maxY: sectionMaxY,
+      width: sectionMaxX - sectionMinX,
+      height: sectionMaxY - sectionMinY,
+    }
+    const automaticPositions = section.seatLayoutMode === SeatLayoutMode.Automatic
+      ? createAutomaticSeatPositions({
+          rows: section.rows.map(row => ({ label: row.label, seatCount: row.seats.length })),
+          bounds: {
+            minX: sectionMinX,
+            minY: sectionMinY,
+            width: section.gridW * gridCellWidth,
+            height: section.gridH * gridCellHeight,
+          },
+          paddingX: seatSpacingPadding(options.seatSpacing),
+          paddingY: seatSpacingPadding(options.rowSpacing),
+        })
+      : []
+    const automaticSeatPositionsByRow = new Map<string, Array<{ x: number, y: number }>>()
+    for (const position of automaticPositions) {
+      const rowPositions = automaticSeatPositionsByRow.get(position.rowLabel)
+      const nextPosition = { x: position.x, y: position.y }
+      if (rowPositions) {
+        rowPositions.push(nextPosition)
+      }
+      else {
+        automaticSeatPositionsByRow.set(position.rowLabel, [nextPosition])
+      }
+    }
 
+    const rowLabels: SeatMapRenderRowLabel[] = []
     section.rows.forEach((row, rowIndex) => {
+      let rowLeftmostSeatX: number | null = null
+      let rowMinSeatY: number | null = null
+      let rowMaxSeatY: number | null = null
       row.seats.forEach((seat, seatIndex) => {
-        const displayX = seat.displayX ?? seatIndex
-        const displayY = seat.displayY ?? rowIndex
+        const automaticSeatPositions = automaticSeatPositionsByRow.get(row.label)
+        const automaticSeatPosition = automaticSeatPositions?.[seatIndex]
+        const displayX = automaticSeatPosition?.x ?? seat.displayX ?? seatIndex
+        const displayY = automaticSeatPosition?.y ?? seat.displayY ?? rowIndex
+        const x = section.seatLayoutMode === SeatLayoutMode.Manual
+          ? sectionMinX + seatSpacingPadding(options.seatSpacing) + (displayX * options.seatSpacing)
+          : displayX
+        const y = section.seatLayoutMode === SeatLayoutMode.Manual
+          ? sectionMinY + seatSpacingPadding(options.rowSpacing) + (displayY * options.rowSpacing)
+          : displayY
         const selected = selectedSeatIdSet.has(seat.id)
         const renderSeat: SeatMapRenderSeat = {
           key: `${section.key}-${seat.id}`,
           seatId: seat.id,
-          x: displayX * options.seatSpacing,
-          y: sectionOffsetY + displayY * options.rowSpacing,
+          x,
+          y,
           width: seatIconWidth,
           height: seatIconHeight,
           cornerRadius: seatIconCornerRadius,
@@ -123,22 +217,62 @@ export function createSeatMapRenderModel(layout: SeatMapLayout, selectedSeatIds:
           source: seat,
         }
 
-        sectionSeats.push(renderSeat)
         seats.push(renderSeat)
+        rowLeftmostSeatX = rowLeftmostSeatX === null ? x : Math.min(rowLeftmostSeatX, x)
+        rowMinSeatY = rowMinSeatY === null ? y : Math.min(rowMinSeatY, y)
+        rowMaxSeatY = rowMaxSeatY === null ? y : Math.max(rowMaxSeatY, y)
       })
+
+      if (rowLeftmostSeatX !== null && rowMinSeatY !== null && rowMaxSeatY !== null) {
+        const labelX = Math.max(sectionGridBounds.minX, rowLeftmostSeatX - seatSpacingPadding(options.seatSpacing) - 8)
+        rowLabels.push({ label: row.label, x: labelX, y: rowMinSeatY + ((rowMaxSeatY - rowMinSeatY) / 2) })
+      }
     })
 
-    const bounds = createBoundsFromSeats(sectionSeats)
-    sections.push({ key: section.key, code: section.code, name: section.name, color: section.color, bounds })
-    if (sectionSeats.length === 0) {
-      sectionOffsetY += options.sectionGap
+    const sectionSeatBounds = createBoundsFromSeats(seats.filter(seat => seat.sectionKey === section.key))
+    const labelBounds = rowLabels.length > 0
+      ? createBounds(rowLabels.map(label => ({ x: label.x, y: label.y })))
+      : createEmptyBounds()
+    const contentBounds = mergeBounds(mergeBounds(sectionGridBounds, sectionSeatBounds), labelBounds)
+    const availability = {
+      label: `${section.metrics.available} / ${section.metrics.total} available`,
+      x: contentBounds.maxX,
+      y: contentBounds.minY - 10,
     }
-    else {
-      sectionOffsetY = bounds.maxY + options.sectionGap
-    }
+    const availabilityBounds = createBounds([{ x: availability.x, y: availability.y }])
+    sections.push({ key: section.key, code: section.code, name: section.name, color: section.color, contentBounds, bounds: mergeBounds(contentBounds, availabilityBounds), rowLabels, availability })
   }
 
-  return { sections, seats, bounds: createBoundsFromSeats(seats) }
+  const seatBounds = createBoundsFromSeats(seats)
+  const sectionBounds = sections.reduce((acc, section) => mergeBounds(acc, section.bounds), createEmptyBounds())
+  const contentBounds = createBounds([
+    { x: seatBounds.minX, y: seatBounds.minY },
+    { x: seatBounds.maxX, y: seatBounds.maxY },
+    ...sections.flatMap(section => ([
+      { x: section.bounds.minX, y: section.bounds.minY },
+      { x: section.bounds.maxX, y: section.bounds.maxY },
+    ])),
+  ])
+  const stageBounds = contentBounds.width === 0 && contentBounds.height === 0
+    ? { minX: 0, minY: 0, maxX: 0, maxY: stageBandHeight, width: 0, height: stageBandHeight }
+    : { minX: contentBounds.minX, minY: 0, maxX: contentBounds.maxX, maxY: stageBandHeight, width: contentBounds.width, height: stageBandHeight }
+  stage.bounds = stageBounds
+  const bounds = createBounds([
+    { x: stage.bounds.minX, y: stage.bounds.minY },
+    { x: stage.bounds.maxX, y: stage.bounds.maxY },
+    { x: seatBounds.minX, y: seatBounds.minY },
+    { x: seatBounds.maxX, y: seatBounds.maxY },
+    ...sections.flatMap(section => ([
+      { x: section.bounds.minX, y: section.bounds.minY },
+      { x: section.bounds.maxX, y: section.bounds.maxY },
+    ])),
+  ])
+
+  return { stage, sections, seats, bounds }
+}
+
+function seatSpacingPadding(spacing: number) {
+  return Math.max(Math.round(spacing * 0.5), 1)
 }
 
 export function createSeatMapSeatClickPayload(renderSeat: SeatMapRenderSeat): SeatMapSeatClickPayload {

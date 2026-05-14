@@ -16,6 +16,7 @@ const hostRef = ref<HTMLElement | null>(null)
 
 let app: Application | null = null
 let worldLayer: Container | null = null
+let stageLayer: Container | null = null
 let sectionLayer: Container | null = null
 let seatLayer: Container | null = null
 let labelLayer: Container | null = null
@@ -32,8 +33,6 @@ const tapMoveThreshold = 6
 const labelZoomThreshold = 1
 const maxLabelledSeats = 900
 const seatBackrestInset = 3
-const minFitZoom = 0.75
-
 const pointers = new Map<number, { x: number, y: number }>()
 const zoom = ref(1)
 
@@ -103,7 +102,70 @@ function drawSections() {
     sectionLabel.y = section.bounds.minY - padding + 10
     sectionLabel.eventMode = 'none'
     sectionLayer.addChild(sectionLabel)
+
+    const availabilityLabel = new Text({
+      text: section.availability.label,
+      style: {
+        fill: '#475569',
+        fontFamily: 'Geist, system-ui, sans-serif',
+        fontSize: 12,
+        fontWeight: '600',
+      },
+    })
+    availabilityLabel.anchor.set(1, 0)
+    availabilityLabel.x = section.availability.x
+    availabilityLabel.y = section.availability.y
+    availabilityLabel.eventMode = 'none'
+    sectionLayer.addChild(availabilityLabel)
+
+    for (const rowLabel of section.rowLabels) {
+      const label = new Text({
+        text: rowLabel.label,
+        style: {
+          fill: '#64748B',
+          fontFamily: 'Geist, system-ui, sans-serif',
+          fontSize: 12,
+          fontWeight: '600',
+        },
+      })
+      label.anchor.set(1, 0.5)
+      label.x = rowLabel.x
+      label.y = rowLabel.y
+      label.eventMode = 'none'
+      sectionLayer.addChild(label)
+    }
   }
+}
+
+function drawStage() {
+  destroyChildren(stageLayer)
+  if (!stageLayer) {
+    return
+  }
+
+  const padding = 24
+  const stage = props.model.stage
+  const band = new Graphics()
+    .roundRect(props.model.bounds.minX - padding, stage.bounds.minY, props.model.bounds.width + padding * 2, stage.bounds.height, 18)
+    .fill({ color: 0x0F172A, alpha: 0.9 })
+    .stroke({ width: 1, color: 0x1E293B, alpha: 0.9 })
+
+  stageLayer.addChild(band)
+
+  const stageLabel = new Text({
+    text: stage.label,
+    style: {
+      fill: '#F8FAFC',
+      fontFamily: 'Geist, system-ui, sans-serif',
+      fontSize: 16,
+      fontWeight: '700',
+    },
+  })
+  stageLabel.anchor.set(0.5)
+  stageLabel.x = props.model.bounds.minX + (props.model.bounds.width / 2)
+  stageLabel.y = stage.bounds.minY + (stage.bounds.height / 2)
+  stageLabel.eventMode = 'none'
+  stageLayer.addChild(stageLabel)
 }
 
 function drawSeats() {
@@ -181,6 +243,7 @@ function syncLabels(force = false) {
 }
 
 function drawScene() {
+  drawStage()
   drawSections()
   drawSeats()
   syncLabels(true)
@@ -189,7 +252,7 @@ function drawScene() {
 function fitToModel() {
   const host = hostRef.value
   const layer = getWorldLayer()
-  if (!host || !layer || props.model.seats.length === 0) {
+  if (!host || !layer) {
     return
   }
 
@@ -197,7 +260,7 @@ function fitToModel() {
   const width = Math.max(props.model.bounds.width + padding * 2, 1)
   const height = Math.max(props.model.bounds.height + padding * 2, 1)
   const nextZoom = Math.min(host.clientWidth / width, host.clientHeight / height, 2)
-  zoom.value = Math.max(nextZoom, minFitZoom)
+  zoom.value = Math.min(Math.max(nextZoom, 0.2), 4)
   layer.scale.set(zoom.value)
   layer.x = (host.clientWidth - props.model.bounds.width * zoom.value) / 2 - props.model.bounds.minX * zoom.value
   layer.y = (host.clientHeight - props.model.bounds.height * zoom.value) / 2 - props.model.bounds.minY * zoom.value
@@ -366,10 +429,11 @@ async function mountPixi() {
 
   app = nextApp
   worldLayer = createLayer()
+  stageLayer = createLayer()
   sectionLayer = createLayer()
   seatLayer = createLayer()
   labelLayer = createLayer()
-  worldLayer.addChild(sectionLayer, seatLayer, labelLayer)
+  worldLayer.addChild(stageLayer, sectionLayer, seatLayer, labelLayer)
   nextApp.stage.addChild(worldLayer)
   host.appendChild(nextApp.canvas)
   nextApp.canvas.className = 'h-full w-full touch-none select-none'
@@ -396,6 +460,7 @@ function destroyPixi() {
   app?.destroy({ removeView: true }, { children: true, texture: true, textureSource: true })
   app = null
   worldLayer = null
+  stageLayer = null
   sectionLayer = null
   seatLayer = null
   labelLayer = null
