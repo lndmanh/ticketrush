@@ -4,27 +4,36 @@ import { ArrowUpDown } from '@lucide/vue'
 import type { AdminTransactionRow } from '~~/types/admin-transactions'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { getUiFallbackText } from '@/utils/uiText'
 
 export function createColumns(locale: string): ColumnDef<AdminTransactionRow>[] {
+  const { t } = useI18n()
+
+  function tx(key: string) {
+    const translated = t(key)
+    return translated === key ? getUiFallbackText(key) : translated
+  }
+
   return [
     {
       accessorKey: 'orderId',
       header: ({ column }) => h(Button, {
         variant: 'ghost',
         onClick: () => column.toggleSorting(column.getIsSorted() === 'asc'),
-      }, () => ['Mã đơn hàng', h(ArrowUpDown, { class: 'ml-2 h-4 w-4' })]),
-      cell: ({ row }) => h('div', { class: 'space-y-1' }, [
-        h('div', { class: 'font-mono text-xs font-semibold text-foreground' }, row.original.orderId),
+      }, () => [tx('admin.transactions.order_id'), h(ArrowUpDown, { class: 'ml-2 h-4 w-4' })]),
+      cell: ({ row }) => h('div', { class: 'max-w-52 space-y-1' }, [
+        h('div', { class: 'truncate font-mono text-xs font-semibold text-foreground', title: row.original.orderId }, row.original.orderId),
         h('div', { class: 'line-clamp-1 text-xs text-muted-foreground' }, row.original.eventTitle),
       ]),
+      size: 220,
     },
     {
       id: 'buyer',
       accessorFn: row => `${row.buyerName ?? ''} ${row.buyerEmail ?? ''} ${row.buyerPhone ?? ''}`,
-      header: 'Thông tin người mua',
+      header: tx('admin.transactions.buyer_info'),
       cell: ({ row }) => h('div', { class: 'min-w-48 space-y-1' }, [
-        h('div', { class: 'font-medium text-foreground' }, row.original.buyerName || 'Chưa có tên'),
-        h('div', { class: 'text-xs text-muted-foreground' }, row.original.buyerEmail || 'Chưa có email'),
+        h('div', { class: 'font-medium text-foreground' }, row.original.buyerName || tx('admin.transactions.no_buyer_name')),
+        h('div', { class: 'text-xs text-muted-foreground' }, row.original.buyerEmail || tx('admin.transactions.no_buyer_email')),
         row.original.buyerPhone
           ? h('div', { class: 'text-xs text-muted-foreground' }, row.original.buyerPhone)
           : null,
@@ -33,11 +42,11 @@ export function createColumns(locale: string): ColumnDef<AdminTransactionRow>[] 
     {
       id: 'seats',
       accessorFn: row => row.seats.map(seat => seat.label).join(' '),
-      header: 'Thông tin ghế',
+      header: tx('admin.transactions.seat_info'),
       cell: ({ row }) => {
         const seats = row.original.seats
         if (seats.length === 0) {
-          return h('span', { class: 'text-sm text-muted-foreground' }, 'Không có ghế')
+          return h('span', { class: 'text-sm text-muted-foreground' }, tx('admin.transactions.no_seats'))
         }
 
         return h('div', { class: 'flex min-w-56 flex-wrap gap-1.5' }, seats.map(seat => h(Badge, {
@@ -51,7 +60,7 @@ export function createColumns(locale: string): ColumnDef<AdminTransactionRow>[] 
       header: ({ column }) => h(Button, {
         variant: 'ghost',
         onClick: () => column.toggleSorting(column.getIsSorted() === 'asc'),
-      }, () => ['Tổng tiền', h(ArrowUpDown, { class: 'ml-2 h-4 w-4' })]),
+      }, () => [tx('admin.transactions.total_amount'), h(ArrowUpDown, { class: 'ml-2 h-4 w-4' })]),
       cell: ({ row }) => h('div', { class: 'whitespace-nowrap font-semibold text-foreground' }, formatCurrency(row.original.totalAmountCents, row.original.currency, locale)),
     },
     {
@@ -59,16 +68,16 @@ export function createColumns(locale: string): ColumnDef<AdminTransactionRow>[] 
       header: ({ column }) => h(Button, {
         variant: 'ghost',
         onClick: () => column.toggleSorting(column.getIsSorted() === 'asc'),
-      }, () => ['Thời gian thanh toán', h(ArrowUpDown, { class: 'ml-2 h-4 w-4' })]),
-      cell: ({ row }) => h('div', { class: 'whitespace-nowrap text-sm text-muted-foreground' }, formatPaymentTime(row.original.paymentTime, locale)),
+      }, () => [tx('admin.transactions.payment_time'), h(ArrowUpDown, { class: 'ml-2 h-4 w-4' })]),
+      cell: ({ row }) => h('div', { class: 'whitespace-nowrap text-sm text-muted-foreground' }, formatPaymentTime(row.original.paymentTime, locale, tx('admin.transactions.unpaid'))),
     },
     {
       accessorKey: 'status',
-      header: 'Trạng thái giao dịch',
+      header: tx('admin.transactions.status'),
       cell: ({ row }) => h(Badge, {
         variant: getStatusVariant(row.original.status),
-        class: 'rounded-full capitalize',
-      }, () => formatStatus(row.original.status)),
+        class: 'rounded-full',
+      }, () => formatStatus(row.original.status, tx)),
     },
   ]
 }
@@ -81,9 +90,9 @@ function formatCurrency(cents: number, currency: string, locale: string) {
   }).format(cents / 100)
 }
 
-function formatPaymentTime(value: string | Date | null, locale: string) {
+function formatPaymentTime(value: string | Date | null, locale: string, fallback: string) {
   if (!value) {
-    return 'Chưa thanh toán'
+    return fallback
   }
 
   return new Date(value).toLocaleString(locale, {
@@ -92,8 +101,10 @@ function formatPaymentTime(value: string | Date | null, locale: string) {
   })
 }
 
-function formatStatus(status: string) {
-  return status.replaceAll('_', ' ')
+function formatStatus(status: string, translate: (key: string) => string) {
+  const key = `admin.transactions.status_${status}`
+  const translated = translate(key)
+  return translated === key ? status.replaceAll('_', ' ') : translated
 }
 
 function getStatusVariant(status: string): 'default' | 'secondary' | 'destructive' | 'outline' {
