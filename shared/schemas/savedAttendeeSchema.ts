@@ -12,7 +12,7 @@ function optionalTextSchema() {
 function optionalEmailSchema() {
   return z.union([
     z.string().trim().max(0),
-    z.string().trim().email('Email is invalid'),
+    z.string().trim().email('Email không đúng định dạng'),
   ]).optional()
 }
 
@@ -34,7 +34,7 @@ function birthDateSchema() {
 }
 
 const savedAttendeeBaseSchema = z.object({
-  legalName: commonSchemaFragments.nonEmptyString('Legal name'),
+  legalName: commonSchemaFragments.nonEmptyString('Họ tên pháp lý'),
   preferredName: optionalTextSchema(),
   email: optionalEmailSchema(),
   phone: optionalTextSchema(),
@@ -53,7 +53,7 @@ function addSavedAttendeeFormIssues(data: z.infer<typeof savedAttendeeBaseSchema
     ctx.addIssue({
       code: 'custom',
       path: ['birthDate'],
-      message: 'Birth date cannot be in the future',
+      message: 'Ngày sinh không thể ở tương lai',
     })
   }
 
@@ -62,7 +62,7 @@ function addSavedAttendeeFormIssues(data: z.infer<typeof savedAttendeeBaseSchema
     ctx.addIssue({
       code: 'custom',
       path: ['email'],
-      message: 'At least one contact method is required',
+      message: 'Cần ít nhất một phương thức liên hệ',
     })
   }
 }
