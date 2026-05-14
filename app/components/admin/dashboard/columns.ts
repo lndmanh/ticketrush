@@ -10,7 +10,7 @@ import { EventStatus } from '#shared/commonEnums'
 function formatCurrency(cents: number, displayLocale: string) {
   return new Intl.NumberFormat(displayLocale, {
     style: 'currency',
-    currency: 'USD',
+    currency: 'VND',
     maximumFractionDigits: 0,
   }).format(cents / 100)
 }

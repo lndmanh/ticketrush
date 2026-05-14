@@ -11,11 +11,11 @@ const emit = defineEmits<{
   (event: 'update:selectedRange', value: TicketTimeFilter): void
 }>()
 
-const rangeOptions: Array<{ value: TicketTimeFilter, label: string }> = [
-  { value: '24h', label: 'Last 24h' },
-  { value: '7d', label: 'Last 7 days' },
-  { value: '30d', label: 'Last 30 days' },
-  { value: 'all', label: 'All time' },
+const rangeOptions: Array<{ value: TicketTimeFilter, labelKey: string }> = [
+  { value: '24h', labelKey: 'ticket_filter.range_24h' },
+  { value: '7d', labelKey: 'ticket_filter.range_7d' },
+  { value: '30d', labelKey: 'ticket_filter.range_30d' },
+  { value: 'all', labelKey: 'ticket_filter.range_all' },
 ]
 
 function isTicketTimeFilter(value: string): value is TicketTimeFilter {
@@ -35,16 +35,16 @@ function updateSelectedRange(value: string) {
   <section class="flex flex-col gap-3 rounded-[1.5rem] border border-border/70 bg-card/72 p-3 shadow-sm backdrop-blur md:flex-row md:items-center md:justify-between">
     <div class="space-y-1">
       <p class="font-mono text-[10px] uppercase tracking-[0.22em] text-primary">
-        Bộ lọc vé
+        {{ $t('ticket_filter.title') }}
       </p>
       <p class="text-sm text-muted-foreground">
-        Đang hiển thị {{ filteredTickets }}/{{ totalTickets }} vé
+        {{ $t('ticket_filter.showing', { filtered: filteredTickets, total: totalTickets }) }}
       </p>
     </div>
 
     <div class="ml-auto flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center sm:justify-end sm:gap-4">
       <Label class="shrink-0 text-sm font-semibold text-muted-foreground">
-        Lọc theo ngày
+        {{ $t('ticket_filter.date_label') }}
       </Label>
       <div class="w-full sm:w-60">
         <Select
@@ -60,7 +60,7 @@ function updateSelectedRange(value: string) {
               :key="option.value"
               :value="option.value"
             >
-              {{ option.label }}
+              {{ $t(option.labelKey) }}
             </SelectItem>
           </SelectContent>
         </Select>

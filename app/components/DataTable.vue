@@ -107,12 +107,12 @@ defineExpose({
         @click="emit('update:data')"
       >
         <RefreshCw />
-        Reload
+        {{ $t('data_table.reload') }}
       </Button>
       <DropdownMenu>
         <DropdownMenuTrigger as-child>
           <Button variant="outline">
-            Columns
+            {{ $t('data_table.columns') }}
             <ChevronDown />
           </Button>
         </DropdownMenuTrigger>
@@ -203,8 +203,7 @@ defineExpose({
   <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
     <div class="text-sm text-muted-foreground">
       <slot name="footer-leading" />
-      {{ table.getFilteredSelectedRowModel().rows.length }} of
-      {{ table.getFilteredRowModel().rows.length }} row(s) selected.
+      {{ $t('data_table.selected_rows', { selected: table.getFilteredSelectedRowModel().rows.length, total: table.getFilteredRowModel().rows.length }) }}
     </div>
     <div class="flex flex-wrap items-center gap-2">
       <Button
@@ -213,7 +212,7 @@ defineExpose({
         :disabled="!table.getCanPreviousPage()"
         @click="table.previousPage()"
       >
-        Previous
+        {{ $t('data_table.previous') }}
       </Button>
       <Button
         variant="outline"
@@ -221,7 +220,7 @@ defineExpose({
         :disabled="!table.getCanNextPage()"
         @click="table.nextPage()"
       >
-        Next
+        {{ $t('data_table.next') }}
       </Button>
     </div>
   </div>

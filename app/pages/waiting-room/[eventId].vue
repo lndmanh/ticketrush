@@ -148,8 +148,8 @@ onUnmounted(() => {
 })
 
 definePageMeta({
-  title: 'Waiting room',
-  breadcrumb: 'Queue',
+  title: 'waiting_room.page_title',
+  breadcrumb: 'waiting_room.breadcrumb',
   middleware: ['auth'],
 })
 </script>

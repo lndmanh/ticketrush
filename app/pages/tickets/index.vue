@@ -74,7 +74,7 @@ function matchesSelectedRange(value: string | Date) {
 
 function formatEventTime(value: string | Date | null | undefined) {
   if (!value) {
-    return 'Time to be announced'
+    return t('tickets.time_tba')
   }
 
   return new Date(value).toLocaleString(getDisplayDateLocale(locale.value), {
@@ -87,6 +87,12 @@ function formatEventTime(value: string | Date | null | undefined) {
 
 function getShortTicketId(value: string) {
   return value.length > 10 ? value.slice(-10) : value
+}
+
+function getTicketStatusLabel(status: TicketStatus) {
+  const key = `tickets.status_${status}`
+  const translated = t(key)
+  return translated === key ? status.replaceAll('_', ' ') : translated
 }
 
 definePageMeta({
@@ -125,7 +131,7 @@ definePageMeta({
               variant="secondary"
               class="w-fit capitalize"
             >
-              {{ ticket.status }}
+              {{ getTicketStatusLabel(ticket.status) }}
             </Badge>
             <h2 class="line-clamp-2 text-xl font-semibold tracking-tight">
               {{ ticket.event?.title || ticket.publicId }}

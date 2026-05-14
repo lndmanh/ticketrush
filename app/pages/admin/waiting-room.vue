@@ -9,6 +9,7 @@ import type { ApiResponse } from '~~/types/api'
 import type { WaitingRoomSettingsInput } from '#shared/schemas/ticketingSchema'
 
 const isSaving = ref(false)
+const { t } = useI18n()
 
 const { data: settingsResponse, refresh } = await useAPI<ApiResponse<WaitingRoomSettingsInput>>(() => apiRoutes.ADMIN_WAITING_ROOM_SETTINGS)
 
@@ -59,24 +60,24 @@ const onSubmit = handleSubmit(
         throw response
       }
       await refresh()
-      toast.success('Waiting room settings updated')
+      toast.success(t('admin.waiting_room_settings.updated'))
     }
     catch (error: unknown) {
-      toast.error(parseApiError(error, 'Failed to update waiting room settings').message)
+      toast.error(parseApiError(error, t('admin.waiting_room_settings.update_failed')).message)
     }
     finally {
       isSaving.value = false
     }
   },
   ({ errors }) => {
-    const firstError = Object.values(errors).flat().filter(Boolean)[0] || 'Please fix the highlighted settings'
+    const firstError = Object.values(errors).flat().filter(Boolean)[0] || t('admin.waiting_room_settings.fix_settings')
     toast.error(firstError)
   },
 )
 
 definePageMeta({
-  title: 'Waiting room settings',
-  breadcrumb: 'Waiting room',
+  title: 'admin.waiting_room_settings.title',
+  breadcrumb: 'admin.waiting_room_settings.title',
   middleware: ['auth', 'admin'],
   layout: 'dashboard',
 })
@@ -87,10 +88,10 @@ definePageMeta({
     <section class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
       <div class="space-y-1">
         <h2 class="text-2xl font-semibold text-foreground">
-          Waiting room
+          {{ $t('admin.waiting_room_settings.title') }}
         </h2>
         <p class="text-sm text-muted-foreground">
-          Activates automatically for any session once live demand reaches the global threshold.
+          {{ $t('admin.waiting_room_settings.desc') }}
         </p>
       </div>
     </section>
@@ -177,13 +178,13 @@ definePageMeta({
 
           <div class="flex flex-col gap-3 border-t pt-5 sm:flex-row sm:items-center sm:justify-between">
             <p class="text-sm text-muted-foreground">
-              Existing sessions use these settings immediately after save.
+              {{ $t('admin.waiting_room_settings.session_note') }}
             </p>
             <Button
               type="submit"
               :is-loading="isSaving"
             >
-              Save settings
+              {{ $t('admin.waiting_room_settings.save_button') }}
             </Button>
           </div>
         </form>

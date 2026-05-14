@@ -69,8 +69,8 @@ const statusLabel = computed(() => {
 })
 
 definePageMeta({
-  title: 'Ticket detail',
-  breadcrumb: 'Ticket',
+  title: 'tickets.detail_page_title',
+  breadcrumb: 'tickets.detail_breadcrumb',
   layout: 'dashboard',
   middleware: ['auth'],
 })

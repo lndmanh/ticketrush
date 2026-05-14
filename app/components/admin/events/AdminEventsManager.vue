@@ -3,10 +3,10 @@
     <section class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
       <div class="space-y-1">
         <h2 class="text-2xl font-semibold text-foreground">
-          Events
+          {{ $t('admin.events.title') }}
         </h2>
         <p class="text-sm text-muted-foreground">
-          Track drafts, publish state, and launch activity.
+          {{ $t('admin.events.desc') }}
         </p>
       </div>
 
@@ -21,12 +21,12 @@
             class="h-4 w-4"
             :class="reseedingEvents ? 'animate-spin' : ''"
           />
-          Tạo lại demo
+          {{ $t('admin.events.reseed_demo') }}
         </Button>
         <Button as-child>
           <NuxtLink to="/admin/events/create">
             <Rocket class="h-4 w-4" />
-            Create event
+            {{ $t('admin.events.create_event') }}
           </NuxtLink>
         </Button>
         <Button
@@ -34,7 +34,7 @@
           variant="outline"
           @click="openEvent(firstDraftEventId)"
         >
-          Open latest draft
+          {{ $t('admin.events.open_latest_draft') }}
         </Button>
       </div>
     </section>
@@ -45,10 +45,10 @@
           <CardContent class="flex h-full flex-col justify-between gap-5">
             <div class="flex items-center justify-between gap-3">
               <p class="text-[11px] font-medium uppercase tracking-[0.24em] text-background/70">
-                Tracked
+                {{ $t('admin.events.tracked') }}
               </p>
               <span class="rounded-full bg-background/12 px-2.5 py-1 text-xs font-medium text-background/90">
-                Registry
+                {{ $t('admin.events.registry') }}
               </span>
             </div>
             <div class="space-y-2">
@@ -56,7 +56,7 @@
                 {{ rows.length }}
               </p>
               <p class="text-sm leading-6 text-background/72">
-                Events currently in the admin catalog.
+                {{ $t('admin.events.catalog_desc') }}
               </p>
             </div>
           </CardContent>
@@ -66,10 +66,10 @@
           <CardContent class="flex h-full flex-col justify-between gap-5">
             <div class="flex items-center justify-between gap-3">
               <p class="text-[11px] font-medium uppercase tracking-[0.24em] text-white/70">
-                Drafts
+                {{ $t('admin.events.drafts') }}
               </p>
               <span class="rounded-full bg-white/15 px-2.5 py-1 text-xs font-medium text-white/90">
-                In progress
+                {{ $t('admin.events.in_progress') }}
               </span>
             </div>
             <div class="space-y-2">
@@ -77,7 +77,7 @@
                 {{ draftRows.length }}
               </p>
               <p class="text-sm leading-6 text-white/80">
-                Events still being shaped before launch.
+                {{ $t('admin.events.drafts_desc') }}
               </p>
             </div>
           </CardContent>
@@ -87,10 +87,10 @@
           <CardContent class="flex h-full flex-col justify-between gap-5">
             <div class="flex items-center justify-between gap-3">
               <p class="text-[11px] font-medium uppercase tracking-[0.24em] text-white/70">
-                Live
+                {{ $t('admin.events.live_label') }}
               </p>
               <span class="rounded-full bg-white/15 px-2.5 py-1 text-xs font-medium text-white/90">
-                Selling now
+                {{ $t('admin.events.selling_now') }}
               </span>
             </div>
             <div class="space-y-2">
@@ -98,7 +98,7 @@
                 {{ liveRows.length }}
               </p>
               <p class="text-sm leading-6 text-white/80">
-                Public events that are available to buyers.
+                {{ $t('admin.events.live_desc') }}
               </p>
             </div>
           </CardContent>
@@ -222,7 +222,7 @@ import { getDisplayDateLocale } from '@/lib/localizedEvents'
 import { apiRoutes } from '#shared/apiRoutes'
 import { EventStatus } from '#shared/commonEnums'
 
-const { locale } = useI18n()
+const { locale, t } = useI18n()
 const events = ref<Event[]>([])
 const venues = ref<Venue[]>([])
 const unfinishedDraft = ref<AutosaveDraftSummary | null>(null)
@@ -238,7 +238,7 @@ const rows = computed<EventTableRow[]>(() => {
     subtitle: event.subtitle,
     status: event.status,
     venueId: event.venueId,
-    venueName: venueById.get(event.venueId) ?? 'Unknown venue',
+    venueName: venueById.get(event.venueId) ?? t('admin.events.unknown_venue'),
     startsAt: new Date(event.startsAt),
     salesStartAt: new Date(event.salesStartAt),
     updatedAt: event.updatedAt ? new Date(event.updatedAt) : null,
@@ -290,7 +290,7 @@ async function fetchEvents() {
     unfinishedDraft.value = autosavesResponse.data
   }
   catch (error) {
-    toast.error(parseApiError(error, 'Failed to load events').message)
+    toast.error(parseApiError(error, t('admin.events.load_failed')).message)
   }
   finally {
     loading.value = false
@@ -299,7 +299,7 @@ async function fetchEvents() {
 
 async function reseedEvents() {
   if (import.meta.client) {
-    const confirmed = window.confirm('Tác vụ này sẽ xóa dữ liệu event/order/ticket demo hiện tại và tạo lại 10 sự kiện demo. Tiếp tục?')
+    const confirmed = window.confirm(t('admin.events.reseed_confirm'))
     if (!confirmed) return
   }
 
@@ -310,11 +310,11 @@ async function reseedEvents() {
       throw response
     }
 
-    toast.success(`Đã tạo lại ${response.data.eventsCreated} sự kiện ở ${response.data.venuesCreated} địa điểm`)
+    toast.success(t('admin.events.reseed_success', { events: response.data.eventsCreated, venues: response.data.venuesCreated }))
     await fetchEvents()
   }
   catch (error) {
-    toast.error(parseApiError(error, 'Không thể tạo lại sự kiện demo').message)
+    toast.error(parseApiError(error, t('admin.events.reseed_failed')).message)
   }
   finally {
     reseedingEvents.value = false
@@ -327,10 +327,10 @@ function openEvent(eventId: number) {
 
 function getAutosaveVenueName(venueId: number | null) {
   if (!venueId) {
-    return 'No venue selected'
+    return t('admin.events.no_venue')
   }
 
-  return venues.value.find(venue => venue.id === venueId)?.name ?? 'Unknown venue'
+  return venues.value.find(venue => venue.id === venueId)?.name ?? t('admin.events.unknown_venue')
 }
 
 function resumeAutosaveDraft(draftKey: string) {
@@ -350,10 +350,10 @@ async function discardAutosaveDraft(draftKey: string) {
     if (unfinishedDraft.value?.draftKey === draftKey) {
       unfinishedDraft.value = null
     }
-    toast.success('Autosave draft discarded')
+    toast.success(t('admin.events.autosave_discarded'))
   }
   catch (error) {
-    toast.error(parseApiError(error, 'Failed to discard autosave draft').message)
+    toast.error(parseApiError(error, t('admin.events.discard_failed')).message)
   }
   finally {
     loading.value = false
@@ -367,11 +367,11 @@ async function publishEvent(eventId: number) {
     if (!response.success) {
       throw response
     }
-    toast.success('Event published')
+    toast.success(t('admin.events.published'))
     await fetchEvents()
   }
   catch (error) {
-    toast.error(parseApiError(error, 'Failed to publish event').message)
+    toast.error(parseApiError(error, t('admin.events.publish_failed')).message)
   }
   finally {
     loading.value = false
@@ -385,11 +385,11 @@ async function unpublishEvent(eventId: number) {
     if (!response.success) {
       throw response
     }
-    toast.success('Event moved back to draft')
+    toast.success(t('admin.events.unpublished'))
     await fetchEvents()
   }
   catch (error) {
-    toast.error(parseApiError(error, 'Failed to unpublish event').message)
+    toast.error(parseApiError(error, t('admin.events.unpublish_failed')).message)
   }
   finally {
     loading.value = false

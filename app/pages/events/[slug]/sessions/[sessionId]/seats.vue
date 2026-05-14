@@ -23,7 +23,7 @@ const slug = computed(() => {
 const sessionPublicId = computed(() => typeof route.params.sessionId === 'string' ? route.params.sessionId : '')
 const passToken = computed(() => typeof route.query.pass === 'string' ? route.query.pass : undefined)
 const requestUrl = useRequestURL()
-const { locale } = useI18n()
+const { t, locale } = useI18n()
 
 const { data: detailResponse, error: detailFetchError } = await useAPI<ApiResponse<EventSessionDetailResponse>>(() => apiRoutes.eventSession(sessionPublicId.value), {
   query: computed(() => ({ locale: locale.value })),
@@ -189,14 +189,14 @@ const previewTotalCurrency = computed(() => {
 
 const inventoryStatusLabel = computed(() => {
   if (realtimeStatus.value === 'connected') {
-    return 'Connected'
+    return t('seats.realtime_connected')
   }
 
   if (realtimeStatus.value === 'connecting') {
-    return 'Connecting'
+    return t('seats.realtime_connecting')
   }
 
-  return 'Disconnected'
+  return t('seats.realtime_disconnected')
 })
 
 const sessionUnavailableError = computed(() => {
@@ -296,7 +296,7 @@ function confirmPreviewSeat() {
   }
 
   if (selectedSeatIds.value.length >= 10) {
-    toast.error('You can select up to 10 seats.')
+    toast.error(t('seats.max_selection_error'))
     return
   }
 
@@ -333,7 +333,7 @@ function toggleSeat(seatId: number) {
   }
 
   if (selectedSeatIds.value.length >= 10) {
-    toast.error('You can select up to 10 seats.')
+    toast.error(t('seats.max_selection_error'))
     return
   }
 
@@ -454,19 +454,19 @@ async function reserveSeats() {
     await navigateTo(`/checkout/${checkoutResponse.data.publicId}?hold=${holdPublicId}`)
   }
   catch (error) {
-    const parsedError = parseApiError(error, 'We could not open checkout. Please try again.')
+    const parsedError = parseApiError(error, t('seats.checkout_error'))
 
     const statusCode = parsedError.status
     const message = parsedError.message
 
     if (isSessionUnavailableError(parsedError)) {
       checkoutUnavailableError.value = parsedError
-      toast.error('This session is no longer available for booking.')
+      toast.error(t('seats.session_unavailable_title'))
       return
     }
 
     if (statusCode === 409) {
-      toast.error('Some of the selected seats are no longer available. We refreshed the map for you.')
+      toast.error(t('seats.seats_conflict_error'))
       return
     }
 
@@ -529,7 +529,7 @@ watch(seatMap, (value) => {
   }
 
   if (selectedSeatsChanged || previewSeatWasTaken) {
-    toast.error('One or more selected seats were taken by another customer.')
+    toast.error(t('seats.seats_taken_error'))
   }
 }, { deep: true, immediate: true })
 
@@ -554,8 +554,8 @@ onUnmounted(() => {
 })
 
 definePageMeta({
-  title: 'Choose seats',
-  breadcrumb: 'Seat selection',
+  title: 'seats.page_title',
+  breadcrumb: 'seats.breadcrumb',
   layout: 'empty',
   middleware: ['auth'],
 })
@@ -577,22 +577,22 @@ definePageMeta({
         >
           <XCircle class="size-7" />
         </EmptyMedia>
-        <EmptyTitle>This session is no longer available</EmptyTitle>
+        <EmptyTitle>{{ $t('seats.session_unavailable_title') }}</EmptyTitle>
         <EmptyDescription>
-          The organizer has made this session unavailable while you were choosing seats. Your selection has been cleared and checkout is closed for this session.
+          {{ $t('seats.session_unavailable_desc') }}
         </EmptyDescription>
       </EmptyHeader>
 
       <EmptyContent class="space-y-5">
         <div class="rounded-2xl border bg-muted/30 px-4 py-3 text-sm text-muted-foreground">
-          You can browse other available events, or check again later if the organizer republishes this event.
+          {{ $t('seats.session_unavailable_note') }}
         </div>
 
         <div class="flex flex-col gap-2 sm:flex-row sm:justify-center">
           <Button as-child>
             <NuxtLink to="/events">
               <ArrowLeft class="size-4" />
-              Browse events
+              {{ $t('seats.browse_events') }}
             </NuxtLink>
           </Button>
           <Button
@@ -600,7 +600,7 @@ definePageMeta({
             variant="outline"
           >
             <NuxtLink to="/">
-              Go home
+              {{ $t('seats.go_home') }}
             </NuxtLink>
           </Button>
         </div>
@@ -700,10 +700,10 @@ definePageMeta({
                 <div class="mb-2 flex items-center justify-between gap-3">
                   <div>
                     <p class="text-xs font-medium uppercase tracking-[0.22em] text-primary">
-                      Preview ticket
+                      {{ $t('seats.preview_ticket') }}
                     </p>
                     <p class="text-sm text-muted-foreground">
-                      Confirm this seat to include it at checkout.
+                      {{ $t('seats.preview_ticket_desc') }}
                     </p>
                   </div>
                   <div class="flex items-center gap-1">
@@ -712,8 +712,8 @@ definePageMeta({
                       size="icon-sm"
                       variant="ghost"
                       class="text-muted-foreground hover:text-destructive"
-                      title="Cancel preview"
-                      :aria-label="'Cancel preview seat'"
+                      :title="$t('seats.cancel_preview')"
+                      :aria-label="$t('seats.cancel_preview_seat')"
                       @click="clearPreviewSeat"
                     >
                       <XCircle class="size-4" />
@@ -723,15 +723,15 @@ definePageMeta({
                       size="icon-sm"
                       variant="ghost"
                       class="text-primary"
-                      title="Confirm preview seat"
-                      :aria-label="'Confirm preview seat'"
+                      :title="$t('seats.confirm_preview_seat')"
+                      :aria-label="$t('seats.confirm_preview_seat')"
                       @click="confirmPreviewSeat"
                     >
                       <CheckCircle2 class="size-4" />
                     </Button>
                     <span class="ml-1 inline-flex items-center gap-1 rounded-full border border-primary/20 bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
                       <Sparkles class="size-3.5" />
-                      New
+                      {{ $t('seats.new_preview') }}
                     </span>
                   </div>
                 </div>
@@ -753,7 +753,7 @@ definePageMeta({
                         {{ formatCurrency(previewSeat.priceCents, previewSeat.currency) }}
                       </p>
                       <p class="text-xs text-muted-foreground">
-                        Expected add-on
+                        {{ $t('seats.expected_add_on') }}
                       </p>
                     </div>
                     <ItemActions class="relative w-full justify-end sm:w-auto">
@@ -763,7 +763,7 @@ definePageMeta({
                         variant="outline"
                         @click="clearPreviewSeat"
                       >
-                        Cancel
+                        {{ $t('common.cancel') }}
                       </Button>
                       <Button
                         type="button"
@@ -771,7 +771,7 @@ definePageMeta({
                         @click="confirmPreviewSeat"
                       >
                         <CheckCircle2 class="size-4" />
-                        Confirm
+                        {{ $t('seats.confirm_preview_action') }}
                       </Button>
                     </ItemActions>
                   </Item>
@@ -782,10 +782,10 @@ definePageMeta({
                 <div class="mb-2 flex items-center justify-between gap-3">
                   <div>
                     <p class="text-xs font-medium uppercase tracking-[0.22em] text-muted-foreground">
-                      Confirmed tickets
+                      {{ $t('seats.confirmed_tickets') }}
                     </p>
                     <p class="text-sm text-muted-foreground">
-                      These seats will be held together when you continue.
+                      {{ $t('seats.confirmed_tickets_desc') }}
                     </p>
                   </div>
                   <Button
@@ -793,8 +793,8 @@ definePageMeta({
                     size="icon-sm"
                     variant="ghost"
                     class="text-muted-foreground hover:text-destructive"
-                    title="Remove all confirmed seats"
-                    :aria-label="'Remove all confirmed seats'"
+                    :title="$t('seats.remove_all_confirmed_seats')"
+                    :aria-label="$t('seats.remove_all_confirmed_seats')"
                     @click="removeAllSelectedSeats"
                   >
                     <Trash2 class="size-4" />
@@ -816,8 +816,8 @@ definePageMeta({
                         size="icon-sm"
                         variant="ghost"
                         class="size-6 text-muted-foreground hover:text-destructive"
-                        :title="`Remove all seats in ${group.name}`"
-                        :aria-label="`Remove all seats in ${group.name}`"
+                        :title="$t('seats.remove_section_seats', { section: group.name })"
+                        :aria-label="$t('seats.remove_section_seats', { section: group.name })"
                         @click="removeSectionSeats(group.seats.map(s => s.id))"
                       >
                         <Trash2 class="size-3.5" />
@@ -848,7 +848,7 @@ definePageMeta({
                             size="icon-sm"
                             variant="ghost"
                             class="text-muted-foreground hover:text-destructive"
-                            :aria-label="`Remove ${formatSeatLabel(seat)}`"
+                            :aria-label="$t('seats.remove_seat', { seat: formatSeatLabel(seat) })"
                             @click="removeSelectedSeat(seat.id)"
                           >
                             <Trash2 class="size-4" />
@@ -870,7 +870,7 @@ definePageMeta({
                   </EmptyMedia>
                   <EmptyTitle>{{ $t('seats.pick_seats_prompt') }}</EmptyTitle>
                   <EmptyDescription>
-                    Click a seat on the map to create a preview ticket here.
+                    {{ $t('seats.empty_preview_desc') }}
                   </EmptyDescription>
                 </EmptyHeader>
                 <EmptyContent />

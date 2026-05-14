@@ -83,7 +83,7 @@ function formatTime(value: string | Date) {
 function formatCurrency(cents: number) {
   return new Intl.NumberFormat(dateLocale.value, {
     style: 'currency',
-    currency: 'USD',
+    currency: 'VND',
     maximumFractionDigits: 0,
   }).format(cents / 100)
 }
