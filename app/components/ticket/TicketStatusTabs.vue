@@ -1,19 +1,19 @@
 <script setup lang="ts">
-export type TicketStatusFilter = 'all' | 'success' | 'processing' | 'cancelled'
+import { TicketWalletStatusFilter } from '#shared/commonEnums'
 
 defineProps<{
-  modelValue: TicketStatusFilter
+  modelValue: TicketWalletStatusFilter
 }>()
 
 const emit = defineEmits<{
-  (event: 'update:modelValue', value: TicketStatusFilter): void
+  (event: 'update:modelValue', value: TicketWalletStatusFilter): void
 }>()
 
-const filters: { value: TicketStatusFilter, label: string }[] = [
-  { value: 'all', label: 'tickets.filter_status_all' },
-  { value: 'success', label: 'tickets.filter_status_success' },
-  { value: 'processing', label: 'tickets.filter_status_processing' },
-  { value: 'cancelled', label: 'tickets.filter_status_cancelled' },
+const filters: { value: TicketWalletStatusFilter, label: string }[] = [
+  { value: TicketWalletStatusFilter.All, label: 'tickets.filter_status_all' },
+  { value: TicketWalletStatusFilter.Success, label: 'tickets.filter_status_success' },
+  { value: TicketWalletStatusFilter.Processing, label: 'tickets.filter_status_processing' },
+  { value: TicketWalletStatusFilter.Cancelled, label: 'tickets.filter_status_cancelled' },
 ]
 </script>
 

@@ -56,6 +56,29 @@ export enum TicketStatus {
   Cancelled = 'cancelled',
 }
 
+export enum TicketWalletStatusFilter {
+  All = 'all',
+  Success = 'success',
+  Processing = 'processing',
+  Cancelled = 'cancelled',
+}
+
+export const TicketWalletStatusGroups = {
+  [TicketWalletStatusFilter.Success]: [
+    TicketStatus.Issued,
+    TicketStatus.CheckedIn,
+    OrderStatus.Confirmed,
+  ],
+  [TicketWalletStatusFilter.Processing]: [
+    OrderStatus.Pending,
+  ],
+  [TicketWalletStatusFilter.Cancelled]: [
+    TicketStatus.Cancelled,
+    OrderStatus.Cancelled,
+    OrderStatus.Expired,
+  ],
+} satisfies Record<Exclude<TicketWalletStatusFilter, TicketWalletStatusFilter.All>, readonly string[]>
+
 export enum QueueStatus {
   Waiting = 'waiting',
   Admitted = 'admitted',

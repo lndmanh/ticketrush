@@ -4,7 +4,7 @@ import type { ApiResponse } from '~~/types/api'
 import type { TicketListItem } from '~~/types/ticketing'
 import { getDisplayDateLocale } from '@/lib/localizedEvents'
 import type { TicketDateRangeFilter } from '@/components/ticket/TicketFilter.vue'
-import type { TicketStatusFilter } from '@/components/ticket/TicketStatusTabs.vue'
+import { TicketStatus, TicketWalletStatusFilter, TicketWalletStatusGroups } from '#shared/commonEnums'
 
 interface TicketEventGroupData {
   id: string
@@ -18,7 +18,7 @@ interface TicketEventGroupData {
 
 const { locale, t } = useI18n()
 const selectedRange = ref<TicketDateRangeFilter>('last_7_days')
-const selectedStatus = ref<TicketStatusFilter>('all')
+const selectedStatus = ref<TicketWalletStatusFilter>(TicketWalletStatusFilter.All)
 const expandedEventIds = ref<string[]>([])
 
 const { data: ticketsResponse } = await useAPI<ApiResponse<TicketListItem[]>>(() => '/api/tickets', {
@@ -26,7 +26,7 @@ const { data: ticketsResponse } = await useAPI<ApiResponse<TicketListItem[]>>(()
 })
 
 const tickets = computed(() => ticketsResponse.value?.data ?? [])
-const issuedTicketsCount = computed(() => tickets.value.filter(ticket => normalizeStatus(ticket.status) === 'issued').length)
+const issuedTicketsCount = computed(() => tickets.value.filter(ticket => ticket.status === TicketStatus.Issued).length)
 const upcomingTicketsCount = computed(() => {
   const now = Date.now()
   return tickets.value.filter((ticket) => {
@@ -41,7 +41,7 @@ const upcomingTicketsCount = computed(() => {
 // Client-side date filtering keeps the ticket wallet responsive without extra API calls.
 const filteredTickets = computed(() => {
   return tickets.value.filter((ticket) => {
-    if (!matchesStatusFilter(ticket.status, selectedStatus.value)) {
+    if (!matchesStatusFilter(ticket, selectedStatus.value)) {
       return false
     }
 
@@ -162,22 +162,25 @@ function toggleEventGroup(eventId: string) {
   expandedEventIds.value = [...expandedEventIds.value, eventId]
 }
 
-function matchesStatusFilter(status: string, filter: TicketStatusFilter) {
-  const normalizedStatus = normalizeStatus(status)
-
-  if (filter === 'all') {
+function matchesStatusFilter(ticket: TicketListItem, filter: TicketWalletStatusFilter) {
+  if (filter === TicketWalletStatusFilter.All) {
     return true
   }
 
-  if (filter === 'success') {
-    return ['issued', 'paid', 'confirmed', 'success', 'completed'].includes(normalizedStatus)
-  }
+  return matchesAnyStatus(TicketWalletStatusGroups[filter], [
+    ticket.status,
+    ticket.order?.status,
+  ])
+}
 
-  if (filter === 'processing') {
-    return ['pending', 'processing', 'held', 'reserved', 'draft'].includes(normalizedStatus)
-  }
+function matchesAnyStatus(allowedStatuses: readonly string[], values: Array<string | null | undefined>) {
+  return values.some((value) => {
+    if (!value) {
+      return false
+    }
 
-  return ['cancelled', 'canceled', 'refunded', 'void', 'expired', 'failed'].includes(normalizedStatus)
+    return allowedStatuses.includes(normalizeStatus(value))
+  })
 }
 
 definePageMeta({
