@@ -15,6 +15,7 @@ import { PlusIcon, UserIcon, Trash2Icon, Edit2Icon, ShieldIcon } from '@lucide/v
 const { data: attendeesResponse, refresh, status, error: fetchError } = useAPI<ApiResponse<SavedAttendeeModel[]>>(() => apiRoutes.SAVED_ATTENDEES)
 const attendees = computed(() => attendeesResponse.value?.data || [])
 const loading = computed(() => status.value === 'pending')
+const { t } = useI18n()
 
 const isDialogOpen = ref(false)
 const isSubmitting = ref(false)
@@ -129,7 +130,7 @@ const onSubmit = handleSubmit(async (values) => {
         body: values,
       })
       if (!response.success) throw response
-      toast.success('Attendee updated successfully')
+      toast.success(t('saved_attendees.updated'))
     }
     else {
       const response = await apiRequest(apiRoutes.SAVED_ATTENDEES, {
@@ -137,13 +138,13 @@ const onSubmit = handleSubmit(async (values) => {
         body: values,
       })
       if (!response.success) throw response
-      toast.success('Attendee saved successfully')
+      toast.success(t('saved_attendees.saved'))
     }
     isDialogOpen.value = false
     await refresh()
   }
   catch (error) {
-    toast.error(parseApiError(error, 'Failed to save attendee. Please try again.').message)
+    toast.error(parseApiError(error, t('saved_attendees.save_failed')).message)
   }
   finally {
     isSubmitting.value = false
@@ -151,7 +152,7 @@ const onSubmit = handleSubmit(async (values) => {
 })
 
 async function deleteAttendee(id: number) {
-  if (!window.confirm('Are you sure you want to delete this attendee? This action cannot be undone.')) {
+  if (!window.confirm(t('saved_attendees.delete_confirm'))) {
     return
   }
 
@@ -160,11 +161,11 @@ async function deleteAttendee(id: number) {
       method: 'DELETE',
     })
     if (!response.success) throw response
-    toast.success('Attendee deleted successfully')
+    toast.success(t('saved_attendees.deleted'))
     await refresh()
   }
   catch (error) {
-    toast.error(parseApiError(error, 'Failed to delete attendee. Please try again.').message)
+    toast.error(parseApiError(error, t('saved_attendees.delete_failed')).message)
   }
 }
 
@@ -485,7 +486,7 @@ function isMinor(birthDate?: Date | string | null) {
                   <Input
                     v-bind="field"
                     type="tel"
-                    placeholder="+1234567890"
+                    :placeholder="$t('saved_attendees.phone_placeholder')"
                   />
                   <FieldError
                     v-if="errors.length"
@@ -580,6 +581,7 @@ function isMinor(birthDate?: Date | string | null) {
                     <Input
                       v-bind="field"
                       type="tel"
+                      :placeholder="$t('saved_attendees.guardian_phone_placeholder')"
                     />
                     <FieldError
                       v-if="errors.length"
@@ -598,6 +600,7 @@ function isMinor(birthDate?: Date | string | null) {
                       <Input
                         v-bind="field"
                         type="email"
+                        :placeholder="$t('saved_attendees.guardian_email_placeholder')"
                       />
                       <FieldError
                         v-if="errors.length"
