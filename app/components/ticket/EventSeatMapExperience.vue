@@ -234,6 +234,22 @@ function getStatusDescription(status: SeatMapStatus) {
   return t('seatmap.desc_unavailable')
 }
 
+function localizeSectionName(name: string | null | undefined) {
+  if (!name) {
+    return ''
+  }
+
+  if (locale.value !== 'vi') {
+    return name
+  }
+
+  const normalizedName = name.trim().toLowerCase()
+  if (normalizedName === 'standard') return t('seatmap.section_standard')
+  if (normalizedName === 'premium') return t('seatmap.section_premium')
+  if (normalizedName === 'vip') return t('seatmap.section_vip')
+  return name
+}
+
 const effectiveActionLabel = computed(() => props.actionLabel === undefined ? t('seatmap.open_live_selection') : props.actionLabel)
 </script>
 
@@ -283,7 +299,7 @@ const effectiveActionLabel = computed(() => props.actionLabel === undefined ? t(
               :key="section.value"
               :value="section.value"
             >
-              {{ section.label }}
+              {{ localizeSectionName(section.label) }}
             </SelectItem>
           </SelectContent>
         </Select>
@@ -391,7 +407,7 @@ const effectiveActionLabel = computed(() => props.actionLabel === undefined ? t(
                 class="size-2.5 rounded-full"
                 :style="{ backgroundColor: ticketType.color }"
               />
-              <span class="font-medium">{{ ticketType.name }}</span>
+              <span class="font-medium">{{ localizeSectionName(ticketType.name) }}</span>
               <span class="text-muted-foreground">
                 {{ formatCurrency(ticketType.priceCents, ticketType.currency) }} · {{ $t('seatmap.seat_count', { count: getTicketTypeSeatCount(ticketType.id, seats) }) }}
               </span>
@@ -424,7 +440,7 @@ const effectiveActionLabel = computed(() => props.actionLabel === undefined ? t(
                         </div>
                         <div>
                           <h3 class="text-lg font-semibold tracking-tight text-foreground">
-                            {{ section.name }}
+                            {{ localizeSectionName(section.name) }}
                           </h3>
                           <p class="text-sm text-muted-foreground">
                             {{ $t('seatmap.section_summary', { available: section.metrics.available, total: section.metrics.total, rows: section.rows.length }) }}
@@ -490,12 +506,12 @@ const effectiveActionLabel = computed(() => props.actionLabel === undefined ? t(
                               :style="getSeatStyle(getSeatColor(section.color, seat, layout.ticketTypeById), seat, activeSeat?.id === seat.id, isSeatSelected(seat.id))"
                               :aria-pressed="isSeatSelected(seat.id) || activeSeat?.id === seat.id"
                               :aria-disabled="mode !== 'admin' && seat.status !== SeatStatus.Available"
-                              :aria-label="$t('seatmap.seat_aria_label', { section: section.name, row: row.label, seat: seat.seatLabelSnapshot, status: getStatusLabel(seat.status) })"
-                              :title="`${section.name} · ${$t('admin.event_session.row_label', { row: row.label, seat: seat.seatLabelSnapshot })}${mode === 'admin' && getAdminSeatBadge(seat) ? ` · ${getAdminSeatBadge(seat)}` : ''}`"
+                              :aria-label="$t('seatmap.seat_aria_label', { section: localizeSectionName(section.name), row: row.label, seat: seat.seatLabelSnapshot, status: getStatusLabel(seat.status) })"
+                              :title="`${localizeSectionName(section.name)} · ${$t('admin.event_session.row_label', { row: row.label, seat: seat.seatLabelSnapshot })}${mode === 'admin' && getAdminSeatBadge(seat) ? ` · ${getAdminSeatBadge(seat)}` : ''}`"
                               @click="onSeatPress(seat, setActiveSeat)"
                             >
                               <span class="sr-only">
-                                {{ $t('seatmap.seat_sr_label', { section: section.name, row: row.label, seat: seat.seatLabelSnapshot }) }}
+                                {{ $t('seatmap.seat_sr_label', { section: localizeSectionName(section.name), row: row.label, seat: seat.seatLabelSnapshot }) }}
                               </span>
                               <span aria-hidden="true">{{ seat.seatLabelSnapshot }}</span>
                             </button>
@@ -559,7 +575,7 @@ const effectiveActionLabel = computed(() => props.actionLabel === undefined ? t(
                 {{ formatCurrency(activeSeat.priceCents, activeSeat.currency) }}
               </p>
               <p class="mt-1 text-sm text-muted-foreground">
-                {{ activeSeatTicketType?.name || $t('seatmap.general_seating') }}
+                {{ activeSeatTicketType ? localizeSectionName(activeSeatTicketType.name) : $t('seatmap.general_seating') }}
               </p>
               <div
                 v-if="mode === 'admin'"
