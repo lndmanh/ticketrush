@@ -16,6 +16,7 @@ const { toggleIsOpen } = useHotSearch()
 const { open } = useSidebar()
 const { activeContext, primarySections, secondarySections, showBack, isContextView, showMainSidebar } = useSidebarContext()
 const config = useRuntimeConfig()
+const appVersion = computed(() => config.public.version || '')
 </script>
 
 <template>
@@ -93,10 +94,10 @@ const config = useRuntimeConfig()
     <Separator />
     <SidebarFooter>
       <span
-        v-show="open"
+        v-show="open && appVersion"
         class="text-sm text-muted-foreground"
       >
-        {{ config.public.version! }}
+        {{ appVersion }}
       </span>
     </SidebarFooter>
   </Sidebar>
