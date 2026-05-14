@@ -345,7 +345,7 @@ class CheckoutService {
     }
   }
 
-  async startCheckout(holdPublicId: string, sessionKey: string) {
+  async startCheckout(holdPublicId: string, sessionKey: string, realtimeNamespace?: SeatmapRealtimeNamespace) {
     const db = this.db
     const hold = await db.select().from(tables.seatHolds).where(eq(tables.seatHolds.publicId, holdPublicId)).get()
 
@@ -358,6 +358,10 @@ class CheckoutService {
     }
 
     if (hold.status !== HoldStatus.Active || hold.expiresAt.getTime() <= Date.now()) {
+      if (hold.status === HoldStatus.Active) {
+        await holdService.expireStaleHoldByPublicId(holdPublicId, sessionKey, realtimeNamespace)
+      }
+
       throw createError({ statusCode: 409, statusMessage: 'Seat hold has expired.' })
     }
 
@@ -488,6 +492,10 @@ class CheckoutService {
     }
 
     if (hold.status !== HoldStatus.Active || hold.expiresAt.getTime() <= Date.now()) {
+      if (hold.status === HoldStatus.Active) {
+        await holdService.expireStaleHoldByPublicId(holdPublicId, sessionKey, realtimeNamespace)
+      }
+
       throw createError({ statusCode: 409, statusMessage: 'Seat hold has expired.' })
     }
 

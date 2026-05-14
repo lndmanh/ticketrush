@@ -24,7 +24,8 @@ export default defineEventHandler(async (event) => {
   try {
     const preview: VenueLayoutSyncPreview = await eventSessionService.getVenueLayoutSyncPreview(eventId, sessionId)
     return success(preview)
-  } catch (error) {
+  }
+  catch (error) {
     const message = toErrorMessage(error)
     if (message === 'Event session not found') {
       throw apiError({ status: 404, statusText: 'Not Found', code: 'SESSION_NOT_FOUND', message: 'Session not found.' })

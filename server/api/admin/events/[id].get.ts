@@ -21,53 +21,69 @@ export default defineEventHandler(async (event) => {
 
   const venue = await venueService.getDetail(current.venueId)
   const currentVenueLayoutVersion = venue?.venue.layoutVersion
-  const sessions: AdminEventWorkspaceSession[] = detail.sessions.map(session => ({
-    id: session.id,
-    publicId: session.publicId,
-    eventId: session.eventId,
-    venueId: session.venueId,
-    label: session.label,
-    status: session.status,
-    startsAt: session.startsAt,
-    endsAt: session.endsAt,
-    salesStartAt: session.salesStartAt,
-    salesEndAt: session.salesEndAt,
-    queueEnabled: session.queueEnabled,
-    pricingMode: session.pricingMode,
-    currency: session.currency,
-    venueLayoutVersion: session.venueLayoutVersion,
-    venueSyncedAt: session.venueSyncedAt,
-    venueSyncStatus: currentVenueLayoutVersion !== undefined && session.venueLayoutVersion === currentVenueLayoutVersion ? 'current' : 'stale',
-    sectionPrices: session.sectionPrices.map(sectionPrice => ({
-      venueSectionId: sectionPrice.venueSectionId,
-      sectionNameSnapshot: sectionPrice.sectionNameSnapshot,
-      sectionColorSnapshot: sectionPrice.sectionColorSnapshot,
-      priceCents: sectionPrice.priceCents,
-      currency: sectionPrice.currency,
-      sortOrder: sectionPrice.sortOrder,
-    })),
-    seatOverrides: session.seatOverrides.map(seatOverride => ({
-      venueSeatId: seatOverride.venueSeatId,
-      venueSectionId: seatOverride.venueSectionId,
-      priceCents: seatOverride.priceCents,
-      currency: seatOverride.currency,
-      isDisabled: seatOverride.isDisabled,
-    })),
-    seats: session.seats.map(seat => ({
-      id: seat.id,
-      venueSeatId: seat.venueSeatId,
-      venueSectionId: seat.venueSectionId,
-      sectionNameSnapshot: seat.sectionNameSnapshot,
-      rowLabelSnapshot: seat.rowLabelSnapshot,
-      seatLabelSnapshot: seat.seatLabelSnapshot,
-      displayX: seat.displayX,
-      displayY: seat.displayY,
-      status: seat.status,
-      priceCents: seat.priceCents,
-      currency: seat.currency,
-      updatedAt: seat.updatedAt,
-    })),
-  }))
+  const sessions: AdminEventWorkspaceSession[] = detail.sessions.map((session) => {
+    const sectionById = new Map(session.sections.map(section => [section.id, section]))
+
+    return {
+      id: session.id,
+      publicId: session.publicId,
+      eventId: session.eventId,
+      venueId: session.venueId,
+      label: session.label,
+      status: session.status,
+      startsAt: session.startsAt,
+      endsAt: session.endsAt,
+      salesStartAt: session.salesStartAt,
+      salesEndAt: session.salesEndAt,
+      queueEnabled: session.queueEnabled,
+      pricingMode: session.pricingMode,
+      currency: session.currency,
+      venueLayoutVersion: session.venueLayoutVersion,
+      venueSyncedAt: session.venueSyncedAt,
+      venueSyncStatus: currentVenueLayoutVersion !== undefined && session.venueLayoutVersion === currentVenueLayoutVersion ? 'current' : 'stale',
+      sectionPrices: session.sectionPrices.map(sectionPrice => ({
+        venueSectionId: sectionPrice.venueSectionId,
+        sectionNameSnapshot: sectionPrice.sectionNameSnapshot,
+        sectionColorSnapshot: sectionPrice.sectionColorSnapshot,
+        priceCents: sectionPrice.priceCents,
+        currency: sectionPrice.currency,
+        sortOrder: sectionPrice.sortOrder,
+      })),
+      seatOverrides: session.seatOverrides.map(seatOverride => ({
+        venueSeatId: seatOverride.venueSeatId,
+        venueSectionId: seatOverride.venueSectionId,
+        priceCents: seatOverride.priceCents,
+        currency: seatOverride.currency,
+        isDisabled: seatOverride.isDisabled,
+      })),
+      seats: session.seats.map((seat) => {
+        const section = typeof seat.venueSectionId === 'number' ? sectionById.get(seat.venueSectionId) : undefined
+
+        return {
+          id: seat.id,
+          venueSeatId: seat.venueSeatId,
+          venueSectionId: seat.venueSectionId,
+          sectionKeySnapshot: section ? `section-${section.id}` : null,
+          sectionCodeSnapshot: section?.code ?? null,
+          sectionNameSnapshot: seat.sectionNameSnapshot,
+          sectionColorSnapshot: section?.color ?? null,
+          sectionGridXSnapshot: section?.gridX ?? null,
+          sectionGridYSnapshot: section?.gridY ?? null,
+          sectionGridWSnapshot: section?.gridW ?? null,
+          sectionGridHSnapshot: section?.gridH ?? null,
+          sectionSeatLayoutModeSnapshot: section?.seatLayoutMode ?? null,
+          rowLabelSnapshot: seat.rowLabelSnapshot,
+          seatLabelSnapshot: seat.seatLabelSnapshot,
+          displayX: seat.displayX,
+          displayY: seat.displayY,
+          status: seat.status,
+          priceCents: seat.priceCents,
+          currency: seat.currency,
+          updatedAt: seat.updatedAt,
+        }
+      }),
+    }
+  })
   const response: AdminEventWorkspaceDetail = {
     event: {
       id: detail.event.id,
