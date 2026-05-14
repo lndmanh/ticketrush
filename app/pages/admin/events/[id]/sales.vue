@@ -77,8 +77,8 @@ function formatCurrency(cents: number) {
 }
 
 definePageMeta({
-  title: 'Event sales',
-  breadcrumb: 'Sales',
+  title: 'admin_event_sales.page_title',
+  breadcrumb: 'admin_event_sales.breadcrumb',
   middleware: ['auth', 'admin'],
   layout: 'dashboard',
 })

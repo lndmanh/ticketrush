@@ -1,13 +1,13 @@
 <template>
   <div>
-    Navigating...
+    {{ $t('auth.redirecting') }}
   </div>
 </template>
 
 <script lang="ts" setup>
 // auto redirect to /auth/login
 useHead({
-  title: 'Login',
+  title: 'auth.login_title',
 })
 
 onMounted(() => {
@@ -15,7 +15,7 @@ onMounted(() => {
 })
 
 definePageMeta({
-  title: 'Login',
-  breadcrumb: 'Login',
+  title: 'auth.login_title',
+  breadcrumb: 'auth.login_breadcrumb',
 })
 </script>

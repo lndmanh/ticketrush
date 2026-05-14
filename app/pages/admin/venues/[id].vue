@@ -546,8 +546,8 @@ onBeforeUnmount(() => {
 })
 
 definePageMeta({
-  title: 'Venue detail',
-  breadcrumb: 'Venue detail',
+  title: 'admin_venue_detail.page_title',
+  breadcrumb: 'admin_venue_detail.breadcrumb',
   middleware: ['auth', 'admin'],
   layout: 'empty',
 })

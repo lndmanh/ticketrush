@@ -236,8 +236,8 @@ const pageSummary = computed(() => {
 })
 
 definePageMeta({
-  title: 'Events',
-  breadcrumb: 'Events',
+  title: 'events.page_title',
+  breadcrumb: 'events.breadcrumb',
   defaultLayoutContained: false,
 })
 </script>

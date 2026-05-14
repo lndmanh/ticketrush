@@ -46,13 +46,13 @@ const onSubmit = handleSubmit(async (values) => {
 
 definePageMeta({
   layout: 'empty',
-  title: 'Forgot Password',
-  breadcrumb: 'Forgot Password',
+  title: 'auth.forgot_password_title',
+  breadcrumb: 'auth.forgot_password_title',
 })
 </script>
 
 <template>
-  <AuthPageLayout quote="Get back into your library without losing your place.">
+  <AuthPageLayout :quote="$t('auth.forgot_password_quote')">
     <div class="space-y-3">
       <div class="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
         <KeyRound
@@ -62,10 +62,10 @@ definePageMeta({
       </div>
       <div class="space-y-1">
         <h1 class="text-2xl font-bold tracking-tight">
-          Forgot your password?
+          {{ $t('auth.forgot_password_title') }}
         </h1>
         <p class="text-base text-muted-foreground">
-          {{ isSubmitted ? 'Check your email for a reset link.' : 'Enter your email and we\'ll send you a reset link.' }}
+          {{ isSubmitted ? $t('auth.forgot_password_check_email') : $t('auth.forgot_password_desc') }}
         </p>
       </div>
     </div>
@@ -83,10 +83,10 @@ definePageMeta({
       class="space-y-4"
     >
       <p class="text-sm text-muted-foreground">
-        If an account exists with that email, we've sent a password reset link. Check your inbox and spam folder.
+        {{ $t('auth.forgot_password_sent_desc') }}
       </p>
       <p class="text-sm text-muted-foreground">
-        The link expires in 1 hour.
+        {{ $t('auth.forgot_password_expiry') }}
       </p>
       <Button
         type="button"
@@ -94,7 +94,7 @@ definePageMeta({
         class="w-full active:scale-[0.98]"
         @click="navigateTo('/auth/login')"
       >
-        Back to Sign In
+        {{ $t('auth.back_to_sign_in') }}
       </Button>
     </div>
 
@@ -115,7 +115,7 @@ definePageMeta({
             for="forgot-email"
             class="text-sm font-medium"
           >
-            Email
+            {{ $t('auth.email_label') }}
           </FieldLabel>
           <div class="relative">
             <Mail
@@ -128,7 +128,7 @@ definePageMeta({
               :model-value="field.value"
               type="email"
               autocomplete="email"
-              placeholder="Enter your email address"
+              :placeholder="$t('auth.email_placeholder')"
               class="h-11 pl-9"
               :disabled="isSubmitting"
               :aria-invalid="!!errors.length"
@@ -150,7 +150,7 @@ definePageMeta({
         :is-loading="isSubmitting"
         :disabled="!turnstileToken"
       >
-        Send Reset Link
+        {{ $t('auth.send_reset_link') }}
       </Button>
 
       <div class="text-center">
@@ -158,7 +158,7 @@ definePageMeta({
           to="/auth/login"
           class="text-sm font-medium text-primary hover:underline"
         >
-          Back to Sign In
+            {{ $t('auth.back_to_sign_in') }}
         </NuxtLink>
       </div>
     </form>

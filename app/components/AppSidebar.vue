@@ -7,6 +7,7 @@ import NavSecondary from '@/components/nav/NavSecondary.vue'
 import NavUser from '@/components/nav/NavUser.vue'
 import type { SidebarProps } from '@/components/ui/sidebar'
 import { useSidebar } from '@/components/ui/sidebar/utils'
+import { getUiFallbackText } from '@/utils/uiText'
 
 const props = withDefaults(defineProps<SidebarProps>(), {
   variant: 'inset',
@@ -17,6 +18,12 @@ const { open } = useSidebar()
 const { activeContext, primarySections, secondarySections, showBack, isContextView, showMainSidebar } = useSidebarContext()
 const config = useRuntimeConfig()
 const appVersion = computed(() => config.public.version || '')
+const { t } = useI18n()
+
+function tt(key: string) {
+  const translated = t(key)
+  return translated === key ? getUiFallbackText(key) : translated
+}
 </script>
 
 <template>
@@ -29,7 +36,7 @@ const appVersion = computed(() => config.public.version || '')
         <SidebarMenuItem>
           <SidebarMenuButton
             as-child
-            :tooltip="$t('nav.quick_search')"
+            :tooltip="tt('nav.quick_search')"
             class="flex items-center"
             @click="toggleIsOpen()"
           >
@@ -39,7 +46,7 @@ const appVersion = computed(() => config.public.version || '')
               size="lg"
             >
               <SearchIcon />
-              <span class="ml-2">{{ $t('nav.quick_search') }}</span>
+              <span class="ml-2">{{ tt('nav.quick_search') }}</span>
               <KbdGroup class="ml-auto">
                 <Kbd>Ctrl</Kbd>
                 <span>+</span>
@@ -70,7 +77,7 @@ const appVersion = computed(() => config.public.version || '')
                   @click="showMainSidebar"
                 >
                   <ArrowLeft />
-                  <span>{{ $t('common.back') }}</span>
+                  <span>{{ tt('common.back') }}</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
             </SidebarMenu>

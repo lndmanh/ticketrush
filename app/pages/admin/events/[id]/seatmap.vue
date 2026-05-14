@@ -232,8 +232,8 @@ async function resetSelectedOverrides() {
 }
 
 definePageMeta({
-  title: 'Event seat map',
-  breadcrumb: 'Seat map',
+  title: 'admin_event_seatmap.page_title',
+  breadcrumb: 'admin_event_seatmap.breadcrumb',
   middleware: ['auth', 'admin'],
   layout: 'dashboard',
 })

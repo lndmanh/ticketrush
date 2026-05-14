@@ -15,6 +15,11 @@ interface TaskDefinition {
   variant: 'default' | 'secondary' | 'outline'
 }
 
+interface ResultSummaryItem {
+  label: string
+  value: string
+}
+
 const tasks: TaskDefinition[] = [
   {
     id: 'release-holds',
@@ -60,6 +65,70 @@ const localizedTasks = computed(() => tasks.map(task => ({
   description: t(task.descriptionKey),
 })))
 
+function getTaskResultMessage(taskId: string, data: AdminTaskData) {
+  if (taskId === 'release-holds' && 'releasedCount' in data) {
+    return data.releasedCount > 0
+      ? t('admin.tasks.result_release_holds_done', { count: data.releasedCount })
+      : t('admin.tasks.result_release_holds_empty')
+  }
+
+  if (taskId === 'admit-queue' && 'admissionSummary' in data) {
+    const admittedTotal = data.admissionSummary.reduce((total, item) => total + item.admittedCount, 0)
+    return admittedTotal > 0
+      ? t('admin.tasks.result_admit_queue_done', { count: admittedTotal })
+      : t('admin.tasks.result_admit_queue_empty')
+  }
+
+  if (taskId === 'seed-admin' && 'admin' in data) {
+    return data.admin.isAdmin
+      ? t('admin.tasks.result_seed_admin_ready', { username: data.admin.username })
+      : t('admin.tasks.result_seed_admin_checked', { username: data.admin.username })
+  }
+
+  if (taskId === 'reseed-events' && 'eventsCreated' in data) {
+    return t('admin.tasks.result_reseed_events_done', { count: data.eventsCreated })
+  }
+
+  return t('admin.tasks.result_completed')
+}
+
+function getTaskResultSummary(taskId: string, data: AdminTaskData): ResultSummaryItem[] {
+  if (taskId === 'release-holds' && 'releasedCount' in data) {
+    return [
+      { label: t('admin.tasks.metric_released_tickets'), value: String(data.releasedCount) },
+      { label: t('admin.tasks.metric_events_updated'), value: String(data.eventsRecomputed) },
+    ]
+  }
+
+  if (taskId === 'admit-queue' && 'admissionSummary' in data) {
+    const admittedTotal = data.admissionSummary.reduce((total, item) => total + item.admittedCount, 0)
+    const activeSessions = data.admissionSummary.filter(item => item.admittedCount > 0).length
+    return [
+      { label: t('admin.tasks.metric_admitted'), value: String(admittedTotal) },
+      { label: t('admin.tasks.metric_changed_sessions'), value: String(activeSessions) },
+      { label: t('admin.tasks.metric_expired_holds'), value: String(data.expiredCount) },
+    ]
+  }
+
+  if (taskId === 'seed-admin' && 'admin' in data) {
+    return [
+      { label: t('admin.tasks.metric_account'), value: data.admin.username },
+      { label: t('admin.tasks.metric_display_name'), value: data.admin.name ?? t('common.not_set') },
+      { label: t('admin.tasks.metric_admin_role'), value: data.admin.isAdmin ? t('admin.tasks.enabled') : t('admin.tasks.disabled') },
+    ]
+  }
+
+  if (taskId === 'reseed-events' && 'eventsCreated' in data) {
+    return [
+      { label: t('admin.tasks.metric_created_events'), value: String(data.eventsCreated) },
+      { label: t('admin.tasks.metric_venues'), value: String(data.venuesCreated) },
+      { label: t('admin.tasks.metric_cities'), value: String(data.cities.length) },
+    ]
+  }
+
+  return []
+}
+
 async function runTask(task: TaskDefinition) {
   if (runningTasks.value.has(task.id)) return
 
@@ -78,7 +147,7 @@ async function runTask(task: TaskDefinition) {
     toast.success(t('admin.tasks.completed', { title: task.title }))
   }
   catch (err) {
-    const message = parseApiError(err, 'Task failed').message
+    const message = parseApiError(err, t('admin.tasks.failed')).message
     taskResults.value[task.id] = {
       success: false,
       error: message,
@@ -92,8 +161,8 @@ async function runTask(task: TaskDefinition) {
 }
 
 definePageMeta({
-  title: 'Tasks',
-  breadcrumb: 'Tasks',
+  title: 'admin.tasks.title',
+  breadcrumb: 'admin.tasks.title',
   middleware: ['auth', 'admin'],
   layout: 'dashboard',
 })
@@ -114,7 +183,7 @@ definePageMeta({
       <Card
         v-for="task in localizedTasks"
         :key="task.id"
-        class="flex flex-col"
+        class="flex min-h-[20rem] flex-col"
       >
         <CardHeader>
           <div class="flex items-center gap-3">
@@ -138,18 +207,51 @@ definePageMeta({
         <CardContent class="mt-auto space-y-3">
           <div
             v-if="taskResults[task.id]"
-            class="rounded-md border px-3 py-2 text-xs"
-            :class="taskResults[task.id]?.success ? 'border-emerald-500/20 bg-emerald-500/5 text-emerald-700 dark:text-emerald-400' : 'border-destructive/20 bg-destructive/5 text-destructive'"
+            class="rounded-xl border p-3 text-xs shadow-inner"
+            :class="taskResults[task.id]?.success ? 'border-emerald-500/25 bg-emerald-500/5 text-emerald-700 shadow-emerald-950/10 dark:text-emerald-400' : 'border-destructive/25 bg-destructive/5 text-destructive shadow-destructive/10'"
           >
-            <p class="font-medium">
-              {{ taskResults[task.id]?.success ? $t('admin.tasks.success') : $t('admin.tasks.failed') }}
-              <span class="ml-1 font-normal text-muted-foreground">{{ $t('admin.tasks.at') }} {{ taskResults[task.id]?.ranAt }}</span>
-            </p>
-            <pre
+            <div class="flex items-center justify-between gap-3">
+              <p class="font-semibold">
+                {{ taskResults[task.id]?.success ? $t('admin.tasks.success') : $t('admin.tasks.failed') }}
+              </p>
+              <span class="shrink-0 text-[11px] font-normal text-muted-foreground">{{ $t('admin.tasks.at') }} {{ taskResults[task.id]?.ranAt }}</span>
+            </div>
+
+            <div
               v-if="taskResults[task.id]?.data"
-              class="mt-1 whitespace-pre-wrap break-all font-mono"
-            >{{ JSON.stringify(taskResults[task.id]?.data, null, 2) }}</pre>
-            <p v-if="taskResults[task.id]?.error">
+              class="mt-3 space-y-3"
+            >
+              <p class="leading-5 text-foreground">
+                {{ getTaskResultMessage(task.id, taskResults[task.id].data) }}
+              </p>
+
+              <div class="grid gap-2 sm:grid-cols-2">
+                <div
+                  v-for="item in getTaskResultSummary(task.id, taskResults[task.id].data)"
+                  :key="item.label"
+                  class="rounded-lg border border-current/10 bg-background/70 px-3 py-2"
+                >
+                  <p class="text-[11px] text-muted-foreground">
+                    {{ item.label }}
+                  </p>
+                  <p class="mt-1 truncate text-sm font-semibold text-foreground">
+                    {{ item.value }}
+                  </p>
+                </div>
+              </div>
+
+              <details class="rounded-lg border border-current/10 bg-background/50">
+                <summary class="cursor-pointer px-3 py-2 text-[11px] font-medium text-muted-foreground hover:text-foreground">
+                  {{ $t('admin.tasks.technical_details') }}
+                </summary>
+                <pre class="max-h-32 overflow-auto whitespace-pre-wrap break-words border-t border-current/10 px-3 py-2 font-mono text-[11px] leading-5 text-muted-foreground [scrollbar-color:hsl(var(--muted-foreground)/0.35)_transparent] [scrollbar-width:thin]">{{ JSON.stringify(taskResults[task.id]?.data, null, 2) }}</pre>
+              </details>
+            </div>
+
+            <p
+              v-if="taskResults[task.id]?.error"
+              class="mt-3 max-h-28 overflow-auto rounded-lg border border-current/10 bg-background/70 px-3 py-2 leading-5 text-foreground [scrollbar-color:hsl(var(--muted-foreground)/0.35)_transparent] [scrollbar-width:thin]"
+            >
               {{ taskResults[task.id]?.error }}
             </p>
           </div>

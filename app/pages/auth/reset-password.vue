@@ -71,13 +71,13 @@ const onSubmit = handleSubmit(async (formValues) => {
 
 definePageMeta({
   layout: 'empty',
-  title: 'Reset Password',
-  breadcrumb: 'Reset Password',
+  title: 'auth.reset_password_title',
+  breadcrumb: 'auth.reset_password_title',
 })
 </script>
 
 <template>
-  <AuthPageLayout quote="Choose a fresh key and step right back into your library.">
+  <AuthPageLayout :quote="$t('auth.reset_password_quote')">
     <div class="space-y-5">
       <div class="space-y-3 text-center">
         <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
@@ -88,10 +88,10 @@ definePageMeta({
         </div>
         <div class="space-y-1">
           <h1 class="text-2xl font-bold tracking-tight">
-            Set a new password
+            {{ $t('auth.reset_password_title') }}
           </h1>
           <p class="text-base text-muted-foreground">
-            Enter your new password below.
+            {{ $t('auth.reset_password_desc') }}
           </p>
         </div>
       </div>
@@ -107,7 +107,7 @@ definePageMeta({
         v-if="success"
       >
         <AlertDescription>
-          Password reset successfully. You can now sign in with your new password.
+          {{ $t('auth.reset_password_success') }}
         </AlertDescription>
       </Alert>
 
@@ -116,12 +116,12 @@ definePageMeta({
         variant="destructive"
       >
         <AlertDescription>
-          Invalid reset link. Please
+          {{ $t('auth.invalid_reset_link') }}
           <NuxtLink
             :to="{ path: '/auth/forgot-password' }"
             class="underline font-medium"
           >
-            request a new one
+            {{ $t('auth.request_new_link') }}
           </NuxtLink>.
         </AlertDescription>
       </Alert>
@@ -143,7 +143,7 @@ definePageMeta({
               for="new-password"
               class="text-sm font-medium"
             >
-              New Password
+              {{ $t('auth.new_password') }}
             </FieldLabel>
             <div class="relative">
               <Lock
@@ -154,7 +154,7 @@ definePageMeta({
                 id="new-password"
                 :model-value="field.value"
                 :type="showPassword ? 'text' : 'password'"
-                placeholder="Enter new password"
+                :placeholder="$t('auth.new_password_placeholder')"
                 class="h-11 pl-9 pr-9"
                 :disabled="isSubmitting"
                 :aria-invalid="!!errors.length"
@@ -166,7 +166,7 @@ definePageMeta({
                 variant="ghost"
                 size="sm"
                 class="absolute right-1 top-1 h-9 w-9 p-0 hover:bg-transparent"
-                :aria-label="showPassword ? 'Hide password' : 'Show password'"
+                :aria-label="showPassword ? $t('auth.hide_password') : $t('auth.show_password')"
                 :aria-pressed="showPassword"
                 @click="showPassword = !showPassword"
               >
@@ -205,7 +205,7 @@ definePageMeta({
               for="confirm-new-password"
               class="text-sm font-medium"
             >
-              Confirm New Password
+              {{ $t('auth.confirm_new_password') }}
             </FieldLabel>
             <div class="relative">
               <Lock
@@ -216,7 +216,7 @@ definePageMeta({
                 id="confirm-new-password"
                 :model-value="field.value"
                 :type="showConfirmPassword ? 'text' : 'password'"
-                placeholder="Confirm new password"
+                :placeholder="$t('auth.confirm_new_password_placeholder')"
                 class="h-11 pl-9 pr-9"
                 :disabled="isSubmitting"
                 :aria-invalid="!!errors.length"
@@ -228,7 +228,7 @@ definePageMeta({
                 variant="ghost"
                 size="sm"
                 class="absolute right-1 top-1 h-9 w-9 p-0 hover:bg-transparent"
-                :aria-label="showConfirmPassword ? 'Hide password confirmation' : 'Show password confirmation'"
+                :aria-label="showConfirmPassword ? $t('auth.hide_password_confirmation') : $t('auth.show_password_confirmation')"
                 :aria-pressed="showConfirmPassword"
                 @click="showConfirmPassword = !showConfirmPassword"
               >
@@ -257,14 +257,14 @@ definePageMeta({
           :disabled="!isFormValid"
           :is-loading="isSubmitting"
         >
-          Reset Password
+          {{ $t('auth.reset_password_button') }}
         </Button>
 
         <p
           v-if="values.password && passwordStrength.score < 80"
           class="text-center text-xs"
         >
-          Password must be strong to reset
+          {{ $t('auth.reset_password_weak_note') }}
         </p>
       </form>
 
@@ -273,7 +273,7 @@ definePageMeta({
           to="/auth/login"
           class="text-sm font-medium text-primary hover:underline"
         >
-          Back to Sign In
+          {{ $t('auth.back_to_sign_in') }}
         </NuxtLink>
       </div>
     </div>

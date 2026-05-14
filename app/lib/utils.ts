@@ -68,38 +68,38 @@ export function formatRelativeTime(
   if ((days ?? 0) < relativeDaysThreshold) {
     // Just now / In a moment (< 1 minute)
     if ((minutes ?? 0) < 1 && (hours ?? 0) === 0 && (days ?? 0) === 0) {
-      return isFuture ? 'In a moment' : 'Just now'
+      return getInstantRelativeLabel(locale, isFuture)
     }
 
     // Minutes (< 1 hour)
     if ((hours ?? 0) < 1 && (days ?? 0) === 0) {
       const m = Math.floor(minutes ?? 0)
       if (isFuture) {
-        return dt.toRelative({ locale, unit: 'minutes' }) ?? `in ${m} minute${m === 1 ? '' : 's'}`
+        return dt.toRelative({ locale, unit: 'minutes' }) ?? getRelativeUnitFallback(locale, m, 'minute', true)
       }
-      return dt.toRelative({ locale, unit: 'minutes' }) ?? `${m} minute${m === 1 ? '' : 's'} ago`
+      return dt.toRelative({ locale, unit: 'minutes' }) ?? getRelativeUnitFallback(locale, m, 'minute', false)
     }
 
     // Hours (< 24 hours)
     if ((days ?? 0) < 1) {
       const h = Math.floor(hours ?? 0)
       if (isFuture) {
-        return dt.toRelative({ locale, unit: 'hours' }) ?? `in ${h} hour${h === 1 ? '' : 's'}`
+        return dt.toRelative({ locale, unit: 'hours' }) ?? getRelativeUnitFallback(locale, h, 'hour', true)
       }
-      return dt.toRelative({ locale, unit: 'hours' }) ?? `${h} hour${h === 1 ? '' : 's'} ago`
+      return dt.toRelative({ locale, unit: 'hours' }) ?? getRelativeUnitFallback(locale, h, 'hour', false)
     }
 
     // Tomorrow / Yesterday
     if (isFuture && dt.hasSame(now.plus({ days: 1 }), 'day')) {
-      return `Tomorrow at ${dt.toFormat('h:mm a', { locale })}`
+      return formatRelativeDayTime(dt, locale, true)
     }
     if (!isFuture && dt.hasSame(now.minus({ days: 1 }), 'day')) {
-      return `Yesterday at ${dt.toFormat('h:mm a', { locale })}`
+      return formatRelativeDayTime(dt, locale, false)
     }
 
     // Within week (show day name)
     if ((days ?? 0) < 7) {
-      return `${dt.toFormat('cccc', { locale })} at ${dt.toFormat('h:mm a', { locale })}`
+      return formatWeekdayTime(dt, locale)
     }
   }
 
@@ -118,6 +118,51 @@ function toDateTime(date: Date | number | string): DateTime {
     return DateTime.fromMillis(date)
   }
   return DateTime.fromISO(date)
+}
+
+function isVietnameseLocale(locale: string) {
+  return locale.toLowerCase().startsWith('vi')
+}
+
+function getTimeFormat(locale: string) {
+  return isVietnameseLocale(locale) ? 'HH:mm' : 'h:mm a'
+}
+
+function getInstantRelativeLabel(locale: string, isFuture: boolean) {
+  if (isVietnameseLocale(locale)) {
+    return isFuture ? 'Sắp tới' : 'Vừa xong'
+  }
+
+  return isFuture ? 'In a moment' : 'Just now'
+}
+
+function getRelativeUnitFallback(locale: string, value: number, unit: 'minute' | 'hour', isFuture: boolean) {
+  if (isVietnameseLocale(locale)) {
+    const unitLabel = unit === 'minute' ? 'phút' : 'giờ'
+    return isFuture ? `trong ${value} ${unitLabel}` : `${value} ${unitLabel} trước`
+  }
+
+  const unitLabel = `${unit}${value === 1 ? '' : 's'}`
+  return isFuture ? `in ${value} ${unitLabel}` : `${value} ${unitLabel} ago`
+}
+
+function formatRelativeDayTime(dt: DateTime, locale: string, isFuture: boolean) {
+  const time = dt.toFormat(getTimeFormat(locale), { locale })
+  if (isVietnameseLocale(locale)) {
+    return `${isFuture ? 'Ngày mai' : 'Hôm qua'} lúc ${time}`
+  }
+
+  return `${isFuture ? 'Tomorrow' : 'Yesterday'} at ${time}`
+}
+
+function formatWeekdayTime(dt: DateTime, locale: string) {
+  const weekday = dt.toFormat('cccc', { locale })
+  const time = dt.toFormat(getTimeFormat(locale), { locale })
+  if (isVietnameseLocale(locale)) {
+    return `${weekday} lúc ${time}`
+  }
+
+  return `${weekday} at ${time}`
 }
 
 /**

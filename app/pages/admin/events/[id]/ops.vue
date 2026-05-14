@@ -71,8 +71,8 @@ function formatDateTime(value: string | Date) {
 }
 
 definePageMeta({
-  title: 'Event operations',
-  breadcrumb: 'Ops',
+  title: 'admin_event_ops.page_title',
+  breadcrumb: 'admin_event_ops.breadcrumb',
   middleware: ['auth', 'admin'],
   layout: 'dashboard',
 })

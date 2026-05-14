@@ -14,9 +14,11 @@ import {
 } from '@/components/ui/sidebar'
 import { useSidebar } from '@/components/ui/sidebar/utils'
 import type { SidebarItem } from '~~/types/common'
+import { getUiFallbackText } from '@/utils/uiText'
 
 const route = useRoute()
 const { isMobile, setOpenMobile } = useSidebar()
+const { t } = useI18n()
 
 withDefaults(defineProps<{
   title?: string
@@ -38,11 +40,16 @@ const handleSubItemClick = () => {
     setOpenMobile(false)
   }
 }
+
+function tt(key: string) {
+  const translated = t(key)
+  return translated === key ? getUiFallbackText(key) : translated
+}
 </script>
 
 <template>
   <SidebarGroup>
-    <SidebarGroupLabel>{{ $t(title) }}</SidebarGroupLabel>
+    <SidebarGroupLabel>{{ tt(title) }}</SidebarGroupLabel>
     <SidebarMenu>
       <template
         v-for="item in items"
@@ -58,7 +65,7 @@ const handleSubItemClick = () => {
           <SidebarMenuItem>
             <CollapsibleTrigger as-child>
               <SidebarMenuButton
-                :tooltip="$t(item.title)"
+                :tooltip="tt(item.title)"
                 :close-sidebar-on-mobile="false"
                 :class="{
                   'bg-sidebar-accent text-sidebar-accent-foreground': hasActiveSubItem(item.items),
@@ -68,7 +75,7 @@ const handleSubItemClick = () => {
                   :is="item.icon"
                   v-if="item.icon"
                 />
-                <span>{{ $t(item.title) }}</span>
+                <span>{{ tt(item.title) }}</span>
                 <ChevronRight
                   class="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90"
                 />
@@ -94,7 +101,7 @@ const handleSubItemClick = () => {
                         :is="subItem.icon"
                         v-if="subItem.icon"
                       />
-                      <span>{{ $t(subItem.title) }}</span>
+                      <span>{{ tt(subItem.title) }}</span>
                     </nuxt-link>
                   </SidebarMenuSubButton>
                 </SidebarMenuSubItem>
@@ -107,7 +114,7 @@ const handleSubItemClick = () => {
         <SidebarMenuItem v-else>
           <SidebarMenuButton
             as-child
-            :tooltip="$t(item.title)"
+            :tooltip="tt(item.title)"
           >
             <nuxt-link
               :to="(item.url || '/')"
@@ -119,7 +126,7 @@ const handleSubItemClick = () => {
                 :is="item.icon"
                 v-if="item.icon"
               />
-              <span>{{ $t(item.title) }}</span>
+              <span>{{ tt(item.title) }}</span>
             </nuxt-link>
           </SidebarMenuButton>
         </SidebarMenuItem>

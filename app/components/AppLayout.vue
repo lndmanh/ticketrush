@@ -5,6 +5,7 @@ import { cn } from '@/lib/utils'
 import MaxWidthWrapper from './MaxWidthWrapper.vue'
 import { ChevronLeft, HomeIcon, LogInIcon } from '@lucide/vue'
 import type { BreadcrumbItemType } from '~~/types/common'
+import { getUiFallbackText } from '@/utils/uiText'
 
 const router = useRouter()
 const route = useRoute()
@@ -20,11 +21,12 @@ function getRouteTitle(meta: { breadcrumb?: unknown, title?: unknown } | undefin
 
 function getBreadcrumbTitle(title: string) {
   if (title === 'Home') {
-    return t('nav.home')
+    const homeTitle = t('nav.home')
+    return homeTitle === 'nav.home' ? getUiFallbackText('nav.home') : homeTitle
   }
 
   const translated = t(title)
-  return translated === title ? title : translated
+  return translated === title ? getUiFallbackText(title) : translated
 }
 
 const breadcrumbs = computed<BreadcrumbItemType[]>(() => {
@@ -147,7 +149,7 @@ const { loggedIn, user } = useUserSession()
                   @click="navigateTo(parentBreadcrumb.href)"
                 >
                   <ChevronLeft class="size-4" />
-                  <span class="text-xs font-medium">{{ $t('common.back') }}</span>
+                  <span class="text-xs font-medium">{{ getBreadcrumbTitle('common.back') }}</span>
                 </Button>
               </BreadcrumbItem>
               <BreadcrumbSeparator

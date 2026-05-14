@@ -199,9 +199,9 @@ definePageMeta({
         <EmptyMedia variant="icon">
           <Ticket class="size-5" />
         </EmptyMedia>
-        <EmptyTitle>Your first issued ticket will appear here.</EmptyTitle>
+        <EmptyTitle>{{ $t('tickets.empty_title') }}</EmptyTitle>
         <EmptyDescription>
-          This wallet stores the QR pass, seat assignment, and event timing.
+          {{ $t('tickets.empty_wallet_desc') }}
         </EmptyDescription>
       </EmptyHeader>
       <EmptyContent>
@@ -211,7 +211,7 @@ definePageMeta({
             class="rounded-full"
           >
             <NuxtLink to="/events">
-              Browse events
+              {{ $t('tickets.browse_events') }}
             </NuxtLink>
           </Button>
         </div>

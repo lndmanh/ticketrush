@@ -254,13 +254,13 @@
               :disabled="loading"
               @click="closeDialog"
             >
-              Cancel
+              {{ $t('common.cancel') }}
             </Button>
             <Button
               type="submit"
               :is-loading="loading"
             >
-              {{ isEditing ? 'Save changes' : 'Create user' }}
+              {{ isEditing ? $t('admin.users.save_changes') : $t('admin.users.create_user') }}
             </Button>
           </DialogFooter>
         </form>

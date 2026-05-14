@@ -1,5 +1,13 @@
 <script setup lang="ts">
 import type { SidebarItem } from '~~/types/common'
+import { getUiFallbackText } from '@/utils/uiText'
+
+const { t } = useI18n()
+
+function tt(key: string) {
+  const translated = t(key)
+  return translated === key ? getUiFallbackText(key) : translated
+}
 
 defineProps<{
   items: SidebarItem[]
@@ -20,7 +28,7 @@ defineProps<{
           >
             <nuxt-link :to="item.url">
               <component :is="item.icon" />
-              <span>{{ $t(item.title) }}</span>
+              <span>{{ tt(item.title) }}</span>
             </nuxt-link>
           </SidebarMenuButton>
         </SidebarMenuItem>

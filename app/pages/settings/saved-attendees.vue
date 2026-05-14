@@ -2,8 +2,8 @@
 import SavedAttendeesManager from '~/components/saved-attendees/SavedAttendeesManager.vue'
 
 definePageMeta({
-  title: 'Saved Attendees',
-  breadcrumb: 'Saved Attendees',
+  title: 'settings.saved_attendees_title',
+  breadcrumb: 'settings.saved_attendees_title',
   layout: 'dashboard',
   middleware: ['auth'],
 })

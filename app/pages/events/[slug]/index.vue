@@ -69,8 +69,8 @@ if (!event.value) {
 }
 
 definePageMeta({
-  title: 'Event detail',
-  breadcrumb: 'Event',
+  title: 'event_detail.page_title',
+  breadcrumb: 'event_detail.breadcrumb',
 })
 </script>
 

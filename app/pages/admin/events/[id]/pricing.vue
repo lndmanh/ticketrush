@@ -246,8 +246,8 @@ const onSubmit = handleSubmit(
 )
 
 definePageMeta({
-  title: 'Event pricing',
-  breadcrumb: 'Event pricing',
+  title: 'admin_event_pricing.title',
+  breadcrumb: 'admin_event_pricing.title',
   middleware: ['auth', 'admin'],
   layout: 'dashboard',
 })

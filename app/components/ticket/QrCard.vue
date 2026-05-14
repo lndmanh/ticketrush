@@ -13,7 +13,7 @@ defineProps<{
     <div class="surface-core space-y-6 text-center">
       <div class="space-y-2">
         <p class="section-eyebrow mx-auto">
-          Digital pass
+          {{ $t('tickets.digital_entry_pass') }}
         </p>
         <h3 class="text-balance text-2xl font-semibold tracking-[-0.05em]">
           {{ title }}

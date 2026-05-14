@@ -61,13 +61,13 @@ async function resendVerification() {
 
 definePageMeta({
   layout: 'empty',
-  title: 'Verify Email',
-  breadcrumb: 'Verify Email',
+  title: 'auth.verify_email_title',
+  breadcrumb: 'auth.verify_email_title',
 })
 </script>
 
 <template>
-  <AuthPageLayout quote="Verify your account once, then keep your reading in sync everywhere.">
+  <AuthPageLayout :quote="$t('auth.verify_email_quote')">
     <div class="space-y-6 text-center">
       <div class="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-primary/10">
         <MailCheck
@@ -78,20 +78,20 @@ definePageMeta({
 
       <div class="space-y-2">
         <h1 class="text-2xl font-semibold tracking-tight">
-          Check your email
+          {{ $t('auth.verify_email_title') }}
         </h1>
         <p class="text-sm text-muted-foreground">
-          We've sent a verification link to
+          {{ $t('auth.verify_email_sent_to') }}
           <strong
             v-if="email"
             class="text-foreground"
           >{{ email }}</strong>
-          <span v-else>your email address</span>
+          <span v-else>{{ $t('auth.your_email_address') }}</span>
         </p>
       </div>
 
       <p class="text-sm text-muted-foreground">
-        Click the link in the email to verify your account. If you don't see it, check your spam folder.
+        {{ $t('auth.verify_email_desc') }}
       </p>
 
       <Alert
@@ -99,7 +99,7 @@ definePageMeta({
         class="border-green-200 bg-green-50 dark:border-green-900 dark:bg-green-950"
       >
         <AlertDescription class="text-green-700 dark:text-green-300">
-          Verification email sent! Please check your inbox.
+          {{ $t('auth.verify_email_sent_success') }}
         </AlertDescription>
       </Alert>
 
@@ -118,7 +118,7 @@ definePageMeta({
           :is-loading="isResending"
           @click="resendVerification"
         >
-          {{ resendSuccess ? 'Email Sent' : 'Resend Verification Email' }}
+          {{ resendSuccess ? $t('auth.email_sent') : $t('auth.resend_verification_email') }}
         </Button>
 
         <div>
@@ -126,7 +126,7 @@ definePageMeta({
             :to="loginLink"
             class="text-sm font-medium text-primary hover:underline"
           >
-            Back to Sign In
+            {{ $t('auth.back_to_sign_in') }}
           </NuxtLink>
         </div>
       </div>

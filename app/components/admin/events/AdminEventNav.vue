@@ -6,30 +6,31 @@ const props = defineProps<{
 }>()
 
 const route = useRoute()
+const { t } = useI18n()
 
 const links = computed(() => [
   {
-    label: 'Overview',
+    label: t('admin.event_nav_overview'),
     to: `/admin/events/${props.eventId}`,
     icon: LayoutGrid,
   },
   {
-    label: 'Seat map',
+    label: t('admin.event_nav_seatmap'),
     to: `/admin/events/${props.eventId}/seatmap`,
     icon: Tickets,
   },
   {
-    label: 'Pricing',
+    label: t('admin.event_nav_pricing'),
     to: `/admin/events/${props.eventId}/pricing`,
     icon: Settings2,
   },
   {
-    label: 'Sales',
+    label: t('admin.event_nav_sales'),
     to: `/admin/events/${props.eventId}/sales`,
     icon: BarChart3,
   },
   {
-    label: 'Ops',
+    label: t('admin.event_nav_ops'),
     to: `/admin/events/${props.eventId}/ops`,
     icon: ShoppingCart,
   },
@@ -52,13 +53,13 @@ function isActive(target: string) {
         </div>
         <div class="min-w-0 space-y-1">
           <p class="text-[11px] font-medium uppercase tracking-[0.24em] text-muted-foreground">
-            Event workspace
+            {{ $t('admin.event_workspace_eyebrow') }}
           </p>
           <p class="text-sm font-semibold leading-tight text-foreground">
-            Overview, map, pricing, sales, and ops
+            {{ $t('admin.event_workspace_title') }}
           </p>
           <p class="text-xs text-muted-foreground">
-            Move across every admin surface without losing event context.
+            {{ $t('admin.event_workspace_desc') }}
           </p>
         </div>
       </div>

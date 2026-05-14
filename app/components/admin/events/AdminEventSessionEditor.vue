@@ -62,6 +62,7 @@ const emit = defineEmits<{
 const openSessionIndexes = ref<number[]>([0])
 const perSectionPriceCache = ref<Record<string, EventSessionSectionPriceInput[]>>({})
 const clientSessionSequence = ref(0)
+const { t } = useI18n()
 
 const invalidSessionIndexes = computed(() => {
   const indexes: number[] = []
@@ -179,7 +180,7 @@ function addSession() {
   const newSession: EventSessionEditorInput = {
     id: undefined,
     publicId: createClientSessionPublicId(),
-    label: `Session ${props.modelValue.length + 1}`,
+    label: t('admin.event_session.session_number', { index: props.modelValue.length + 1 }),
     venueId: props.defaultVenueId && props.defaultVenueId > 0 ? props.defaultVenueId : (props.modelValue.find(session => session.venueId > 0)?.venueId ?? 0),
     status: undefined,
     queueEnabled: false,
@@ -361,7 +362,7 @@ function updateSectionPrice(sessionIndex: number, sectionIndex: number, section:
     <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
       <div>
         <h3 class="text-2xl font-semibold tracking-[-0.03em] text-foreground">
-          Event sessions
+          {{ $t('admin.event_session.title') }}
         </h3>
       </div>
 
@@ -405,7 +406,7 @@ function updateSectionPrice(sessionIndex: number, sectionIndex: number, section:
             <div class="min-w-0 space-y-1">
               <div class="flex flex-wrap items-center gap-2">
                 <CardTitle class="truncate text-xl tracking-[-0.04em]">
-                  {{ session.label || $t('admin.event_session.session_label') + ` ${sessionIndex + 1}` }}
+                  {{ session.label || $t('admin.event_session.session_number', { index: sessionIndex + 1 }) }}
                 </CardTitle>
                 <Badge variant="outline">
                   {{ $t('admin.event_session.section_count', { n: venueSections.length }) }}

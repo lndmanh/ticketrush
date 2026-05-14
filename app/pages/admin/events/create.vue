@@ -22,7 +22,15 @@ interface VenueOption {
   name: string
 }
 
-const { locale } = useI18n()
+const { locale, t, te } = useI18n()
+
+function tx(key: string, fallback: string) {
+  return te(key) ? t(key) : fallback
+}
+
+function txParams(key: string, params: Record<string, string | number>, fallback: string) {
+  return te(key) ? t(key, params) : fallback
+}
 
 function formatDateTime(value: string | Date) {
   return new Date(value).toLocaleString(getDisplayDateLocale(locale.value))
@@ -35,11 +43,80 @@ interface EventCreationStep {
 }
 
 const steps: EventCreationStep[] = [
-  { step: 1, title: 'Basics', description: 'Event identity' },
-  { step: 2, title: 'Venue', description: 'Select venue' },
-  { step: 3, title: 'Sessions', description: 'Schedule and pricing' },
-  { step: 4, title: 'Review', description: 'Confirm and save' },
+  { step: 1, title: 'admin.event_create.step_basics', description: 'admin.event_create.step_basics_desc' },
+  { step: 2, title: 'admin.event_create.step_venue', description: 'admin.event_create.step_venue_desc' },
+  { step: 3, title: 'admin.event_create.step_sessions', description: 'admin.event_create.step_sessions_desc' },
+  { step: 4, title: 'admin.event_create.step_review', description: 'admin.event_create.step_review_desc' },
 ]
+
+const fallbackText: Record<string, string> = {
+  'admin.event_create.page_title': 'Tạo sự kiện',
+  'admin.event_create.breadcrumb': 'Tạo sự kiện',
+  'admin.event_create.step_basics': 'Cơ bản',
+  'admin.event_create.step_basics_desc': 'Thông tin sự kiện',
+  'admin.event_create.step_venue': 'Địa điểm',
+  'admin.event_create.step_venue_desc': 'Chọn địa điểm',
+  'admin.event_create.step_sessions': 'Suất diễn',
+  'admin.event_create.step_sessions_desc': 'Lịch trình và giá vé',
+  'admin.event_create.step_review': 'Xem lại',
+  'admin.event_create.step_review_desc': 'Xác nhận và lưu',
+  'admin.event_create.identity': 'Danh tính',
+  'admin.event_create.event_basics': 'Thông tin cơ bản',
+  'admin.event_create.title_label': 'Tiêu đề',
+  'admin.event_create.title_placeholder': 'Midnight Skyline Live',
+  'admin.event_create.slug_label': 'Slug',
+  'admin.event_create.slug_placeholder': 'midnight-skyline-live',
+  'admin.event_create.subtitle_label': 'Phụ đề',
+  'admin.event_create.subtitle_placeholder': 'Một đêm nhạc điện tử cao cấp tại Sài Gòn.',
+  'admin.event_create.description_label': 'Mô tả',
+  'admin.event_create.description_placeholder': 'Mô tả sự kiện.',
+  'admin.event_create.cover_image_label': 'URL ảnh bìa',
+  'admin.event_create.cover_image_placeholder': 'https://example.com/event-cover.jpg',
+  'admin.event_create.venue_label': 'Địa điểm',
+  'admin.event_create.choose_venue': 'Chọn bản thiết kế địa điểm',
+  'admin.event_create.choose_venue_prompt': 'Chọn địa điểm để tạo giá khu vực và xem trước bố cục.',
+  'admin.event_create.review_title': 'Xem lại và gửi',
+  'admin.event_create.number_of_sessions': 'Số suất diễn',
+  'admin.event_session.default_session': 'Suất diễn mặc định',
+  'admin.event_session.session_number': 'Suất diễn {index}',
+  'admin.event_session.validation_add_session': 'Thêm ít nhất một suất diễn trước khi tiếp tục',
+  'admin.event_session.validation_label_required': 'Cần nhập nhãn suất diễn',
+  'admin.event_session.validation_section_pricing_required': 'Thêm giá khu vực trước khi tiếp tục',
+  'admin.event_session.validation_price_non_negative': 'Giá không được âm',
+  'admin.event_session.validation_fix_prefix': 'Vui lòng sửa',
+  'admin.event_session.validation_more': '{count} lỗi khác',
+  'admin.event_session.validation_session_start_required': 'Cần chọn thời gian bắt đầu suất diễn',
+  'admin.event_session.validation_session_start_future': 'Thời gian bắt đầu suất diễn phải ở tương lai',
+  'admin.event_session.validation_session_end_valid': 'Thời gian kết thúc suất diễn phải là ngày giờ hợp lệ',
+  'admin.event_session.validation_session_end_after_start': 'Thời gian kết thúc phải sau thời gian bắt đầu',
+  'admin.event_session.validation_sales_start_required': 'Cần chọn thời gian bắt đầu bán',
+  'admin.event_session.validation_sales_end_required': 'Cần chọn thời gian kết thúc bán',
+  'admin.event_session.validation_sales_end_after_start': 'Thời gian kết thúc bán phải sau thời gian bắt đầu bán',
+  'admin.event_session.validation_sales_start_before_session': 'Thời gian bắt đầu bán phải trước khi suất diễn bắt đầu',
+  'admin.event_session.validation_sales_end_before_session': 'Thời gian bán phải kết thúc trước khi suất diễn bắt đầu',
+  'admin.event_create.back': 'Quay lại',
+  'admin.event_create.save_draft': 'Lưu bản nháp',
+  'admin.event_create.fix_fields': 'Vui lòng sửa các trường được đánh dấu',
+  'admin.event_create.saving_draft': 'Đang lưu bản nháp…',
+  'admin.event_create.draft_saved_generic': 'Bản nháp đã lưu',
+  'admin.event_create.autosave_failed': 'Tự lưu thất bại',
+  'admin.event_create.autosave_restored': 'Bản nháp tự lưu đã được khôi phục',
+  'admin.event_create.jump_error': 'Hoàn thành bước hiện tại trước khi chuyển sang bước tiếp theo',
+  'common.continue': 'Tiếp tục',
+  'common.optional': 'Tùy chọn',
+  'common.edit': 'Chỉnh sửa',
+  'common.sections': 'Khu vực',
+  'common.rows': 'Hàng',
+  'common.seats': 'ghế',
+}
+
+function tt(key: string) {
+  return tx(key, fallbackText[key] ?? key)
+}
+
+function ttParams(key: string, params: Record<string, string | number>, fallback: string) {
+  return txParams(key, params, fallback)
+}
 
 const stepSchemas = {
   1: eventComposerSchema.pick({
@@ -102,6 +179,11 @@ const {
   keepValuesOnUnmount: true,
 })
 
+function updateEventIdentityField(fieldName: keyof Pick<EventComposerInput, 'title' | 'slug' | 'subtitle' | 'description' | 'coverImage'>, value: string | number) {
+  setFieldValue(fieldName, String(value), true)
+  setFieldError(fieldName, '')
+}
+
 const hasAutosavableContent = computed(() => {
   return Boolean(
     values.title?.trim()
@@ -116,15 +198,15 @@ const hasAutosavableContent = computed(() => {
 
 const autosaveLabel = computed(() => {
   if (autosaveStatus.value === 'saving') {
-    return 'Saving draft…'
+    return tt('admin.event_create.saving_draft')
   }
 
   if (autosaveStatus.value === 'saved') {
-    return lastAutosavedAt.value ? `Saved ${lastAutosavedAt.value.toLocaleTimeString()}` : 'Draft saved'
+    return lastAutosavedAt.value ? t('admin.event_create.draft_saved_at', { time: lastAutosavedAt.value.toLocaleTimeString() }) : tt('admin.event_create.draft_saved_generic')
   }
 
   if (autosaveStatus.value === 'error') {
-    return 'Autosave failed'
+    return tt('admin.event_create.autosave_failed')
   }
 
   return ''
@@ -189,7 +271,7 @@ function buildSectionPricesFromVenueSections(sections: VenueDetailSection[], cur
 
 function buildDefaultSessionForVenue(venueId: number, sections: VenueDetailSection[]): EventComposerInput['sessions'][number] {
   return {
-    label: 'Default session',
+    label: tt('admin.event_session.default_session'),
     venueId,
     status: EventStatus.Draft,
     queueEnabled: false,
@@ -227,7 +309,7 @@ function normalizeAutosavePayload(payload: EventAutosaveDraftInput['payload']) {
     venueId: payload.venueId ?? 0,
     coverImage: payload.coverImage ?? '',
     sessions: (payload.sessions ?? []).map((session, sessionIndex) => ({
-      label: session.label ?? `Session ${sessionIndex + 1}`,
+      label: session.label ?? ttParams('admin.event_session.session_number', { index: sessionIndex + 1 }, `Suất diễn ${sessionIndex + 1}`),
       venueId: session.venueId ?? payload.venueId ?? 0,
       status: session.status ?? EventStatus.Draft,
       queueEnabled: session.queueEnabled ?? false,
@@ -318,7 +400,7 @@ function restoreAutosaveDraft() {
   if (import.meta.client) {
     window.localStorage.setItem('ticketrush:event-create-autosave-key', draft.draftKey)
   }
-  toast.success('Autosave draft restored')
+  toast.success(tt('admin.event_create.autosave_restored'))
 }
 
 function startFreshFromAutosaveDraft() {
@@ -542,30 +624,30 @@ function buildSessionValidationErrors(sessions = values.sessions ?? []) {
   const errors: Record<string, string> = {}
 
   if (!sessions.length) {
-    addSessionValidationError(errors, 'sessions', 'Add at least one session before continuing')
+    addSessionValidationError(errors, 'sessions', tt('admin.event_session.validation_add_session'))
     return errors
   }
 
   sessions.forEach((session, sessionIndex) => {
-    const sessionLabel = session.label?.trim() || `Session ${sessionIndex + 1}`
+    const sessionLabel = session.label?.trim() || ttParams('admin.event_session.session_number', { index: sessionIndex + 1 }, `Suất diễn ${sessionIndex + 1}`)
 
     if (!session.label?.trim()) {
-      addSessionValidationError(errors, getSessionFieldPath(sessionIndex, 'label'), `${sessionLabel}: Session label is required`)
+      addSessionValidationError(errors, getSessionFieldPath(sessionIndex, 'label'), formatSessionValidationMessage(sessionLabel, tt('admin.event_session.validation_label_required')))
     }
 
     for (const issue of getEventSessionTimingIssues(session, sessionLabel)) {
-      addSessionValidationError(errors, getSessionFieldPath(sessionIndex, issue.field), issue.message)
+      addSessionValidationError(errors, getSessionFieldPath(sessionIndex, issue.field), localizeSessionTimingIssue(issue.message, sessionLabel))
     }
 
     if (!session.sectionPrices.length) {
-      addSessionValidationError(errors, getSessionFieldPath(sessionIndex, 'sectionPrices'), `${sessionLabel}: Add section pricing before continuing`)
+      addSessionValidationError(errors, getSessionFieldPath(sessionIndex, 'sectionPrices'), formatSessionValidationMessage(sessionLabel, tt('admin.event_session.validation_section_pricing_required')))
     }
 
     session.sectionPrices.forEach((sectionPrice, sectionIndex) => {
-      const sectionLabel = `${sessionLabel}, section ${sectionIndex + 1}`
+      const sectionLabel = `${sessionLabel}, ${ttParams('admin.event_session.section_number', { index: sectionIndex + 1 }, `khu vực ${sectionIndex + 1}`)}`
 
       if (sectionPrice.priceCents < 0) {
-        addSessionValidationError(errors, getSectionPriceFieldPath(sessionIndex, sectionIndex, 'priceCents'), `${sectionLabel}: Price cannot be negative`)
+        addSessionValidationError(errors, getSectionPriceFieldPath(sessionIndex, sectionIndex, 'priceCents'), formatSessionValidationMessage(sectionLabel, tt('admin.event_session.validation_price_non_negative')))
       }
     })
   })
@@ -573,12 +655,33 @@ function buildSessionValidationErrors(sessions = values.sessions ?? []) {
   return errors
 }
 
+function formatSessionValidationMessage(label: string, message: string) {
+  return `${label}: ${message}`
+}
+
+function localizeSessionTimingIssue(message: string, sessionLabel: string) {
+  const suffix = message.startsWith(`${sessionLabel}: `) ? message.slice(sessionLabel.length + 2) : message
+  const messageBySuffix: Record<string, string> = {
+    'Session start is required': tt('admin.event_session.validation_session_start_required'),
+    'Session start must be in the future': tt('admin.event_session.validation_session_start_future'),
+    'Session end must be a valid date and time': tt('admin.event_session.validation_session_end_valid'),
+    'Session end must be after the session start': tt('admin.event_session.validation_session_end_after_start'),
+    'Sales start is required': tt('admin.event_session.validation_sales_start_required'),
+    'Sales end is required': tt('admin.event_session.validation_sales_end_required'),
+    'Sales end must be after sales start': tt('admin.event_session.validation_sales_end_after_start'),
+    'Sales start must be before the session starts': tt('admin.event_session.validation_sales_start_before_session'),
+    'Sales must end before the session starts': tt('admin.event_session.validation_sales_end_before_session'),
+  }
+
+  return formatSessionValidationMessage(sessionLabel, messageBySuffix[suffix] ?? suffix)
+}
+
 function showSessionValidationToast(errors: Record<string, string>) {
   const messages = Object.values(errors)
   const firstMessages = messages.slice(0, 4)
   const remainingCount = Math.max(messages.length - firstMessages.length, 0)
-  const suffix = remainingCount ? ` (${remainingCount} more)` : ''
-  toast.error(`Please fix Sessions: ${firstMessages.join('; ')}${suffix}`)
+  const suffix = remainingCount ? ` (${ttParams('admin.event_session.validation_more', { count: remainingCount }, `${remainingCount} lỗi khác`)})` : ''
+  toast.error(`${tt('admin.event_session.validation_fix_prefix')} ${tt('admin.event_create.step_sessions')}: ${firstMessages.join('; ')}${suffix}`)
 }
 
 function clearSessionValidationErrors() {
@@ -682,7 +785,7 @@ function goToStep(step: number) {
   }
 
   if (!canReachStep(step)) {
-    toast.error('Complete the current step before jumping ahead')
+    toast.error(tt('admin.event_create.jump_error'))
     return
   }
 
@@ -804,14 +907,14 @@ const onSubmit = handleSubmit(
       }
     }
 
-    const firstError = Object.values(errors).flat().filter(Boolean)[0] || 'Please fix the highlighted fields'
+    const firstError = Object.values(errors).flat().filter(Boolean)[0] || tt('admin.event_create.fix_fields')
     toast.error(firstError)
   },
 )
 
 definePageMeta({
-  title: 'Create Event',
-  breadcrumb: 'Create Event',
+  title: 'admin.event_create.page_title',
+  breadcrumb: 'admin.event_create.breadcrumb',
   middleware: ['auth', 'admin'],
   layout: 'dashboard',
 })
@@ -921,13 +1024,13 @@ onUnmounted(() => {
             :class="[state === 'active' && 'text-primary']"
             class="text-sm font-semibold transition lg:text-base"
           >
-            {{ step.title }}
+            {{ tt(step.title) }}
           </StepperTitle>
           <StepperDescription
             :class="[state === 'active' && 'text-primary']"
             class="sr-only text-xs text-muted-foreground transition md:not-sr-only lg:text-sm"
           >
-            {{ step.description }}
+            {{ tt(step.description) }}
           </StepperDescription>
         </div>
       </StepperItem>
@@ -949,12 +1052,12 @@ onUnmounted(() => {
         >
           <CardHeader>
             <CardTitle class="text-base">
-              {{ $t('admin.event_create.identity') }}
+              {{ tt('admin.event_create.identity') }}
             </CardTitle>
           </CardHeader>
           <CardContent>
             <FieldSet>
-              <FieldLegend>{{ $t('admin.event_create.event_basics') }}</FieldLegend>
+              <FieldLegend>{{ tt('admin.event_create.event_basics') }}</FieldLegend>
               <FieldGroup>
                 <VeeField
                   v-slot="{ field, errors }"
@@ -962,14 +1065,14 @@ onUnmounted(() => {
                 >
                   <Field :data-invalid="!!errors.length">
                     <FieldLabel for="event-create-title">
-                      {{ $t('admin.event_create.title_label') }}
+                      {{ tt('admin.event_create.title_label') }}
                     </FieldLabel>
                     <Input
                       id="event-create-title"
                       :model-value="field.value"
-                      :placeholder="$t('admin.event_create.title_placeholder')"
+                      :placeholder="tt('admin.event_create.title_placeholder')"
                       :aria-invalid="!!errors.length"
-                      @update:model-value="field.onChange"
+                      @update:model-value="updateEventIdentityField('title', $event)"
                     />
                     <FieldError
                       v-if="errors.length"
@@ -984,14 +1087,14 @@ onUnmounted(() => {
                 >
                   <Field :data-invalid="!!errors.length">
                     <FieldLabel for="event-create-slug">
-                      {{ $t('admin.event_create.slug_label') }}
+                      {{ tt('admin.event_create.slug_label') }}
                     </FieldLabel>
                     <Input
                       id="event-create-slug"
                       :model-value="field.value"
-                      :placeholder="$t('admin.event_create.slug_placeholder')"
+                      :placeholder="tt('admin.event_create.slug_placeholder')"
                       :aria-invalid="!!errors.length"
-                      @update:model-value="field.onChange"
+                      @update:model-value="updateEventIdentityField('slug', $event)"
                     />
                     <FieldError
                       v-if="errors.length"
@@ -1006,14 +1109,14 @@ onUnmounted(() => {
                 >
                   <Field :data-invalid="!!errors.length">
                     <FieldLabel for="event-create-subtitle">
-                      {{ $t('admin.event_create.subtitle_label') }}
+                      {{ tt('admin.event_create.subtitle_label') }}
                     </FieldLabel>
                     <Input
                       id="event-create-subtitle"
                       :model-value="field.value"
-                      :placeholder="$t('admin.event_create.subtitle_placeholder')"
+                      :placeholder="tt('admin.event_create.subtitle_placeholder')"
                       :aria-invalid="!!errors.length"
-                      @update:model-value="field.onChange"
+                      @update:model-value="updateEventIdentityField('subtitle', $event)"
                     />
                     <FieldError
                       v-if="errors.length"
@@ -1028,14 +1131,14 @@ onUnmounted(() => {
                 >
                   <Field :data-invalid="!!errors.length">
                     <FieldLabel for="event-create-description">
-                      {{ $t('admin.event_create.description_label') }}
+                      {{ tt('admin.event_create.description_label') }}
                     </FieldLabel>
                     <Textarea
                       id="event-create-description"
                       :model-value="field.value"
-                      :placeholder="$t('admin.event_create.description_placeholder')"
+                      :placeholder="tt('admin.event_create.description_placeholder')"
                       :aria-invalid="!!errors.length"
-                      @update:model-value="field.onChange"
+                      @update:model-value="updateEventIdentityField('description', $event)"
                     />
                     <FieldError
                       v-if="errors.length"
@@ -1050,16 +1153,16 @@ onUnmounted(() => {
                 >
                   <Field :data-invalid="!!errors.length">
                     <FieldLabel for="event-create-cover-image">
-                      {{ $t('admin.event_create.cover_image_label') }}
+                      {{ tt('admin.event_create.cover_image_label') }}
                     </FieldLabel>
                     <Input
                       id="event-create-cover-image"
                       :model-value="field.value"
-                      :placeholder="$t('admin.event_create.cover_image_placeholder')"
+                      :placeholder="tt('admin.event_create.cover_image_placeholder')"
                       :aria-invalid="!!errors.length"
-                      @update:model-value="field.onChange"
+                      @update:model-value="updateEventIdentityField('coverImage', $event)"
                     />
-                    <FieldDescription>{{ $t('common.optional') }}</FieldDescription>
+                    <FieldDescription>{{ tt('common.optional') }}</FieldDescription>
                     <FieldError
                       v-if="errors.length"
                       :errors="errors"
@@ -1077,7 +1180,7 @@ onUnmounted(() => {
         >
           <CardHeader>
             <CardTitle class="text-base">
-              Venue
+              {{ tt('admin.event_create.step_venue') }}
             </CardTitle>
           </CardHeader>
           <CardContent class="space-y-6">
@@ -1087,7 +1190,7 @@ onUnmounted(() => {
             >
               <Field :data-invalid="!!errors.length">
                 <FieldLabel for="event-create-venue">
-                  Venue
+                  {{ tt('admin.event_create.venue_label') }}
                 </FieldLabel>
                 <Select
                   :model-value="field.value ? String(field.value) : undefined"
@@ -1097,7 +1200,7 @@ onUnmounted(() => {
                     id="event-create-venue"
                     :aria-invalid="!!errors.length"
                   >
-                    <SelectValue :placeholder="field.value ? undefined : 'Choose venue blueprint'" />
+                    <SelectValue :placeholder="field.value ? undefined : tt('admin.event_create.choose_venue')" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem
@@ -1123,7 +1226,7 @@ onUnmounted(() => {
               <div class="grid gap-3 sm:grid-cols-3">
                 <div class="rounded-2xl bg-muted/50 px-4 py-3">
                   <p class="text-xs text-muted-foreground">
-                    Sections
+                    {{ tt('common.sections') }}
                   </p>
                   <p class="text-lg font-semibold tabular-nums text-foreground">
                     {{ selectedVenueDetail.sections.length }}
@@ -1131,7 +1234,7 @@ onUnmounted(() => {
                 </div>
                 <div class="rounded-2xl bg-muted/50 px-4 py-3">
                   <p class="text-xs text-muted-foreground">
-                    Rows
+                    {{ tt('common.rows') }}
                   </p>
                   <p class="text-lg font-semibold tabular-nums text-foreground">
                     {{ totalRows }}
@@ -1139,7 +1242,7 @@ onUnmounted(() => {
                 </div>
                 <div class="rounded-2xl bg-muted/50 px-4 py-3">
                   <p class="text-xs text-muted-foreground">
-                    Seats
+                    {{ tt('common.seats') }}
                   </p>
                   <p class="text-lg font-semibold tabular-nums text-foreground">
                     {{ totalSeats }}
@@ -1163,7 +1266,7 @@ onUnmounted(() => {
                     </p>
                   </div>
                   <p class="shrink-0 text-sm tabular-nums text-muted-foreground">
-                    {{ section.rows.reduce((count, row) => count + row.seats.length, 0) }} seats
+                    {{ section.rows.reduce((count, row) => count + row.seats.length, 0) }} {{ tt('common.seats') }}
                   </p>
                 </div>
               </div>
@@ -1182,7 +1285,7 @@ onUnmounted(() => {
               v-else
               class="rounded-3xl border border-dashed px-5 py-10 text-center text-sm text-muted-foreground"
             >
-              Choose a venue to generate section pricing and preview the layout.
+              {{ tt('admin.event_create.choose_venue_prompt') }}
             </div>
           </CardContent>
         </Card>
@@ -1202,7 +1305,7 @@ onUnmounted(() => {
         >
           <CardHeader>
             <CardTitle class="text-base">
-              Review and submit
+              {{ tt('admin.event_create.review_title') }}
             </CardTitle>
           </CardHeader>
           <CardContent class="space-y-4">
@@ -1210,7 +1313,7 @@ onUnmounted(() => {
               <Card class="rounded-2xl bg-muted/20 shadow-none">
                 <CardHeader class="flex flex-row items-center justify-between gap-3 pb-3">
                   <CardTitle class="text-sm">
-                    Sessions
+                    {{ tt('admin.event_create.step_sessions') }}
                   </CardTitle>
                   <Button
                     type="button"
@@ -1219,14 +1322,14 @@ onUnmounted(() => {
                     class="h-8 px-2"
                     @click="currentStep = 3"
                   >
-                    Edit
+                    {{ tt('common.edit') }}
                   </Button>
                 </CardHeader>
                 <CardContent>
                   <dl class="space-y-4 text-sm">
                     <div class="space-y-1">
                       <dt class="text-muted-foreground">
-                        Number of sessions
+                        {{ tt('admin.event_create.number_of_sessions') }}
                       </dt>
                       <dd class="font-medium">
                         {{ values.sessions.length }}
@@ -1243,8 +1346,8 @@ onUnmounted(() => {
       <div class="fixed inset-x-4 bottom-[calc(1rem+env(safe-area-inset-bottom,0px))] z-30 rounded-3xl border bg-background/95 p-3 shadow-lg backdrop-blur supports-[backdrop-filter]:bg-background/80 md:left-[calc(var(--sidebar-width)+1rem)] md:right-4 md:group-has-data-[collapsible=icon]/sidebar-wrapper:left-[calc(var(--sidebar-width-icon)+2rem)] md:group-has-data-[collapsible=offcanvas]/sidebar-wrapper:left-4">
         <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div class="text-sm text-muted-foreground">
-            <span class="font-medium text-foreground">{{ steps[currentStep - 1]?.title }}</span>
-            <span class="hidden sm:inline"> · {{ steps[currentStep - 1]?.description }}</span>
+            <span class="font-medium text-foreground">{{ tt(steps[currentStep - 1]?.title ?? '') }}</span>
+            <span class="hidden sm:inline"> · {{ tt(steps[currentStep - 1]?.description ?? '') }}</span>
           </div>
           <div class="flex items-center gap-2 text-xs text-muted-foreground md:ml-auto md:mr-3">
             <component
@@ -1262,7 +1365,7 @@ onUnmounted(() => {
               class="active:scale-[0.96]"
               @click="goPrevious"
             >
-              Back
+              {{ tt('admin.event_create.back') }}
             </Button>
             <Button
               v-if="currentStep < steps.length"
@@ -1270,7 +1373,7 @@ onUnmounted(() => {
               class="active:scale-[0.96]"
               @click="goNext"
             >
-              Continue
+              {{ tt('common.continue') }}
             </Button>
             <Button
               v-else
@@ -1278,7 +1381,7 @@ onUnmounted(() => {
               :is-loading="isSaving"
               class="active:scale-[0.96]"
             >
-              Save draft
+              {{ tt('admin.event_create.save_draft') }}
             </Button>
           </div>
         </div>

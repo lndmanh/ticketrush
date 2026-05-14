@@ -913,7 +913,7 @@ definePageMeta({
                   </div>
                   <div class="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
                     <p class="text-xs uppercase tracking-[0.18em] text-white/45">
-                      Email
+                      {{ $t('checkout.email') }}
                     </p>
                     <p class="mt-2 truncate text-base font-semibold text-white">
                       {{ checkout.tickets[0]?.attendeeEmail ?? checkout.order.customerEmail }}

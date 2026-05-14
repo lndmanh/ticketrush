@@ -235,6 +235,8 @@ import { parseApiError } from '@/utils/apiError'
 import { apiRoutes } from '#shared/apiRoutes'
 import { createColumns } from './columns'
 
+const { t } = useI18n()
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null
 }
@@ -376,12 +378,12 @@ const onSubmit = handleSubmit(
       })
       if (!response.success) throw response
 
-      toast.success('Venue created successfully')
+      toast.success(t('admin.venues.created'))
       closeDialog()
       await fetchVenues()
     }
     catch (error) {
-      const message = parseApiError(error, 'Failed to save the venue blueprint').message
+      const message = parseApiError(error, t('admin.venues.create_failed')).message
       const structuredIssue = getIssueFieldAndMessage(error)
       if (structuredIssue) {
         setFieldError(structuredIssue.field, structuredIssue.message)
@@ -401,7 +403,7 @@ const onSubmit = handleSubmit(
     }
   },
   ({ errors }) => {
-    const firstError = Object.values(errors).flat().filter(Boolean)[0] || 'Please fix the errors above'
+    const firstError = Object.values(errors).flat().filter(Boolean)[0] || t('admin.venues.fix_errors')
     toast.error(firstError)
   },
 )

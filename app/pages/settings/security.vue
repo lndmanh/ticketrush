@@ -4,10 +4,10 @@
       <CardHeader class="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
         <div class="space-y-1">
           <CardTitle>
-            Security & Authentication
+            {{ $t('security_page.title') }}
           </CardTitle>
           <CardDescription>
-            Manage your authentication methods.
+            {{ $t('security_page.description') }}
           </CardDescription>
         </div>
         <Button
@@ -19,7 +19,7 @@
           <Plus
             class="w-4 h-4"
           />
-          New Passkey
+          {{ $t('security_page.new_passkey') }}
         </Button>
       </CardHeader>
       <CardContent>
@@ -32,9 +32,9 @@
               <CheckCircle2 />
             </ItemMedia>
             <ItemContent>
-              <ItemTitle>Password is set</ItemTitle>
+              <ItemTitle>{{ $t('security_page.password_set') }}</ItemTitle>
               <ItemDescription>
-                Your account is protected with a password
+                {{ $t('security_page.password_set_desc') }}
               </ItemDescription>
             </ItemContent>
             <ItemActions>
@@ -43,7 +43,7 @@
                 variant="outline"
                 @click="openChangePasswordDialog"
               >
-                Change Password
+                {{ $t('security_page.change_password') }}
               </Button>
             </ItemActions>
           </Item>
@@ -67,7 +67,7 @@
                         class="h-5 text-[10px] gap-1 px-1.5 bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 border-none"
                       >
                         <Cloud class="w-3 h-3" />
-                        Synced
+                        {{ $t('security_page.synced') }}
                       </Badge>
                       <Badge
                         v-if="passkey.transports?.length"
@@ -91,21 +91,20 @@
                     </AlertDialogTrigger>
                     <AlertDialogContent>
                       <AlertDialogHeader>
-                        <AlertDialogTitle>Delete Passkey</AlertDialogTitle>
+                        <AlertDialogTitle>{{ $t('security_page.delete_passkey') }}</AlertDialogTitle>
                         <AlertDialogDescription>
-                          Are you sure you want to delete the passkey "{{ passkey.name }}"? This action cannot be
-                          undone.
+                          {{ $t('security_page.delete_passkey_desc', { name: passkey.name }) }}
                         </AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>
                         <AlertDialogCancel>
-                          Cancel
+                          {{ $t('common.cancel') }}
                         </AlertDialogCancel>
                         <AlertDialogAction
                           variant="destructive"
                           @click="deletePasskey(passkey)"
                         >
-                          Delete
+                          {{ $t('common.delete') }}
                         </AlertDialogAction>
                       </AlertDialogFooter>
                     </AlertDialogContent>
@@ -121,7 +120,7 @@
           >
             <div class="flex items-center gap-3 text-muted-foreground animate-pulse">
               <Loader2 class="w-5 h-5 animate-spin" />
-              <span>Loading authentication methods...</span>
+              <span>{{ $t('security_page.loading_methods') }}</span>
             </div>
           </div>
 
@@ -142,9 +141,9 @@
               <FingerprintIcon />
             </ItemMedia>
             <ItemContent>
-              <ItemTitle>No Passkey Configured</ItemTitle>
+              <ItemTitle>{{ $t('security_page.no_passkey') }}</ItemTitle>
               <ItemDescription>
-                Create a passkey to sign in easier and more securely with biometrics or security keys.
+                {{ $t('security_page.no_passkey_desc') }}
               </ItemDescription>
             </ItemContent>
           </Item>
@@ -157,10 +156,10 @@
       <CardHeader>
         <div class="space-y-1">
           <CardTitle>
-            Connected Accounts
+            {{ $t('security_page.connected_accounts') }}
           </CardTitle>
           <CardDescription>
-            Link third-party accounts for faster sign-in. Your account email and provider email can be different.
+            {{ $t('security_page.connected_accounts_desc') }}
           </CardDescription>
         </div>
       </CardHeader>
@@ -256,9 +255,9 @@
       content-class="sm:max-w-[425px]"
     >
       <DialogHeader>
-        <DialogTitle>Change Password</DialogTitle>
+        <DialogTitle>{{ $t('security_page.change_password') }}</DialogTitle>
         <DialogDescription>
-          Enter your current password and choose a new one.
+          {{ $t('security_page.change_password_desc') }}
         </DialogDescription>
       </DialogHeader>
       <form
@@ -282,14 +281,14 @@
             class="space-y-2"
           >
             <FieldLabel for="current-password">
-              Current Password
+              {{ $t('security_page.current_password') }}
             </FieldLabel>
             <div class="relative">
               <Input
                 id="current-password"
                 :model-value="field.value"
                 :type="showCurrentPassword ? 'text' : 'password'"
-                placeholder="Enter current password"
+                :placeholder="$t('security_page.current_password_placeholder')"
                 :disabled="savingPassword"
                 :aria-invalid="!!errors.length"
                 @update:model-value="field.onChange"
@@ -327,14 +326,14 @@
             class="space-y-2"
           >
             <FieldLabel for="new-password">
-              New Password
+              {{ $t('security_page.new_password') }}
             </FieldLabel>
             <div class="relative">
               <Input
                 id="new-password"
                 :model-value="field.value"
                 :type="showNewPassword ? 'text' : 'password'"
-                placeholder="Enter new password"
+                :placeholder="$t('security_page.new_password_placeholder')"
                 :disabled="savingPassword"
                 :aria-invalid="!!errors.length"
                 @update:model-value="field.onChange"
@@ -377,14 +376,14 @@
             class="space-y-2"
           >
             <FieldLabel for="confirm-password">
-              Confirm New Password
+              {{ $t('security_page.confirm_password') }}
             </FieldLabel>
             <div class="relative">
               <Input
                 id="confirm-password"
                 :model-value="field.value"
                 :type="showConfirmPassword ? 'text' : 'password'"
-                placeholder="Confirm new password"
+                :placeholder="$t('security_page.confirm_password_placeholder')"
                 :disabled="savingPassword"
                 :aria-invalid="!!errors.length"
                 @update:model-value="field.onChange"
@@ -420,14 +419,14 @@
             :is-loading="savingPassword"
             @click="showChangePasswordDialog = false"
           >
-            Cancel
+            {{ $t('common.cancel') }}
           </Button>
           <Button
             type="submit"
             :disabled="!passwordMeta.valid"
             :is-loading="savingPassword"
           >
-            Change Password
+            {{ $t('security_page.change_password') }}
           </Button>
         </DialogFooter>
       </form>
@@ -437,16 +436,14 @@
     <AlertDialog v-model:open="showUnlinkConfirmDialog">
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Unlink Account</AlertDialogTitle>
+          <AlertDialogTitle>{{ $t('security_page.unlink_account') }}</AlertDialogTitle>
           <AlertDialogDescription>
-            Are you sure you want to unlink your <span class="capitalize font-medium">{{ providerToUnlink }}</span>
-            account?
-            You will no longer be able to sign in using this provider.
+            {{ $t('security_page.unlink_account_desc', { provider: providerToUnlink }) }}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel :disabled="unlinkingProvider !== null">
-            Cancel
+            {{ $t('common.cancel') }}
           </AlertDialogCancel>
           <AlertDialogAction
             class="bg-destructive text-destructive-foreground hover:bg-destructive/90"
@@ -457,7 +454,7 @@
               v-if="unlinkingProvider !== null"
               class="size-4 animate-spin"
             />
-            Unlink
+            {{ $t('security_page.unlink') }}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
@@ -496,8 +493,8 @@ import { apiRoutes } from '#shared/apiRoutes'
 import { parseApiError } from '@/utils/apiError'
 
 definePageMeta({
-  title: 'Security',
-  breadcrumb: 'Security',
+  title: 'security_page.title',
+  breadcrumb: 'security_page.title',
   middleware: 'auth',
   layout: 'dashboard',
 })
