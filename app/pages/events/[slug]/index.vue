@@ -3,6 +3,7 @@ import { CalendarRange, MapPin, Ticket } from '@lucide/vue'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { getDisplayDateLocale } from '@/lib/localizedEvents'
+import { getEventFallbackImage } from '@/utils/fallbackImages'
 import { apiRoutes } from '#shared/apiRoutes'
 import type { EventDetailResponse } from '~~/types/events'
 
@@ -85,7 +86,7 @@ definePageMeta({
       <div class="surface-shell overflow-hidden">
         <div class="surface-core relative min-h-[26rem] overflow-hidden p-0">
           <img
-            :src="event.coverImage || `https://picsum.photos/seed/${event.slug}/1600/1100`"
+            :src="event.coverImage || getEventFallbackImage(event.slug, 1600, 1100)"
             :alt="event.title"
             class="absolute inset-0 h-full w-full object-cover grayscale"
           >
