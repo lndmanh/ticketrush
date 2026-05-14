@@ -30,6 +30,7 @@ export const queueStatusSchema = z.enum(QueueStatus)
 export const ageBracketSchema = z.enum(AgeBracket)
 export const genderSchema = z.enum(SavedAttendeeGender)
 export const seatLayoutModeSchema = z.enum(SeatLayoutMode)
+const sectionColorSchema = z.string().trim().regex(/^#(?:[0-9A-Fa-f]{3}){1,2}$/, 'Section color must be a valid hex color')
 
 const requiredDateSchema = z.union([
   z.date(),
@@ -52,7 +53,7 @@ export const venueSeatDraftSchema = z.object({
 export const sectionBlueprintSchema = z.object({
   code: commonSchemaFragments.nonEmptyString('Section code'),
   name: commonSchemaFragments.nonEmptyString('Section name'),
-  color: commonSchemaFragments.nonEmptyString('Section color'),
+  color: sectionColorSchema,
   rowCount: z.coerce.number().int().positive('Row count is required'),
   seatsPerRow: z.coerce.number().int().positive('Seats per row is required'),
 })
@@ -91,7 +92,7 @@ export const venueSectionDraftSchema = z.object({
   id: commonSchemaFragments.positiveId.optional(),
   code: commonSchemaFragments.nonEmptyString('Section code'),
   name: commonSchemaFragments.nonEmptyString('Section name'),
-  color: commonSchemaFragments.nonEmptyString('Section color'),
+  color: sectionColorSchema,
   sortOrder: z.coerce.number().int().min(0).default(0),
   gridX: z.coerce.number().int().min(0).max(24),
   gridY: z.coerce.number().int().min(0).max(99),

@@ -9,15 +9,10 @@ import type { ApiResponse } from '~~/types/api'
 import type { SeatMapSeatClickPayload } from '~~/types/seatmap'
 import type { VenueDetail } from '~~/types/venues'
 import { ArrowLeft, Building2, CalendarRange, LayoutGrid, Rows3, Save, Users, X } from '@lucide/vue'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
-import { Dialog, DialogDescription, DialogHeader, DialogScrollContent, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import AdminVenuesVenueSeatLayoutEditor from '@/components/admin/venues/VenueSeatLayoutEditor.vue'
 import { createVenueSeatMapPreviewSeats } from '@/lib/venueSeatMapPreview'
 import {
   type VenueLayoutPreset,
-  getVenueLayoutPresetCompactSummary,
-  getVenueLayoutPresetSeatCount,
   getVenueLayoutPresetSummary,
   getVenueLayoutPresetSections,
   venueLayoutPresets,
@@ -81,11 +76,6 @@ const savedVenueSnapshot = ref('')
 const isSaving = ref(false)
 const activeConfigTab = ref<ConfigTab>('details')
 const isPresetDialogOpen = ref(false)
-const workspaceRef = ref<HTMLElement | null>(null)
-const viewportWidth = ref(0)
-const desktopVisualizationSize = ref(58)
-const mobileVisualizationSize = ref(46)
-const resizingAxis = ref<'columns' | 'rows' | null>(null)
 
 function createVenueSnapshot(identity: VenueIdentityInput, sections: VenueSectionDraftInput[]) {
   return JSON.stringify({
@@ -146,6 +136,11 @@ watch(venueDetail, (value) => {
     name: section.name,
     color: section.color,
     sortOrder: sectionIndex,
+    gridX: section.gridX,
+    gridY: section.gridY,
+    gridW: section.gridW,
+    gridH: section.gridH,
+    seatLayoutMode: section.seatLayoutMode,
     rows: section.rows.map((row, rowIndex) => ({
       id: row.id,
       label: row.label,
@@ -192,7 +187,6 @@ const largestSection = computed(() => [...sectionSummaries.value].sort((left, ri
 const totalRows = computed(() => sectionSummaries.value.reduce((total, section) => total + section.rowCount, 0))
 const totalCapacity = computed(() => sectionSummaries.value.reduce((total, section) => total + section.capacity, 0))
 const totalSections = computed(() => sectionLayouts.value.length)
-const isDesktopViewport = computed(() => viewportWidth.value >= 1024)
 
 const currentVenueSnapshot = computed(() => createVenueSnapshot({
   slug: values.slug ?? '',
@@ -205,71 +199,6 @@ const currentVenueSnapshot = computed(() => createVenueSnapshot({
 }, sectionLayouts.value))
 
 const isChanged = computed(() => savedVenueSnapshot.value !== '' && currentVenueSnapshot.value !== savedVenueSnapshot.value)
-
-const workspaceStyle = computed(() => {
-  if (isDesktopViewport.value) {
-    return {
-      gridTemplateColumns: `minmax(0, ${desktopVisualizationSize.value}%) 0.875rem minmax(22rem, ${100 - desktopVisualizationSize.value}%)`,
-    }
-  }
-
-  return {
-    gridTemplateRows: `minmax(0, ${mobileVisualizationSize.value}%) 0.875rem minmax(0, ${100 - mobileVisualizationSize.value}%)`,
-  }
-})
-
-function clampPercentage(value: number, minimum: number, maximum: number) {
-  return Math.min(Math.max(value, minimum), maximum)
-}
-
-function syncViewportWidth() {
-  viewportWidth.value = window.innerWidth
-}
-
-function startResizing(event: PointerEvent) {
-  const workspace = workspaceRef.value
-  if (!workspace) {
-    return
-  }
-
-  const rect = workspace.getBoundingClientRect()
-  const axis = isDesktopViewport.value ? 'columns' : 'rows'
-  resizingAxis.value = axis
-
-  if (axis === 'columns') {
-    const nextValue = ((event.clientX - rect.left) / rect.width) * 100
-    desktopVisualizationSize.value = clampPercentage(nextValue, 38, 68)
-  }
-  else {
-    const nextValue = ((event.clientY - rect.top) / rect.height) * 100
-    mobileVisualizationSize.value = clampPercentage(nextValue, 32, 68)
-  }
-}
-
-function handlePointerMove(event: PointerEvent) {
-  if (!resizingAxis.value) {
-    return
-  }
-
-  const workspace = workspaceRef.value
-  if (!workspace) {
-    return
-  }
-
-  const rect = workspace.getBoundingClientRect()
-  if (resizingAxis.value === 'columns') {
-    const nextValue = ((event.clientX - rect.left) / rect.width) * 100
-    desktopVisualizationSize.value = clampPercentage(nextValue, 38, 68)
-    return
-  }
-
-  const nextValue = ((event.clientY - rect.top) / rect.height) * 100
-  mobileVisualizationSize.value = clampPercentage(nextValue, 32, 68)
-}
-
-function stopResizing() {
-  resizingAxis.value = null
-}
 
 function applyBlueprintPreset(preset: VenueLayoutPreset) {
   sectionLayouts.value = getVenueLayoutPresetSections(preset).map((section, sectionIndex) => ({
@@ -326,19 +255,6 @@ const onSubmit = handleSubmit(
     toast.error(firstError)
   },
 )
-
-onMounted(() => {
-  syncViewportWidth()
-  window.addEventListener('resize', syncViewportWidth)
-  window.addEventListener('pointermove', handlePointerMove)
-  window.addEventListener('pointerup', stopResizing)
-})
-
-onBeforeUnmount(() => {
-  window.removeEventListener('resize', syncViewportWidth)
-  window.removeEventListener('pointermove', handlePointerMove)
-  window.removeEventListener('pointerup', stopResizing)
-})
 
 definePageMeta({
   title: 'Venue detail',
@@ -417,13 +333,8 @@ definePageMeta({
       </div>
     </header>
 
-    <section
-      ref="workspaceRef"
-      class="grid min-h-0 overflow-hidden gap-3 p-3 md:p-4"
-      :style="workspaceStyle"
-      :class="resizingAxis ? 'select-none' : ''"
-    >
-      <div class="h-full min-h-0 overflow-hidden border bg-background [&>section]:h-full [&>section]:min-h-0">
+    <section class="grid min-h-0 grid-cols-1 gap-3 overflow-y-auto p-3 md:p-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] lg:overflow-hidden">
+      <div class="min-h-[22rem] min-w-0 overflow-hidden lg:h-full lg:min-h-0 [&>section]:h-full [&>section]:min-h-0">
         <TicketEventSeatMapExperience
           :seats="venuePreviewSeats"
           :action-label="null"
@@ -432,20 +343,7 @@ definePageMeta({
         />
       </div>
 
-      <div
-        role="separator"
-        tabindex="0"
-        class="flex items-center justify-center"
-        :class="isDesktopViewport ? 'cursor-col-resize' : 'cursor-row-resize'"
-        @pointerdown="startResizing"
-      >
-        <Separator
-          :orientation="isDesktopViewport ? 'vertical' : 'horizontal'"
-          :class="isDesktopViewport ? 'h-16' : 'w-16'"
-        />
-      </div>
-
-      <Card class="h-full min-h-0 overflow-hidden py-0">
+      <Card class="min-h-[28rem] min-w-0 overflow-hidden py-0 lg:h-full lg:min-h-0">
         <form
           id="venue-detail-form"
           class="flex h-full min-h-0 flex-col"
@@ -670,7 +568,7 @@ definePageMeta({
 
             <div
               v-else-if="activeConfigTab === 'layout'"
-              class="space-y-4"
+              class="h-full min-h-0"
             >
               <Dialog v-model:open="isPresetDialogOpen">
                 <AdminVenuesVenueSeatLayoutEditor v-model:sections="sectionLayouts">
@@ -696,26 +594,19 @@ definePageMeta({
                     <Card
                       v-for="preset in venueLayoutPresets"
                       :key="preset.id"
-                      class="gap-3 py-4"
                     >
-                      <CardHeader class="space-y-1 px-4 pb-0">
-                        <CardTitle class="text-base">
+                      <CardHeader>
+                        <CardTitle>
                           {{ preset.name }}
                         </CardTitle>
                         <CardDescription>
                           {{ preset.description }}
                         </CardDescription>
                       </CardHeader>
-                      <CardContent class="space-y-2 px-4 text-sm">
+                      <CardContent class="space-y-2 text-sm">
                         <p>{{ getVenueLayoutPresetSummary(preset) }}</p>
-                        <p class="text-muted-foreground">
-                          {{ getVenueLayoutPresetCompactSummary(preset) }}
-                        </p>
-                        <p class="text-xs text-muted-foreground">
-                          {{ getVenueLayoutPresetSeatCount(preset) }} total seats
-                        </p>
                       </CardContent>
-                      <CardFooter class="px-4 pt-0">
+                      <CardFooter>
                         <Button
                           type="button"
                           variant="outline"

@@ -1,13 +1,16 @@
 <script setup lang="ts">
+import type { AcceptableValue } from 'reka-ui'
 import type { VenueRowDraftInput, VenueSeatDraftInput, VenueSectionDraftInput } from '#shared/schemas/ticketingSchema'
 import { SeatLayoutMode } from '#shared/commonEnums'
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
 import { Button } from '@/components/ui/button'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { Input } from '@/components/ui/input'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
 import { createDefaultSectionGridPlacement, createManualDuplicateSeatRow, getMaxSeatYInSection, getSectionGridCells } from '@/lib/seatmapGrid'
-import { Accessibility, ChevronDown, CopyPlus, Plus, Trash2 } from '@lucide/vue'
+import { Accessibility, Check, ChevronDown, CopyPlus, Palette, Plus, Settings2, Trash2 } from '@lucide/vue'
 
 const { t } = useI18n()
 
@@ -15,9 +18,101 @@ const props = defineProps<{
   sections: VenueSectionDraftInput[]
 }>()
 
+const sectionColorDrafts = ref<Record<string, string>>({})
+
 const emit = defineEmits<{
   (e: 'update:sections', value: VenueSectionDraftInput[]): void
 }>()
+
+const commonSectionColors = [
+  { name: 'Slate', value: '#334155' },
+  { name: 'Rose', value: '#E11D48' },
+  { name: 'Orange', value: '#F97316' },
+  { name: 'Amber', value: '#D97706' },
+  { name: 'Emerald', value: '#059669' },
+  { name: 'Teal', value: '#0F766E' },
+  { name: 'Blue', value: '#2563EB' },
+  { name: 'Indigo', value: '#4338CA' },
+  { name: 'Violet', value: '#7C3AED' },
+  { name: 'Fuchsia', value: '#C026D3' },
+]
+
+function normalizeHexColor(value: string) {
+  const trimmed = value.trim()
+
+  if (/^#[0-9a-fA-F]{6}$/.test(trimmed)) {
+    return trimmed.toUpperCase()
+  }
+
+  if (/^#[0-9a-fA-F]{3}$/.test(trimmed)) {
+    return `#${trimmed.slice(1).split('').map(character => `${character}${character}`).join('')}`.toUpperCase()
+  }
+
+  return null
+}
+
+function getSafeSectionColor(color: string) {
+  return normalizeHexColor(color) ?? '#334155'
+}
+
+function getSectionColorPreviewStyle(color: string) {
+  const safeColor = getSafeSectionColor(color)
+
+  return {
+    background: `radial-gradient(circle at 18% 18%, rgba(255,255,255,0.42), transparent 32%), linear-gradient(135deg, ${safeColor} 0%, ${safeColor}CC 46%, ${safeColor}88 100%)`,
+  }
+}
+
+function getSectionColorButtonClass(sectionColor: string, color: string) {
+  return getSafeSectionColor(sectionColor) === getSafeSectionColor(color)
+    ? 'ring-2 ring-ring ring-offset-2 ring-offset-background'
+    : ''
+}
+
+function getSectionColorDraftKey(sectionIndex: number, section: VenueSectionDraftInput) {
+  return `${sectionIndex}:${section.code}`
+}
+
+function getSectionColorDraft(sectionIndex: number, section: VenueSectionDraftInput) {
+  return sectionColorDrafts.value[getSectionColorDraftKey(sectionIndex, section)] ?? section.color
+}
+
+function updateSectionColorDraft(sectionIndex: number, section: VenueSectionDraftInput, value: string | number) {
+  sectionColorDrafts.value = {
+    ...sectionColorDrafts.value,
+    [getSectionColorDraftKey(sectionIndex, section)]: String(value),
+  }
+}
+
+function applySectionColor(sectionIndex: number, section: VenueSectionDraftInput) {
+  const normalizedColor = normalizeHexColor(getSectionColorDraft(sectionIndex, section))
+  if (!normalizedColor) {
+    return
+  }
+
+  updateSection(sectionIndex, 'color', normalizedColor)
+  sectionColorDrafts.value = {
+    ...sectionColorDrafts.value,
+    [getSectionColorDraftKey(sectionIndex, section)]: normalizedColor,
+  }
+}
+
+function selectSectionColor(sectionIndex: number, section: VenueSectionDraftInput, color: string) {
+  const normalizedColor = normalizeHexColor(color)
+  if (!normalizedColor) {
+    return
+  }
+
+  updateSection(sectionIndex, 'color', normalizedColor)
+  sectionColorDrafts.value = {
+    ...sectionColorDrafts.value,
+    [getSectionColorDraftKey(sectionIndex, section)]: normalizedColor,
+  }
+}
+
+function isSectionColorDraftInvalid(sectionIndex: number, section: VenueSectionDraftInput) {
+  return normalizeHexColor(getSectionColorDraft(sectionIndex, section)) === null
+}
 
 function nextRowLabel(index: number) {
   return String.fromCharCode(65 + index)
@@ -84,6 +179,24 @@ function getNextUnusedSeatXForY(section: VenueSectionDraftInput, rowY: number) {
   }
 
   return nextX
+}
+
+function getNextUnusedSeatY(section: VenueSectionDraftInput) {
+  const usedYValues = new Set<number>()
+
+  for (const row of section.rows) {
+    for (const seat of row.seats) {
+      usedYValues.add(seat.y)
+    }
+  }
+
+  let nextY = 0
+
+  while (usedYValues.has(nextY)) {
+    nextY += 1
+  }
+
+  return nextY
 }
 
 function parseIntegerInput(value: string | number | null | undefined) {
@@ -298,13 +411,12 @@ function updateGridField(sectionIndex: number, key: 'gridX' | 'gridY' | 'gridW' 
   }))
 }
 
-function updateSeatLayoutMode(sectionIndex: number, event: Event) {
-  const target = event.target
-  if (!(target instanceof HTMLSelectElement)) {
+function updateSeatLayoutMode(sectionIndex: number, selectedValue: AcceptableValue) {
+  if (typeof selectedValue !== 'string') {
     return
   }
 
-  const value = target.value === SeatLayoutMode.Manual ? SeatLayoutMode.Manual : SeatLayoutMode.Automatic
+  const value = selectedValue === SeatLayoutMode.Manual ? SeatLayoutMode.Manual : SeatLayoutMode.Automatic
   const section = props.sections[sectionIndex]
   if (!section) {
     return
@@ -527,6 +639,25 @@ function updateSeat(sectionIndex: number, rowIndex: number, seatIndex: number, k
   }))
 }
 
+function updateSeatAccessibility(sectionIndex: number, rowIndex: number, seatIndex: number, isAccessible: boolean) {
+  const row = props.sections[sectionIndex]?.rows[rowIndex]
+  if (!row) {
+    return
+  }
+
+  updateRow(sectionIndex, rowIndex, 'seats', row.seats.map((seat, currentIndex) => {
+    if (currentIndex !== seatIndex) {
+      return seat
+    }
+
+    return {
+      ...seat,
+      isAccessible,
+      accessibilityLabel: isAccessible ? seat.accessibilityLabel : '',
+    }
+  }))
+}
+
 function updateSeatNumber(sectionIndex: number, rowIndex: number, seatIndex: number, value: string | number | null | undefined) {
   const parsed = parseIntegerInput(value)
   if (parsed === null || parsed < 1) {
@@ -610,8 +741,8 @@ function getSeatFieldId(sectionIndex: number, rowIndex: number, seatIndex: numbe
 </script>
 
 <template>
-  <div class="space-y-4">
-    <div class="flex items-center justify-between gap-4">
+  <div class="flex h-full min-h-0 flex-col gap-4">
+    <div class="flex shrink-0 items-center justify-between gap-4">
       <div>
         <p class="text-base font-medium tracking-[-0.03em] text-foreground">
           {{ $t('admin.venues.seat_layout_editor') }}
@@ -631,7 +762,7 @@ function getSeatFieldId(sectionIndex: number, rowIndex: number, seatIndex: numbe
 
     <Accordion
       type="multiple"
-      class="space-y-4"
+      class="min-h-0 flex-1 space-y-4 overflow-y-auto pr-1"
     >
       <AccordionItem
         v-for="(section, sectionIndex) in sections"
@@ -639,33 +770,255 @@ function getSeatFieldId(sectionIndex: number, rowIndex: number, seatIndex: numbe
         :value="`section-${sectionIndex}`"
         class="dashboard-list-item space-y-4"
       >
-        <div class="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-          <div class="grid flex-1 gap-3 md:grid-cols-2">
-            <div class="space-y-2">
-              <label
-                class="text-xs uppercase tracking-[0.18em] text-muted-foreground"
-                :for="getSectionFieldId(sectionIndex, 'code')"
-              >{{ $t('admin.columns.code') }}</label>
-              <Input
-                :id="getSectionFieldId(sectionIndex, 'code')"
-                :model-value="section.code"
-                @update:model-value="updateSection(sectionIndex, 'code', $event)"
-              />
-            </div>
-            <div class="space-y-2">
-              <label
-                class="text-xs uppercase tracking-[0.18em] text-muted-foreground"
-                :for="getSectionFieldId(sectionIndex, 'name')"
-              >{{ $t('admin.columns.name') }}</label>
-              <Input
-                :id="getSectionFieldId(sectionIndex, 'name')"
-                :model-value="section.name"
-                @update:model-value="updateSection(sectionIndex, 'name', $event)"
-              />
-            </div>
+        <div class="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+          <div class="min-w-0 flex-1">
+            <p class="truncate text-sm font-medium text-foreground">
+              {{ section.name }}
+            </p>
+            <p class="text-xs text-muted-foreground">
+              {{ section.code }} · {{ section.rows.length }} row(s)
+            </p>
           </div>
 
           <div class="flex flex-wrap gap-2">
+            <Popover>
+              <PopoverTrigger as-child>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  :title="`Section settings for ${section.name}`"
+                  :aria-label="`Section settings for ${section.name}`"
+                >
+                  <Settings2 class="size-4" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent
+                align="end"
+                class="w-[calc(100vw-2rem)] max-w-md"
+              >
+                <div class="flex flex-col gap-4">
+                  <div>
+                    <p class="text-sm font-medium text-foreground">
+                      Section settings
+                    </p>
+                    <p class="text-xs text-muted-foreground">
+                      Configure this section's identity, grid placement, and seat layout mode.
+                    </p>
+                  </div>
+
+                  <div class="grid gap-3 sm:grid-cols-2">
+                    <div class="space-y-2">
+                      <label
+                        class="text-xs uppercase tracking-[0.18em] text-muted-foreground"
+                        :for="getSectionFieldId(sectionIndex, 'code')"
+                      >{{ $t('admin.columns.code') }}</label>
+                      <Input
+                        :id="getSectionFieldId(sectionIndex, 'code')"
+                        :model-value="section.code"
+                        @update:model-value="updateSection(sectionIndex, 'code', $event)"
+                      />
+                    </div>
+                    <div class="space-y-2">
+                      <label
+                        class="text-xs uppercase tracking-[0.18em] text-muted-foreground"
+                        :for="getSectionFieldId(sectionIndex, 'name')"
+                      >{{ $t('admin.columns.name') }}</label>
+                      <Input
+                        :id="getSectionFieldId(sectionIndex, 'name')"
+                        :model-value="section.name"
+                        @update:model-value="updateSection(sectionIndex, 'name', $event)"
+                      />
+                    </div>
+                  </div>
+
+                  <div class="flex flex-col gap-2 rounded-[1rem] border bg-muted/30 p-3">
+                    <div class="flex items-center justify-between gap-3">
+                      <div class="min-w-0">
+                        <p class="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                          Section color
+                        </p>
+                        <p class="truncate text-sm font-medium text-foreground">
+                          {{ section.color }}
+                        </p>
+                      </div>
+                      <Popover>
+                        <PopoverTrigger as-child>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            class="shrink-0"
+                            :title="`Choose section color for ${section.name}`"
+                            :aria-label="`Choose section color for ${section.name}`"
+                          >
+                            <span
+                              class="size-4 rounded-full border"
+                              :style="getSectionColorPreviewStyle(section.color)"
+                            />
+                            <Palette class="size-4" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent
+                          align="end"
+                          class="w-[calc(100vw-2rem)] max-w-sm"
+                        >
+                          <div class="flex flex-col gap-4">
+                            <div>
+                              <p class="text-sm font-medium text-foreground">
+                                Section background
+                              </p>
+                              <p class="text-xs text-muted-foreground">
+                                Pick a common gradient color or enter a custom hex value.
+                              </p>
+                            </div>
+
+                            <div
+                              class="h-20 rounded-[1rem] border shadow-sm"
+                              :style="getSectionColorPreviewStyle(section.color)"
+                            />
+
+                            <div class="grid grid-cols-5 gap-2">
+                              <Button
+                                v-for="color in commonSectionColors"
+                                :key="color.value"
+                                type="button"
+                                variant="outline"
+                                size="icon-sm"
+                                class="relative overflow-hidden rounded-full border p-0"
+                                :class="getSectionColorButtonClass(section.color, color.value)"
+                                :title="color.name"
+                                :aria-label="`Use ${color.name} section color`"
+                                @click="selectSectionColor(sectionIndex, section, color.value)"
+                              >
+                                <span
+                                  class="absolute inset-0"
+                                  :style="getSectionColorPreviewStyle(color.value)"
+                                />
+                                <Check
+                                  v-if="getSafeSectionColor(section.color) === getSafeSectionColor(color.value)"
+                                  class="relative size-4 text-white drop-shadow"
+                                />
+                              </Button>
+                            </div>
+
+                            <div class="space-y-2">
+                              <label
+                                class="text-xs uppercase tracking-[0.18em] text-muted-foreground"
+                                :for="getSectionFieldId(sectionIndex, 'color')"
+                              >Custom hex color</label>
+                              <Input
+                                :id="getSectionFieldId(sectionIndex, 'color')"
+                                :model-value="getSectionColorDraft(sectionIndex, section)"
+                                placeholder="#2563EB"
+                                :aria-invalid="isSectionColorDraftInvalid(sectionIndex, section)"
+                                @update:model-value="updateSectionColorDraft(sectionIndex, section, $event)"
+                              />
+                              <p
+                                v-if="isSectionColorDraftInvalid(sectionIndex, section)"
+                                class="text-xs text-destructive"
+                              >
+                                Use a valid hex color like #2563EB.
+                              </p>
+                              <Button
+                                type="button"
+                                size="sm"
+                                :disabled="isSectionColorDraftInvalid(sectionIndex, section)"
+                                @click="applySectionColor(sectionIndex, section)"
+                              >
+                                Apply color
+                              </Button>
+                            </div>
+                          </div>
+                        </PopoverContent>
+                      </Popover>
+                    </div>
+                  </div>
+
+                  <div class="grid gap-3 sm:grid-cols-2">
+                    <div class="space-y-2">
+                      <label
+                        class="text-xs uppercase tracking-[0.18em] text-muted-foreground"
+                        :for="getSectionFieldId(sectionIndex, 'grid-x')"
+                      >Grid X</label>
+                      <Input
+                        :id="getSectionFieldId(sectionIndex, 'grid-x')"
+                        :model-value="String(section.gridX)"
+                        type="number"
+                        min="0"
+                        :max="24"
+                        @update:model-value="updateGridField(sectionIndex, 'gridX', $event)"
+                      />
+                    </div>
+                    <div class="space-y-2">
+                      <label
+                        class="text-xs uppercase tracking-[0.18em] text-muted-foreground"
+                        :for="getSectionFieldId(sectionIndex, 'grid-y')"
+                      >Grid Y</label>
+                      <Input
+                        :id="getSectionFieldId(sectionIndex, 'grid-y')"
+                        :model-value="String(section.gridY)"
+                        type="number"
+                        min="0"
+                        @update:model-value="updateGridField(sectionIndex, 'gridY', $event)"
+                      />
+                    </div>
+                    <div class="space-y-2">
+                      <label
+                        class="text-xs uppercase tracking-[0.18em] text-muted-foreground"
+                        :for="getSectionFieldId(sectionIndex, 'grid-w')"
+                      >Grid W</label>
+                      <Input
+                        :id="getSectionFieldId(sectionIndex, 'grid-w')"
+                        :model-value="String(section.gridW)"
+                        type="number"
+                        min="1"
+                        :max="25"
+                        @update:model-value="updateGridField(sectionIndex, 'gridW', $event)"
+                      />
+                    </div>
+                    <div class="space-y-2">
+                      <label
+                        class="text-xs uppercase tracking-[0.18em] text-muted-foreground"
+                        :for="getSectionFieldId(sectionIndex, 'grid-h')"
+                      >Grid H</label>
+                      <Input
+                        :id="getSectionFieldId(sectionIndex, 'grid-h')"
+                        :model-value="String(section.gridH)"
+                        type="number"
+                        min="1"
+                        @update:model-value="updateGridField(sectionIndex, 'gridH', $event)"
+                      />
+                    </div>
+                  </div>
+
+                  <div class="space-y-2">
+                    <label
+                      class="text-xs uppercase tracking-[0.18em] text-muted-foreground"
+                      :for="`section-${sectionIndex}-layout-mode`"
+                    >Seat layout mode</label>
+                    <Select
+                      :model-value="section.seatLayoutMode"
+                      @update:model-value="updateSeatLayoutMode(sectionIndex, $event)"
+                    >
+                      <SelectTrigger :id="`section-${sectionIndex}-layout-mode`">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectGroup>
+                          <SelectItem :value="SeatLayoutMode.Automatic">
+                            Automatic
+                          </SelectItem>
+                          <SelectItem :value="SeatLayoutMode.Manual">
+                            Manual
+                          </SelectItem>
+                        </SelectGroup>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </PopoverContent>
+            </Popover>
             <Button
               type="button"
               variant="ghost"
@@ -693,82 +1046,6 @@ function getSeatFieldId(sectionIndex: number, rowIndex: number, seatIndex: numbe
         </div>
 
         <AccordionContent class="space-y-3 pb-0">
-          <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
-            <div class="space-y-2">
-              <label
-                class="text-xs uppercase tracking-[0.18em] text-muted-foreground"
-                :for="getSectionFieldId(sectionIndex, 'grid-x')"
-              >Grid X</label>
-              <Input
-                :id="getSectionFieldId(sectionIndex, 'grid-x')"
-                :model-value="String(section.gridX)"
-                type="number"
-                min="0"
-                :max="24"
-                @update:model-value="updateGridField(sectionIndex, 'gridX', $event)"
-              />
-            </div>
-            <div class="space-y-2">
-              <label
-                class="text-xs uppercase tracking-[0.18em] text-muted-foreground"
-                :for="getSectionFieldId(sectionIndex, 'grid-y')"
-              >Grid Y</label>
-              <Input
-                :id="getSectionFieldId(sectionIndex, 'grid-y')"
-                :model-value="String(section.gridY)"
-                type="number"
-                min="0"
-                @update:model-value="updateGridField(sectionIndex, 'gridY', $event)"
-              />
-            </div>
-            <div class="space-y-2">
-              <label
-                class="text-xs uppercase tracking-[0.18em] text-muted-foreground"
-                :for="getSectionFieldId(sectionIndex, 'grid-w')"
-              >Grid W</label>
-              <Input
-                :id="getSectionFieldId(sectionIndex, 'grid-w')"
-                :model-value="String(section.gridW)"
-                type="number"
-                min="1"
-                :max="25"
-                @update:model-value="updateGridField(sectionIndex, 'gridW', $event)"
-              />
-            </div>
-            <div class="space-y-2">
-              <label
-                class="text-xs uppercase tracking-[0.18em] text-muted-foreground"
-                :for="getSectionFieldId(sectionIndex, 'grid-h')"
-              >Grid H</label>
-              <Input
-                :id="getSectionFieldId(sectionIndex, 'grid-h')"
-                :model-value="String(section.gridH)"
-                type="number"
-                min="1"
-                @update:model-value="updateGridField(sectionIndex, 'gridH', $event)"
-              />
-            </div>
-            <div class="space-y-2">
-              <label
-                class="text-xs uppercase tracking-[0.18em] text-muted-foreground"
-                :for="`section-${sectionIndex}-layout-mode`"
-              >Seat layout mode</label>
-              <select
-                :id="`section-${sectionIndex}-layout-mode`"
-                :value="section.seatLayoutMode"
-                class="h-10 w-full rounded-[0.9rem] border border-input bg-background px-3 text-sm text-foreground outline-none ring-offset-background transition-colors placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                @change="updateSeatLayoutMode(sectionIndex, $event)"
-              >
-                <option :value="SeatLayoutMode.Automatic">
-                  Automatic
-                </option>
-                <option :value="SeatLayoutMode.Manual">
-                  Manual
-                </option>
-              </select>
-            </div>
-          </div>
-
           <Collapsible
             v-for="(row, rowIndex) in section.rows"
             :key="`${section.code}-${row.label}-${rowIndex}`"
@@ -918,8 +1195,26 @@ function getSeatFieldId(sectionIndex: number, rowIndex: number, seatIndex: numbe
                       Seat coordinates are generated automatically in this mode.
                     </p>
 
-                    <div class="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
-                      <div class="space-y-2">
+                    <div class="grid gap-3 rounded-[0.9rem] border border-border bg-secondary p-3 2xl:grid-cols-[auto_minmax(0,1fr)] 2xl:items-center">
+                      <div class="flex items-center gap-3">
+                        <label
+                          class="flex items-center gap-2 text-xs text-muted-foreground"
+                          :for="getSeatFieldId(sectionIndex, rowIndex, seatIndex, 'accessible')"
+                        >
+                          <Accessibility class="size-4 text-muted-foreground" />
+                          <span>{{ $t('admin.venues.accessible_seat') }}</span>
+                        </label>
+                        <Switch
+                          :id="getSeatFieldId(sectionIndex, rowIndex, seatIndex, 'accessible')"
+                          :model-value="seat.isAccessible"
+                          :aria-label="$t('admin.venues.accessible_seat')"
+                          @update:model-value="updateSeatAccessibility(sectionIndex, rowIndex, seatIndex, $event)"
+                        />
+                      </div>
+                      <div
+                        v-if="seat.isAccessible"
+                        class="min-w-0 space-y-2"
+                      >
                         <label
                           class="text-[11px] uppercase tracking-[0.18em] text-muted-foreground"
                           :for="getSeatFieldId(sectionIndex, rowIndex, seatIndex, 'accessibility-label')"
@@ -930,20 +1225,6 @@ function getSeatFieldId(sectionIndex: number, rowIndex: number, seatIndex: numbe
                           @update:model-value="updateSeat(sectionIndex, rowIndex, seatIndex, 'accessibilityLabel', $event)"
                         />
                       </div>
-
-                      <label
-                        class="flex min-h-10 items-center justify-between rounded-[0.9rem] border border-border bg-secondary px-3 py-2 sm:min-w-24"
-                        :for="getSeatFieldId(sectionIndex, rowIndex, seatIndex, 'accessible')"
-                        :title="$t('admin.venues.accessible_seat')"
-                      >
-                        <Accessibility class="size-4 text-muted-foreground" />
-                        <Switch
-                          :id="getSeatFieldId(sectionIndex, rowIndex, seatIndex, 'accessible')"
-                          :model-value="seat.isAccessible"
-                          :aria-label="$t('admin.venues.accessible_seat')"
-                          @update:model-value="updateSeat(sectionIndex, rowIndex, seatIndex, 'isAccessible', $event)"
-                        />
-                      </label>
                     </div>
 
                     <Button

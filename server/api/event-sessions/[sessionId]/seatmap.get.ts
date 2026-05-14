@@ -30,12 +30,14 @@ function mapSeatMap(
   seatMap: Awaited<ReturnType<typeof eventSessionService.getSeatMap>>,
   version: number,
 ): SessionSeatMapResponse {
+  const sectionById = new Map(seatMap.sections.map(section => [section.id, section]))
   const sectionPriceBySectionId = new Map(seatMap.sectionPrices.map(sectionPrice => [sectionPrice.venueSectionId, sectionPrice]))
   const seatOverrideBySeatId = new Map(seatMap.seatOverrides.map(seatOverride => [seatOverride.venueSeatId, seatOverride]))
 
   return {
     version,
     seats: seatMap.seats.map((seat) => {
+      const section = typeof seat.venueSectionId === 'number' ? sectionById.get(seat.venueSectionId) : undefined
       const seatPricing = resolveSessionSeatPrice(seat, sectionPriceBySectionId, seatOverrideBySeatId)
 
       return {
@@ -43,7 +45,15 @@ function mapSeatMap(
         venueSeatId: seat.venueSeatId,
         venueSectionId: seat.venueSectionId,
         ticketTypeId: seat.ticketTypeId,
+        sectionKeySnapshot: section ? `section-${section.id}` : null,
+        sectionCodeSnapshot: section?.code ?? null,
         sectionNameSnapshot: seat.sectionNameSnapshot,
+        sectionColorSnapshot: section?.color ?? null,
+        sectionGridXSnapshot: section?.gridX ?? null,
+        sectionGridYSnapshot: section?.gridY ?? null,
+        sectionGridWSnapshot: section?.gridW ?? null,
+        sectionGridHSnapshot: section?.gridH ?? null,
+        sectionSeatLayoutModeSnapshot: section?.seatLayoutMode ?? null,
         rowLabelSnapshot: seat.rowLabelSnapshot,
         seatLabelSnapshot: seat.seatLabelSnapshot,
         displayX: seat.displayX,

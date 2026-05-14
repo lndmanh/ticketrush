@@ -1,5 +1,5 @@
 import type { EventAutosaveDraftInput, VenueLayoutSyncApplySchemaInput } from '#shared/schemas/ticketingSchema'
-import type { EventStatus, PricingMode as PricingModeEnum, SeatStatus } from '#shared/commonEnums'
+import type { EventStatus, PricingMode as PricingModeEnum, SeatLayoutMode, SeatStatus } from '#shared/commonEnums'
 import type { DateLike } from '~~/types/events'
 import type { VenueDetail } from '~~/types/venues'
 
@@ -131,7 +131,15 @@ export interface AdminEventWorkspaceSeat {
   id: number
   venueSeatId: number | null
   venueSectionId: number | null
+  sectionKeySnapshot?: string | null
+  sectionCodeSnapshot?: string | null
   sectionNameSnapshot: string
+  sectionColorSnapshot?: string | null
+  sectionGridXSnapshot?: number | null
+  sectionGridYSnapshot?: number | null
+  sectionGridWSnapshot?: number | null
+  sectionGridHSnapshot?: number | null
+  sectionSeatLayoutModeSnapshot?: SeatLayoutMode | null
   rowLabelSnapshot: string | null
   seatLabelSnapshot: string
   displayX?: number | null
