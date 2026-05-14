@@ -22,7 +22,7 @@ interface VenueOption {
   name: string
 }
 
-const { locale } = useI18n()
+const { locale, t } = useI18n()
 
 function formatDateTime(value: string | Date) {
   return new Date(value).toLocaleString(getDisplayDateLocale(locale.value))
@@ -41,6 +41,22 @@ const steps: EventCreationStep[] = [
   { step: 4, title: 'Review', description: 'Confirm and save' },
 ]
 
+function localizeEventCreateValidationMessage(message: string) {
+  const messageMap: Record<string, { key: string, fallback: string }> = {
+    'Event title is required': { key: 'admin.event_create.validation_title_required', fallback: message },
+    'Event slug is required': { key: 'admin.event_create.validation_slug_required', fallback: message },
+    'Event description is required': { key: 'admin.event_create.validation_description_required', fallback: message },
+    'At least one session is required': { key: 'admin.event_session.validation_add_session', fallback: message },
+  }
+
+  const translation = messageMap[message]
+  if (!translation) {
+    return message
+  }
+
+  const translated = t(translation.key)
+  return translated === translation.key ? translation.fallback : translated
+}
 const stepSchemas = {
   1: eventComposerSchema.pick({
     title: true,
@@ -638,8 +654,9 @@ function applyStepErrors(step: number) {
   for (const issue of result.error.issues) {
     const pathPart = issue.path[0]
     if (typeof pathPart === 'string') {
-      setFieldError(pathPart, issue.message)
-      messages.push(issue.message)
+      const localizedMessage = localizeEventCreateValidationMessage(issue.message)
+      setFieldError(pathPart, localizedMessage)
+      messages.push(localizedMessage)
     }
   }
 
@@ -804,7 +821,9 @@ const onSubmit = handleSubmit(
       }
     }
 
-    const firstError = Object.values(errors).flat().filter(Boolean)[0] || 'Please fix the highlighted fields'
+    const firstRawError = Object.values(errors).flat().filter(Boolean)[0]
+    const fallbackError = t('admin.event_create.fix_fields')
+    const firstError = firstRawError ? localizeEventCreateValidationMessage(firstRawError) : fallbackError
     toast.error(firstError)
   },
 )

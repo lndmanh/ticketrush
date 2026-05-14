@@ -1014,7 +1014,10 @@
       "autosave_convert_warning": "Sự kiện đã lưu, nhưng bản nháp tự lưu không thể được đánh dấu là đã chuyển đổi",
       "save_error": "Không thể lưu bản nháp sự kiện",
       "jump_error": "Hoàn thành bước hiện tại trước khi chuyển sang bước tiếp theo",
-      "fix_fields": "Vui lòng sửa các trường được đánh dấu"
+      "fix_fields": "Vui lòng sửa các trường được đánh dấu",
+      "validation_title_required": "Cần nhập tiêu đề sự kiện",
+      "validation_slug_required": "Cần nhập slug sự kiện",
+      "validation_description_required": "Cần nhập mô tả sự kiện"
     },
     "users": {
       "title": "Người dùng",

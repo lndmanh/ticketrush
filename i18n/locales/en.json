@@ -1038,7 +1038,10 @@
       "autosave_convert_warning": "Event saved, but the autosave draft could not be marked as converted",
       "save_error": "We could not save the event draft",
       "jump_error": "Complete the current step before jumping ahead",
-      "fix_fields": "Please fix the highlighted fields"
+      "fix_fields": "Please fix the highlighted fields",
+      "validation_title_required": "Event title is required",
+      "validation_slug_required": "Event slug is required",
+      "validation_description_required": "Event description is required"
     },
     "users": {
       "title": "Users",
