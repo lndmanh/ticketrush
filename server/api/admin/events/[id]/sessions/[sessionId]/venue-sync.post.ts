@@ -29,7 +29,8 @@ export default defineEventHandler(async (event) => {
   try {
     const updated = await eventSessionService.applyVenueLayoutSync(eventId, sessionId, result.data.mappings)
     return success(updated)
-  } catch (error) {
+  }
+  catch (error) {
     const message = toErrorMessage(error)
     if (message === 'Event session not found') {
       throw apiError({ status: 404, statusText: 'Not Found', code: 'SESSION_NOT_FOUND', message: 'Session not found.' })
