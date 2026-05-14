@@ -1282,7 +1282,10 @@
       "autosave_convert_warning": "Sự kiện đã lưu, nhưng bản nháp tự lưu không thể được đánh dấu là đã chuyển đổi",
       "save_error": "Không thể lưu bản nháp sự kiện",
       "jump_error": "Hoàn thành bước hiện tại trước khi chuyển sang bước tiếp theo",
-      "fix_fields": "Vui lòng sửa các trường được đánh dấu"
+      "fix_fields": "Vui lòng sửa các trường được đánh dấu",
+      "validation_title_required": "Cần nhập tiêu đề sự kiện",
+      "validation_slug_required": "Cần nhập slug sự kiện",
+      "validation_description_required": "Cần nhập mô tả sự kiện"
     },
     "users": {
       "title": "Người dùng",
@@ -1657,6 +1660,9 @@
     "legal_name_placeholder": "Nguyễn Văn A",
     "preferred_name_placeholder": "Văn A",
     "guardian_name_placeholder": "Nguyễn Thị B",
+    "phone_placeholder": "+84 912 345 678",
+    "guardian_phone_placeholder": "+84 987 654 321",
+    "guardian_email_placeholder": "phuhuynh{'@'}example.com",
     "email_placeholder": "vana{'@'}example.com",
     "cancel": "Hủy",
     "save_changes": "Lưu thay đổi",

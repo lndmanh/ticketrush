@@ -97,10 +97,15 @@ const fallbackText: Record<string, string> = {
   'admin.event_create.back': 'Quay lại',
   'admin.event_create.save_draft': 'Lưu bản nháp',
   'admin.event_create.fix_fields': 'Vui lòng sửa các trường được đánh dấu',
+  'admin.event_create.validation_title_required': 'Cần nhập tiêu đề sự kiện',
+  'admin.event_create.validation_slug_required': 'Cần nhập slug sự kiện',
+  'admin.event_create.validation_description_required': 'Cần nhập mô tả sự kiện',
   'admin.event_create.saving_draft': 'Đang lưu bản nháp…',
   'admin.event_create.draft_saved_generic': 'Bản nháp đã lưu',
   'admin.event_create.autosave_failed': 'Tự lưu thất bại',
   'admin.event_create.autosave_restored': 'Bản nháp tự lưu đã được khôi phục',
+  'admin.event_create.autosave_convert_warning': 'Sự kiện đã lưu, nhưng bản nháp tự lưu không thể được đánh dấu là đã chuyển đổi',
+  'admin.event_create.save_error': 'Không thể lưu bản nháp sự kiện',
   'admin.event_create.jump_error': 'Hoàn thành bước hiện tại trước khi chuyển sang bước tiếp theo',
   'common.continue': 'Tiếp tục',
   'common.optional': 'Tùy chọn',
@@ -887,11 +892,11 @@ const onSubmit = handleSubmit(
           }
         }
         catch (error) {
-          toast.warning(parseApiError(error, 'Event saved, but the autosave draft could not be discarded').message)
+          toast.warning(parseApiError(error, tt('admin.event_create.autosave_convert_warning')).message)
         }
       }
 
-      toast.success('Draft event saved')
+      toast.success(tt('admin.event_create.draft_saved_generic'))
       if (import.meta.client && autosaveDraftKey.value) {
         window.localStorage.removeItem('ticketrush:event-create-autosave-key')
       }
@@ -905,7 +910,7 @@ const onSubmit = handleSubmit(
     }
     catch (error) {
       autosaveDisabled.value = false
-      toast.error(parseApiError(error, 'We could not save the event draft').message)
+      toast.error(parseApiError(error, tt('admin.event_create.save_error')).message)
     }
     finally {
       isSaving.value = false
