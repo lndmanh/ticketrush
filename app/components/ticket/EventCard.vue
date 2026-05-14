@@ -1,34 +1,47 @@
 <script setup lang="ts">
 import { ArrowRight, CalendarRange, MapPin, Ticket } from '@lucide/vue'
 import { getDisplayDateLocale } from '@/lib/localizedEvents'
-import { EventStatus } from '#shared/commonEnums'
+import { getEventFallbackImage } from '@/utils/fallbackImages'
 
 interface EventCardProps {
   event: {
     id: number
+    publicId: string
     slug: string
     title: string
     subtitle: string | null
+    description: string
     coverImage: string | null
     startsAt: string | Date
+    endsAt?: string | Date | null
     salesStartAt: string | Date
     status: string
     sessions?: Array<{
+      label: string
       startsAt: string | Date
+      endsAt?: string | Date | null
     }>
     venue?: {
       name: string
       city: string
+      country?: string
+      address?: string
     } | null
   }
 }
 
 const props = defineProps<EventCardProps>()
 const { t, locale } = useI18n()
-const localePath = useLocalePath()
 
 const localizedVenueName = computed(() => props.event.venue?.name)
-const localizedCityName = computed(() => props.event.venue?.city)
+const venueDetail = computed(() => {
+  const city = props.event.venue?.city
+  const country = props.event.venue?.country
+  if (city && country) return `${city}, ${country}`
+  return city || country || t('event_card.live_badge')
+})
+
+const eventDescription = computed(() => props.event.subtitle || props.event.description || t('event_card.default_subtitle'))
 
 const firstSessionStartsAt = computed(() => {
   const sessions = props.event.sessions ?? []
@@ -37,6 +50,15 @@ const firstSessionStartsAt = computed(() => {
   })[0]
 
   return firstSession?.startsAt ?? props.event.startsAt
+})
+
+const firstSessionLabel = computed(() => {
+  const sessions = props.event.sessions ?? []
+  const firstSession = [...sessions].sort((first, second) => {
+    return new Date(first.startsAt).getTime() - new Date(second.startsAt).getTime()
+  })[0]
+
+  return firstSession?.label || props.event.slug
 })
 
 const startsAtLabel = computed(() => {
@@ -49,9 +71,37 @@ const startsAtLabel = computed(() => {
 })
 
 const statusLabel = computed(() => {
-  const key = `event_card.status_${props.event.status}`
-  const translated = t(key)
-  return translated === key ? props.event.status.replaceAll('_', ' ') : translated
+  if (eventTiming.value === 'ongoing') {
+    return locale.value === 'vi' ? 'Đang xảy ra' : 'Ongoing'
+  }
+
+  if (eventTiming.value === 'past') {
+    return locale.value === 'vi' ? 'Đã xảy ra' : 'Past'
+  }
+
+  return locale.value === 'vi' ? 'Sắp xảy ra' : 'Upcoming'
+})
+
+const eventTiming = computed<'upcoming' | 'ongoing' | 'past'>(() => {
+  const now = Date.now()
+  const sessions = props.event.sessions ?? []
+  const sortedSessions = [...sessions].sort((first, second) => {
+    return new Date(first.startsAt).getTime() - new Date(second.startsAt).getTime()
+  })
+  const firstSession = sortedSessions[0]
+  const lastSession = sortedSessions[sortedSessions.length - 1]
+  const startsAt = new Date(firstSession?.startsAt ?? props.event.startsAt).getTime()
+  const endsAt = new Date(lastSession?.endsAt ?? props.event.endsAt ?? firstSession?.startsAt ?? props.event.startsAt).getTime()
+
+  if (now < startsAt) {
+    return 'upcoming'
+  }
+
+  if (now > endsAt) {
+    return 'past'
+  }
+
+  return 'ongoing'
 })
 const sessionCountLabel = computed(() => {
   const count = props.event.sessions?.length ?? 0
@@ -64,10 +114,9 @@ const sessionCountLabel = computed(() => {
 
 // Dynamic status badge color
 const statusBadgeClass = computed(() => {
-  const status = props.event.status
-  if (status === EventStatus.OnSale) return 'border-amber-400/30 bg-amber-400/18 text-amber-300'
-  if (status === EventStatus.Published) return 'border-emerald-400/30 bg-emerald-400/18 text-emerald-300'
-  if (status === EventStatus.SoldOut) return 'border-rose-400/30 bg-rose-400/18 text-rose-300'
+  if (eventTiming.value === 'ongoing') return 'border-emerald-400/30 bg-emerald-400/18 text-emerald-300'
+  if (eventTiming.value === 'past') return 'border-white/15 bg-white/10 text-white/65'
+  if (eventTiming.value === 'upcoming') return 'border-sky-400/30 bg-sky-400/18 text-sky-300'
   return 'border-white/15 bg-white/10 text-white/75'
 })
 </script>
@@ -85,7 +134,7 @@ const statusBadgeClass = computed(() => {
       <div class="relative flex w-full flex-col justify-between overflow-hidden">
         <div class="absolute inset-0">
           <img
-            :src="event.coverImage || `https://picsum.photos/seed/${event.slug}/1200/900`"
+            :src="event.coverImage || getEventFallbackImage(event.slug, 1200, 900)"
             :alt="event.title"
             class="h-full w-full object-cover transition-transform duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] group-hover:scale-[1.06]"
           >
@@ -116,11 +165,13 @@ const statusBadgeClass = computed(() => {
               <h3 class="text-balance text-3xl font-bold leading-[1.02] tracking-[-0.06em] text-white md:text-4xl">
                 {{ event.title }}
               </h3>
-              <p
-                v-if="event.subtitle"
-                class="line-clamp-2 max-w-[36rem] break-words text-sm leading-6 text-white/75 md:text-base md:leading-7"
-              >
-                {{ event.subtitle }}
+              <div class="flex flex-wrap gap-2">
+                <span class="inline-flex max-w-full items-center rounded-full border border-white/10 bg-black/35 px-3 py-1.5 text-xs text-white/80 backdrop-blur-md">
+                  {{ $t('event_card.first_session') }} · {{ firstSessionLabel }}
+                </span>
+              </div>
+              <p class="line-clamp-2 max-w-[36rem] break-words text-sm leading-6 text-white/75 md:text-base md:leading-7">
+                {{ eventDescription }}
               </p>
             </div>
 
@@ -142,7 +193,7 @@ const statusBadgeClass = computed(() => {
 
                   <div class="flex flex-wrap gap-2">
                     <span class="inline-flex max-w-full items-center rounded-full border border-white/10 bg-white/8 px-3 py-1.5 text-xs text-white/70">
-                      {{ localizedCityName || $t('event_card.live_badge') }}
+                      {{ venueDetail }}
                     </span>
                     <span class="inline-flex max-w-full items-center gap-1.5 rounded-full border border-white/10 bg-white/8 px-3 py-1.5 text-xs text-white/70">
                       <Ticket class="size-3.5" />
