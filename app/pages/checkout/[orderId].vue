@@ -6,7 +6,7 @@ import type { SavedAttendeeFormInput, SavedAttendeeGender as SavedAttendeeGender
 import { checkoutCustomerSchema } from '#shared/schemas/ticketingSchema'
 import type { CheckoutCustomerInput, CheckoutTicketHolderInput } from '#shared/schemas/ticketingSchema'
 import type { ApiResponse } from '~~/types/api'
-import type { CheckoutDetailData } from '~~/types/ticketing'
+import type { CheckoutCancelData, CheckoutDetailData } from '~~/types/ticketing'
 import type { SavedAttendeeModel } from '~~/types/models/saved-attendee'
 import { toast } from 'vue-sonner'
 import { apiRequest } from '@/utils/apiRequest'
@@ -24,6 +24,7 @@ const isCancelling = ref(false)
 const currentTime = ref(Date.now())
 let holdClockIntervalId: number | null = null
 let checkoutRefreshIntervalId: number | null = null
+const accountHolderOptionValue = 'account-holder'
 
 const { data: checkoutResponse, refresh } = await useAPI<ApiResponse<CheckoutDetailData>>(() => `/api/checkout/${orderId.value}`, {
   query: computed(() => ({ locale: locale.value })),
@@ -75,6 +76,40 @@ function formatCurrency(cents: number) {
 
 function formatDateTime(value: string | Date) {
   return new Date(value).toLocaleString(getDisplayDateLocale(locale.value))
+}
+
+function getSavedAttendeeOptionLabel(attendee: SavedAttendeeModel) {
+  return attendee.email ? `${attendee.legalName} · ${attendee.email}` : attendee.legalName
+}
+
+function getAccountHolderOptionLabel() {
+  const name = formValues.customerName || userProfile.value.name || t('checkout.account_holder_option')
+  const email = formValues.customerEmail || userProfile.value.email
+  return email ? `${name} · ${email}` : name
+}
+
+function isAccountHolderSelection(draft: TicketHolderDraft) {
+  return draft.source === TicketHolderSource.Account || draft.savedAttendeeId === accountHolderOptionValue
+}
+
+function getHolderSelectValue(draft: TicketHolderDraft) {
+  if (isAccountHolderSelection(draft)) {
+    return accountHolderOptionValue
+  }
+
+  return draft.savedAttendeeId ?? undefined
+}
+
+function updateHolderSelection(draft: TicketHolderDraft, value: string) {
+  if (value === accountHolderOptionValue) {
+    draft.source = TicketHolderSource.SavedAttendee
+    draft.savedAttendeeId = accountHolderOptionValue
+    draft.holder = createAccountHolderDraft()
+    return
+  }
+
+  draft.source = TicketHolderSource.SavedAttendee
+  draft.savedAttendeeId = value
 }
 
 function getValidGender(value: string | undefined | null): SavedAttendeeGenderInput {
@@ -158,8 +193,8 @@ function setDraftSource(draft: TicketHolderDraft, source: string) {
 
   if (source === TicketHolderSource.SavedAttendee) {
     draft.source = TicketHolderSource.SavedAttendee
-    const firstSavedAttendee = savedAttendees.value[0]
-    draft.savedAttendeeId = firstSavedAttendee ? String(firstSavedAttendee.id) : null
+    draft.savedAttendeeId = accountHolderOptionValue
+    draft.holder = createAccountHolderDraft()
     return
   }
 
@@ -209,7 +244,7 @@ watch(() => checkout.value?.items, () => {
 
 watch(formValues, () => {
   for (const draft of ticketHolderDrafts.value) {
-    if (draft.source !== TicketHolderSource.Account) {
+    if (!isAccountHolderSelection(draft)) {
       continue
     }
 
@@ -219,7 +254,7 @@ watch(formValues, () => {
 
 watch(() => ticketHolderDrafts.value.map(draft => `${draft.eventSeatId}:${draft.source}:${draft.savedAttendeeId ?? ''}`), () => {
   for (const draft of ticketHolderDrafts.value) {
-    if (draft.source !== TicketHolderSource.Account) {
+    if (!isAccountHolderSelection(draft)) {
       continue
     }
 
@@ -252,6 +287,28 @@ function validateDrafts() {
 }
 
 function toPayloadHolder(draft: TicketHolderDraft): CheckoutTicketHolderInput {
+  if (isAccountHolderSelection(draft)) {
+    return {
+      eventSeatId: draft.eventSeatId,
+      source: TicketHolderSource.Account,
+      holder: {
+        legalName: draft.holder.legalName,
+        preferredName: draft.holder.preferredName,
+        email: draft.holder.email,
+        phone: draft.holder.phone,
+        birthDate: draft.holder.birthDate && draft.holder.birthDate.trim() ? new Date(draft.holder.birthDate) : undefined,
+        gender: draft.holder.gender,
+        guardianName: draft.holder.guardianName,
+        guardianEmail: draft.holder.guardianEmail,
+        guardianPhone: draft.holder.guardianPhone,
+        notes: draft.holder.notes,
+        accessibilityNeeds: draft.holder.accessibilityNeeds,
+        isSelf: draft.holder.isSelf,
+      },
+      saveAsAttendee: false,
+    }
+  }
+
   if (draft.source === TicketHolderSource.SavedAttendee) {
     return {
       eventSeatId: draft.eventSeatId,
@@ -320,6 +377,10 @@ const holdCountdownLabel = computed(() => {
 
 const isHoldExpired = computed(() => holdTimeRemainingMs.value === 0)
 
+async function navigateBackToEvent() {
+  await navigateTo(checkout.value?.event?.slug ? `/events/${checkout.value.event.slug}` : '/events')
+}
+
 async function cancelCheckout() {
   if (!checkout.value?.order || isCancelling.value) {
     return
@@ -328,7 +389,7 @@ async function cancelCheckout() {
   isCancelling.value = true
 
   try {
-    const response = await apiRequest<ApiResponse<unknown>>(`/api/checkout/${orderId.value}`, {
+    const response = await apiRequest<ApiResponse<CheckoutCancelData>>(`/api/checkout/${orderId.value}`, {
       method: 'DELETE',
     })
 
@@ -337,7 +398,7 @@ async function cancelCheckout() {
     }
 
     toast.success(t('checkout.cancelled_toast'))
-    await navigateTo(checkout.value.event?.slug ? `/events/${checkout.value.event.slug}` : '/events')
+    await navigateBackToEvent()
   }
   catch (error) {
     toast.error(parseApiError(error, t('checkout.cancel_error')).message)
@@ -637,17 +698,33 @@ definePageMeta({
                     class="space-y-2"
                   >
                     <FieldLabel :for="`attendee-${draft.eventSeatId}`">{{ $t('checkout.saved_attendee_label') }}</FieldLabel>
-                    <Select v-model="draft.savedAttendeeId">
-                      <SelectTrigger :id="`attendee-${draft.eventSeatId}`">
+                    <Select
+                      :model-value="getHolderSelectValue(draft)"
+                      @update:model-value="value => updateHolderSelection(draft, String(value))"
+                    >
+                      <SelectTrigger
+                        :id="`attendee-${draft.eventSeatId}`"
+                        class="w-full bg-background/60"
+                      >
                         <SelectValue :placeholder="$t('checkout.attendee_placeholder')" />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent
+                        position="item-aligned"
+                        class="max-w-[calc(100vw-2rem)]"
+                      >
+                        <SelectItem
+                          :value="accountHolderOptionValue"
+                          class="min-h-10 max-w-full"
+                        >
+                          {{ getAccountHolderOptionLabel() }}
+                        </SelectItem>
                         <SelectItem
                           v-for="attendee in savedAttendees"
                           :key="attendee.id"
                           :value="String(attendee.id)"
+                          class="min-h-10 max-w-full"
                         >
-                          {{ attendee.legalName }}<span v-if="attendee.email"> · {{ attendee.email }}</span>
+                          {{ getSavedAttendeeOptionLabel(attendee) }}
                         </SelectItem>
                       </SelectContent>
                     </Select>
@@ -911,17 +988,14 @@ definePageMeta({
           <div class="space-y-4">
             <div class="flex items-start gap-3">
               <Button
-                as-child
                 variant="outline"
                 size="icon-sm"
                 class="shrink-0"
+                :aria-label="$t('common.back')"
+                type="button"
+                @click="navigateBackToEvent"
               >
-                <NuxtLink
-                  :to="checkout.event?.slug ? `/events/${checkout.event.slug}` : '/events'"
-                  :aria-label="$t('common.back')"
-                >
-                  <ArrowLeft />
-                </NuxtLink>
+                <ArrowLeft />
               </Button>
 
               <div class="min-w-0">

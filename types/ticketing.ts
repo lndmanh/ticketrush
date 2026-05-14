@@ -42,6 +42,11 @@ export interface CheckoutDetailData {
   eventSession: EventSession | null | undefined
 }
 
+export interface CheckoutCancelData {
+  order: Order
+  hold: SeatHold
+}
+
 export type TicketListItem = Ticket & {
   event: Event | null
   eventSession: EventSession | null
