@@ -143,7 +143,7 @@ const selectedSeats = computed(() => {
 const selectedSeatsBySection = computed(() => {
   const groups = new Map<string, typeof selectedSeats.value>()
   for (const seat of selectedSeats.value) {
-    const section = seat.sectionNameSnapshot
+    const section = localizeSectionName(seat.sectionNameSnapshot)
     const existing = groups.get(section)
     if (existing) {
       existing.push(seat)
@@ -270,7 +270,23 @@ function formatCurrency(value: number, currency = 'VND') {
 function formatSeatLabel(seat: { sectionNameSnapshot: string, rowLabelSnapshot: string | null, seatLabelSnapshot: string }) {
   const rowLabel = seat.rowLabelSnapshot ? `${seat.rowLabelSnapshot}-` : ''
 
-  return `${seat.sectionNameSnapshot} · ${rowLabel}${seat.seatLabelSnapshot}`
+  return `${localizeSectionName(seat.sectionNameSnapshot)} · ${rowLabel}${seat.seatLabelSnapshot}`
+}
+
+function localizeSectionName(name: string | null | undefined) {
+  if (!name) {
+    return ''
+  }
+
+  if (locale.value !== 'vi') {
+    return name
+  }
+
+  const normalizedName = name.trim().toLowerCase()
+  if (normalizedName === 'standard') return t('seatmap.section_standard')
+  if (normalizedName === 'premium') return t('seatmap.section_premium')
+  if (normalizedName === 'vip') return t('seatmap.section_vip')
+  return name
 }
 
 async function scrollToPreviewTicket() {
