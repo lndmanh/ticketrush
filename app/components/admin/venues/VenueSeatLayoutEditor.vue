@@ -617,13 +617,16 @@ function getSeatFieldId(sectionIndex: number, rowIndex: number, seatIndex: numbe
           {{ $t('admin.venues.seat_layout_editor') }}
         </p>
       </div>
-      <Button
-        type="button"
-        variant="outline"
-        @click="addSection"
-      >
-        {{ $t('admin.venues.add_section') }}
-      </Button>
+      <div class="flex items-center gap-2">
+        <slot name="toolbar-start" />
+        <Button
+          type="button"
+          variant="outline"
+          @click="addSection"
+        >
+          {{ $t('admin.venues.add_section') }}
+        </Button>
+      </div>
     </div>
 
     <Accordion

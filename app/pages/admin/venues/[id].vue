@@ -8,11 +8,20 @@ import type { VenueSectionDraftInput } from '#shared/schemas/ticketingSchema'
 import type { ApiResponse } from '~~/types/api'
 import type { SeatMapSeatClickPayload } from '~~/types/seatmap'
 import type { VenueDetail } from '~~/types/venues'
-import { SeatLayoutMode } from '#shared/commonEnums'
 import { ArrowLeft, Building2, CalendarRange, LayoutGrid, Rows3, Save, Users, X } from '@lucide/vue'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
+import { Dialog, DialogDescription, DialogHeader, DialogScrollContent, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import AdminVenuesVenueSeatLayoutEditor from '@/components/admin/venues/VenueSeatLayoutEditor.vue'
 import { createVenueSeatMapPreviewSeats } from '@/lib/venueSeatMapPreview'
-import { createDefaultSectionGridPlacement } from '@/lib/seatmapGrid'
+import {
+  type VenueLayoutPreset,
+  getVenueLayoutPresetCompactSummary,
+  getVenueLayoutPresetSeatCount,
+  getVenueLayoutPresetSummary,
+  getVenueLayoutPresetSections,
+  venueLayoutPresets,
+} from '@/lib/venueLayoutPresets'
 import { apiRequest } from '@/utils/apiRequest'
 import { parseApiError } from '@/utils/apiError'
 import { getDisplayDateLocale } from '@/lib/localizedEvents'
@@ -36,13 +45,6 @@ type ConfigTab = 'details' | 'layout' | 'events'
 
 const venueIdentitySchema = createVenueSchema.omit({ sections: true })
 type VenueIdentityInput = z.infer<typeof venueIdentitySchema>
-
-interface VenueBlueprintPreset {
-  id: string
-  label: string
-  description: string
-  sections: VenueSectionDraftInput[]
-}
 
 const route = useRoute()
 const venueId = computed(() => Number(route.params.id))
@@ -78,44 +80,12 @@ const venuePreviewSeats = computed(() => createVenueSeatMapPreviewSeats(sectionL
 const savedVenueSnapshot = ref('')
 const isSaving = ref(false)
 const activeConfigTab = ref<ConfigTab>('details')
+const isPresetDialogOpen = ref(false)
 const workspaceRef = ref<HTMLElement | null>(null)
 const viewportWidth = ref(0)
 const desktopVisualizationSize = ref(58)
 const mobileVisualizationSize = ref(46)
 const resizingAxis = ref<'columns' | 'rows' | null>(null)
-
-function createRow(label: string, rowIndex: number, seatCount: number) {
-  return {
-    label,
-    sortOrder: rowIndex,
-    seats: Array.from({ length: seatCount }, (_, seatIndex) => ({
-      label: String(seatIndex + 1),
-      seatNumber: seatIndex + 1,
-      x: seatIndex,
-      y: rowIndex,
-      sortOrder: seatIndex,
-      accessibilityLabel: `${label}-${seatIndex + 1}`,
-      isAccessible: false,
-    })),
-  }
-}
-
-function createSectionBlueprint(code: string, name: string, color: string, rowCount: number, seatsPerRow: number, sectionIndex: number): VenueSectionDraftInput {
-  const placement = createDefaultSectionGridPlacement(sectionIndex)
-
-  return {
-    code,
-    name,
-    color,
-    sortOrder: 0,
-    gridX: placement.gridX,
-    gridY: placement.gridY,
-    gridW: placement.gridW,
-    gridH: placement.gridH,
-    seatLayoutMode: SeatLayoutMode.Automatic,
-    rows: Array.from({ length: rowCount }, (_, rowIndex) => createRow(String.fromCharCode(65 + rowIndex), rowIndex, seatsPerRow)),
-  }
-}
 
 function createVenueSnapshot(identity: VenueIdentityInput, sections: VenueSectionDraftInput[]) {
   return JSON.stringify({
@@ -154,39 +124,6 @@ function createVenueSnapshot(identity: VenueIdentityInput, sections: VenueSectio
     })),
   })
 }
-
-const blueprintPresets: VenueBlueprintPreset[] = [
-  {
-    id: 'club',
-    label: 'Club floor',
-    description: 'Compact premium room with a front VIP block and tighter side sections.',
-    sections: [
-      createSectionBlueprint('VIP', 'Front VIP', '#7C3AED', 4, 8, 0),
-      createSectionBlueprint('MID', 'Middle floor', '#2563EB', 6, 10, 1),
-      createSectionBlueprint('SIDE', 'Side riser', '#F97316', 5, 6, 2),
-    ],
-  },
-  {
-    id: 'hall',
-    label: 'Concert hall',
-    description: 'Balanced hall layout with wider main sections for seated launches.',
-    sections: [
-      createSectionBlueprint('A', 'Orchestra', '#E11D48', 7, 12, 0),
-      createSectionBlueprint('B', 'Center', '#0F766E', 8, 14, 1),
-      createSectionBlueprint('C', 'Rear', '#2563EB', 6, 12, 2),
-    ],
-  },
-  {
-    id: 'theater',
-    label: 'Theater split',
-    description: 'Three-zone theater with denser center coverage and lighter balcony capacity.',
-    sections: [
-      createSectionBlueprint('PRM', 'Premium center', '#DC2626', 5, 10, 0),
-      createSectionBlueprint('STD', 'Standard bowl', '#7C2D12', 7, 11, 1),
-      createSectionBlueprint('BAL', 'Balcony', '#4338CA', 4, 9, 2),
-    ],
-  },
-]
 
 watch(venueDetail, (value) => {
   if (!value) {
@@ -334,8 +271,8 @@ function stopResizing() {
   resizingAxis.value = null
 }
 
-function applyBlueprintPreset(preset: VenueBlueprintPreset) {
-  sectionLayouts.value = preset.sections.map((section, sectionIndex) => ({
+function applyBlueprintPreset(preset: VenueLayoutPreset) {
+  sectionLayouts.value = getVenueLayoutPresetSections(preset).map((section, sectionIndex) => ({
     ...section,
     sortOrder: sectionIndex,
     rows: section.rows.map((row, rowIndex) => ({
@@ -349,6 +286,7 @@ function applyBlueprintPreset(preset: VenueBlueprintPreset) {
   }))
   inspectedVenueSeat.value = null
   activeConfigTab.value = 'layout'
+  isPresetDialogOpen.value = false
 }
 
 const onSubmit = handleSubmit(
@@ -734,36 +672,63 @@ definePageMeta({
               v-else-if="activeConfigTab === 'layout'"
               class="space-y-4"
             >
-              <div class="grid gap-3 xl:grid-cols-3">
-                <Card
-                  v-for="preset in blueprintPresets"
-                  :key="preset.id"
-                  class="gap-3 py-4"
-                >
-                  <CardContent class="space-y-3 px-4">
-                    <div>
-                      <p class="text-sm font-medium">
-                        {{ preset.label }}
-                      </p>
-                      <p class="text-xs text-muted-foreground">
-                        {{ preset.description }}
-                      </p>
-                    </div>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      @click="applyBlueprintPreset(preset)"
+              <Dialog v-model:open="isPresetDialogOpen">
+                <AdminVenuesVenueSeatLayoutEditor v-model:sections="sectionLayouts">
+                  <template #toolbar-start>
+                    <DialogTrigger as-child>
+                      <Button
+                        type="button"
+                        variant="outline"
+                      >
+                        Presets
+                      </Button>
+                    </DialogTrigger>
+                  </template>
+                </AdminVenuesVenueSeatLayoutEditor>
+                <DialogScrollContent class="max-w-5xl">
+                  <DialogHeader>
+                    <DialogTitle>Venue layout presets</DialogTitle>
+                    <DialogDescription>
+                      Pick a starting layout for the section editor. Applying one replaces the current layout.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                    <Card
+                      v-for="preset in venueLayoutPresets"
+                      :key="preset.id"
+                      class="gap-3 py-4"
                     >
-                      Apply
-                    </Button>
-                  </CardContent>
-                </Card>
-              </div>
-
-              <Separator />
-
-              <AdminVenuesVenueSeatLayoutEditor v-model:sections="sectionLayouts" />
+                      <CardHeader class="space-y-1 px-4 pb-0">
+                        <CardTitle class="text-base">
+                          {{ preset.name }}
+                        </CardTitle>
+                        <CardDescription>
+                          {{ preset.description }}
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent class="space-y-2 px-4 text-sm">
+                        <p>{{ getVenueLayoutPresetSummary(preset) }}</p>
+                        <p class="text-muted-foreground">
+                          {{ getVenueLayoutPresetCompactSummary(preset) }}
+                        </p>
+                        <p class="text-xs text-muted-foreground">
+                          {{ getVenueLayoutPresetSeatCount(preset) }} total seats
+                        </p>
+                      </CardContent>
+                      <CardFooter class="px-4 pt-0">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          @click="applyBlueprintPreset(preset)"
+                        >
+                          Apply preset
+                        </Button>
+                      </CardFooter>
+                    </Card>
+                  </div>
+                </DialogScrollContent>
+              </Dialog>
             </div>
 
             <div
