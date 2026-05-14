@@ -238,9 +238,6 @@ definePageMeta({
         <h1 class="text-balance text-3xl font-semibold tracking-[-0.06em] text-foreground md:text-4xl">
           {{ $t('admin.dashboard_analytics_title') }}
         </h1>
-        <p class="text-sm text-muted-foreground md:text-base">
-          {{ $t('admin.dashboard_analytics_desc') }}
-        </p>
       </div>
     </section>
 
