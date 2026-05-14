@@ -1,5 +1,7 @@
 import { z } from 'zod'
 
+export * from './profileSchema'
+
 export const commonSchemaFragments = {
   userId: z.coerce.number().int().positive('User ID is required'),
   coerceDates: {

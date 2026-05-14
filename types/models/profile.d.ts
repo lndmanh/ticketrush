@@ -1,3 +1,5 @@
+import type { UpdateProfileInput } from '#shared/schemas/profileSchema'
+
 export interface LinkedAccount {
   provider: string
   email: string | null
@@ -29,3 +31,5 @@ export interface AdminUserModel {
   email: string
   isAdmin: boolean
 }
+
+export type ProfileUpdateData = Pick<UserProfileModel, 'id' | 'username' | keyof UpdateProfileInput>
