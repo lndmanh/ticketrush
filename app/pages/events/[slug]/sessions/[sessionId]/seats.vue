@@ -662,8 +662,8 @@ definePageMeta({
     </header>
 
     <section class="grid min-h-0 gap-3 overflow-hidden p-3 md:p-4 lg:grid-cols-[minmax(0,1fr)_minmax(24rem,28rem)]">
-      <div class="flex min-h-0 flex-col overflow-hidden rounded-[1.75rem] border bg-background/95 shadow-sm">
-        <div class="min-h-0 flex-1 overflow-hidden p-3 md:p-4 [&>section]:flex [&>section]:h-full [&>section]:min-h-0 [&>section]:flex-col [&_[data-slot=scroll-area]]:min-h-0">
+      <Card class="flex min-h-0 flex-col overflow-hidden py-0">
+        <CardContent class="min-h-0 flex-1 overflow-hidden [&>section]:flex [&>section]:h-full [&>section]:min-h-0 [&>section]:flex-col [&_[data-slot=scroll-area]]:min-h-0">
           <TicketEventSeatMapExperience
             :seats="seatMap.seats"
             :ticket-types="seatMap.ticketTypes ?? []"
@@ -674,16 +674,16 @@ definePageMeta({
             :action-label="null"
             @toggle="toggleSeat"
           />
-        </div>
-      </div>
+        </CardContent>
+      </Card>
 
-      <Card class="flex min-h-0 overflow-hidden">
-        <CardHeader class="shrink-0 border-b py-3">
+      <Card class="flex min-h-0 overflow-hidden pt-0 gap-0!">
+        <CardHeader class="border-b bg-muted/20 pb-0! py-3">
           <div class="flex items-center gap-2.5">
             <div class="flex size-8 shrink-0 items-center justify-center rounded-xl border bg-primary/10 text-primary">
               <ShoppingBag class="size-4" />
             </div>
-            <CardTitle class="text-base">
+            <CardTitle>
               {{ $t('seats.selection_summary') }}
             </CardTitle>
           </div>
@@ -701,9 +701,6 @@ definePageMeta({
                   <div>
                     <p class="text-xs font-medium uppercase tracking-[0.22em] text-primary">
                       Preview ticket
-                    </p>
-                    <p class="text-sm text-muted-foreground">
-                      Confirm this seat to include it at checkout.
                     </p>
                   </div>
                   <div class="flex items-center gap-1">
@@ -783,9 +780,6 @@ definePageMeta({
                   <div>
                     <p class="text-xs font-medium uppercase tracking-[0.22em] text-muted-foreground">
                       Confirmed tickets
-                    </p>
-                    <p class="text-sm text-muted-foreground">
-                      These seats will be held together when you continue.
                     </p>
                   </div>
                   <Button
