@@ -789,11 +789,11 @@ const onSubmit = handleSubmit(
           }
         }
         catch (error) {
-          toast.warning(parseApiError(error, 'Event saved, but the autosave draft could not be discarded').message)
+          toast.warning(parseApiError(error, t('admin.event_create.autosave_convert_warning')).message)
         }
       }
 
-      toast.success('Draft event saved')
+      toast.success(t('admin.event_create.draft_saved_generic'))
       if (import.meta.client && autosaveDraftKey.value) {
         window.localStorage.removeItem('ticketrush:event-create-autosave-key')
       }
@@ -807,7 +807,7 @@ const onSubmit = handleSubmit(
     }
     catch (error) {
       autosaveDisabled.value = false
-      toast.error(parseApiError(error, 'We could not save the event draft').message)
+      toast.error(parseApiError(error, t('admin.event_create.save_error')).message)
     }
     finally {
       isSaving.value = false
