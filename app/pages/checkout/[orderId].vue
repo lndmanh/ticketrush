@@ -85,7 +85,9 @@ function getSavedAttendeeOptionLabel(attendee: SavedAttendeeModel) {
 function getAccountHolderOptionLabel() {
   const name = formValues.customerName || userProfile.value.name || t('checkout.account_holder_option')
   const email = formValues.customerEmail || userProfile.value.email
-  return email ? `${name} · ${email}` : name
+  const accountLabel = t('checkout.account_holder_option')
+  const profileLabel = email ? `${name} · ${email}` : name
+  return `${accountLabel} · ${profileLabel}`
 }
 
 function isAccountHolderSelection(draft: TicketHolderDraft) {
@@ -379,6 +381,10 @@ const isHoldExpired = computed(() => holdTimeRemainingMs.value === 0)
 
 async function navigateBackToEvent() {
   await navigateTo(checkout.value?.event?.slug ? `/events/${checkout.value.event.slug}` : '/events')
+}
+
+async function openTicketWallet() {
+  await navigateTo('/tickets')
 }
 
 async function cancelCheckout() {
@@ -718,6 +724,7 @@ definePageMeta({
                         >
                           {{ getAccountHolderOptionLabel() }}
                         </SelectItem>
+                        <SelectSeparator v-if="savedAttendees.length > 0" />
                         <SelectItem
                           v-for="attendee in savedAttendees"
                           :key="attendee.id"
@@ -852,6 +859,13 @@ definePageMeta({
             <p class="mt-2 max-w-xl text-sm leading-6 text-white/60">
               {{ $t('checkout.qr_ready_checkout_desc') }}
             </p>
+            <Button
+              type="button"
+              class="mt-5 rounded-full px-5"
+              @click="openTicketWallet"
+            >
+              {{ $t('checkout.open_my_tickets') }}
+            </Button>
           </div>
 
           <div class="px-5 py-5 md:px-6">

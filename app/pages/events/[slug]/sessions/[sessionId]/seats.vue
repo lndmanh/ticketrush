@@ -216,7 +216,7 @@ const sessionUnavailableError = computed(() => {
   return null
 })
 
-function parseApiFetchState(response: ApiResponse<unknown> | null | undefined, fetchError: unknown) {
+function parseApiFetchState<TData>(response: ApiResponse<TData> | null | undefined, fetchError: unknown) {
   if (fetchError) {
     return parseApiError(fetchError)
   }
