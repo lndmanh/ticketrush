@@ -73,18 +73,18 @@ export interface SeatMapRenderModel {
 }
 
 const defaultRenderOptions: SeatMapRenderOptions = {
-  seatSpacing: 30,
-  rowSpacing: 32,
+  seatSpacing: 56,
+  rowSpacing: 48,
   sectionGap: 84,
 }
 
-const seatIconWidth = 22
-const seatIconHeight = 18
-const seatIconCornerRadius = 6
+const seatIconWidth = 48
+const seatIconHeight = 40
+const seatIconCornerRadius = 8
 const gridCellWidth = 72
 const gridCellHeight = 72
-const stageBandHeight = 44
-const stageGap = 24
+const stageBandHeight = 64
+const stageGap = 46
 
 function createEmptyBounds(): SeatMapRenderBounds {
   return { minX: 0, minY: 0, maxX: 0, maxY: 0, width: 0, height: 0 }

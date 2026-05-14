@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import 'pixi.js/unsafe-eval'
-import { Application, Container, Graphics, Text } from 'pixi.js'
+import { Application, Container, FillGradient, Graphics, Rectangle, Text } from 'pixi.js'
 import type { SeatMapRenderModel, SeatMapRenderSeat } from '@/lib/seatmapRender'
+import { colorToRgb } from '@/lib/seatmapLayout'
 
 const props = defineProps<{
   model: SeatMapRenderModel
@@ -32,9 +33,28 @@ let areLabelsVisible = false
 const tapMoveThreshold = 6
 const labelZoomThreshold = 1
 const maxLabelledSeats = 900
-const seatBackrestInset = 3
 const pointers = new Map<number, { x: number, y: number }>()
 const zoom = ref(1)
+
+function normalizeHexColor(value: string) {
+  const trimmed = value.trim()
+
+  if (/^#[0-9a-fA-F]{6}$/.test(trimmed)) {
+    return trimmed.toUpperCase()
+  }
+
+  if (/^#[0-9a-fA-F]{3}$/.test(trimmed)) {
+    return `#${trimmed.slice(1).split('').map(character => `${character}${character}`).join('')}`.toUpperCase()
+  }
+
+  return '#334155'
+}
+
+function getHexColorNumber(value: string) {
+  const parsed = Number.parseInt(normalizeHexColor(value).slice(1), 16)
+
+  return Number.isFinite(parsed) ? parsed : 0x334155
+}
 
 function getCanvas() {
   return app?.canvas ?? null
@@ -79,13 +99,28 @@ function drawSections() {
   }
 
   for (const section of props.model.sections) {
-    const padding = 22
+    const padding = 14
     const width = Math.max(section.bounds.width + padding * 2, 120)
     const height = Math.max(section.bounds.height + padding * 2, 64)
+    const sectionColor = getHexColorNumber(section.color)
+    const sectionRgb = colorToRgb(section.color) ?? '51, 65, 85'
+    const panelX = section.bounds.minX - padding
+    const panelY = section.bounds.minY - padding
+    const panelGradient = new FillGradient({
+      type: 'linear',
+      start: { x: 0, y: 0 },
+      end: { x: 0, y: 1 },
+      colorStops: [
+        { offset: 0, color: `rgba(${sectionRgb}, 0.2)` },
+        { offset: 0.58, color: `rgba(${sectionRgb}, 0.04)` },
+        { offset: 1, color: 'rgba(255,255,255,0)' },
+      ],
+      textureSpace: 'local',
+    })
     const panel = new Graphics()
-      .roundRect(section.bounds.minX - padding, section.bounds.minY - padding, width, height, 22)
-      .fill({ color: 0xF8FAFC, alpha: 0.8 })
-      .stroke({ width: 1, color: 0xCBD5E1, alpha: 0.75 })
+      .roundRect(panelX, panelY, width, height, 22)
+      .fill({ fill: panelGradient })
+      .stroke({ width: 1, color: sectionColor, alpha: 0.34 })
 
     sectionLayer.addChild(panel)
 
@@ -98,8 +133,8 @@ function drawSections() {
         fontWeight: '700',
       },
     })
-    sectionLabel.x = section.bounds.minX - padding + 14
-    sectionLabel.y = section.bounds.minY - padding + 10
+    sectionLabel.x = section.bounds.minX - padding + 18
+    sectionLabel.y = section.bounds.minY - padding + 16
     sectionLabel.eventMode = 'none'
     sectionLayer.addChild(sectionLabel)
 
@@ -108,13 +143,13 @@ function drawSections() {
       style: {
         fill: '#475569',
         fontFamily: 'Geist, system-ui, sans-serif',
-        fontSize: 12,
+        fontSize: 16,
         fontWeight: '600',
       },
     })
     availabilityLabel.anchor.set(1, 0)
     availabilityLabel.x = section.availability.x
-    availabilityLabel.y = section.availability.y
+    availabilityLabel.y = section.availability.y - padding + 18
     availabilityLabel.eventMode = 'none'
     sectionLayer.addChild(availabilityLabel)
 
@@ -145,25 +180,66 @@ function drawStage() {
 
   const padding = 24
   const stage = props.model.stage
+  const x = props.model.bounds.minX - padding
+  const y = stage.bounds.minY
+  const width = props.model.bounds.width + padding * 2
+  const height = stage.bounds.height
+  const radius = 22
   const band = new Graphics()
-    .roundRect(props.model.bounds.minX - padding, stage.bounds.minY, props.model.bounds.width + padding * 2, stage.bounds.height, 18)
-    .fill({ color: 0x0F172A, alpha: 0.9 })
-    .stroke({ width: 1, color: 0x1E293B, alpha: 0.9 })
+    .roundRect(x, y, width, height, radius)
+    .fill({ color: 0x101827, alpha: 0.96 })
+    .stroke({ width: 1, color: 0x475569, alpha: 0.42 })
 
   stageLayer.addChild(band)
 
+  const glow = new Graphics()
+    .roundRect(x + 5, y + 5, width - 10, Math.max(height - 10, 1), radius - 5)
+    .fill({ color: 0x1E293B, alpha: 0.58 })
+    .stroke({ width: 1, color: 0xFFFFFF, alpha: 0.1 })
+  glow.eventMode = 'none'
+  stageLayer.addChild(glow)
+
+  const highlight = new Graphics()
+    .roundRect(x + 10, y + 7, width - 20, Math.max(height * 0.32, 1), 14)
+    .fill({ color: 0xFFFFFF, alpha: 0.08 })
+  highlight.eventMode = 'none'
+  stageLayer.addChild(highlight)
+
+  const shadow = new Graphics()
+    .roundRect(x + 12, y + height - 10, width - 24, 3, 2)
+    .fill({ color: 0x020617, alpha: 0.38 })
+  shadow.eventMode = 'none'
+  stageLayer.addChild(shadow)
+
+  const labelCenterX = props.model.bounds.minX + (props.model.bounds.width / 2)
+  const labelCenterY = y + (height / 2)
+  const accentWidth = Math.min(Math.max(width * 0.18, 56), 120)
+  const accentGap = 56
+  const accentLeft = new Graphics()
+    .roundRect(labelCenterX - accentGap - accentWidth, labelCenterY - 1, accentWidth, 2, 1)
+    .fill({ color: 0x94A3B8, alpha: 0.42 })
+  accentLeft.eventMode = 'none'
+  stageLayer.addChild(accentLeft)
+
+  const accentRight = new Graphics()
+    .roundRect(labelCenterX + accentGap, labelCenterY - 1, accentWidth, 2, 1)
+    .fill({ color: 0x94A3B8, alpha: 0.42 })
+  accentRight.eventMode = 'none'
+  stageLayer.addChild(accentRight)
+
   const stageLabel = new Text({
-    text: stage.label,
+    text: stage.label.toUpperCase(),
     style: {
       fill: '#F8FAFC',
       fontFamily: 'Geist, system-ui, sans-serif',
-      fontSize: 16,
-      fontWeight: '700',
+      fontSize: 14,
+      fontWeight: '800',
+      letterSpacing: 4,
     },
   })
   stageLabel.anchor.set(0.5)
-  stageLabel.x = props.model.bounds.minX + (props.model.bounds.width / 2)
-  stageLabel.y = stage.bounds.minY + (stage.bounds.height / 2)
+  stageLabel.x = labelCenterX
+  stageLabel.y = labelCenterY
   stageLabel.eventMode = 'none'
   stageLayer.addChild(stageLabel)
 }
@@ -177,19 +253,87 @@ function drawSeats() {
   for (const renderSeat of props.model.seats) {
     const x = -renderSeat.width / 2
     const y = -renderSeat.height / 2
-    const backrestY = y + 5
-    const seat = new Graphics()
+    const statusStrokeColor = getHexColorNumber(renderSeat.color.stroke)
+    const seat = new Container()
+    const shadow = new Graphics()
+      .roundRect(x + 2, y + 3, renderSeat.width, renderSeat.height, renderSeat.cornerRadius)
+      .fill({ color: 0x020617, alpha: renderSeat.selected ? 0.2 : 0.12 })
+
+    shadow.eventMode = 'none'
+    seat.addChild(shadow)
+
+    if (renderSeat.selected) {
+      const selectedAura = new Graphics()
+        .roundRect(x - 4, y - 4, renderSeat.width + 8, renderSeat.height + 8, renderSeat.cornerRadius + 4)
+        .stroke({ width: 3, color: 0x38BDF8, alpha: 0.5 })
+      selectedAura.eventMode = 'none'
+      seat.addChild(selectedAura)
+    }
+
+    const marker = new Graphics()
       .roundRect(x, y, renderSeat.width, renderSeat.height, renderSeat.cornerRadius)
       .fill({ color: renderSeat.color.hexNumber })
-      .stroke({ width: renderSeat.selected ? 2 : 1, color: 0xFFFFFF, alpha: renderSeat.selected ? 1 : 0.78 })
-      .moveTo(x + seatBackrestInset, backrestY)
-      .lineTo(x + renderSeat.width - seatBackrestInset, backrestY)
-      .stroke({ width: 1, color: renderSeat.color.text, alpha: 0.38 })
+      .stroke({ width: renderSeat.selected ? 2 : 1, color: statusStrokeColor, alpha: renderSeat.selected ? 0.55 : 0.36 })
+    marker.eventMode = 'none'
+    seat.addChild(marker)
+
+    const markerText = `${renderSeat.rowLabel}${renderSeat.label}`
+    const markerLabel = new Text({
+      text: markerText,
+      style: {
+        fill: renderSeat.color.text,
+        fontFamily: 'Geist, system-ui, sans-serif',
+        fontSize: markerText.length > 4 ? 12 : 14,
+        fontWeight: '800',
+      },
+    })
+    markerLabel.anchor.set(0.5)
+    markerLabel.eventMode = 'none'
+    seat.addChild(markerLabel)
+
+    const hoverWash = new Graphics()
+      .roundRect(x, y, renderSeat.width, renderSeat.height, renderSeat.cornerRadius)
+      .fill({ color: 0xFFFFFF, alpha: 0.1 })
+    hoverWash.alpha = 0
+    hoverWash.eventMode = 'none'
+    seat.addChild(hoverWash)
 
     seat.x = renderSeat.x
     seat.y = renderSeat.y
+    seat.hitArea = new Rectangle(x, y, renderSeat.width, renderSeat.height)
     seat.eventMode = 'static'
     seat.cursor = 'pointer'
+    let isHovering = false
+    seat.on('pointerover', () => {
+      isHovering = true
+      seat.scale.set(1.08)
+      hoverWash.alpha = 1
+      shadow.alpha = 1
+    })
+    seat.on('pointerout', () => {
+      isHovering = false
+      seat.scale.set(1)
+      hoverWash.alpha = 0
+      shadow.alpha = 1
+    })
+    seat.on('pointerdown', () => {
+      seat.scale.set(0.98)
+      hoverWash.alpha = 0.72
+    })
+    seat.on('pointerup', (event) => {
+      if (isHovering && event.pointerType === 'mouse') {
+        seat.scale.set(1.08)
+        hoverWash.alpha = 1
+        return
+      }
+
+      seat.scale.set(1)
+      hoverWash.alpha = 0
+    })
+    seat.on('pointerupoutside', () => {
+      seat.scale.set(1)
+      hoverWash.alpha = 0
+    })
     seat.on('pointertap', () => {
       if (!suppressSeatClick) {
         emit('seatClick', renderSeat)
@@ -200,26 +344,7 @@ function drawSeats() {
 }
 
 function drawLabels() {
-  if (!labelLayer) {
-    return
-  }
-
-  for (const renderSeat of props.model.seats) {
-    const label = new Text({
-      text: renderSeat.label,
-      style: {
-        fill: renderSeat.color.text,
-        fontFamily: 'Geist, system-ui, sans-serif',
-        fontSize: 12,
-        fontWeight: '700',
-      },
-    })
-    label.anchor.set(0.5)
-    label.x = renderSeat.x
-    label.y = renderSeat.y
-    label.eventMode = 'none'
-    labelLayer.addChild(label)
-  }
+  return
 }
 
 function syncLabels(force = false) {
