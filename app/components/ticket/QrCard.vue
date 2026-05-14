@@ -5,6 +5,9 @@ defineProps<{
   payload: string
   title: string
   subtitle?: string | null
+  ticketLabel?: string | null
+  instruction?: string | null
+  showPayload?: boolean
 }>()
 </script>
 
@@ -14,6 +17,12 @@ defineProps<{
       <div class="space-y-2">
         <p class="section-eyebrow mx-auto">
           {{ $t('tickets.digital_entry_pass') }}
+        </p>
+        <p
+          v-if="ticketLabel"
+          class="mx-auto w-fit rounded-full border border-border bg-muted/40 px-3 py-1 text-xs font-medium text-foreground"
+        >
+          {{ ticketLabel }}
         </p>
         <h3 class="text-balance text-2xl font-semibold tracking-[-0.05em]">
           {{ title }}
@@ -35,8 +44,18 @@ defineProps<{
         />
       </div>
 
-      <p class="break-all rounded-[1.25rem] border border-border bg-background px-4 py-3 font-mono text-xs leading-5 text-muted-foreground">
+      <p
+        v-if="showPayload !== false"
+        class="break-all rounded-[1.25rem] border border-border bg-background px-4 py-3 font-mono text-xs leading-5 text-muted-foreground"
+      >
         {{ payload }}
+      </p>
+
+      <p
+        v-if="instruction"
+        class="rounded-[1rem] border border-border/70 bg-muted/25 px-4 py-3 text-left text-xs leading-5 text-muted-foreground"
+      >
+        {{ instruction }}
       </p>
     </div>
   </div>
