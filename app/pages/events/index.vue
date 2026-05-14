@@ -225,9 +225,14 @@ const activeFilterChips = computed(() => {
 const resultSummary = computed(() => {
   const total = pagination.value.totalItems
   if (total === 0) return t('events.result_no_events')
+  if (total === 1) return t('events.result_one_event')
   const start = (pagination.value.page - 1) * pagination.value.pageSize + 1
   const end = Math.min(pagination.value.page * pagination.value.pageSize, total)
   return t('events.result_showing', { start, end, total })
+})
+
+const pageSummary = computed(() => {
+  return t('events.page_info', { page: pagination.value.page, total: pagination.value.totalPages || 1 })
 })
 
 definePageMeta({
@@ -466,7 +471,9 @@ definePageMeta({
 
       <div class="flex flex-col gap-3 border-t pt-5 sm:flex-row sm:items-center sm:justify-between">
         <p class="text-sm text-muted-foreground">
-          {{ resultSummary }} · {{ $t('events.page_info', { page: pagination.page, total: pagination.totalPages || 1 }) }}
+          <span>{{ resultSummary }}</span>
+          <span class="px-1">·</span>
+          <span>{{ pageSummary }}</span>
         </p>
         <div class="flex items-center justify-center gap-2">
           <Button
