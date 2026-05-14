@@ -40,6 +40,14 @@ const tasks: TaskDefinition[] = [
     icon: Database,
     variant: 'secondary',
   },
+  {
+    id: 'reseed-events',
+    titleKey: 'admin.tasks.reseed_events_title',
+    descriptionKey: 'admin.tasks.reseed_events_desc',
+    endpoint: '/api/admin/tasks/reseed-events',
+    icon: Database,
+    variant: 'outline',
+  },
 ]
 
 const runningTasks = ref<Set<string>>(new Set())

@@ -13,6 +13,7 @@
     "clean": "rm -r .nuxt && rm -r .output",
     "db:generate": "npx nuxt db generate",
     "db:seed": "nitro task run db:admin-creation",
+    "db:reseed-events": "nitro task run db:reseed-events",
     "deploy": "npx wrangler --cwd .output deploy && npx wrangler --cwd .output d1 migrations apply DB --remote",
     "dev": "npm run prepare && nuxt dev",
     "lint": "eslint .",
