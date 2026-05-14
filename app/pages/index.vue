@@ -12,11 +12,23 @@ import {
   UsersRound,
 } from '@lucide/vue'
 import { Motion, motion } from 'motion-v'
+import type { ApiResponse } from '~~/types/api'
 import type { PaginatedApiResponse } from '~~/types/api'
 import type { EventCatalogItem, EventCatalogQueryOptions } from '~~/types/events'
+import type { UserProfileModel } from '~~/types/models/profile'
 import { EventCatalogSort } from '#shared/commonEnums'
+import { apiRequest } from '@/utils/apiRequest'
 
 const { t, locale } = useI18n()
+const { loggedIn, user } = useUserSession()
+const resolvedAdmin = ref<boolean | null>(null)
+const canOpenOrganizerConsole = computed(() => {
+  if (!loggedIn.value) {
+    return false
+  }
+
+  return user.value?.isAdmin === true || resolvedAdmin.value === true
+})
 
 const FEATURED_EVENT_LIMIT = 8
 const STADIUM_IMAGE = 'https://images.pexels.com/photos/31007653/pexels-photo-31007653.jpeg'
@@ -137,6 +149,34 @@ function scrollToFeatured() {
   })
 }
 
+async function openOrganizerConsole() {
+  if (!canOpenOrganizerConsole.value) {
+    return
+  }
+
+  await navigateTo('/admin')
+}
+
+async function hydrateAdminFromProfile() {
+  if (!loggedIn.value) {
+    resolvedAdmin.value = false
+    return
+  }
+
+  if (user.value?.isAdmin) {
+    resolvedAdmin.value = true
+    return
+  }
+
+  try {
+    const response = await apiRequest<ApiResponse<UserProfileModel>>('/api/users/me')
+    resolvedAdmin.value = Boolean(response.success && response.data.isAdmin)
+  }
+  catch {
+    resolvedAdmin.value = false
+  }
+}
+
 function scrollUpcomingEvents(direction: 'left' | 'right') {
   const carousel = carouselRef.value
   if (!carousel) {
@@ -164,6 +204,10 @@ function updateCarouselState() {
 }
 
 onMounted(() => updateCarouselState())
+
+watch([loggedIn, () => user.value?.isAdmin], () => {
+  void hydrateAdminFromProfile()
+}, { immediate: true })
 
 watch(upcomingEvents, async () => {
   await nextTick()
@@ -214,7 +258,7 @@ definePageMeta({
             class="max-w-4xl space-y-8"
           >
             <div class="space-y-5">
-              <h1 class="max-w-5xl text-balance text-5xl font-semibold leading-[0.94] tracking-[-0.075em] text-white sm:text-6xl lg:text-8xl">
+              <h1 class="max-w-5xl text-balance text-5xl font-semibold leading-[1.02] tracking-[-0.065em] text-white sm:text-6xl lg:text-8xl">
                 {{ $t('home.title') }}
               </h1>
               <p class="max-w-2xl font-semibold text-base text-white md:text-lg">
@@ -234,14 +278,13 @@ definePageMeta({
                 </NuxtLink>
               </Button>
               <Button
-                as-child
+                v-if="canOpenOrganizerConsole"
                 variant="outline"
                 size="lg"
                 class="rounded-full border-white/18 bg-white/8 px-6 text-white backdrop-blur-xl transition-all duration-300 hover:-translate-y-0.5 hover:bg-white/14 hover:text-white focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950 active:translate-y-0"
+                @click="openOrganizerConsole"
               >
-                <NuxtLink to="/admin">
-                  {{ $t('home.organizer_cta') }}
-                </NuxtLink>
+                {{ $t('home.organizer_cta') }}
               </Button>
             </div>
           </Motion>
