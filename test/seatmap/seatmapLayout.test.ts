@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { buildSeatMapLayout } from '@/lib/seatmapLayout'
-import { SeatStatus } from '#shared/commonEnums'
+import { SeatStatus, SeatLayoutMode } from '#shared/commonEnums'
 import type { SeatMapSeat } from '~~/types/seatmap'
 
 function createSeat(id: number, displayX: number | null | undefined, displayY: number): SeatMapSeat {
@@ -10,6 +10,12 @@ function createSeat(id: number, displayX: number | null | undefined, displayY: n
     venueSectionId: 10,
     ticketTypeId: null,
     sectionNameSnapshot: 'Orchestra',
+    sectionCodeSnapshot: 'ORCH',
+    sectionGridXSnapshot: 2,
+    sectionGridYSnapshot: 4,
+    sectionGridWSnapshot: 6,
+    sectionGridHSnapshot: 3,
+    sectionSeatLayoutModeSnapshot: SeatLayoutMode.Manual,
     rowLabelSnapshot: 'A',
     seatLabelSnapshot: String(id),
     displayX,
@@ -103,5 +109,55 @@ describe('buildSeatMapLayout', () => {
       'preview-section-1-BAL-Balcony',
     ])
     expect(layout.sections.map(section => section.color)).toEqual(['#EF4444', '#2563EB'])
+    expect(layout.sections.map(section => section.gridX)).toEqual([0, 0])
+    expect(layout.sections.map(section => section.gridY)).toEqual([0, 4])
+    expect(layout.sections.map(section => section.gridW)).toEqual([25, 25])
+    expect(layout.sections.map(section => section.gridH)).toEqual([4, 4])
+    expect(layout.sections.map(section => section.seatLayoutMode)).toEqual([SeatLayoutMode.Manual, SeatLayoutMode.Manual])
+  })
+
+  it('uses section snapshot metadata when present', () => {
+    const layout = buildSeatMapLayout([
+      createSeat(1, 0, 0),
+    ], [])
+
+    expect(layout.sections[0]?.gridX).toBe(2)
+    expect(layout.sections[0]?.gridY).toBe(4)
+    expect(layout.sections[0]?.gridW).toBe(6)
+    expect(layout.sections[0]?.gridH).toBe(3)
+    expect(layout.sections[0]?.seatLayoutMode).toBe(SeatLayoutMode.Manual)
+  })
+
+  it('preserves section codes from seat metadata when available', () => {
+    const layout = buildSeatMapLayout([
+      createSeat(1, 0, 0),
+    ], [])
+
+    expect(layout.sections[0]?.code).toBe('ORCH')
+  })
+
+  it('falls back to legacy manual section metadata when snapshots are missing', () => {
+    const layout = buildSeatMapLayout([
+      {
+        id: 10,
+        venueSeatId: 10,
+        venueSectionId: 20,
+        ticketTypeId: null,
+        sectionNameSnapshot: 'Gallery',
+        rowLabelSnapshot: 'B',
+        seatLabelSnapshot: '1',
+        displayX: 0,
+        displayY: 0,
+        priceCents: 100000,
+        currency: 'VND',
+        status: SeatStatus.Available,
+      },
+    ], [])
+
+    expect(layout.sections[0]?.gridX).toBe(0)
+    expect(layout.sections[0]?.gridY).toBe(0)
+    expect(layout.sections[0]?.gridW).toBe(25)
+    expect(layout.sections[0]?.gridH).toBe(4)
+    expect(layout.sections[0]?.seatLayoutMode).toBe(SeatLayoutMode.Manual)
   })
 })

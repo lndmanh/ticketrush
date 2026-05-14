@@ -1,6 +1,6 @@
 import type { SeatMapLayout, SeatMapRow, SeatMapSeat, SeatMapSeatOverrideSummary, SeatMapSectionPriceSummary, SeatMapTicketType } from '~~/types/seatmap'
 import { getDisplayDateLocale } from '~~/shared/utils/locales'
-import { SeatStatus } from '#shared/commonEnums'
+import { SeatStatus, SeatLayoutMode } from '#shared/commonEnums'
 
 const fallbackSectionColors = ['#111827', '#0F766E', '#1D4ED8', '#B45309', '#BE123C']
 
@@ -16,10 +16,17 @@ export function buildSectionCode(sectionName: string, index: number) {
 }
 
 export function colorToRgb(color: string) {
-  const normalized = color.trim().replace('#', '')
+  const normalized = color.trim()
+  const hexMatch = /^#?([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.exec(normalized)
 
-  if (normalized.length === 3) {
-    const [red, green, blue] = normalized.split('')
+  if (!hexMatch) {
+    return null
+  }
+
+  const hex = hexMatch[1]
+
+  if (hex.length === 3) {
+    const [red, green, blue] = hex.split('')
     if (!red || !green || !blue) {
       return null
     }
@@ -34,11 +41,7 @@ export function colorToRgb(color: string) {
     return `${(parsed >> 16) & 255}, ${(parsed >> 8) & 255}, ${parsed & 255}`
   }
 
-  if (normalized.length !== 6) {
-    return null
-  }
-
-  const parsed = Number.parseInt(normalized, 16)
+  const parsed = Number.parseInt(hex, 16)
   if (Number.isNaN(parsed)) {
     return null
   }
@@ -113,11 +116,11 @@ export function buildSeatMapLayout(
 
           return left.seatLabelSnapshot.localeCompare(right.seatLabelSnapshot, undefined, { numeric: true })
         })
-        const usedDisplayColumns = new Set(sortedSeats.flatMap(seat => {
+        const usedDisplayColumns = new Set(sortedSeats.flatMap((seat) => {
           return typeof seat.displayX === 'number' ? [seat.displayX] : []
         }))
         let nextDisplayColumn = 0
-        const seatsWithDisplayColumns = sortedSeats.map(seat => {
+        const seatsWithDisplayColumns = sortedSeats.map((seat) => {
           if (typeof seat.displayX === 'number') {
             return {
               ...seat,
@@ -173,6 +176,11 @@ export function buildSeatMapLayout(
 
     const sectionSeat = sectionSeats.find(seat => typeof seat.venueSectionId === 'number')
     const sectionColorSnapshot = sectionSeats.find(seat => seat.sectionColorSnapshot)?.sectionColorSnapshot
+    const sectionGridXSnapshot = sectionSeats.find(seat => typeof seat.sectionGridXSnapshot === 'number')?.sectionGridXSnapshot
+    const sectionGridYSnapshot = sectionSeats.find(seat => typeof seat.sectionGridYSnapshot === 'number')?.sectionGridYSnapshot
+    const sectionGridWSnapshot = sectionSeats.find(seat => typeof seat.sectionGridWSnapshot === 'number')?.sectionGridWSnapshot
+    const sectionGridHSnapshot = sectionSeats.find(seat => typeof seat.sectionGridHSnapshot === 'number')?.sectionGridHSnapshot
+    const sectionSeatLayoutModeSnapshot = sectionSeats.find(seat => seat.sectionSeatLayoutModeSnapshot)?.sectionSeatLayoutModeSnapshot
     const sectionPrice = typeof sectionSeat?.venueSectionId === 'number'
       ? sectionPriceBySectionId.get(sectionSeat.venueSectionId)
       : undefined
@@ -182,9 +190,14 @@ export function buildSeatMapLayout(
 
     return {
       key: sectionKey,
-      code: buildSectionCode(sectionEntry.name, sectionIndex),
+      code: sectionSeats.find(seat => seat.sectionCodeSnapshot)?.sectionCodeSnapshot ?? buildSectionCode(sectionEntry.name, sectionIndex),
       name: sectionEntry.name,
       color: sectionTicketType?.color || sectionPrice?.sectionColorSnapshot || sectionColorSnapshot || fallbackSectionColors[sectionIndex % fallbackSectionColors.length] || fallbackSectionColors[0],
+      gridX: sectionGridXSnapshot ?? 0,
+      gridY: sectionGridYSnapshot ?? (sectionIndex * 4),
+      gridW: sectionGridWSnapshot ?? 25,
+      gridH: sectionGridHSnapshot ?? 4,
+      seatLayoutMode: sectionSeatLayoutModeSnapshot ?? SeatLayoutMode.Manual,
       seats: normalizedSectionSeats,
       rows,
       metrics: {

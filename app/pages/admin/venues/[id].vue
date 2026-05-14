@@ -8,9 +8,11 @@ import type { VenueSectionDraftInput } from '#shared/schemas/ticketingSchema'
 import type { ApiResponse } from '~~/types/api'
 import type { SeatMapSeatClickPayload } from '~~/types/seatmap'
 import type { VenueDetail } from '~~/types/venues'
+import { SeatLayoutMode } from '#shared/commonEnums'
 import { ArrowLeft, Building2, CalendarRange, LayoutGrid, Rows3, Save, Users, X } from '@lucide/vue'
 import AdminVenuesVenueSeatLayoutEditor from '@/components/admin/venues/VenueSeatLayoutEditor.vue'
 import { createVenueSeatMapPreviewSeats } from '@/lib/venueSeatMapPreview'
+import { createDefaultSectionGridPlacement } from '@/lib/seatmapGrid'
 import { apiRequest } from '@/utils/apiRequest'
 import { parseApiError } from '@/utils/apiError'
 import { getDisplayDateLocale } from '@/lib/localizedEvents'
@@ -98,12 +100,19 @@ function createRow(label: string, rowIndex: number, seatCount: number) {
   }
 }
 
-function createSectionBlueprint(code: string, name: string, color: string, rowCount: number, seatsPerRow: number): VenueSectionDraftInput {
+function createSectionBlueprint(code: string, name: string, color: string, rowCount: number, seatsPerRow: number, sectionIndex: number): VenueSectionDraftInput {
+  const placement = createDefaultSectionGridPlacement(sectionIndex)
+
   return {
     code,
     name,
     color,
     sortOrder: 0,
+    gridX: placement.gridX,
+    gridY: placement.gridY,
+    gridW: placement.gridW,
+    gridH: placement.gridH,
+    seatLayoutMode: SeatLayoutMode.Automatic,
     rows: Array.from({ length: rowCount }, (_, rowIndex) => createRow(String.fromCharCode(65 + rowIndex), rowIndex, seatsPerRow)),
   }
 }
@@ -124,6 +133,11 @@ function createVenueSnapshot(identity: VenueIdentityInput, sections: VenueSectio
       name: section.name.trim(),
       color: section.color.trim(),
       sortOrder: sectionIndex,
+      gridX: section.gridX,
+      gridY: section.gridY,
+      gridW: section.gridW,
+      gridH: section.gridH,
+      seatLayoutMode: section.seatLayoutMode,
       rows: section.rows.map((row, rowIndex) => ({
         label: row.label.trim(),
         sortOrder: rowIndex,
@@ -147,9 +161,9 @@ const blueprintPresets: VenueBlueprintPreset[] = [
     label: 'Club floor',
     description: 'Compact premium room with a front VIP block and tighter side sections.',
     sections: [
-      createSectionBlueprint('VIP', 'Front VIP', '#7C3AED', 4, 8),
-      createSectionBlueprint('MID', 'Middle floor', '#2563EB', 6, 10),
-      createSectionBlueprint('SIDE', 'Side riser', '#F97316', 5, 6),
+      createSectionBlueprint('VIP', 'Front VIP', '#7C3AED', 4, 8, 0),
+      createSectionBlueprint('MID', 'Middle floor', '#2563EB', 6, 10, 1),
+      createSectionBlueprint('SIDE', 'Side riser', '#F97316', 5, 6, 2),
     ],
   },
   {
@@ -157,9 +171,9 @@ const blueprintPresets: VenueBlueprintPreset[] = [
     label: 'Concert hall',
     description: 'Balanced hall layout with wider main sections for seated launches.',
     sections: [
-      createSectionBlueprint('A', 'Orchestra', '#E11D48', 7, 12),
-      createSectionBlueprint('B', 'Center', '#0F766E', 8, 14),
-      createSectionBlueprint('C', 'Rear', '#2563EB', 6, 12),
+      createSectionBlueprint('A', 'Orchestra', '#E11D48', 7, 12, 0),
+      createSectionBlueprint('B', 'Center', '#0F766E', 8, 14, 1),
+      createSectionBlueprint('C', 'Rear', '#2563EB', 6, 12, 2),
     ],
   },
   {
@@ -167,9 +181,9 @@ const blueprintPresets: VenueBlueprintPreset[] = [
     label: 'Theater split',
     description: 'Three-zone theater with denser center coverage and lighter balcony capacity.',
     sections: [
-      createSectionBlueprint('PRM', 'Premium center', '#DC2626', 5, 10),
-      createSectionBlueprint('STD', 'Standard bowl', '#7C2D12', 7, 11),
-      createSectionBlueprint('BAL', 'Balcony', '#4338CA', 4, 9),
+      createSectionBlueprint('PRM', 'Premium center', '#DC2626', 5, 10, 0),
+      createSectionBlueprint('STD', 'Standard bowl', '#7C2D12', 7, 11, 1),
+      createSectionBlueprint('BAL', 'Balcony', '#4338CA', 4, 9, 2),
     ],
   },
 ]

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { createVenueSeatMapPreviewSeats } from '@/lib/venueSeatMapPreview'
-import { SeatPricingSource, SeatStatus } from '#shared/commonEnums'
+import { SeatPricingSource, SeatStatus, SeatLayoutMode } from '#shared/commonEnums'
 
 describe('createVenueSeatMapPreviewSeats', () => {
   it('converts venue layout sections into available seatmap seats with stable ids', () => {
@@ -11,6 +11,11 @@ describe('createVenueSeatMapPreviewSeats', () => {
         name: 'Orchestra',
         color: '#64748B',
         sortOrder: 0,
+        gridX: 2,
+        gridY: 4,
+        gridW: 6,
+        gridH: 3,
+        seatLayoutMode: SeatLayoutMode.Manual,
         rows: [
           {
             id: 9,
@@ -39,8 +44,14 @@ describe('createVenueSeatMapPreviewSeats', () => {
         venueSeatId: 11,
         venueSectionId: 5,
         ticketTypeId: null,
+        sectionCodeSnapshot: 'ORCH',
         sectionNameSnapshot: 'Orchestra',
         sectionColorSnapshot: '#64748B',
+        sectionGridXSnapshot: 2,
+        sectionGridYSnapshot: 4,
+        sectionGridWSnapshot: 6,
+        sectionGridHSnapshot: 3,
+        sectionSeatLayoutModeSnapshot: SeatLayoutMode.Manual,
         sectionKeySnapshot: 'preview-section-5',
         rowLabelSnapshot: 'A',
         seatLabelSnapshot: '1',
@@ -61,6 +72,11 @@ describe('createVenueSeatMapPreviewSeats', () => {
         name: 'Draft section',
         color: '#64748B',
         sortOrder: 0,
+        gridX: 0,
+        gridY: 0,
+        gridW: 12,
+        gridH: 4,
+        seatLayoutMode: SeatLayoutMode.Manual,
         rows: [
           {
             label: 'A',
@@ -87,6 +103,11 @@ describe('createVenueSeatMapPreviewSeats', () => {
         name: 'Inserted section',
         color: '#64748B',
         sortOrder: 0,
+        gridX: 0,
+        gridY: 0,
+        gridW: 12,
+        gridH: 4,
+        seatLayoutMode: SeatLayoutMode.Manual,
         rows: [
           {
             label: 'Z',
@@ -110,6 +131,11 @@ describe('createVenueSeatMapPreviewSeats', () => {
         name: 'Draft section',
         color: '#64748B',
         sortOrder: 1,
+        gridX: 0,
+        gridY: 0,
+        gridW: 12,
+        gridH: 4,
+        seatLayoutMode: SeatLayoutMode.Manual,
         rows: [
           {
             label: 'A',
@@ -134,6 +160,7 @@ describe('createVenueSeatMapPreviewSeats', () => {
     expect(originalSeats[0]?.venueSeatId).toBeNull()
     expect(originalSeats[0]?.venueSectionId).toBeNull()
     expect(originalSeats[0]?.sectionColorSnapshot).toBe('#64748B')
+    expect(originalSeats[0]?.sectionCodeSnapshot).toBe('TMP')
     expect(originalSeats[0]?.sectionKeySnapshot).toBe('preview-section-0-TMP-Draft section')
     expect(insertedSeats[1]?.id).not.toBe(originalSeats[0]?.id)
     expect(insertedSeats[1]?.sectionKeySnapshot).toBe('preview-section-1-TMP-Draft section')
@@ -146,6 +173,11 @@ describe('createVenueSeatMapPreviewSeats', () => {
         name: 'Draft section',
         color: '#64748B',
         sortOrder: 0,
+        gridX: 0,
+        gridY: 0,
+        gridW: 12,
+        gridH: 4,
+        seatLayoutMode: SeatLayoutMode.Manual,
         rows: [
           {
             label: 'A',
@@ -169,6 +201,11 @@ describe('createVenueSeatMapPreviewSeats', () => {
         name: 'Draft section',
         color: '#94A3B8',
         sortOrder: 1,
+        gridX: 0,
+        gridY: 0,
+        gridW: 12,
+        gridH: 4,
+        seatLayoutMode: SeatLayoutMode.Manual,
         rows: [
           {
             label: 'A',

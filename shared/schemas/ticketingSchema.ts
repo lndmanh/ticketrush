@@ -9,6 +9,7 @@ import {
   PricingMode,
   QueueStatus,
   SavedAttendeeGender,
+  SeatLayoutMode,
   SeatStatus,
   TicketHolderSource,
   TicketStatus,
@@ -28,6 +29,7 @@ export const ticketStatusSchema = z.enum(TicketStatus)
 export const queueStatusSchema = z.enum(QueueStatus)
 export const ageBracketSchema = z.enum(AgeBracket)
 export const genderSchema = z.enum(SavedAttendeeGender)
+export const seatLayoutModeSchema = z.enum(SeatLayoutMode)
 
 const requiredDateSchema = z.union([
   z.date(),
@@ -91,8 +93,94 @@ export const venueSectionDraftSchema = z.object({
   name: commonSchemaFragments.nonEmptyString('Section name'),
   color: commonSchemaFragments.nonEmptyString('Section color'),
   sortOrder: z.coerce.number().int().min(0).default(0),
+  gridX: z.coerce.number().int().min(0).max(24),
+  gridY: z.coerce.number().int().min(0).max(99),
+  gridW: z.coerce.number().int().positive().max(25),
+  gridH: z.coerce.number().int().positive().max(24),
+  seatLayoutMode: seatLayoutModeSchema.default(SeatLayoutMode.Automatic),
   rows: z.array(venueRowDraftSchema).min(1),
 })
+
+function addVenueSectionGridIssues(sections: { gridX: number, gridY: number, gridW: number, gridH: number, rows: { seats: { x: number, y: number }[] }[], seatLayoutMode: SeatLayoutMode }[], ctx: z.RefinementCtx) {
+  const occupiedCells = new Map<string, number>()
+
+  sections.forEach((section, sectionIndex) => {
+    if (section.gridX < 0 || section.gridY < 0 || section.gridW <= 0 || section.gridH <= 0) {
+      ctx.addIssue({
+        code: 'custom',
+        path: [sectionIndex],
+        message: 'Section grid bounds must be positive',
+      })
+      return
+    }
+
+    if (section.gridY > 99 || section.gridH > 24 || section.gridX > 24) {
+      ctx.addIssue({
+        code: 'custom',
+        path: [sectionIndex],
+        message: 'Section grid bounds are out of range',
+      })
+      return
+    }
+
+    if (section.gridW > 25) {
+      ctx.addIssue({
+        code: 'custom',
+        path: [sectionIndex, 'gridW'],
+        message: 'Section grid width must not exceed 25 columns',
+      })
+      return
+    }
+
+    if (section.gridX + section.gridW > 25) {
+      ctx.addIssue({
+        code: 'custom',
+        path: [sectionIndex, 'gridW'],
+        message: 'Section grid must fit within 25 columns',
+      })
+      return
+    }
+
+    const maxCells = section.gridW * section.gridH
+    for (let cellIndex = 0; cellIndex < maxCells; cellIndex += 1) {
+      const y = section.gridY + Math.floor(cellIndex / section.gridW)
+      const x = section.gridX + (cellIndex % section.gridW)
+      const cellKey = `${x}:${y}`
+      const firstSectionIndex = occupiedCells.get(cellKey)
+      if (firstSectionIndex !== undefined) {
+        ctx.addIssue({
+          code: 'custom',
+          path: [sectionIndex, 'gridX'],
+          message: `Section grid overlaps with section ${firstSectionIndex + 1}`,
+        })
+        continue
+      }
+
+      occupiedCells.set(cellKey, sectionIndex)
+    }
+
+    if (section.seatLayoutMode === SeatLayoutMode.Manual) {
+      const manualSeats: { x: number, y: number }[] = []
+      for (const row of section.rows) {
+        manualSeats.push(...row.seats.map(seat => ({ x: seat.x, y: seat.y })))
+      }
+
+      const seenManualSeats = new Set<string>()
+      for (const seat of manualSeats) {
+        const seatKey = `${seat.x}:${seat.y}`
+        if (seenManualSeats.has(seatKey)) {
+          ctx.addIssue({
+            code: 'custom',
+            path: [sectionIndex, 'rows'],
+            message: 'Manual seat coordinates must be unique within a section',
+          })
+          break
+        }
+        seenManualSeats.add(seatKey)
+      }
+    }
+  })
+}
 
 export const createVenueSchema = z.object({
   slug: commonSchemaFragments.nonEmptyString('Venue slug'),
@@ -102,7 +190,10 @@ export const createVenueSchema = z.object({
   country: venueCountrySchema.default('Vietnam'),
   address: commonSchemaFragments.nonEmptyString('Address'),
   coverImage: z.string().url().optional().or(z.literal('')),
-  sections: z.array(venueSectionDraftSchema).min(1).superRefine(addDuplicateSectionCodeIssues),
+  sections: z.array(venueSectionDraftSchema).min(1).superRefine((sections, ctx) => {
+    addDuplicateSectionCodeIssues(sections, ctx)
+    addVenueSectionGridIssues(sections, ctx)
+  }),
 })
 
 export const venueBuilderSchema = createVenueSchema.omit({

@@ -1,4 +1,5 @@
 import type { SeatMapSeat } from '~~/types/seatmap'
+import type { SeatLayoutMode } from '#shared/commonEnums'
 import { SeatPricingSource, SeatStatus } from '#shared/commonEnums'
 
 interface PreviewVenueSeat {
@@ -25,6 +26,11 @@ interface PreviewVenueSection {
   name: string
   color: string
   sortOrder: number
+  gridX: number
+  gridY: number
+  gridW: number
+  gridH: number
+  seatLayoutMode: SeatLayoutMode
   rows: PreviewVenueRow[]
 }
 
@@ -68,8 +74,14 @@ export function createVenueSeatMapPreviewSeats(sections: PreviewVenueSection[]):
       venueSectionId: section.id ?? null,
       ticketTypeId: null,
       sectionKeySnapshot: sectionKey,
+      sectionCodeSnapshot: section.code,
       sectionNameSnapshot: section.name,
       sectionColorSnapshot: section.color,
+      sectionGridXSnapshot: section.gridX,
+      sectionGridYSnapshot: section.gridY,
+      sectionGridWSnapshot: section.gridW,
+      sectionGridHSnapshot: section.gridH,
+      sectionSeatLayoutModeSnapshot: section.seatLayoutMode,
       rowLabelSnapshot: row.label,
       seatLabelSnapshot: seat.label,
       displayX: seat.x,
