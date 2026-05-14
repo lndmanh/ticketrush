@@ -354,6 +354,22 @@ const orderConfirmedAtLabel = computed(() => {
   const confirmedAt = checkout.value?.order.confirmedAt ?? checkout.value?.order.updatedAt ?? null
   return confirmedAt ? formatDateTime(confirmedAt) : t('tickets.detail_unknown')
 })
+const orderStatusLabel = computed(() => {
+  const status = checkout.value?.order.status
+  if (status === OrderStatus.Confirmed) {
+    return t('checkout.status_confirmed')
+  }
+
+  if (status === OrderStatus.Pending) {
+    return t('checkout.status_pending')
+  }
+
+  if (status === OrderStatus.Cancelled) {
+    return t('checkout.status_cancelled')
+  }
+
+  return status ? status.replaceAll('_', ' ') : t('tickets.detail_unknown')
+})
 
 const holdTimeRemainingMs = computed(() => {
   const expiresAt = checkout.value?.hold?.expiresAt
@@ -900,7 +916,7 @@ definePageMeta({
                       {{ $t('common.status') }}
                     </p>
                     <p class="mt-2 text-base font-semibold text-emerald-100">
-                      {{ checkout.order.status }}
+                      {{ orderStatusLabel }}
                     </p>
                   </div>
                   <div class="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
@@ -946,7 +962,7 @@ definePageMeta({
               </div>
             </div>
             <span class="rounded-full border border-emerald-400/20 bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-200">
-              {{ checkout.order.status }}
+              {{ orderStatusLabel }}
             </span>
           </div>
         </CardHeader>
