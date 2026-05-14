@@ -11,6 +11,18 @@
       </div>
 
       <div class="flex flex-wrap gap-2">
+        <Button
+          type="button"
+          variant="outline"
+          :disabled="loading || reseedingEvents"
+          @click="reseedEvents"
+        >
+          <RefreshCw
+            class="h-4 w-4"
+            :class="reseedingEvents ? 'animate-spin' : ''"
+          />
+          Tạo lại demo
+        </Button>
         <Button as-child>
           <NuxtLink to="/admin/events/create">
             <Rocket class="h-4 w-4" />
@@ -196,7 +208,8 @@ import { toast } from 'vue-sonner'
 import type { Event, Venue } from '#shared/db'
 import type { ApiResponse } from '~~/types/api'
 import type { AutosaveDraftDeleteData, AutosaveDraftSummary } from '~~/types/admin-events'
-import { ArchiveIcon, Rocket } from '@lucide/vue'
+import type { ReseedEventsTaskData } from '~~/types/admin-tasks'
+import { ArchiveIcon, RefreshCw, Rocket } from '@lucide/vue'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import DataTable from '@/components/DataTable.vue'
@@ -214,6 +227,7 @@ const events = ref<Event[]>([])
 const venues = ref<Venue[]>([])
 const unfinishedDraft = ref<AutosaveDraftSummary | null>(null)
 const loading = ref(false)
+const reseedingEvents = ref(false)
 
 const rows = computed<EventTableRow[]>(() => {
   const venueById = new Map(venues.value.map(venue => [venue.id, venue.name]))
@@ -280,6 +294,30 @@ async function fetchEvents() {
   }
   finally {
     loading.value = false
+  }
+}
+
+async function reseedEvents() {
+  if (import.meta.client) {
+    const confirmed = window.confirm('Tác vụ này sẽ xóa dữ liệu event/order/ticket demo hiện tại và tạo lại 10 sự kiện demo. Tiếp tục?')
+    if (!confirmed) return
+  }
+
+  try {
+    reseedingEvents.value = true
+    const response = await apiRequest<ApiResponse<ReseedEventsTaskData>>(apiRoutes.ADMIN_TASK_RESEED_EVENTS, { method: 'POST' })
+    if (!response.success) {
+      throw response
+    }
+
+    toast.success(`Đã tạo lại ${response.data.eventsCreated} sự kiện ở ${response.data.venuesCreated} địa điểm`)
+    await fetchEvents()
+  }
+  catch (error) {
+    toast.error(parseApiError(error, 'Không thể tạo lại sự kiện demo').message)
+  }
+  finally {
+    reseedingEvents.value = false
   }
 }
 

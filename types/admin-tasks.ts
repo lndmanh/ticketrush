@@ -25,7 +25,16 @@ export interface SeedAdminTaskData {
   }
 }
 
-export type AdminTaskData = AdmitQueueTaskData | ReleaseHoldsTaskData | SeedAdminTaskData
+export interface ReseedEventsTaskData {
+  deletedEvents: boolean
+  venuesCreated: number
+  cities: string[]
+  eventsCreated: number
+  seatsPerType: number
+  eventTitles: string[]
+}
+
+export type AdminTaskData = AdmitQueueTaskData | ReleaseHoldsTaskData | SeedAdminTaskData | ReseedEventsTaskData
 
 export interface AdminTaskResult {
   success: boolean
