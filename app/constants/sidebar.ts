@@ -7,36 +7,21 @@ import {
   LayoutDashboardIcon,
   ListChecksIcon,
   MapPin,
-  Settings,
+  ReceiptText,
   Shield,
   ShieldCheck,
   Ticket,
+  UserRound,
   UserCog2Icon,
   UsersIcon,
 } from '@lucide/vue'
 
 export const SIDEBAR_CONTEXTS: SidebarContext[] = [
   {
-    id: 'settings',
-    match: '/settings',
-    variant: 'inset',
-    showBack: true,
-    sections: [
-      {
-        title: 'nav.account',
-        items: [
-          { title: 'nav.security', url: '/settings/security', icon: Shield },
-          { title: 'nav.saved_attendees', url: '/settings/saved-attendees', icon: ContactRound },
-        ],
-      },
-    ],
-  },
-  {
     id: 'admin',
     match: '/admin',
     variant: 'inset',
     showBack: true,
-    guard: (user: SidebarGuardUser) => user?.isAdmin === true,
     sections: [
       {
         title: 'nav.overview',
@@ -44,6 +29,7 @@ export const SIDEBAR_CONTEXTS: SidebarContext[] = [
           { title: 'nav.dashboard', url: '/admin', icon: LayoutDashboardIcon },
           { title: 'nav.events', url: '/admin/events', icon: CalendarRange },
           { title: 'nav.venues', url: '/admin/venues', icon: MapPin },
+          { title: 'nav.transactions', url: '/admin/transactions', icon: ReceiptText },
         ],
       },
       {
@@ -72,8 +58,9 @@ export const SIDEBAR_CONTEXTS: SidebarContext[] = [
           { title: 'nav.home', url: '/', icon: Home },
           { title: 'nav.events', url: '/events', icon: CalendarRange },
           { title: 'nav.my_tickets', url: '/tickets', icon: Ticket },
+          { title: 'nav.account', url: '/settings/account', icon: UserRound },
           { title: 'nav.saved_attendees', url: '/tickets/saved-attendees', icon: ContactRound },
-          { title: 'nav.security', url: '/settings/security', icon: Settings },
+          { title: 'nav.security', url: '/settings/security', icon: Shield },
         ],
       },
       {
@@ -87,7 +74,7 @@ export const SIDEBAR_CONTEXTS: SidebarContext[] = [
         title: 'nav.support',
         secondary: true,
         items: [
-          { title: 'nav.help_support', url: '/support', icon: UserCog2Icon },
+          { title: 'nav.help_support', url: '/settings/security', icon: UserCog2Icon },
         ],
       },
     ],
