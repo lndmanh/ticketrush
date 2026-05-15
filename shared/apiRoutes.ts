@@ -54,6 +54,7 @@ export const apiRoutes = {
   eventSessionGate: (sessionId: string | number) => `/api/event-sessions/${sessionId}/gate`,
   eventSessionSeatmap: (sessionId: string | number) => `/api/event-sessions/${sessionId}/seatmap`,
   eventSessionSeatmapSocket: (sessionId: string) => `/ws/event-sessions/${sessionId}/seats`,
+  eventSessionQueueSocket: (sessionId: string | number) => `/ws/event-sessions/${sessionId}/queue`,
   eventSessionHolds: (sessionId: string | number) => `/api/event-sessions/${sessionId}/holds`,
   eventSessionQueueStatus: (sessionId: string | number) => `/api/event-sessions/${sessionId}/queue/status`,
   eventSessionQueueJoin: (sessionId: string | number) => `/api/event-sessions/${sessionId}/queue/join`,

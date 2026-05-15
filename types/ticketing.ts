@@ -1,6 +1,6 @@
 import type { Event, EventSession, Order, OrderItem, SeatHold, Ticket } from '#shared/db'
 import type { DateLike } from '~~/types/events'
-import type { SeatPricingSource } from '#shared/commonEnums'
+import type { QueueStatus, SeatPricingSource } from '#shared/commonEnums'
 
 export interface EventSessionGateResponse {
   shouldQueue: boolean
@@ -9,8 +9,7 @@ export interface EventSessionGateResponse {
 }
 
 export interface QueueStateEntry {
-  passToken: string | null
-  status: string
+  status: QueueStatus
   expiresAt?: DateLike | null
 }
 
@@ -22,6 +21,7 @@ export interface QueueState {
   queueBatchSize: number
   queueWindowSeconds: number
   estimatedWaitSeconds: number
+  redirectPath: string | null
 }
 
 export interface HoldData {

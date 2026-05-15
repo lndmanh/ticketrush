@@ -3,6 +3,7 @@ import { toast } from 'vue-sonner'
 import type { QueueEntry } from '#shared/db'
 import type { ApiResponse } from '~~/types/api'
 import type { QueueState } from '~~/types/ticketing'
+import { parseQueueRealtimeMessage } from '~~/types/queue-realtime'
 import { apiRequest } from '@/utils/apiRequest'
 import { parseApiError } from '@/utils/apiError'
 import { apiRoutes } from '#shared/apiRoutes'
@@ -12,14 +13,65 @@ const route = useRoute()
 const { t } = useI18n()
 const sessionPublicId = computed(() => route.params.eventId.toString())
 const slug = computed(() => typeof route.query.slug === 'string' ? route.query.slug : '')
+const requestUrl = useRequestURL()
 
 const queueState = ref<QueueState | null>(null)
 const isJoining = ref(true)
 const isLeaving = ref(false)
 const queueError = ref('')
+const realtimeStatus = ref<'connecting' | 'connected' | 'disconnected'>('connecting')
 const currentTime = ref(Date.now())
-let queueIntervalId: number | null = null
 let queueClockIntervalId: number | null = null
+const hasRedirected = ref(false)
+let refreshQueuePromise: Promise<void> | null = null
+let refreshQueueQueued = false
+const socketUrl = computed(() => {
+  const url = new URL(apiRoutes.eventSessionQueueSocket(sessionPublicId.value), requestUrl.origin)
+  url.protocol = requestUrl.protocol === 'https:' ? 'wss:' : 'ws:'
+  return url.toString()
+})
+
+const { open, close } = useWebSocket(socketUrl, {
+  autoReconnect: {
+    retries: 5,
+    delay: 1000,
+    onFailed() {
+      realtimeStatus.value = 'disconnected'
+    },
+  },
+  immediate: false,
+  async onConnected() {
+    await refreshQueueStatusSafely()
+    realtimeStatus.value = 'connected'
+  },
+  onDisconnected() {
+    realtimeStatus.value = 'connecting'
+    void refreshQueueStatusSafely()
+  },
+  onError() {
+    realtimeStatus.value = 'connecting'
+    void refreshQueueStatusSafely()
+  },
+  async onMessage(_ws, event) {
+    try {
+      if (typeof event.data === 'string') {
+        await handleQueueRealtimeMessageSafely(event.data)
+        return
+      }
+
+      if (event.data instanceof Blob) {
+        await handleQueueRealtimeMessageSafely(await event.data.text())
+        return
+      }
+
+      await refreshQueueStatusSafely()
+    }
+    catch (error) {
+      queueError.value = parseApiError(error, t('waiting_room.lost_contact')).message
+      await refreshQueueStatusSafely()
+    }
+  },
+})
 
 const estimatedWaitLabel = computed(() => {
   const totalSeconds = queueState.value?.estimatedWaitSeconds ?? 0
@@ -62,8 +114,51 @@ const queueStatusLabel = computed(() => {
     return t('waiting_room.joining')
   }
 
-  return queueState.value?.entry?.status || t('waiting_room.waiting_for_admission')
+  const status = queueState.value?.entry?.status
+  if (status === QueueStatus.Waiting) {
+    return t('waiting_room.queue_status_waiting')
+  }
+
+  if (status === QueueStatus.Admitted) {
+    return t('waiting_room.queue_status_admitted')
+  }
+
+  if (status === QueueStatus.Expired) {
+    return t('waiting_room.queue_status_expired')
+  }
+
+  if (status === QueueStatus.Completed) {
+    return t('waiting_room.queue_status_completed')
+  }
+
+  return t('waiting_room.waiting_for_admission')
 })
+
+async function joinQueue() {
+  const response = await apiRequest<ApiResponse<QueueState | null>>(apiRoutes.eventSessionQueueJoin(sessionPublicId.value), { method: 'POST', body: {} })
+  if (!response.success) {
+    throw response
+  }
+
+  return response.data
+}
+
+async function handleQueueState(state: QueueState | null, options: { allowRejoin: boolean } = { allowRejoin: true }) {
+  queueState.value = state
+  queueError.value = ''
+
+  if (state?.entry?.status === QueueStatus.Expired && options.allowRejoin) {
+    const rejoinedState = await joinQueue()
+    await handleQueueState(rejoinedState, { allowRejoin: false })
+    return
+  }
+
+  const redirectPath = state?.redirectPath
+  if (!hasRedirected.value && state?.entry?.status === QueueStatus.Admitted && redirectPath) {
+    hasRedirected.value = true
+    await navigateTo(redirectPath)
+  }
+}
 
 async function refreshQueueStatus() {
   if (!sessionPublicId.value) {
@@ -76,17 +171,68 @@ async function refreshQueueStatus() {
       throw response
     }
 
-    queueState.value = response.data
-    queueError.value = ''
-
-    if (queueState.value?.entry?.status === QueueStatus.Admitted && queueState.value.entry.passToken && slug.value) {
-      await navigateTo(`/events/${slug.value}/sessions/${sessionPublicId.value}/seats?pass=${queueState.value.entry.passToken}`)
-    }
+    await handleQueueState(response.data)
   }
   catch (error) {
     queueError.value = parseApiError(error, t('waiting_room.lost_contact')).message
   }
 }
+
+async function refreshQueueStatusSafely() {
+  if (refreshQueuePromise) {
+    refreshQueueQueued = true
+    return refreshQueuePromise
+  }
+
+  do {
+    refreshQueueQueued = false
+    refreshQueuePromise = refreshQueueStatus().finally(() => {
+      refreshQueuePromise = null
+    })
+
+    await refreshQueuePromise
+  } while (refreshQueueQueued)
+}
+
+async function handleQueueRealtimeMessageSafely(rawValue: string) {
+  try {
+    const message = parseQueueRealtimeMessage(rawValue)
+    if (!message || message.sessionPublicId !== sessionPublicId.value) {
+      await refreshQueueStatusSafely()
+      return
+    }
+
+    if (message.type === 'queue-connected') {
+      realtimeStatus.value = 'connected'
+      return
+    }
+
+    if (message.type === 'queue-state') {
+      await handleQueueState(message.state)
+      return
+    }
+
+    await refreshQueueStatusSafely()
+  }
+  catch (error) {
+    queueError.value = parseApiError(error, t('waiting_room.lost_contact')).message
+    await refreshQueueStatusSafely()
+  }
+}
+
+const realtimeStatusLabel = computed(() => {
+  if (realtimeStatus.value === 'connected') {
+    return t('waiting_room.realtime_live')
+  }
+
+  if (realtimeStatus.value === 'connecting') {
+    return t('waiting_room.realtime_reconnecting')
+  }
+
+  return t('waiting_room.realtime_disconnected')
+})
+
+const queueProgressValueText = computed(() => t('waiting_room.queue_progress_value', { percent: queueProgress.value }))
 
 async function leaveQueue() {
   if (!sessionPublicId.value) {
@@ -119,11 +265,9 @@ async function leaveQueue() {
 
 onMounted(async () => {
   try {
-    const response = await apiRequest<ApiResponse<QueueState | null>>(apiRoutes.eventSessionQueueJoin(sessionPublicId.value), { method: 'POST', body: {} })
-    if (!response.success) {
-      throw response
-    }
+    queueState.value = await joinQueue()
     await refreshQueueStatus()
+    open()
   }
   catch (error) {
     queueError.value = parseApiError(error, t('waiting_room.join_failed')).message
@@ -132,19 +276,16 @@ onMounted(async () => {
     isJoining.value = false
   }
 
-  queueIntervalId = window.setInterval(refreshQueueStatus, 2500)
   queueClockIntervalId = window.setInterval(() => {
     currentTime.value = Date.now()
   }, 1000)
 })
 
 onUnmounted(() => {
-  if (queueIntervalId !== null) {
-    window.clearInterval(queueIntervalId)
-  }
   if (queueClockIntervalId !== null) {
     window.clearInterval(queueClockIntervalId)
   }
+  close()
 })
 
 definePageMeta({
@@ -189,6 +330,20 @@ definePageMeta({
           />
         </div>
 
+        <div class="flex items-center justify-center gap-2">
+          <span class="text-sm text-muted-foreground">
+            {{ $t('waiting_room.realtime_status') }}
+          </span>
+          <Badge
+            :variant="realtimeStatus === 'connected' ? 'default' : 'secondary'"
+            class="rounded-full"
+            aria-live="polite"
+            :aria-label="realtimeStatusLabel"
+          >
+            {{ realtimeStatusLabel }}
+          </Badge>
+        </div>
+
         <div class="surface-shell">
           <div class="surface-core space-y-4 text-left">
             <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -210,12 +365,12 @@ definePageMeta({
             </div>
 
             <div>
-              <div class="h-2 overflow-hidden rounded-full bg-black/5 dark:bg-white/10">
-                <div
-                  class="h-full rounded-full bg-primary transition-all duration-700 ease-[cubic-bezier(0.32,0.72,0,1)]"
-                  :style="{ width: `${queueProgress}%` }"
-                />
-              </div>
+              <Progress
+                :model-value="queueProgress"
+                class="h-2"
+                :aria-label="$t('waiting_room.queue_progress_label')"
+                :aria-valuetext="queueProgressValueText"
+              />
             </div>
           </div>
         </div>
@@ -234,6 +389,7 @@ definePageMeta({
 
         <div
           v-if="queueError"
+          role="alert"
           class="rounded-[1.5rem] border border-rose-200/70 bg-rose-50 px-5 py-4 text-left text-sm text-rose-950 dark:border-rose-300/15 dark:bg-rose-500/10 dark:text-rose-100"
         >
           {{ queueError }}
@@ -244,7 +400,7 @@ definePageMeta({
             variant="outline"
             class="rounded-full"
             :disabled="isJoining"
-            @click="refreshQueueStatus"
+            @click="refreshQueueStatusSafely"
           >
             {{ $t('waiting_room.refresh_status') }}
           </Button>

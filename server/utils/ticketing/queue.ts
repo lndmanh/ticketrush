@@ -55,26 +55,36 @@ class QueueService {
       return this.getStatus(eventSessionId, customerKey)
     }
 
-    const created = await this.db
-      .insert(tables.queueEntries)
-      .values({
-        eventId: session.eventId,
-        eventSessionId,
-        userId: userId ?? null,
-        customerKey,
-        status: QueueStatus.Waiting,
-        passToken: null,
-        admittedAt: null,
-        expiresAt: null,
-        completedAt: null,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      })
-      .returning()
-      .get()
+    try {
+      const created = await this.db
+        .insert(tables.queueEntries)
+        .values({
+          eventId: session.eventId,
+          eventSessionId,
+          userId: userId ?? null,
+          customerKey,
+          status: QueueStatus.Waiting,
+          passToken: null,
+          admittedAt: null,
+          expiresAt: null,
+          completedAt: null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .returning()
+        .get()
 
-    if (!created) {
-      throw new Error('Failed to join queue')
+      if (!created) {
+        throw new Error('Failed to join queue')
+      }
+    }
+    catch (error) {
+      const status = await this.getStatus(eventSessionId, customerKey)
+      if (status) {
+        return status
+      }
+
+      throw error
     }
 
     return this.getStatus(eventSessionId, customerKey)
@@ -107,20 +117,52 @@ class QueueService {
       ? entries.filter(entry => entry.status === QueueStatus.Waiting && entry.id <= current.id).length
       : 0
 
+    const redirectPath = await this.getEntryRedirectPath(session, current)
+
     const settings = await waitingRoomSettingsService.getSettings()
     const estimatedWaitSeconds = current.status === QueueStatus.Waiting
       ? Math.max(0, Math.ceil(position / Math.max(settings.queueBatchSize, 1)) * settings.queueWindowSeconds)
       : 0
 
+    const entry = {
+      status: current.status,
+      expiresAt: current.expiresAt,
+    }
+
     return {
-      entry: current,
+      entry,
       position,
       waitingCount: entries.filter(entry => entry.status === QueueStatus.Waiting).length,
       admittedCount: entries.filter(entry => entry.status === QueueStatus.Admitted).length,
       queueBatchSize: settings.queueBatchSize,
       queueWindowSeconds: settings.queueWindowSeconds,
       estimatedWaitSeconds,
+      redirectPath,
     }
+  }
+
+  private async getEntryRedirectPath(
+    session: typeof tables.eventSessions.$inferSelect,
+    entry: typeof tables.queueEntries.$inferSelect,
+  ) {
+    if (entry.status !== QueueStatus.Admitted || !entry.passToken) {
+      return null
+    }
+
+    const event = await this.db
+      .select({ slug: tables.events.slug })
+      .from(tables.events)
+      .where(eq(tables.events.id, session.eventId))
+      .get()
+
+    if (!event) {
+      return null
+    }
+
+    const eventSlug = encodeURIComponent(event.slug)
+    const sessionPublicId = encodeURIComponent(session.publicId)
+
+    return `/events/${eventSlug}/sessions/${sessionPublicId}/seats`
   }
 
   async admitNextBatch(eventSessionId: number) {
@@ -272,6 +314,14 @@ class QueueService {
       this.db.select().from(tables.seatHolds).where(eq(tables.seatHolds.eventSessionId, eventSessionId)).all(),
     ])
 
+    const current = queueEntries.find(entry => entry.customerKey === customerKey)
+    if (current && current.status === QueueStatus.Admitted && current.passToken && current.expiresAt && current.expiresAt.getTime() > Date.now()) {
+      const cachedPass = await this.kv.get<string>(buildQueuePassKey(eventSessionId, current.passToken))
+      if (typeof cachedPass === 'string' && cachedPass.length > 0) {
+        return false
+      }
+    }
+
     const activeQueueCount = queueEntries.filter(entry => entry.status === QueueStatus.Admitted).length
     const activeHoldCount = activeHolds.filter(hold => hold.status === HoldStatus.Active).length
 
@@ -279,11 +329,14 @@ class QueueService {
     return activeQueueCount + activeHoldCount >= settings.queueActivationThreshold
   }
 
-  async expireAdmittedEntries() {
-    const entries = await this.db
+  async expireAdmittedEntries(eventSessionId?: number) {
+    const query = this.db
       .select()
       .from(tables.queueEntries)
-      .all()
+
+    const entries = eventSessionId
+      ? await query.where(eq(tables.queueEntries.eventSessionId, eventSessionId)).all()
+      : await query.all()
 
     const expired = entries.filter(entry => entry.status === QueueStatus.Admitted && entry.expiresAt && entry.expiresAt.getTime() <= Date.now())
 
