@@ -11,6 +11,7 @@ import { createAdminDashboardColumns } from '@/components/admin/dashboard/column
 import { getDisplayDateLocale } from '@/lib/localizedEvents'
 import { formatCurrency, formatNumber, formatPercent } from '@/lib/utils'
 import { apiRoutes } from '#shared/apiRoutes'
+import { adminAnalyticsTimeRangeOptions, DEFAULT_ADMIN_ANALYTICS_TIME_RANGE } from '#shared/adminAnalyticsTimeRanges'
 
 const emptyDashboard: AdminDashboardResponse = {
   summary: {
@@ -31,8 +32,9 @@ const emptyDashboard: AdminDashboardResponse = {
 }
 
 const { locale } = useI18n()
+const selectedRange = ref(DEFAULT_ADMIN_ANALYTICS_TIME_RANGE)
 const { data: dashboardResponse, refresh } = await useAPI<ApiResponse<AdminDashboardResponse>>(() => apiRoutes.ADMIN_DASHBOARD, {
-  query: computed(() => ({ locale: locale.value })),
+  query: computed(() => ({ locale: locale.value, range: selectedRange.value })),
 })
 const { createDonutChartOption } = useAdminChartTheme()
 const colorMode = useColorMode()
@@ -225,6 +227,19 @@ definePageMeta({
         <p class="text-sm text-muted-foreground md:text-base">
           {{ $t('admin.dashboard_analytics_desc') }}
         </p>
+      </div>
+      <div class="flex items-center gap-2">
+        <Label for="admin-dashboard-range" class="text-sm text-muted-foreground">Range</Label>
+        <Select v-model="selectedRange">
+          <SelectTrigger id="admin-dashboard-range" class="w-36">
+            <SelectValue placeholder="Select range" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem v-for="option in adminAnalyticsTimeRangeOptions" :key="option.value" :value="option.value">
+              {{ option.label }}
+            </SelectItem>
+          </SelectContent>
+        </Select>
       </div>
     </section>
 

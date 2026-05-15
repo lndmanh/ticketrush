@@ -124,3 +124,10 @@ export enum EventCatalogSort {
   Newest = 'newest',
   EndingSoon = 'ending_soon',
 }
+
+export enum AdminAnalyticsTimeRange {
+  Last24Hours = 'last_24h',
+  Last3Days = 'last_3d',
+  Last7Days = 'last_7d',
+  Last30Days = 'last_30d',
+}
