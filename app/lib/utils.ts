@@ -15,6 +15,126 @@ export function valueUpdater<T extends Updater<unknown>>(updaterOrValue: T, ref:
     : updaterOrValue
 }
 
+type FormatDateInput = Date | number | string
+
+interface FormatDateOptions extends Intl.DateTimeFormatOptions {
+  fallback?: string
+}
+
+export function formatCurrency(
+  cents: number,
+  currency: string,
+  locale: string,
+  options: Intl.NumberFormatOptions = {},
+): string {
+  return new Intl.NumberFormat(locale, {
+    style: 'currency',
+    currency,
+    maximumFractionDigits: 0,
+    ...options,
+  }).format(cents / 100)
+}
+
+export function formatNumber(
+  value: number,
+  locale: string,
+  options: Intl.NumberFormatOptions = {},
+): string {
+  return new Intl.NumberFormat(locale, options).format(value)
+}
+
+export function formatPercent(
+  value: number,
+  locale: string,
+  options: Intl.NumberFormatOptions = {},
+): string {
+  return formatNumber(value, locale, {
+    style: 'percent',
+    maximumFractionDigits: 0,
+    ...options,
+  })
+}
+
+export function formatDate(
+  value: FormatDateInput | null | undefined,
+  locale: string,
+  options: FormatDateOptions = {},
+): string {
+  const optionsWithDefaults = hasDateFormatOptions(options)
+    ? options
+    : {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+        ...options,
+      }
+
+  return formatDateValue(value, locale, optionsWithDefaults, 'date')
+}
+
+export function formatTime(
+  value: FormatDateInput | null | undefined,
+  locale: string,
+  options: FormatDateOptions = {},
+): string {
+  const optionsWithDefaults = hasDateFormatOptions(options)
+    ? options
+    : {
+        hour: 'numeric',
+        minute: '2-digit',
+        ...options,
+      }
+
+  return formatDateValue(value, locale, optionsWithDefaults, 'time')
+}
+
+export function formatDateTime(
+  value: FormatDateInput | null | undefined,
+  locale: string,
+  options: FormatDateOptions = {},
+): string {
+  const optionsWithDefaults = hasDateFormatOptions(options)
+    ? options
+    : {
+        dateStyle: 'medium',
+        timeStyle: 'short',
+        ...options,
+      }
+
+  return formatDateValue(value, locale, optionsWithDefaults, 'dateTime')
+}
+
+function hasDateFormatOptions(options: FormatDateOptions): boolean {
+  return Object.keys(options).some(key => key !== 'fallback')
+}
+
+function formatDateValue(
+  value: FormatDateInput | null | undefined,
+  locale: string,
+  options: FormatDateOptions,
+  formatter: 'date' | 'time' | 'dateTime',
+): string {
+  const { fallback = '', ...dateOptions } = options
+  if (value === null || value === undefined || value === '') {
+    return fallback
+  }
+
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) {
+    return fallback
+  }
+
+  if (formatter === 'date') {
+    return date.toLocaleDateString(locale, dateOptions)
+  }
+
+  if (formatter === 'time') {
+    return date.toLocaleTimeString(locale, dateOptions)
+  }
+
+  return date.toLocaleString(locale, dateOptions)
+}
+
 /**
  * Format a date/time in a Facebook-like relative format using Luxon
  *
