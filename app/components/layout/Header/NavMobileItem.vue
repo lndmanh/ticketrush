@@ -3,7 +3,7 @@
     <Collapsible v-model:open="isOpen">
       <CollapsibleTrigger class="w-full p-2 text-left">
         <div class="flex w-full gap-1">
-          {{ $t(item.title) }}
+          {{ translateNavText(item.title) }}
           <component
             :is="isOpen ? ChevronsDownUpIcon : ChevronsUpDownIcon"
             :size="12"
@@ -31,10 +31,10 @@
 
               <div>
                 <div class="font-semibold">
-                  {{ $t(link.title) }}
+                  {{ translateNavText(link.title) }}
                 </div>
                 <div class="text-muted-foreground text-sm">
-                  {{ $t(link.description) }}
+                  {{ translateNavText(link.description) }}
                 </div>
               </div>
             </NuxtLinkLocale>
@@ -49,7 +49,7 @@
     :target="item.target"
     class="flex w-full p-2"
   >
-    {{ $t(item.title) }}
+    {{ translateNavText(item.title) }}
     <ArrowUpRightIcon
       v-if="item.showLinkIcon ?? true"
       class="text-muted-foreground ml-1"
@@ -71,6 +71,23 @@ const props = defineProps<{
 
 const collapsedMapStore = useCollapsedMapStore()
 const isOpen = ref(collapsedMapStore.get(`mobile-header-nav${props.index}`) || false)
+
+const { t } = useI18n()
+
+const navTextKeys: Record<string, string> = {
+  Events: 'nav.events',
+  'My tickets': 'nav.my_tickets',
+  Login: 'common.sign_in',
+}
+
+function translateNavText(text?: string) {
+  if (!text) {
+    return ''
+  }
+
+  return t(navTextKeys[text] ?? text)
+}
+
 watch(isOpen, (v) => {
   collapsedMapStore.set(`mobile-header-nav${props.index}`, v)
 })

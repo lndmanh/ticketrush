@@ -8,7 +8,7 @@
       >
         <template v-if="item.links">
           <NavigationMenuTrigger class="bg-transparent font-semibold">
-            {{ $t(item.title) }}
+            {{ translateNavText(item.title) }}
           </NavigationMenuTrigger>
           <NavigationMenuContent>
             <ul class="w-[250px] p-2">
@@ -33,13 +33,13 @@
                       v-if="link.title"
                       class="font-semibold"
                     >
-                      {{ $t(link.title) }}
+                      {{ translateNavText(link.title) }}
                     </div>
                     <div
                       v-if="link.description"
                       class="text-muted-foreground text-sm"
                     >
-                      {{ $t(link.description) }}
+                      {{ translateNavText(link.description) }}
                     </div>
                   </div>
                 </NuxtLinkLocale>
@@ -61,7 +61,7 @@
             class="bg-transparent font-semibold"
             :class="[navigationMenuTriggerStyle(), (item.showLinkIcon ?? true) && 'pr-6']"
           >
-            {{ $t(item.title) }}
+            {{ translateNavText(item.title) }}
           </div>
         </NuxtLinkLocale>
       </NavigationMenuItem>
@@ -76,4 +76,19 @@ import { navigationMenuTriggerStyle, NavigationMenu, NavigationMenuContent, Navi
 import CtIcon from '@/components/content/CtIcon.vue'
 
 const { nav } = useConfig().value.header
+const { t } = useI18n()
+
+const navTextKeys: Record<string, string> = {
+  Events: 'nav.events',
+  'My tickets': 'nav.my_tickets',
+  Login: 'common.sign_in',
+}
+
+function translateNavText(text?: string) {
+  if (!text) {
+    return ''
+  }
+
+  return t(navTextKeys[text] ?? text)
+}
 </script>
