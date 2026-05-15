@@ -83,7 +83,7 @@ async function updateLocale(code: string) {
           <LogIn />
           {{ $t('common.sign_in') }}
         </DropdownMenuItem>
-        <DropdownMenuItem @click="navigateTo('/settings')">
+        <DropdownMenuItem @click="navigateTo('/settings/account')">
           <Settings />
           {{ $t('common.settings') }}
         </DropdownMenuItem>

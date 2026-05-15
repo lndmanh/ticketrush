@@ -137,7 +137,7 @@ definePageMeta({
 
     <Empty
       v-else
-      class="rounded-xl border bg-card/60 py-16"
+      class="border border-dashed"
     >
       <EmptyHeader>
         <EmptyMedia variant="icon">

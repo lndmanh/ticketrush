@@ -503,6 +503,7 @@ definePageMeta({
   breadcrumb: 'Security',
   middleware: 'auth',
   layout: 'dashboard',
+  fullWidth: false,
 })
 
 const route = useRoute()

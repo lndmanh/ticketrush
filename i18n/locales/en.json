@@ -217,6 +217,7 @@
     "users": "Users",
     "system": "System",
     "tasks": "Tasks",
+    "settings": "Settings",
     "waiting_room": "Waiting Room",
     "feature_flags": "Feature Flags",
     "breadcrumb_session": "Session",
@@ -264,6 +265,22 @@
     "ticket_preferences_desc": "Set default attendee, delivery, reminder, and checkout preferences.",
     "waiting_room_title": "Waiting room controls",
     "waiting_room_desc": "Adjust queue thresholds, batch size, and admission windows for high-demand events."
+  },
+  "account_page": {
+    "title": "Account profile",
+    "breadcrumb": "Account",
+    "heading": "Profile details",
+    "description": "Update the personal details used for checkout, receipts, and account communication.",
+    "full_name": "Full name",
+    "email": "Email",
+    "phone": "Phone number",
+    "country_code": "Country code",
+    "clear_phone": "Clear phone number",
+    "birth_date": "Birth date",
+    "gender": "Gender",
+    "complete": "Save profile",
+    "saved_toast": "Profile updated",
+    "save_error": "We could not update your profile"
   },
   "event_card": {
     "venue_label": "Venue",
