@@ -5,6 +5,7 @@ import { toast } from 'vue-sonner'
 import { createVenueSchema } from '#shared/schemas/ticketingSchema'
 import type { Event } from '#shared/db'
 import type { VenueSectionDraftInput } from '#shared/schemas/ticketingSchema'
+import { VIETNAM_PROVINCE_OPTIONS, normalizeVietnamProvinceKey, type VietnamProvinceKey, type VietnamProvinceName } from '#shared/constants/vietnamProvinces'
 import type { ApiResponse } from '~~/types/api'
 import type { VenueDetail } from '~~/types/venues'
 import { ArrowLeft, Building2, CalendarRange, LayoutGrid, LayoutDashboardIcon, Rows3, Save, Users } from '@lucide/vue'
@@ -52,6 +53,7 @@ interface VisualizationSection {
 }
 
 type ConfigTab = 'details' | 'layout' | 'events'
+const DEFAULT_VENUE_CITY: VietnamProvinceKey = 'ho_chi_minh_city'
 
 const venueIdentitySchema = createVenueSchema.omit({ sections: true })
 type VenueIdentityInput = z.infer<typeof venueIdentitySchema>
@@ -79,7 +81,7 @@ const defaultIdentityValues: VenueIdentityInput = {
   slug: '',
   name: '',
   description: '',
-  city: 'Ho Chi Minh City',
+  city: DEFAULT_VENUE_CITY,
   country: 'Vietnam',
   address: '',
   coverImage: '',
@@ -161,6 +163,10 @@ function createVenueSnapshot(identity: VenueIdentityInput, sections: VenueSectio
   })
 }
 
+function getProvinceOptionLabel(label: VietnamProvinceName) {
+  return locale.value === 'en' ? label.en : label.vi
+}
+
 const blueprintPresets: VenueBlueprintPreset[] = [
   {
     id: 'club',
@@ -203,7 +209,7 @@ watch(venueDetail, (value) => {
     slug: value.venue.slug,
     name: value.venue.name,
     description: value.venue.description ?? '',
-    city: value.venue.city,
+    city: normalizeVietnamProvinceKey(value.venue.city) ?? DEFAULT_VENUE_CITY,
     country: value.venue.country,
     address: value.venue.address,
     coverImage: value.venue.coverImage ?? '',
@@ -899,12 +905,26 @@ definePageMeta({
                       <FieldLabel for="edit-venue-city">
                         {{ $t('admin.venues.city') }}
                       </FieldLabel>
-                      <Input
-                        id="edit-venue-city"
+                      <Select
                         :model-value="field.value"
-                        :aria-invalid="!!errors.length"
                         @update:model-value="field.onChange"
-                      />
+                      >
+                        <SelectTrigger
+                          id="edit-venue-city"
+                          :aria-invalid="!!errors.length"
+                        >
+                          <SelectValue :placeholder="$t('admin.venues.city')" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem
+                            v-for="province in VIETNAM_PROVINCE_OPTIONS"
+                            :key="province.value"
+                            :value="province.value"
+                          >
+                            {{ getProvinceOptionLabel(province.label) }}
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
                       <FieldError
                         v-if="errors.length"
                         :errors="errors"

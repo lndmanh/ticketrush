@@ -1097,10 +1097,11 @@
       "venue_name": "Venue name",
       "slug": "Slug",
       "address": "Address",
-      "city": "City",
+      "city": "Province/City",
       "country": "Country",
       "description": "Description",
       "cover_image": "Cover image URL",
+      "untitled": "Untitled venue",
       "created": "Venue created successfully",
       "create_failed": "Failed to save the venue blueprint",
       "load_failed": "Failed to load venues",
@@ -1127,6 +1128,24 @@
       "address_placeholder": "District 1, Ho Chi Minh City",
       "description_placeholder": "A room tuned for premium lines of sight.",
       "cover_image_placeholder": "https://example.com/venue.jpg"
+    },
+    "localization": {
+      "edit": "Edit localization",
+      "choose_locale": "Choose locale",
+      "translation_locale": "Translation locale",
+      "add_locale_first": "Add another locale in i18n constants before creating translations.",
+      "source": "Source",
+      "save_locale_copy": "Save {locale} copy"
+    },
+    "venue_localization": {
+      "title": "Localized venue information",
+      "desc": "Vietnamese is the source copy. Add translated venue copy for each public locale.",
+      "name_placeholder": "Localized venue name",
+      "description_placeholder": "Localized venue description",
+      "city_placeholder": "Localized province/city",
+      "address_placeholder": "Localized address",
+      "saved": "Localized venue copy saved",
+      "save_failed": "Failed to save localized venue copy"
     },
     "columns": {
       "event": "Event",

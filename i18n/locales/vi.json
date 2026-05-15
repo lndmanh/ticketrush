@@ -1073,10 +1073,11 @@
       "venue_name": "Tên địa điểm",
       "slug": "Slug",
       "address": "Địa chỉ",
-      "city": "Thành phố",
+      "city": "Tỉnh/Thành phố",
       "country": "Quốc gia",
       "description": "Mô tả",
       "cover_image": "URL ảnh bìa",
+      "untitled": "Địa điểm chưa đặt tên",
       "created": "Địa điểm đã được tạo thành công",
       "create_failed": "Không thể lưu bản thiết kế địa điểm",
       "load_failed": "Không thể tải địa điểm",
@@ -1103,6 +1104,24 @@
       "address_placeholder": "Quận 1, Thành phố Hồ Chí Minh",
       "description_placeholder": "Một phòng được thiết kế cho tầm nhìn cao cấp.",
       "cover_image_placeholder": "https://example.com/venue.jpg"
+    },
+    "localization": {
+      "edit": "Chỉnh sửa bản địa hóa",
+      "choose_locale": "Chọn ngôn ngữ",
+      "translation_locale": "Ngôn ngữ bản dịch",
+      "add_locale_first": "Thêm ngôn ngữ khác trong i18n constants trước khi tạo bản dịch.",
+      "source": "Nguồn",
+      "save_locale_copy": "Lưu bản {locale}"
+    },
+    "venue_localization": {
+      "title": "Thông tin địa điểm đã bản địa hóa",
+      "desc": "Tiếng Việt là nội dung gốc. Thêm nội dung dịch cho từng ngôn ngữ công khai.",
+      "name_placeholder": "Tên địa điểm đã bản địa hóa",
+      "description_placeholder": "Mô tả địa điểm đã bản địa hóa",
+      "city_placeholder": "Tỉnh/thành phố đã bản địa hóa",
+      "address_placeholder": "Địa chỉ đã bản địa hóa",
+      "saved": "Đã lưu nội dung địa điểm đã bản địa hóa",
+      "save_failed": "Không thể lưu nội dung địa điểm đã bản địa hóa"
     },
     "columns": {
       "event": "Sự kiện",

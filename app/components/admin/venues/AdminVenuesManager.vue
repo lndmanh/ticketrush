@@ -118,12 +118,26 @@
                   <FieldLabel for="venue-dialog-city">
                     {{ $t('admin.venues.city') }}
                   </FieldLabel>
-                  <Input
-                    id="venue-dialog-city"
+                  <Select
                     :model-value="field.value"
-                    :aria-invalid="!!errors.length"
                     @update:model-value="field.onChange"
-                  />
+                  >
+                    <SelectTrigger
+                      id="venue-dialog-city"
+                      :aria-invalid="!!errors.length"
+                    >
+                      <SelectValue :placeholder="$t('admin.venues.city')" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem
+                        v-for="province in VIETNAM_PROVINCE_OPTIONS"
+                        :key="province.value"
+                        :value="province.value"
+                      >
+                        {{ getProvinceOptionLabel(province.label) }}
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
                   <FieldError
                     v-if="errors.length"
                     :errors="errors"
@@ -228,6 +242,7 @@ import { toast } from 'vue-sonner'
 import type { Venue } from '#shared/db'
 import { venueBuilderSchema } from '#shared/schemas/ticketingSchema'
 import type { VenueBuilderInput } from '#shared/schemas/ticketingSchema'
+import { VIETNAM_PROVINCE_OPTIONS, type VietnamProvinceName } from '#shared/constants/vietnamProvinces'
 import { Rows3 } from '@lucide/vue'
 import DataTable from '@/components/DataTable.vue'
 import { apiRequest } from '@/utils/apiRequest'
@@ -318,12 +333,13 @@ const venues = ref<Venue[]>([])
 const tableLoading = ref(false)
 const dialogLoading = ref(false)
 const showDialog = ref(false)
+const { t, locale } = useI18n()
 
 const defaultValues: VenueBuilderInput = {
   slug: '',
   name: '',
   description: '',
-  city: 'Ho Chi Minh City',
+  city: 'ho_chi_minh_city',
   country: 'Vietnam',
   address: '',
   coverImage: '',
@@ -366,6 +382,10 @@ function buildVenuePayload(formValues: VenueBuilderInput) {
   }
 }
 
+function getProvinceOptionLabel(label: VietnamProvinceName) {
+  return locale.value === 'en' ? label.en : label.vi
+}
+
 const onSubmit = handleSubmit(
   async (formValues) => {
     try {
@@ -376,12 +396,12 @@ const onSubmit = handleSubmit(
       })
       if (!response.success) throw response
 
-      toast.success('Venue created successfully')
+      toast.success(t('admin.venues.created'))
       closeDialog()
       await fetchVenues()
     }
     catch (error) {
-      const message = parseApiError(error, 'Failed to save the venue blueprint').message
+      const message = parseApiError(error, t('admin.venues.create_failed')).message
       const structuredIssue = getIssueFieldAndMessage(error)
       if (structuredIssue) {
         setFieldError(structuredIssue.field, structuredIssue.message)
@@ -401,7 +421,7 @@ const onSubmit = handleSubmit(
     }
   },
   ({ errors }) => {
-    const firstError = Object.values(errors).flat().filter(Boolean)[0] || 'Please fix the errors above'
+    const firstError = Object.values(errors).flat().filter(Boolean)[0] || t('admin.venues.fix_errors')
     toast.error(firstError)
   },
 )
@@ -437,7 +457,7 @@ function closeDialog() {
   resetForm({ values: { ...defaultValues } })
 }
 
-const columns = computed(() => createColumns(openStudio))
+const columns = computed(() => createColumns(openStudio, t, () => locale.value))
 
 onMounted(() => {
   fetchVenues()
