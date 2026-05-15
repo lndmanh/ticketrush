@@ -342,7 +342,13 @@
     "trust_attendees_title": "Saved attendees",
     "trust_attendees_desc": "Reuse profiles when booking for a group.",
     "trust_reserved_title": "Reserved seating",
-    "trust_reserved_desc": "Move straight from session to seat map."
+    "trust_reserved_desc": "Move straight from session to seat map.",
+    "big_event": "Big event",
+    "upcoming_carousel_eyebrow": "Upcoming events",
+    "upcoming_carousel_title": "More shows opening soon",
+    "upcoming_carousel_empty": "More upcoming events will appear here soon.",
+    "carousel_previous": "Previous event",
+    "carousel_next": "Next event"
   },
   "events": {
     "page_title": "Events",
