@@ -2,6 +2,7 @@
 import { ArrowRight, CalendarRange, MapPin, Ticket } from '@lucide/vue'
 import { getDisplayDateLocale } from '@/lib/localizedEvents'
 import { EventStatus } from '#shared/commonEnums'
+import { getVietnamProvinceName } from '#shared/constants/vietnamProvinces'
 
 interface EventCardProps {
   event: {
@@ -28,7 +29,7 @@ const { t, locale } = useI18n()
 const localePath = useLocalePath()
 
 const localizedVenueName = computed(() => props.event.venue?.name)
-const localizedCityName = computed(() => props.event.venue?.city)
+const localizedCityName = computed(() => getVietnamProvinceName(props.event.venue?.city, locale.value))
 
 const firstSessionStartsAt = computed(() => {
   const sessions = props.event.sessions ?? []

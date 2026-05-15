@@ -5,6 +5,7 @@ import type { DateValue } from '@internationalized/date'
 import type { ApiResponse, PaginatedApiResponse } from '~~/types/api'
 import type { EventCatalogItem, EventCatalogLocationOptions } from '~~/types/events'
 import { EventCatalogSort } from '#shared/commonEnums'
+import { getVietnamProvinceName } from '#shared/constants/vietnamProvinces'
 
 const EVENTS_PAGE_SIZE = 9
 
@@ -183,7 +184,7 @@ const locationOptions = computed<string[]>(() => {
   }
 
   for (const city of data.cities) {
-    locations.add(city)
+    locations.add(getVietnamProvinceName(city, locale.value))
   }
 
   for (const area of data.areas) {

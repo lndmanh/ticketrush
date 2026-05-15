@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { getDisplayDateLocale } from '@/lib/localizedEvents'
 import { apiRoutes } from '#shared/apiRoutes'
+import { getVietnamProvinceName } from '#shared/constants/vietnamProvinces'
 import type { EventDetailResponse } from '~~/types/events'
 
 const route = useRoute()
@@ -56,7 +57,7 @@ const venueLabel = computed(() => {
     return 'Venue to be announced'
   }
 
-  return `${venue.value.name}, ${venue.value.city}`
+  return `${venue.value.name}, ${getVietnamProvinceName(venue.value.city, locale.value)}`
 })
 
 const sectionPriceCount = computed(() => {

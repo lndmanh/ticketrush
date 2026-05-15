@@ -15,6 +15,7 @@ import { Motion, motion } from 'motion-v'
 import type { PaginatedApiResponse } from '~~/types/api'
 import type { EventCatalogItem, EventCatalogQueryOptions } from '~~/types/events'
 import { EventCatalogSort } from '#shared/commonEnums'
+import { getVietnamProvinceName } from '#shared/constants/vietnamProvinces'
 
 const { t, locale } = useI18n()
 
@@ -77,7 +78,7 @@ const featuredEventsEmptyMessage = computed(() => {
 const featuredUniqueCities = computed(() => {
   const citySet = new Set(
     featuredEvents.value
-      .map(event => event.venue?.city?.trim())
+      .map(event => getVietnamProvinceName(event.venue?.city, locale.value))
       .filter((city): city is string => Boolean(city)),
   )
 
@@ -348,7 +349,7 @@ definePageMeta({
                   <div class="space-y-3">
                     <p class="flex items-center gap-2 text-xs font-medium uppercase tracking-[0.22em] text-muted-foreground">
                       <MapPin class="size-4" />
-                      {{ heroPreviewEvent.venue?.city || $t('home.live_soon') }}
+                      {{ getVietnamProvinceName(heroPreviewEvent.venue?.city, locale) || $t('home.live_soon') }}
                     </p>
                     <h3 class="text-balance text-4xl font-semibold leading-[1.02] tracking-[-0.06em] md:text-5xl">
                       {{ heroPreviewEvent.title }}
