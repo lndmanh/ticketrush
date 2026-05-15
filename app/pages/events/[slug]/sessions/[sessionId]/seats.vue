@@ -175,6 +175,14 @@ const selectedTicketCount = computed(() => {
   return selectedSeatIds.value.length + (previewSeat.value ? 1 : 0)
 })
 
+const checkoutSeatIds = computed(() => {
+  if (!previewSeat.value || selectedSeatIds.value.includes(previewSeat.value.id)) {
+    return selectedSeatIds.value
+  }
+
+  return [...selectedSeatIds.value, previewSeat.value.id]
+})
+
 const totalValue = computed(() => {
   return selectedSeats.value.reduce((total, seat) => total + seat.priceCents, 0)
 })
@@ -421,17 +429,19 @@ async function handleRealtimeMessage(rawValue: string) {
 }
 
 async function reserveSeats() {
-  if (!session.value || sessionUnavailableError.value || selectedSeatIds.value.length === 0) {
+  if (!session.value || sessionUnavailableError.value || checkoutSeatIds.value.length === 0) {
     return
   }
 
   isSubmitting.value = true
 
+  const seatIdsToReserve = checkoutSeatIds.value
+
   try {
     const holdResponse = await apiRequest<ApiResponse<HoldData>>(apiRoutes.eventSessionHolds(sessionPublicId.value), {
       method: 'POST',
       body: {
-        eventSeatIds: selectedSeatIds.value,
+        eventSeatIds: seatIdsToReserve,
         idempotencyKey: crypto.randomUUID(),
         passToken: passToken.value,
       },
@@ -896,7 +906,7 @@ definePageMeta({
 
               <Button
                 size="lg"
-                :disabled="selectedSeatIds.length === 0"
+                :disabled="checkoutSeatIds.length === 0"
                 :is-loading="isSubmitting"
                 @click="reserveSeats"
               >
