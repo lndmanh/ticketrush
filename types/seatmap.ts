@@ -1,5 +1,5 @@
 import type { PublicTicketTypeSummary } from '~~/types/events'
-import type { SeatPricingSource as SeatPricingSourceEnum, SeatStatus as SeatStatusEnum } from '#shared/commonEnums'
+import type { SeatPricingSource as SeatPricingSourceEnum, SeatStatus as SeatStatusEnum, SeatLayoutMode } from '#shared/commonEnums'
 
 export type SeatMapStatus = `${SeatStatusEnum}`
 
@@ -10,7 +10,15 @@ export interface SeatMapSeat {
   venueSeatId?: number | null
   venueSectionId?: number | null
   ticketTypeId?: number | null
+  sectionKeySnapshot?: string | null
+  sectionCodeSnapshot?: string | null
   sectionNameSnapshot: string
+  sectionColorSnapshot?: string | null
+  sectionGridXSnapshot?: number | null
+  sectionGridYSnapshot?: number | null
+  sectionGridWSnapshot?: number | null
+  sectionGridHSnapshot?: number | null
+  sectionSeatLayoutModeSnapshot?: SeatLayoutMode | null
   rowLabelSnapshot: string | null
   seatLabelSnapshot: string
   displayX?: number | null
@@ -60,6 +68,11 @@ export interface SeatMapSection {
   code: string
   name: string
   color: string
+  gridX: number
+  gridY: number
+  gridW: number
+  gridH: number
+  seatLayoutMode: SeatLayoutMode
   seats: SeatMapSeat[]
   rows: SeatMapRow[]
   metrics: {
@@ -86,6 +99,19 @@ export interface SeatMapLayout {
   seatOverrideBySeatId: Map<number, SeatMapSeatOverrideSummary>
   ticketTypeById: Map<number, SeatMapTicketType>
   ticketTypeBySectionId: Map<number, SeatMapTicketType>
+}
+
+export interface SeatMapSeatClickPayload {
+  seat: SeatMapSeat
+  section: {
+    key: string
+    code: string
+    name: string
+  }
+  row: {
+    label: string
+  }
+  selected: boolean
 }
 
 export interface SessionSeatMapSeat extends SeatMapSeat {

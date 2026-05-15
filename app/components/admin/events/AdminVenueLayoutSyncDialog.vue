@@ -31,7 +31,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:open': [value: boolean]
-  applied: []
+  'applied': []
 }>()
 
 const { t } = useI18n()

@@ -2,7 +2,7 @@ import { sqliteTable, text, integer, unique, index, foreignKey } from 'drizzle-o
 import { relations } from 'drizzle-orm'
 import type { WebAuthnCredential } from '#auth-utils'
 import type { AgeBracket, AuthTokenType, SavedAttendeeGender as CommonSavedAttendeeGender, SeatPricingSource } from '#shared/commonEnums'
-import { EventDraftAutosaveStatus, EventStatus, HoldStatus, OrderStatus, PricingMode, QueueStatus, SeatStatus, TicketStatus } from '#shared/commonEnums'
+import { EventDraftAutosaveStatus, EventStatus, HoldStatus, OrderStatus, PricingMode, QueueStatus, SeatLayoutMode, SeatStatus, TicketStatus } from '#shared/commonEnums'
 
 const timestampColumns = {
   createdAt: integer('created_at', { mode: 'timestamp' })
@@ -113,6 +113,11 @@ export const venueSections = sqliteTable('venue_sections', {
   name: text('name').notNull(),
   color: text('color').notNull().default('#8B5CF6'),
   sortOrder: integer('sort_order').notNull().default(0),
+  gridX: integer('grid_x').notNull().default(0),
+  gridY: integer('grid_y').notNull().default(0),
+  gridW: integer('grid_w').notNull().default(25),
+  gridH: integer('grid_h').notNull().default(4),
+  seatLayoutMode: text('seat_layout_mode').notNull().default(SeatLayoutMode.Automatic).$type<SeatLayoutMode>(),
   ...timestampColumns,
 }, table => [
   unique().on(table.venueId, table.layoutVersion, table.code),

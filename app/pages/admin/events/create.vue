@@ -15,7 +15,8 @@ import type { ApiResponse } from '~~/types/api'
 import type { AutosaveDraftDeleteData, AutosaveDraftDetail } from '~~/types/admin-events'
 import type { SeatMapSeat } from '~~/types/seatmap'
 import type { VenueDetail, VenueDetailSection } from '~~/types/venues'
-import { EventStatus, PricingMode, SeatPricingSource, SeatStatus } from '#shared/commonEnums'
+import { EventStatus, PricingMode } from '#shared/commonEnums'
+import { createVenueSeatMapPreviewSeats } from '@/lib/venueSeatMapPreview'
 
 interface VenueOption {
   id: number
@@ -501,25 +502,19 @@ const previewSeats = computed<SeatMapSeat[]>(() => {
   }
 
   const firstSession = values.sessions?.[0]
+  const sectionPriceBySectionId = new Map(firstSession?.sectionPrices.map(sectionPrice => [sectionPrice.venueSectionId, sectionPrice]) ?? [])
 
-  return selectedVenueDetail.value.sections.flatMap(section => section.rows.flatMap((row, rowIndex) => row.seats.map((seat) => {
-    const sectionPrice = firstSession?.sectionPrices.find(price => price.venueSectionId === section.id)
+  return createVenueSeatMapPreviewSeats(selectedVenueDetail.value.sections).map((seat) => {
+    const sectionPrice = typeof seat.venueSectionId === 'number'
+      ? sectionPriceBySectionId.get(seat.venueSectionId)
+      : undefined
 
     return {
-      id: seat.id,
-      venueSectionId: section.id,
-      ticketTypeId: null,
-      sectionNameSnapshot: section.name,
-      rowLabelSnapshot: row.label,
-      seatLabelSnapshot: seat.label,
-      displayX: Math.max(seat.seatNumber - 1, 0),
-      displayY: rowIndex,
-      status: SeatStatus.Available,
+      ...seat,
       priceCents: sectionPrice?.priceCents ?? 0,
       currency: sectionPrice?.currency ?? firstSession?.currency ?? 'VND',
-      pricingSource: SeatPricingSource.Section,
     }
-  })))
+  })
 })
 
 const totalRows = computed(() => selectedVenueDetail.value?.sections.reduce((count, section) => count + section.rows.length, 0) ?? 0)

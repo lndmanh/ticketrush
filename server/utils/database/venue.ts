@@ -6,6 +6,7 @@ import { createPublicVenueId } from '~~/server/utils/ticketing/ids'
 import type { VenueDetail } from '~~/types/venues'
 import { sourceLocale } from '~~/i18n-constants'
 import { localizeVenue, normalizeTranslationText, resolveContentLocale } from '~~/server/utils/i18n/content-localization'
+import { createDefaultSectionGridPlacement } from '~~/app/lib/seatmapGrid'
 
 const D1_INSERT_BATCH_SIZE = 5
 type VenueTransaction = ReturnType<typeof useDB>
@@ -99,9 +100,11 @@ class VenueService extends IDatabaseService<Venue> {
           .all()
       : []
 
+    const normalizedSections = this.normalizeSectionGridPlacements(sections)
+
     return {
       venue: localizeVenue(venue, translation),
-      sections: sections
+      sections: normalizedSections
         .sort((left, right) => left.sortOrder - right.sortOrder)
         .map(section => ({
           id: section.id,
@@ -109,6 +112,11 @@ class VenueService extends IDatabaseService<Venue> {
           name: section.name,
           color: section.color,
           sortOrder: section.sortOrder,
+          gridX: section.gridX,
+          gridY: section.gridY,
+          gridW: section.gridW,
+          gridH: section.gridH,
+          seatLayoutMode: section.seatLayoutMode,
           rows: rows
             .filter(row => row.sectionId === section.id)
             .sort((left, right) => left.sortOrder - right.sortOrder)
@@ -328,6 +336,11 @@ class VenueService extends IDatabaseService<Venue> {
           name: section.name,
           color: section.color,
           sortOrder: section.sortOrder,
+          gridX: section.gridX,
+          gridY: section.gridY,
+          gridW: section.gridW,
+          gridH: section.gridH,
+          seatLayoutMode: section.seatLayoutMode,
           createdAt: timestamp,
           updatedAt: timestamp,
         })
@@ -468,13 +481,18 @@ class VenueService extends IDatabaseService<Venue> {
   }
 
   private normalizeLayoutForComparison(sections: Array<typeof tables.venueSections.$inferSelect>, rows: Array<typeof tables.venueRows.$inferSelect>, seats: Array<typeof tables.venueSeats.$inferSelect>) {
-    return sections
+    return [...sections]
       .sort((left, right) => left.sortOrder - right.sortOrder)
       .map(section => ({
         code: section.code,
         name: section.name,
         color: section.color,
         sortOrder: section.sortOrder,
+        gridX: section.gridX,
+        gridY: section.gridY,
+        gridW: section.gridW,
+        gridH: section.gridH,
+        seatLayoutMode: section.seatLayoutMode,
         rows: rows
           .filter(row => row.sectionId === section.id)
           .sort((left, right) => left.sortOrder - right.sortOrder)
@@ -498,15 +516,22 @@ class VenueService extends IDatabaseService<Venue> {
   }
 
   private normalizeSubmittedLayout(sections: VenueSectionDraftInput[]) {
-    return sections.map(section => ({
+    const sortedSections = [...sections].sort((left, right) => left.sortOrder - right.sortOrder)
+
+    return sortedSections.map(section => ({
       code: section.code,
       name: section.name,
       color: section.color,
       sortOrder: section.sortOrder,
-      rows: section.rows.map(row => ({
+      gridX: section.gridX,
+      gridY: section.gridY,
+      gridW: section.gridW,
+      gridH: section.gridH,
+      seatLayoutMode: section.seatLayoutMode,
+      rows: [...section.rows].sort((left, right) => left.sortOrder - right.sortOrder).map(row => ({
         label: row.label,
         sortOrder: row.sortOrder,
-        seats: row.seats.map(seat => ({
+        seats: [...row.seats].sort((left, right) => left.sortOrder - right.sortOrder).map(seat => ({
           label: seat.label,
           seatNumber: seat.seatNumber,
           x: seat.x,
@@ -521,6 +546,47 @@ class VenueService extends IDatabaseService<Venue> {
 
   private hasLayoutChanged(currentTree: { sections: Array<typeof tables.venueSections.$inferSelect>, rows: Array<typeof tables.venueRows.$inferSelect>, seats: Array<typeof tables.venueSeats.$inferSelect> }, sections: VenueSectionDraftInput[]) {
     return JSON.stringify(this.normalizeLayoutForComparison(currentTree.sections, currentTree.rows, currentTree.seats)) !== JSON.stringify(this.normalizeSubmittedLayout(sections))
+  }
+
+  private normalizeSectionGridPlacements(sections: Array<typeof tables.venueSections.$inferSelect>) {
+    const sortedSections = [...sections].sort((left, right) => left.sortOrder - right.sortOrder)
+    if (sortedSections.length === 1 && sortedSections[0].gridX === 0 && sortedSections[0].gridY === 0 && sortedSections[0].gridW === 6 && sortedSections[0].gridH === 4) {
+      return [{ ...sortedSections[0], gridW: 25 }]
+    }
+
+    if (!this.hasSectionGridOverlap(sortedSections)) {
+      return sortedSections
+    }
+
+    return sortedSections.map((section, sectionIndex) => {
+      const placement = createDefaultSectionGridPlacement(sectionIndex)
+      return {
+        ...section,
+        gridX: placement.gridX,
+        gridY: placement.gridY,
+        gridW: placement.gridW,
+        gridH: placement.gridH,
+      }
+    })
+  }
+
+  private hasSectionGridOverlap(sections: Array<Pick<typeof tables.venueSections.$inferSelect, 'gridX' | 'gridY' | 'gridW' | 'gridH'>>) {
+    const occupiedCells = new Set<string>()
+
+    for (const section of sections) {
+      for (let y = section.gridY; y < section.gridY + section.gridH; y += 1) {
+        for (let x = section.gridX; x < section.gridX + section.gridW; x += 1) {
+          const cellKey = `${x}:${y}`
+          if (occupiedCells.has(cellKey)) {
+            return true
+          }
+
+          occupiedCells.add(cellKey)
+        }
+      }
+    }
+
+    return false
   }
 
   private validateLineageAgainstCurrentTree(currentTree: { sections: Array<typeof tables.venueSections.$inferSelect>, rows: Array<typeof tables.venueRows.$inferSelect>, seats: Array<typeof tables.venueSeats.$inferSelect> }, sections: VenueSectionDraftInput[]) {

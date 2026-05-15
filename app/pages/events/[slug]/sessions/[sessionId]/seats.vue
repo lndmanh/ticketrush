@@ -12,6 +12,7 @@ import type { EventSessionDetailResponse } from '~~/types/events'
 import type { HoldData, EventSessionGateResponse } from '~~/types/ticketing'
 import type { SessionSeatMapResponse } from '~~/types/seatmap'
 import { SeatStatus } from '#shared/commonEnums'
+import { CashAppIcon } from 'vue3-simple-icons'
 
 const route = useRoute()
 const slug = computed(() => {
@@ -48,8 +49,9 @@ const { data: seatMapResponse, refresh: refreshSeatMap, error: seatMapFetchError
 })
 const seatMap = computed(() => seatMapResponse.value?.success ? seatMapResponse.value.data : null)
 const selectedSeatIds = ref<number[]>([])
-const previewSeatId = ref<number | null>(null)
-const previewTicketItem = ref<HTMLElement | null>(null)
+const previewSeatIds = ref<number[]>([])
+const previewTicketItems = new Map<number, HTMLElement>()
+const selectedTicketItems = new Map<number, HTMLElement>()
 const isSubmitting = ref(false)
 const checkoutUnavailableError = ref<ReturnType<typeof parseApiError> | null>(null)
 const realtimeStatus = ref<'connecting' | 'connected' | 'disconnected'>('connecting')
@@ -155,24 +157,22 @@ const selectedSeatsBySection = computed(() => {
   return [...groups.entries()].map(([name, seats]) => ({ name, seats }))
 })
 
-const previewSeat = computed(() => {
-  if (previewSeatId.value === null) {
-    return null
-  }
+const previewSeats = computed(() => {
+  const seats = seatMap.value?.seats ?? []
 
-  return (seatMap.value?.seats ?? []).find(seat => seat.id === previewSeatId.value) ?? null
+  return previewSeatIds.value.flatMap((seatId) => {
+    const seat = seats.find(currentSeat => currentSeat.id === seatId)
+
+    return seat ? [seat] : []
+  })
 })
 
 const seatMapSelectedSeatIds = computed(() => {
-  if (!previewSeat.value || selectedSeatIds.value.includes(previewSeat.value.id)) {
-    return selectedSeatIds.value
-  }
-
-  return [...selectedSeatIds.value, previewSeat.value.id]
+  return [...selectedSeatIds.value, ...previewSeatIds.value.filter(seatId => !selectedSeatIds.value.includes(seatId))]
 })
 
 const selectedTicketCount = computed(() => {
-  return selectedSeatIds.value.length + (previewSeat.value ? 1 : 0)
+  return selectedSeatIds.value.length + previewSeats.value.length
 })
 
 const totalValue = computed(() => {
@@ -180,11 +180,11 @@ const totalValue = computed(() => {
 })
 
 const previewTotalValue = computed(() => {
-  return totalValue.value + (previewSeat.value?.priceCents ?? 0)
+  return previewSeats.value.reduce((total, seat) => total + seat.priceCents, totalValue.value)
 })
 
 const previewTotalCurrency = computed(() => {
-  return previewSeat.value?.currency ?? selectedSeats.value[0]?.currency ?? 'VND'
+  return previewSeats.value[0]?.currency ?? selectedSeats.value[0]?.currency ?? 'VND'
 })
 
 const inventoryStatusLabel = computed(() => {
@@ -273,25 +273,57 @@ function formatSeatLabel(seat: { sectionNameSnapshot: string, rowLabelSnapshot: 
   return `${seat.sectionNameSnapshot} · ${rowLabel}${seat.seatLabelSnapshot}`
 }
 
-async function scrollToPreviewTicket() {
+function setPreviewTicketItemRef(seatId: number, element: unknown) {
+  if (element instanceof HTMLElement) {
+    previewTicketItems.set(seatId, element)
+    return
+  }
+
+  previewTicketItems.delete(seatId)
+}
+
+async function scrollToPreviewTicket(seatId: number) {
   await nextTick()
-  previewTicketItem.value?.scrollIntoView({
+  previewTicketItems.get(seatId)?.scrollIntoView({
     block: 'nearest',
     behavior: 'smooth',
   })
 }
 
-function clearPreviewSeat() {
-  previewSeatId.value = null
-}
-
-function confirmPreviewSeat() {
-  if (!previewSeat.value) {
+function setSelectedTicketItemRef(seatId: number, element: unknown) {
+  if (element instanceof HTMLElement) {
+    selectedTicketItems.set(seatId, element)
     return
   }
 
-  if (selectedSeatIds.value.includes(previewSeat.value.id)) {
-    previewSeatId.value = null
+  selectedTicketItems.delete(seatId)
+}
+
+async function scrollToSelectedTicket(seatId: number) {
+  await nextTick()
+  selectedTicketItems.get(seatId)?.scrollIntoView({
+    block: 'nearest',
+    behavior: 'smooth',
+  })
+}
+
+function clearPreviewSeat(seatId: number) {
+  previewSeatIds.value = previewSeatIds.value.filter(previewSeatId => previewSeatId !== seatId)
+}
+
+function clearAllPreviewSeats() {
+  previewSeatIds.value = []
+}
+
+function confirmPreviewSeat(seatId: number) {
+  const previewSeat = previewSeats.value.find(seat => seat.id === seatId)
+
+  if (!previewSeat) {
+    return
+  }
+
+  if (selectedSeatIds.value.includes(previewSeat.id)) {
+    clearPreviewSeat(previewSeat.id)
     return
   }
 
@@ -300,21 +332,39 @@ function confirmPreviewSeat() {
     return
   }
 
-  selectedSeatIds.value = [...selectedSeatIds.value, previewSeat.value.id]
-  previewSeatId.value = null
+  selectedSeatIds.value = [...selectedSeatIds.value, previewSeat.id]
+  clearPreviewSeat(previewSeat.id)
+}
+
+function confirmAllPreviewSeats() {
+  const previewSeatIdsToConfirm = previewSeats.value
+    .filter(seat => !selectedSeatIds.value.includes(seat.id))
+    .map(seat => seat.id)
+
+  if (previewSeatIdsToConfirm.length === 0) {
+    clearAllPreviewSeats()
+    return
+  }
+
+  if (selectedSeatIds.value.length + previewSeatIdsToConfirm.length > 10) {
+    toast.error('You can select up to 10 seats.')
+    return
+  }
+
+  selectedSeatIds.value = [...selectedSeatIds.value, ...previewSeatIdsToConfirm]
+  clearAllPreviewSeats()
 }
 
 function removeSelectedSeat(seatId: number) {
   selectedSeatIds.value = selectedSeatIds.value.filter(id => id !== seatId)
 
-  if (previewSeatId.value === seatId) {
-    previewSeatId.value = null
-  }
+  clearPreviewSeat(seatId)
 }
 
 function removeSectionSeats(seatIds: number[]) {
   const removeSet = new Set(seatIds)
   selectedSeatIds.value = selectedSeatIds.value.filter(id => !removeSet.has(id))
+  previewSeatIds.value = previewSeatIds.value.filter(id => !removeSet.has(id))
 }
 
 function removeAllSelectedSeats() {
@@ -323,22 +373,22 @@ function removeAllSelectedSeats() {
 
 function toggleSeat(seatId: number) {
   if (selectedSeatIds.value.includes(seatId)) {
-    removeSelectedSeat(seatId)
+    void scrollToSelectedTicket(seatId)
     return
   }
 
-  if (previewSeatId.value === seatId) {
-    previewSeatId.value = null
+  if (previewSeatIds.value.includes(seatId)) {
+    clearPreviewSeat(seatId)
     return
   }
 
-  if (selectedSeatIds.value.length >= 10) {
+  if (selectedSeatIds.value.length + previewSeatIds.value.length >= 10) {
     toast.error('You can select up to 10 seats.')
     return
   }
 
-  previewSeatId.value = seatId
-  void scrollToPreviewTicket()
+  previewSeatIds.value = [...previewSeatIds.value, seatId]
+  void scrollToPreviewTicket(seatId)
 }
 
 function applySeatChanges(changes: SeatStatusDeltaChange[], version: number) {
@@ -496,7 +546,7 @@ watch(sessionUnavailableError, (value) => {
   }
 
   selectedSeatIds.value = []
-  previewSeatId.value = null
+  previewSeatIds.value = []
   realtimeStatus.value = 'disconnected'
   stopSeatMapRefresh()
 }, { immediate: true })
@@ -518,17 +568,18 @@ watch(seatMap, (value) => {
 
   const nextSelectedSeatIds = selectedSeatIds.value.filter(seatId => availableSeatIds.has(seatId))
   const selectedSeatsChanged = nextSelectedSeatIds.length !== selectedSeatIds.value.length
-  const previewSeatWasTaken = previewSeatId.value !== null && !availableSeatIds.has(previewSeatId.value)
+  const nextPreviewSeatIds = previewSeatIds.value.filter(seatId => availableSeatIds.has(seatId))
+  const previewSeatsChanged = nextPreviewSeatIds.length !== previewSeatIds.value.length
 
   if (selectedSeatsChanged) {
     selectedSeatIds.value = nextSelectedSeatIds
   }
 
-  if (previewSeatWasTaken) {
-    previewSeatId.value = null
+  if (previewSeatsChanged) {
+    previewSeatIds.value = nextPreviewSeatIds
   }
 
-  if (selectedSeatsChanged || previewSeatWasTaken) {
+  if (selectedSeatsChanged || previewSeatsChanged) {
     toast.error('One or more selected seats were taken by another customer.')
   }
 }, { deep: true, immediate: true })
@@ -662,8 +713,8 @@ definePageMeta({
     </header>
 
     <section class="grid min-h-0 gap-3 overflow-hidden p-3 md:p-4 lg:grid-cols-[minmax(0,1fr)_minmax(24rem,28rem)]">
-      <div class="flex min-h-0 flex-col overflow-hidden rounded-[1.75rem] border bg-background/95 shadow-sm">
-        <div class="min-h-0 flex-1 overflow-hidden p-3 md:p-4 [&>section]:flex [&>section]:h-full [&>section]:min-h-0 [&>section]:flex-col [&_[data-slot=scroll-area]]:min-h-0">
+      <Card class="flex min-h-0 flex-col overflow-hidden py-0">
+        <CardContent class="min-h-0 flex-1 overflow-hidden [&>section]:flex [&>section]:h-full [&>section]:min-h-0 [&>section]:flex-col [&_[data-slot=scroll-area]]:min-h-0">
           <TicketEventSeatMapExperience
             :seats="seatMap.seats"
             :ticket-types="seatMap.ticketTypes ?? []"
@@ -674,36 +725,21 @@ definePageMeta({
             :action-label="null"
             @toggle="toggleSeat"
           />
-        </div>
-      </div>
+        </CardContent>
+      </Card>
 
-      <Card class="flex min-h-0 overflow-hidden">
-        <CardHeader class="shrink-0 border-b py-3">
-          <div class="flex items-center gap-2.5">
-            <div class="flex size-8 shrink-0 items-center justify-center rounded-xl border bg-primary/10 text-primary">
-              <ShoppingBag class="size-4" />
-            </div>
-            <CardTitle class="text-base">
-              {{ $t('seats.selection_summary') }}
-            </CardTitle>
-          </div>
-        </CardHeader>
-
-        <CardContent class="flex min-h-0 flex-1 flex-col gap-4 p-0">
+      <Card class="flex min-h-0 overflow-hidden pt-0 gap-0!">
+        <CardContent class="flex min-h-0 flex-1 flex-col gap-4 !p-0">
           <ScrollArea class="min-h-0 flex-1 px-4 py-4 md:px-5">
             <div class="space-y-5 pb-2">
               <section
-                v-if="previewSeat"
-                ref="previewTicketItem"
+                v-if="previewSeats.length > 0"
                 class="scroll-mt-4"
               >
                 <div class="mb-2 flex items-center justify-between gap-3">
                   <div>
                     <p class="text-xs font-medium uppercase tracking-[0.22em] text-primary">
-                      Preview ticket
-                    </p>
-                    <p class="text-sm text-muted-foreground">
-                      Confirm this seat to include it at checkout.
+                      Preview tickets
                     </p>
                   </div>
                   <div class="flex items-center gap-1">
@@ -713,8 +749,8 @@ definePageMeta({
                       variant="ghost"
                       class="text-muted-foreground hover:text-destructive"
                       title="Cancel preview"
-                      :aria-label="'Cancel preview seat'"
-                      @click="clearPreviewSeat"
+                      :aria-label="'Cancel all preview seats'"
+                      @click="clearAllPreviewSeats"
                     >
                       <XCircle class="size-4" />
                     </Button>
@@ -724,57 +760,65 @@ definePageMeta({
                       variant="ghost"
                       class="text-primary"
                       title="Confirm preview seat"
-                      :aria-label="'Confirm preview seat'"
-                      @click="confirmPreviewSeat"
+                      :aria-label="'Confirm all preview seats'"
+                      @click="confirmAllPreviewSeats"
                     >
                       <CheckCircle2 class="size-4" />
                     </Button>
                     <span class="ml-1 inline-flex items-center gap-1 rounded-full border border-primary/20 bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
                       <Sparkles class="size-3.5" />
-                      New
+                      {{ previewSeats.length }} new
                     </span>
                   </div>
                 </div>
 
-                <ItemGroup>
-                  <Item class="relative isolate overflow-hidden border-dashed border-primary/40 bg-gradient-to-br from-primary/15 via-background to-background shadow-[0_18px_60px_-36px_hsl(var(--primary))]">
-                    <div class="pointer-events-none absolute -right-10 -top-10 size-28 rounded-full bg-primary/15 blur-2xl" />
-                    <ItemMedia
-                      variant="icon"
-                      class="border-primary/25 bg-primary text-primary-foreground"
+                <ItemGroup class="gap-3">
+                  <div
+                    v-for="previewSeat in previewSeats"
+                    :key="previewSeat.id"
+                    :ref="element => setPreviewTicketItemRef(previewSeat.id, element)"
+                  >
+                    <Item
+                      class="relative isolate overflow-hidden border-dashed border-primary/40 bg-gradient-to-br from-primary/15 via-background to-background shadow-[0_18px_60px_-36px_hsl(var(--primary))]"
                     >
-                      <TicketPlus class="size-4" />
-                    </ItemMedia>
-                    <ItemContent class="relative">
-                      <ItemTitle>{{ formatSeatLabel(previewSeat) }}</ItemTitle>
-                    </ItemContent>
-                    <div class="relative ml-auto text-right">
-                      <p class="font-mono text-sm font-semibold text-foreground">
-                        {{ formatCurrency(previewSeat.priceCents, previewSeat.currency) }}
-                      </p>
-                      <p class="text-xs text-muted-foreground">
-                        Expected add-on
-                      </p>
-                    </div>
-                    <ItemActions class="relative w-full justify-end sm:w-auto">
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        @click="clearPreviewSeat"
+                      <div class="pointer-events-none absolute -right-10 -top-10 size-28 rounded-full bg-primary/15 blur-2xl" />
+                      <ItemMedia
+                        variant="icon"
+                        class="border-primary/25 bg-primary text-primary-foreground"
                       >
-                        Cancel
-                      </Button>
-                      <Button
-                        type="button"
-                        size="sm"
-                        @click="confirmPreviewSeat"
-                      >
-                        <CheckCircle2 class="size-4" />
-                        Confirm
-                      </Button>
-                    </ItemActions>
-                  </Item>
+                        <TicketPlus class="size-4" />
+                      </ItemMedia>
+                      <ItemContent class="relative">
+                        <ItemTitle>{{ formatSeatLabel(previewSeat) }}</ItemTitle>
+                      </ItemContent>
+                      <div class="relative ml-auto text-right">
+                        <p class="font-mono text-sm font-semibold text-foreground">
+                          {{ formatCurrency(previewSeat.priceCents, previewSeat.currency) }}
+                        </p>
+                        <p class="text-xs text-muted-foreground">
+                          Expected add-on
+                        </p>
+                      </div>
+                      <ItemActions class="relative w-full justify-end sm:w-auto">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          @click="clearPreviewSeat(previewSeat.id)"
+                        >
+                          Cancel
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          @click="confirmPreviewSeat(previewSeat.id)"
+                        >
+                          <CheckCircle2 class="size-4" />
+                          Confirm
+                        </Button>
+                      </ItemActions>
+                    </Item>
+                  </div>
                 </ItemGroup>
               </section>
 
@@ -783,9 +827,6 @@ definePageMeta({
                   <div>
                     <p class="text-xs font-medium uppercase tracking-[0.22em] text-muted-foreground">
                       Confirmed tickets
-                    </p>
-                    <p class="text-sm text-muted-foreground">
-                      These seats will be held together when you continue.
                     </p>
                   </div>
                   <Button
@@ -824,45 +865,48 @@ definePageMeta({
                       </Button>
                     </div>
 
-                    <ItemGroup>
-                      <Item
+                    <ItemGroup class="gap-2.5">
+                      <div
                         v-for="seat in group.seats"
                         :key="seat.id"
-                        variant="outline"
-                        class="bg-background/80"
+                        :ref="element => setSelectedTicketItemRef(seat.id, element)"
                       >
-                        <ItemMedia variant="icon">
-                          <TicketCheck class="size-4" />
-                        </ItemMedia>
-                        <ItemContent>
-                          <ItemTitle>{{ seat.rowLabelSnapshot ? `${seat.rowLabelSnapshot}-${seat.seatLabelSnapshot}` : seat.seatLabelSnapshot }}</ItemTitle>
-                        </ItemContent>
-                        <div class="ml-auto text-right">
-                          <p class="font-mono text-sm font-semibold text-foreground">
-                            {{ formatCurrency(seat.priceCents, seat.currency) }}
-                          </p>
-                        </div>
-                        <ItemActions class="w-full justify-end sm:w-auto">
-                          <Button
-                            type="button"
-                            size="icon-sm"
-                            variant="ghost"
-                            class="text-muted-foreground hover:text-destructive"
-                            :aria-label="`Remove ${formatSeatLabel(seat)}`"
-                            @click="removeSelectedSeat(seat.id)"
-                          >
-                            <Trash2 class="size-4" />
-                          </Button>
-                        </ItemActions>
-                      </Item>
+                        <Item
+                          variant="outline"
+                          class="bg-background/80"
+                        >
+                          <ItemMedia variant="icon">
+                            <TicketCheck class="size-4" />
+                          </ItemMedia>
+                          <ItemContent>
+                            <ItemTitle>{{ seat.rowLabelSnapshot ? `${seat.rowLabelSnapshot}-${seat.seatLabelSnapshot}` : seat.seatLabelSnapshot }}</ItemTitle>
+                          </ItemContent>
+                          <div class="ml-auto text-right">
+                            <p class="font-mono text-sm font-semibold text-foreground">
+                              {{ formatCurrency(seat.priceCents, seat.currency) }}
+                            </p>
+                          </div>
+                          <ItemActions class="w-full justify-end sm:w-auto">
+                            <Button
+                              type="button"
+                              size="icon-sm"
+                              variant="ghost"
+                              class="text-muted-foreground hover:text-destructive"
+                              :aria-label="`Remove ${formatSeatLabel(seat)}`"
+                              @click="removeSelectedSeat(seat.id)"
+                            >
+                              <Trash2 class="size-4" />
+                            </Button>
+                          </ItemActions>
+                        </Item>
+                      </div>
                     </ItemGroup>
                   </div>
                 </div>
               </section>
 
               <Empty
-                v-if="!previewSeat && selectedSeats.length === 0"
-                class="border border-dashed"
+                v-if="previewSeats.length === 0 && selectedSeats.length === 0"
               >
                 <EmptyHeader>
                   <EmptyMedia variant="icon">
@@ -878,32 +922,31 @@ definePageMeta({
             </div>
           </ScrollArea>
 
-          <div class="shrink-0 border-t bg-background/95 px-4 pb-4 pt-3 md:px-5">
-            <div class="flex items-end justify-between gap-3">
-              <div class="min-w-0">
-                <p class="text-xs text-muted-foreground">
-                  {{ $t('seats.selected_seats', { count: selectedTicketCount }) }}
-                </p>
-                <div class="mt-0.5 flex items-baseline gap-1.5">
-                  <NumberFlow
-                    class="text-2xl font-semibold tabular-nums tracking-tight text-foreground"
-                    :value="previewTotalValue / 100"
-                    :format="{ style: 'decimal', minimumFractionDigits: 0, maximumFractionDigits: 0 }"
-                  />
-                  <span class="text-sm font-medium text-muted-foreground">{{ previewTotalCurrency }}</span>
-                </div>
+          <CardFooter class="flex items-end justify-between gap-3">
+            <div class="min-w-0">
+              <p class="text-xs text-muted-foreground">
+                {{ $t('seats.selected_seats', { count: selectedTicketCount }) }}
+              </p>
+              <div class="mt-0.5 flex items-baseline gap-1.5">
+                <NumberFlow
+                  class="text-2xl font-semibold tabular-nums tracking-tight text-foreground"
+                  :value="previewTotalValue / 100"
+                  :format="{ style: 'decimal', minimumFractionDigits: 0, maximumFractionDigits: 0 }"
+                />
+                <span class="text-sm font-medium text-muted-foreground">{{ previewTotalCurrency }}</span>
               </div>
-
-              <Button
-                size="lg"
-                :disabled="selectedSeatIds.length === 0"
-                :is-loading="isSubmitting"
-                @click="reserveSeats"
-              >
-                {{ $t('seats.continue_to_checkout') }}
-              </Button>
             </div>
-          </div>
+
+            <Button
+              size="lg"
+              :disabled="selectedSeatIds.length === 0"
+              :is-loading="isSubmitting"
+              @click="reserveSeats"
+            >
+              {{ $t('seats.continue_to_checkout') }}
+              <CashAppIcon class="size-4" />
+            </Button>
+          </CardFooter>
         </CardContent>
       </Card>
     </section>

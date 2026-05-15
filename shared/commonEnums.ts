@@ -74,6 +74,11 @@ export enum PricingMode {
   Section = 'section',
 }
 
+export enum SeatLayoutMode {
+  Automatic = 'automatic',
+  Manual = 'manual',
+}
+
 export enum AgeBracket {
   EighteenToTwentyFour = '18-24',
   TwentyFiveToThirtyFour = '25-34',

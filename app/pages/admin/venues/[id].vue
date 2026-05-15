@@ -6,9 +6,17 @@ import { createVenueSchema } from '#shared/schemas/ticketingSchema'
 import type { Event } from '#shared/db'
 import type { VenueSectionDraftInput } from '#shared/schemas/ticketingSchema'
 import type { ApiResponse } from '~~/types/api'
+import type { SeatMapSeatClickPayload } from '~~/types/seatmap'
 import type { VenueDetail } from '~~/types/venues'
-import { ArrowLeft, Building2, CalendarRange, LayoutGrid, LayoutDashboardIcon, Rows3, Save, Users } from '@lucide/vue'
+import { ArrowLeft, Building2, CalendarRange, LayoutGrid, Rows3, Save, Users, X } from '@lucide/vue'
 import AdminVenuesVenueSeatLayoutEditor from '@/components/admin/venues/VenueSeatLayoutEditor.vue'
+import { createVenueSeatMapPreviewSeats } from '@/lib/venueSeatMapPreview'
+import {
+  type VenueLayoutPreset,
+  getVenueLayoutPresetSummary,
+  getVenueLayoutPresetSections,
+  venueLayoutPresets,
+} from '@/lib/venueLayoutPresets'
 import { apiRequest } from '@/utils/apiRequest'
 import { parseApiError } from '@/utils/apiError'
 import { getDisplayDateLocale } from '@/lib/localizedEvents'
@@ -28,40 +36,10 @@ function formatDateTime(value: string | Date) {
   return new Date(value).toLocaleString(getDisplayDateLocale(locale.value))
 }
 
-interface VisualizationSeat {
-  label: string
-  x: number
-  sortOrder: number
-  isAccessible: boolean
-}
-
-interface VisualizationRow {
-  label: string
-  seats: VisualizationSeat[]
-  columnCount: number
-}
-
-interface VisualizationSection {
-  code: string
-  name: string
-  color: string
-  rowCount: number
-  capacity: number
-  accessibleSeats: number
-  rows: VisualizationRow[]
-}
-
 type ConfigTab = 'details' | 'layout' | 'events'
 
 const venueIdentitySchema = createVenueSchema.omit({ sections: true })
 type VenueIdentityInput = z.infer<typeof venueIdentitySchema>
-
-interface VenueBlueprintPreset {
-  id: string
-  label: string
-  description: string
-  sections: VenueSectionDraftInput[]
-}
 
 const route = useRoute()
 const venueId = computed(() => Number(route.params.id))
@@ -92,41 +70,12 @@ const { handleSubmit, resetForm, values } = useForm<VenueIdentityInput>({
 })
 
 const sectionLayouts = ref<VenueSectionDraftInput[]>([])
+const inspectedVenueSeat = ref<SeatMapSeatClickPayload | null>(null)
+const venuePreviewSeats = computed(() => createVenueSeatMapPreviewSeats(sectionLayouts.value))
 const savedVenueSnapshot = ref('')
 const isSaving = ref(false)
 const activeConfigTab = ref<ConfigTab>('details')
-const selectedVisualizationSection = ref<'all' | string>('all')
-const workspaceRef = ref<HTMLElement | null>(null)
-const viewportWidth = ref(0)
-const desktopVisualizationSize = ref(58)
-const mobileVisualizationSize = ref(46)
-const resizingAxis = ref<'columns' | 'rows' | null>(null)
-
-function createRow(label: string, rowIndex: number, seatCount: number) {
-  return {
-    label,
-    sortOrder: rowIndex,
-    seats: Array.from({ length: seatCount }, (_, seatIndex) => ({
-      label: String(seatIndex + 1),
-      seatNumber: seatIndex + 1,
-      x: seatIndex,
-      y: rowIndex,
-      sortOrder: seatIndex,
-      accessibilityLabel: `${label}-${seatIndex + 1}`,
-      isAccessible: false,
-    })),
-  }
-}
-
-function createSectionBlueprint(code: string, name: string, color: string, rowCount: number, seatsPerRow: number): VenueSectionDraftInput {
-  return {
-    code,
-    name,
-    color,
-    sortOrder: 0,
-    rows: Array.from({ length: rowCount }, (_, rowIndex) => createRow(String.fromCharCode(65 + rowIndex), rowIndex, seatsPerRow)),
-  }
-}
+const isPresetDialogOpen = ref(false)
 
 function createVenueSnapshot(identity: VenueIdentityInput, sections: VenueSectionDraftInput[]) {
   return JSON.stringify({
@@ -144,6 +93,11 @@ function createVenueSnapshot(identity: VenueIdentityInput, sections: VenueSectio
       name: section.name.trim(),
       color: section.color.trim(),
       sortOrder: sectionIndex,
+      gridX: section.gridX,
+      gridY: section.gridY,
+      gridW: section.gridW,
+      gridH: section.gridH,
+      seatLayoutMode: section.seatLayoutMode,
       rows: section.rows.map((row, rowIndex) => ({
         label: row.label.trim(),
         sortOrder: rowIndex,
@@ -160,39 +114,6 @@ function createVenueSnapshot(identity: VenueIdentityInput, sections: VenueSectio
     })),
   })
 }
-
-const blueprintPresets: VenueBlueprintPreset[] = [
-  {
-    id: 'club',
-    label: 'Club floor',
-    description: 'Compact premium room with a front VIP block and tighter side sections.',
-    sections: [
-      createSectionBlueprint('VIP', 'Front VIP', '#7C3AED', 4, 8),
-      createSectionBlueprint('MID', 'Middle floor', '#2563EB', 6, 10),
-      createSectionBlueprint('SIDE', 'Side riser', '#F97316', 5, 6),
-    ],
-  },
-  {
-    id: 'hall',
-    label: 'Concert hall',
-    description: 'Balanced hall layout with wider main sections for seated launches.',
-    sections: [
-      createSectionBlueprint('A', 'Orchestra', '#E11D48', 7, 12),
-      createSectionBlueprint('B', 'Center', '#0F766E', 8, 14),
-      createSectionBlueprint('C', 'Rear', '#2563EB', 6, 12),
-    ],
-  },
-  {
-    id: 'theater',
-    label: 'Theater split',
-    description: 'Three-zone theater with denser center coverage and lighter balcony capacity.',
-    sections: [
-      createSectionBlueprint('PRM', 'Premium center', '#DC2626', 5, 10),
-      createSectionBlueprint('STD', 'Standard bowl', '#7C2D12', 7, 11),
-      createSectionBlueprint('BAL', 'Balcony', '#4338CA', 4, 9),
-    ],
-  },
-]
 
 watch(venueDetail, (value) => {
   if (!value) {
@@ -215,6 +136,11 @@ watch(venueDetail, (value) => {
     name: section.name,
     color: section.color,
     sortOrder: sectionIndex,
+    gridX: section.gridX,
+    gridY: section.gridY,
+    gridW: section.gridW,
+    gridH: section.gridH,
+    seatLayoutMode: section.seatLayoutMode,
     rows: section.rows.map((row, rowIndex) => ({
       id: row.id,
       label: row.label,
@@ -234,6 +160,7 @@ watch(venueDetail, (value) => {
 
   resetForm({ values: identityValues })
   sectionLayouts.value = layoutValues
+  inspectedVenueSeat.value = null
   savedVenueSnapshot.value = createVenueSnapshot(identityValues, layoutValues)
 }, { immediate: true })
 
@@ -259,9 +186,7 @@ const largestSection = computed(() => [...sectionSummaries.value].sort((left, ri
 
 const totalRows = computed(() => sectionSummaries.value.reduce((total, section) => total + section.rowCount, 0))
 const totalCapacity = computed(() => sectionSummaries.value.reduce((total, section) => total + section.capacity, 0))
-const totalAccessibleSeats = computed(() => sectionSummaries.value.reduce((total, section) => total + section.accessibleSeats, 0))
 const totalSections = computed(() => sectionLayouts.value.length)
-const isDesktopViewport = computed(() => viewportWidth.value >= 1024)
 
 const currentVenueSnapshot = computed(() => createVenueSnapshot({
   slug: values.slug ?? '',
@@ -275,210 +200,8 @@ const currentVenueSnapshot = computed(() => createVenueSnapshot({
 
 const isChanged = computed(() => savedVenueSnapshot.value !== '' && currentVenueSnapshot.value !== savedVenueSnapshot.value)
 
-const visualizationSections = computed<VisualizationSection[]>(() => {
-  return sectionLayouts.value.map((section) => {
-    const rows = [...section.rows]
-      .sort((left, right) => left.sortOrder - right.sortOrder)
-      .map((row) => {
-        const seats = [...row.seats]
-          .sort((left, right) => {
-            if (left.x !== right.x) {
-              return left.x - right.x
-            }
-
-            return left.sortOrder - right.sortOrder
-          })
-          .map(seat => ({
-            label: seat.label,
-            x: seat.x,
-            sortOrder: seat.sortOrder,
-            isAccessible: seat.isAccessible,
-          }))
-
-        return {
-          label: row.label,
-          seats,
-          columnCount: Math.max(...seats.map(seat => seat.x + 1), seats.length, 1),
-        }
-      })
-
-    return {
-      code: section.code,
-      name: section.name,
-      color: section.color,
-      rowCount: rows.length,
-      capacity: rows.reduce((total, row) => total + row.seats.length, 0),
-      accessibleSeats: rows.flatMap(row => row.seats).filter(seat => seat.isAccessible).length,
-      rows,
-    }
-  })
-})
-
-const visibleVisualizationSections = computed(() => {
-  if (selectedVisualizationSection.value === 'all') {
-    return visualizationSections.value
-  }
-
-  return visualizationSections.value.filter(section => section.code === selectedVisualizationSection.value)
-})
-
-const visualizationFilterOptions = computed(() => {
-  return sectionSummaries.value.map(section => ({
-    value: section.code,
-    label: section.name,
-    color: section.color,
-    capacity: section.capacity,
-  }))
-})
-
-const highlightedSection = computed(() => {
-  if (selectedVisualizationSection.value === 'all') {
-    return visualizationFilterOptions.value[0] ?? null
-  }
-
-  return visualizationFilterOptions.value.find(section => section.value === selectedVisualizationSection.value) ?? null
-})
-
-const workspaceStyle = computed(() => {
-  if (isDesktopViewport.value) {
-    return {
-      gridTemplateColumns: `minmax(0, ${desktopVisualizationSize.value}%) 0.875rem minmax(22rem, ${100 - desktopVisualizationSize.value}%)`,
-    }
-  }
-
-  return {
-    gridTemplateRows: `minmax(0, ${mobileVisualizationSize.value}%) 0.875rem minmax(0, ${100 - mobileVisualizationSize.value}%)`,
-  }
-})
-
-const stageStyle = computed(() => {
-  const rgb = colorToRgb(highlightedSection.value?.color ?? sectionLayouts.value[0]?.color ?? '#6366F1')
-  if (!rgb) {
-    return {}
-  }
-
-  return {
-    backgroundImage: `linear-gradient(180deg, rgba(${rgb}, 0.28), rgba(${rgb}, 0.08) 58%, rgba(255,255,255,0) 100%)`,
-    borderColor: `rgba(${rgb}, 0.32)`,
-    boxShadow: `0 24px 60px -42px rgba(${rgb}, 0.55)`,
-  }
-})
-
-function clampPercentage(value: number, minimum: number, maximum: number) {
-  return Math.min(Math.max(value, minimum), maximum)
-}
-
-function syncViewportWidth() {
-  viewportWidth.value = window.innerWidth
-}
-
-function startResizing(event: PointerEvent) {
-  const workspace = workspaceRef.value
-  if (!workspace) {
-    return
-  }
-
-  const rect = workspace.getBoundingClientRect()
-  const axis = isDesktopViewport.value ? 'columns' : 'rows'
-  resizingAxis.value = axis
-
-  if (axis === 'columns') {
-    const nextValue = ((event.clientX - rect.left) / rect.width) * 100
-    desktopVisualizationSize.value = clampPercentage(nextValue, 38, 68)
-  }
-  else {
-    const nextValue = ((event.clientY - rect.top) / rect.height) * 100
-    mobileVisualizationSize.value = clampPercentage(nextValue, 32, 68)
-  }
-}
-
-function handlePointerMove(event: PointerEvent) {
-  if (!resizingAxis.value) {
-    return
-  }
-
-  const workspace = workspaceRef.value
-  if (!workspace) {
-    return
-  }
-
-  const rect = workspace.getBoundingClientRect()
-  if (resizingAxis.value === 'columns') {
-    const nextValue = ((event.clientX - rect.left) / rect.width) * 100
-    desktopVisualizationSize.value = clampPercentage(nextValue, 38, 68)
-    return
-  }
-
-  const nextValue = ((event.clientY - rect.top) / rect.height) * 100
-  mobileVisualizationSize.value = clampPercentage(nextValue, 32, 68)
-}
-
-function stopResizing() {
-  resizingAxis.value = null
-}
-
-function colorToRgb(color: string) {
-  const normalized = color.trim().replace('#', '')
-
-  if (normalized.length === 3) {
-    const [red, green, blue] = normalized.split('')
-    const expanded = `${red}${red}${green}${green}${blue}${blue}`
-    const parsed = Number.parseInt(expanded, 16)
-    if (Number.isNaN(parsed)) {
-      return null
-    }
-
-    return `${(parsed >> 16) & 255}, ${(parsed >> 8) & 255}, ${parsed & 255}`
-  }
-
-  if (normalized.length !== 6) {
-    return null
-  }
-
-  const parsed = Number.parseInt(normalized, 16)
-  if (Number.isNaN(parsed)) {
-    return null
-  }
-
-  return `${(parsed >> 16) & 255}, ${(parsed >> 8) & 255}, ${parsed & 255}`
-}
-
-function getSectionPanelStyle(color: string) {
-  const rgb = colorToRgb(color)
-  if (!rgb) {
-    return {}
-  }
-
-  return {
-    borderColor: `rgba(${rgb}, 0.22)`,
-    backgroundImage: `linear-gradient(180deg, rgba(${rgb}, 0.18), rgba(${rgb}, 0.06) 52%, rgba(255,255,255,0) 100%)`,
-    boxShadow: `0 24px 60px -48px rgba(${rgb}, 0.48)`,
-  }
-}
-
-function getMiniSeatStyle(color: string, seat: VisualizationSeat) {
-  const rgb = colorToRgb(color)
-  if (!rgb) {
-    return {
-      gridColumn: `${seat.x + 1}`,
-    }
-  }
-
-  return {
-    gridColumn: `${seat.x + 1}`,
-    backgroundColor: seat.isAccessible ? `rgba(${rgb}, 0.18)` : `rgba(${rgb}, 0.92)`,
-    borderColor: seat.isAccessible ? `rgba(${rgb}, 0.75)` : `rgba(${rgb}, 0.36)`,
-  }
-}
-
-function getMiniRowStyle(row: VisualizationRow) {
-  return {
-    gridTemplateColumns: `repeat(${row.columnCount}, minmax(0, 0.95rem))`,
-  }
-}
-
-function applyBlueprintPreset(preset: VenueBlueprintPreset) {
-  sectionLayouts.value = preset.sections.map((section, sectionIndex) => ({
+function applyBlueprintPreset(preset: VenueLayoutPreset) {
+  sectionLayouts.value = getVenueLayoutPresetSections(preset).map((section, sectionIndex) => ({
     ...section,
     sortOrder: sectionIndex,
     rows: section.rows.map((row, rowIndex) => ({
@@ -490,8 +213,9 @@ function applyBlueprintPreset(preset: VenueBlueprintPreset) {
       })),
     })),
   }))
-  selectedVisualizationSection.value = 'all'
+  inspectedVenueSeat.value = null
   activeConfigTab.value = 'layout'
+  isPresetDialogOpen.value = false
 }
 
 const onSubmit = handleSubmit(
@@ -531,19 +255,6 @@ const onSubmit = handleSubmit(
     toast.error(firstError)
   },
 )
-
-onMounted(() => {
-  syncViewportWidth()
-  window.addEventListener('resize', syncViewportWidth)
-  window.addEventListener('pointermove', handlePointerMove)
-  window.addEventListener('pointerup', stopResizing)
-})
-
-onBeforeUnmount(() => {
-  window.removeEventListener('resize', syncViewportWidth)
-  window.removeEventListener('pointermove', handlePointerMove)
-  window.removeEventListener('pointerup', stopResizing)
-})
 
 definePageMeta({
   title: 'Venue detail',
@@ -622,167 +333,17 @@ definePageMeta({
       </div>
     </header>
 
-    <section
-      ref="workspaceRef"
-      class="grid min-h-0 overflow-hidden gap-3 p-3 md:p-4"
-      :style="workspaceStyle"
-      :class="resizingAxis ? 'select-none' : ''"
-    >
-      <Card class="h-full min-h-0 overflow-hidden py-0">
-        <div class="border-b px-4 py-3">
-          <div class="overflow-x-auto pb-2">
-            <div class="flex w-max min-w-full flex-nowrap gap-2">
-              <Button
-                type="button"
-                size="sm"
-                :variant="selectedVisualizationSection === 'all' ? 'default' : 'outline'"
-                @click="selectedVisualizationSection = 'all'"
-              >
-                <LayoutDashboardIcon class="size-4" />
-                {{ $t('admin_venue_detail.all') }}
-              </Button>
-              <Button
-                v-for="section in visualizationFilterOptions"
-                :key="section.value"
-                type="button"
-                size="sm"
-                :variant="selectedVisualizationSection === section.value ? 'default' : 'outline'"
-                @click="selectedVisualizationSection = section.value"
-              >
-                {{ section.label }}
-              </Button>
-            </div>
-          </div>
-        </div>
-
-        <CardContent class="min-h-0 flex-1 overflow-y-auto">
-          <div class="space-y-4">
-            <Card
-              class="gap-3 border-dashed py-4"
-              :style="stageStyle"
-            >
-              <CardContent class="px-4 text-center">
-                <p class="text-sm font-medium">
-                  {{ $t('admin_venue_detail.stage') }}
-                </p>
-                <p class="text-xs text-muted-foreground">
-                  {{ $t('admin_venue_detail.front_of_house') }}
-                </p>
-              </CardContent>
-            </Card>
-
-            <div class="grid gap-3 md:grid-cols-3">
-              <Card class="gap-2 py-3">
-                <CardContent class="px-4">
-                  <p class="text-xs text-muted-foreground">
-                    {{ $t('admin_venue_detail.focus_label') }}
-                  </p>
-                  <p class="text-sm font-medium">
-                    {{ highlightedSection?.label ?? $t('common.all_sections') }}
-                  </p>
-                </CardContent>
-              </Card>
-              <Card class="gap-2 py-3">
-                <CardContent class="px-4">
-                  <p class="text-xs text-muted-foreground">
-                    {{ $t('admin_venue_detail.largest_label') }}
-                  </p>
-                  <p class="text-sm font-medium">
-                    {{ largestSection?.name ?? $t('common.not_set') }}
-                  </p>
-                </CardContent>
-              </Card>
-              <Card class="gap-2 py-3">
-                <CardContent class="px-4">
-                  <p class="text-xs text-muted-foreground">
-                    {{ $t('admin_venue_detail.accessible_label') }}
-                  </p>
-                  <p class="text-sm font-medium">
-                    {{ totalAccessibleSeats }}
-                  </p>
-                </CardContent>
-              </Card>
-            </div>
-
-            <div class="grid gap-4 xl:grid-cols-2">
-              <Card
-                v-for="section in visibleVisualizationSections"
-                :key="section.code"
-                class="gap-4 py-4"
-                :style="getSectionPanelStyle(section.color)"
-              >
-                <CardContent class="space-y-4 px-4">
-                  <div class="flex items-start justify-between gap-3">
-                    <div class="flex items-start gap-3">
-                      <span
-                        class="mt-2 h-2.5 w-2.5 rounded-full"
-                        :style="{ backgroundColor: section.color }"
-                      />
-                      <div>
-                        <p class="text-xs text-muted-foreground">
-                          {{ section.code }}
-                        </p>
-                        <p class="text-sm font-medium">
-                          {{ section.name }}
-                        </p>
-                        <p class="text-xs text-muted-foreground">
-                          {{ $t('admin_venue_detail.capacity_seats', { count: section.capacity }) }} · {{ section.rowCount }} {{ $t('admin_venue_detail.rows_stat') }}
-                        </p>
-                      </div>
-                    </div>
-                    <p class="text-xs text-muted-foreground">
-                      {{ $t('admin_venue_detail.accessible_count', { count: section.accessibleSeats }) }}
-                    </p>
-                  </div>
-
-                  <Separator />
-
-                  <div class="space-y-3">
-                    <div
-                      v-for="row in section.rows"
-                      :key="`${section.code}-${row.label}`"
-                      class="grid grid-cols-[2rem_minmax(0,1fr)] items-start gap-3"
-                    >
-                      <div class="flex h-8 items-center justify-center rounded-md border bg-muted/40 text-xs font-medium">
-                        {{ row.label }}
-                      </div>
-                      <div class="overflow-x-auto pb-1">
-                        <div
-                          class="grid min-w-max gap-1.5"
-                          :style="getMiniRowStyle(row)"
-                        >
-                          <div
-                            v-for="seat in row.seats"
-                            :key="`${section.code}-${row.label}-${seat.label}-${seat.sortOrder}`"
-                            class="h-[0.95rem] w-[0.95rem] rounded-[4px] border"
-                            :style="getMiniSeatStyle(section.color, seat)"
-                            :title="`${section.name} · Row ${row.label} · Seat ${seat.label}${seat.isAccessible ? ' · Accessible' : ''}`"
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      <div
-        role="separator"
-        tabindex="0"
-        class="flex items-center justify-center"
-        :class="isDesktopViewport ? 'cursor-col-resize' : 'cursor-row-resize'"
-        @pointerdown="startResizing"
-      >
-        <Separator
-          :orientation="isDesktopViewport ? 'vertical' : 'horizontal'"
-          :class="isDesktopViewport ? 'h-16' : 'w-16'"
+    <section class="grid min-h-0 grid-cols-1 gap-3 overflow-y-auto p-3 md:p-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] lg:overflow-hidden">
+      <div class="min-h-[22rem] min-w-0 overflow-hidden lg:h-full lg:min-h-0 [&>section]:h-full [&>section]:min-h-0">
+        <TicketEventSeatMapExperience
+          :seats="venuePreviewSeats"
+          :action-label="null"
+          mode="admin"
+          @seat-click="inspectedVenueSeat = $event"
         />
       </div>
 
-      <Card class="h-full min-h-0 overflow-hidden py-0">
+      <Card class="min-h-[28rem] min-w-0 overflow-hidden py-0 lg:h-full lg:min-h-0">
         <form
           id="venue-detail-form"
           class="flex h-full min-h-0 flex-col"
@@ -819,6 +380,28 @@ definePageMeta({
           </CardHeader>
 
           <CardContent class="min-h-0 flex-1 overflow-y-auto py-4">
+            <Alert
+              v-if="inspectedVenueSeat"
+              class="relative mb-4 pr-12"
+            >
+              <AlertTitle>
+                {{ inspectedVenueSeat.section.name }} · Row {{ inspectedVenueSeat.row.label }} · Seat {{ inspectedVenueSeat.seat.seatLabelSnapshot }}
+              </AlertTitle>
+              <AlertDescription>
+                X {{ inspectedVenueSeat.seat.displayX ?? 0 }} · Y {{ inspectedVenueSeat.seat.displayY ?? 0 }}
+              </AlertDescription>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                class="absolute right-2 top-2"
+                aria-label="Dismiss inspected seat"
+                @click="inspectedVenueSeat = null"
+              >
+                <X />
+              </Button>
+            </Alert>
+
             <div
               v-if="activeConfigTab === 'details'"
               class="space-y-4"
@@ -985,38 +568,58 @@ definePageMeta({
 
             <div
               v-else-if="activeConfigTab === 'layout'"
-              class="space-y-4"
+              class="h-full min-h-0"
             >
-              <div class="grid gap-3 xl:grid-cols-3">
-                <Card
-                  v-for="preset in blueprintPresets"
-                  :key="preset.id"
-                  class="gap-3 py-4"
-                >
-                  <CardContent class="space-y-3 px-4">
-                    <div>
-                      <p class="text-sm font-medium">
-                        {{ preset.label }}
-                      </p>
-                      <p class="text-xs text-muted-foreground">
-                        {{ preset.description }}
-                      </p>
-                    </div>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      @click="applyBlueprintPreset(preset)"
+              <Dialog v-model:open="isPresetDialogOpen">
+                <AdminVenuesVenueSeatLayoutEditor v-model:sections="sectionLayouts">
+                  <template #toolbar-start>
+                    <DialogTrigger as-child>
+                      <Button
+                        type="button"
+                        variant="outline"
+                      >
+                        Presets
+                      </Button>
+                    </DialogTrigger>
+                  </template>
+                </AdminVenuesVenueSeatLayoutEditor>
+                <DialogScrollContent class="max-w-5xl">
+                  <DialogHeader>
+                    <DialogTitle>Venue layout presets</DialogTitle>
+                    <DialogDescription>
+                      Pick a starting layout for the section editor. Applying one replaces the current layout.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                    <Card
+                      v-for="preset in venueLayoutPresets"
+                      :key="preset.id"
                     >
-                      Apply
-                    </Button>
-                  </CardContent>
-                </Card>
-              </div>
-
-              <Separator />
-
-              <AdminVenuesVenueSeatLayoutEditor v-model:sections="sectionLayouts" />
+                      <CardHeader>
+                        <CardTitle>
+                          {{ preset.name }}
+                        </CardTitle>
+                        <CardDescription>
+                          {{ preset.description }}
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent class="space-y-2 text-sm">
+                        <p>{{ getVenueLayoutPresetSummary(preset) }}</p>
+                      </CardContent>
+                      <CardFooter>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          @click="applyBlueprintPreset(preset)"
+                        >
+                          Apply preset
+                        </Button>
+                      </CardFooter>
+                    </Card>
+                  </div>
+                </DialogScrollContent>
+              </Dialog>
             </div>
 
             <div
