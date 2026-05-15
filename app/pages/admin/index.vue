@@ -323,7 +323,7 @@ definePageMeta({
             <div>
               <CardTitle>{{ $t('admin.dashboard_active_listing') }}</CardTitle>
               <CardDescription>
-               {{ $t('admin.dashboard_active_listing_desc') }}
+                {{ $t('admin.dashboard_active_listing_desc') }}
               </CardDescription>
             </div>
             <Badge
