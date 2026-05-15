@@ -26,7 +26,6 @@ interface EventCardProps {
 
 const props = defineProps<EventCardProps>()
 const { t, locale } = useI18n()
-const localePath = useLocalePath()
 
 const localizedVenueName = computed(() => props.event.venue?.name)
 const localizedCityName = computed(() => props.event.venue?.city)
@@ -86,7 +85,7 @@ const statusBadgeClass = computed(() => {
       <div class="relative flex w-full flex-col justify-between overflow-hidden">
         <div class="absolute inset-0">
           <img
-            :src="event.coverImage || `https://picsum.photos/seed/${event.slug}/1200/900`"
+            :src="event.coverImage || getEventFallbackImage(event.id.toString())"
             :alt="event.title"
             class="h-full w-full object-cover transition-transform duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] group-hover:scale-[1.06]"
           >
@@ -127,24 +126,22 @@ const statusBadgeClass = computed(() => {
 
             <!-- Glassmorphism info footer -->
             <div class="rounded-2xl border border-white/10 bg-black/40 p-4 shadow-2xl shadow-black/20 backdrop-blur-md transition-all duration-300 group-hover:border-white/20 group-hover:bg-black/50">
+              <div class="min-w-0 space-y-3 mb-2">
+                <div class="flex min-w-0 items-start gap-3">
+                  <MapPin class="mt-0.5 size-4 shrink-0 text-white/50" />
+                  <div class="min-w-0">
+                    <p class="text-[10px] uppercase tracking-[0.2em] text-white/50">
+                      {{ $t('event_card.venue_label') }}
+                    </p>
+                    <p class="text-sm font-medium leading-6 text-white/90 md:text-base">
+                      {{ localizedVenueName || $t('event_card.venue_tba') }} , {{ localizedCityName || $t('event_card.live_badge') }}
+                    </p>
+                  </div>
+                </div>
+              </div>
               <div class="grid gap-4 sm:grid-cols-[1fr_auto] sm:items-end">
                 <div class="min-w-0 space-y-3">
-                  <div class="flex min-w-0 items-start gap-3">
-                    <MapPin class="mt-0.5 size-4 shrink-0 text-white/50" />
-                    <div class="min-w-0">
-                      <p class="text-[10px] uppercase tracking-[0.2em] text-white/50">
-                        {{ $t('event_card.venue_label') }}
-                      </p>
-                      <p class="truncate text-sm font-medium leading-6 text-white/90 md:text-base">
-                        {{ localizedVenueName || $t('event_card.venue_tba') }}
-                      </p>
-                    </div>
-                  </div>
-
                   <div class="flex flex-wrap gap-2">
-                    <span class="inline-flex max-w-full items-center rounded-full border border-white/10 bg-white/8 px-3 py-1.5 text-xs text-white/70">
-                      {{ localizedCityName || $t('event_card.live_badge') }}
-                    </span>
                     <span class="inline-flex max-w-full items-center gap-1.5 rounded-full border border-white/10 bg-white/8 px-3 py-1.5 text-xs text-white/70">
                       <Ticket class="size-3.5" />
                       {{ sessionCountLabel }}
