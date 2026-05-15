@@ -1580,11 +1580,57 @@ definePageMeta({
       >
         <CardContent class="flex min-h-0 flex-1 flex-col p-0">
           <ScrollArea class="min-h-0 flex-1 px-4 py-4 md:px-5">
-            <div class="space-y-3 pb-2">
-              <ScrollArea class="max-h-72 rounded-[1.5rem] border bg-background/80 lg:max-h-[min(36dvh,22rem)]">
+            <ItemGroup class="gap-2.5 p-4">
+              <Item
+                v-for="section in checkoutSectionSummaries"
+                :key="section.sectionLabel"
+                variant="outline"
+                class="bg-background/60"
+              >
+                <ItemContent class="min-w-0 gap-1">
+                  <ItemTitle>x{{ section.quantity }} {{ section.sectionLabel }}</ItemTitle>
+                  <ItemDescription>
+                    <span>
+                      {{ $t('checkout.section_subtotal') }} · {{ formatCurrency(section.subtotalCents) }}
+                    </span>
 
-              </ScrollArea>
-            </div>
+                    <div
+                      v-if="section.customSeats.length > 0"
+                      class="mt-2 flex flex-col gap-1.5"
+                    >
+                      <div
+                        v-for="seat in section.customSeats"
+                        :key="seat.id"
+                        class="flex items-start justify-between gap-3 rounded-lg bg-muted/45 px-3 py-2"
+                      >
+                        <div class="min-w-0">
+                          <p class="truncate text-xs font-medium text-foreground">
+                            {{ seat.seatLabel }}
+                          </p>
+                          <p class="mt-0.5 truncate text-xs text-muted-foreground">
+                            {{ formatSeatLocation([getCheckoutSectionLabel(seat.sectionLabel), seat.rowLabel]) }}
+                          </p>
+                        </div>
+                        <p class="shrink-0 font-mono text-xs font-semibold text-foreground">
+                          {{ formatCurrency(seat.unitPriceCents) }}
+                        </p>
+                      </div>
+                    </div>
+                  </ItemDescription>
+                </ItemContent>
+
+                <ItemActions class="shrink-0 justify-end">
+                  <div class="text-right">
+                    <p class="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                      {{ $t('checkout.section_subtotal') }}
+                    </p>
+                    <p class="mt-1 font-mono text-sm font-semibold text-foreground">
+                      {{ formatCurrency(section.subtotalCents) }}
+                    </p>
+                  </div>
+                </ItemActions>
+              </Item>
+            </ItemGroup>
           </ScrollArea>
 
           <CardFooter
