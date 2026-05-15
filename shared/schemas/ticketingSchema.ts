@@ -13,6 +13,7 @@ import {
   TicketHolderSource,
   TicketStatus,
 } from '../commonEnums'
+import { isVietnamProvinceKey, type VietnamProvinceKey } from '../constants/vietnamProvinces'
 import { locales, sourceLocale } from '../../i18n-constants'
 
 export const localeSchema = z.enum(locales)
@@ -20,6 +21,9 @@ export const translatableLocaleSchema = localeSchema.refine(locale => locale !==
   message: 'Source locale is edited in the original content form',
 })
 export const venueCountrySchema = z.string().min(2).max(80)
+export const vietnamProvinceKeySchema = z.custom<VietnamProvinceKey>(value => typeof value === 'string' && isVietnamProvinceKey(value), {
+  message: 'Province/city must be one of the supported Vietnam province keys',
+})
 export const eventStatusSchema = z.enum(EventStatus)
 export const seatStatusSchema = z.enum(SeatStatus)
 export const holdStatusSchema = z.enum(HoldStatus)
@@ -98,7 +102,7 @@ export const createVenueSchema = z.object({
   slug: commonSchemaFragments.nonEmptyString('Venue slug'),
   name: commonSchemaFragments.nonEmptyString('Venue name'),
   description: z.string().trim().optional(),
-  city: commonSchemaFragments.nonEmptyString('City'),
+  city: vietnamProvinceKeySchema,
   country: venueCountrySchema.default('Vietnam'),
   address: commonSchemaFragments.nonEmptyString('Address'),
   coverImage: z.string().url().optional().or(z.literal('')),
@@ -523,7 +527,7 @@ export const venueTranslationSchema = z.object({
   locale: translatableLocaleSchema,
   name: optionalLocalizedShortTextSchema,
   description: optionalLocalizedLongTextSchema,
-  city: optionalLocalizedShortTextSchema,
+  city: vietnamProvinceKeySchema.or(z.literal('')).optional(),
   address: optionalLocalizedLongTextSchema,
 })
 
