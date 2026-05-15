@@ -481,9 +481,10 @@ function closeSubmenu() {
 
 const { enable: i18nEnabled, triggerType, dropdownType } = useConfig().value.header.languageSwitcher
 const { loggedIn } = useUserSession()
+const { t } = useI18n()
 const isMobileMenuOpen = ref(false)
 
-const headerCtaLabel = computed(() => loggedIn.value ? 'My tickets' : 'Login')
+const headerCtaLabel = computed(() => loggedIn.value ? t('nav.my_tickets') : t('common.sign_in'))
 const headerCtaTarget = computed(() => loggedIn.value ? '/tickets' : '/auth/login')
 
 const { y: scrollY } = useWindowScroll()
