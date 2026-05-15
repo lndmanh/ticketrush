@@ -146,9 +146,6 @@ export default defineNuxtConfig({
   },
 
   vite: {
-    optimizeDeps: {
-      include: ['vue'],
-    },
     build: {
       rollupOptions: {
         external: [
