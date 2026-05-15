@@ -5,6 +5,7 @@ import NumberFlow from '@number-flow/vue'
 import { parseApiError } from '@/utils/apiError'
 import { getDisplayDateLocale } from '@/lib/localizedEvents'
 import { apiRoutes } from '#shared/apiRoutes'
+import { getVietnamProvinceName } from '#shared/constants/vietnamProvinces'
 import { parseSeatmapRealtimeMessage } from '~~/types/seatmap-realtime'
 import type { SeatStatusDeltaChange } from '~~/types/seatmap-realtime'
 import type { ApiResponse } from '~~/types/api'
@@ -123,7 +124,7 @@ const inventorySummary = computed(() => {
 })
 
 const venueName = computed(() => detail.value?.venue?.venue.name || 'Venue pending')
-const venueCity = computed(() => detail.value?.venue?.venue.city || 'Location incoming')
+const venueCity = computed(() => getVietnamProvinceName(detail.value?.venue?.venue.city, locale.value) || 'Location incoming')
 const sessionTimeLabel = computed(() => {
   if (!session.value) {
     return 'Session time pending'
