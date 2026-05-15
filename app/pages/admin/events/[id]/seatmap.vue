@@ -3,6 +3,7 @@ import { CircleSlash, RotateCcw, SaveIcon } from '@lucide/vue'
 import { toast } from 'vue-sonner'
 import type { EventSession } from '#shared/db'
 import { getDisplayDateLocale } from '@/lib/localizedEvents'
+import { formatCurrency } from '@/lib/utils'
 import { apiRoutes } from '#shared/apiRoutes'
 import { apiRequest } from '@/utils/apiRequest'
 import { parseApiError } from '@/utils/apiError'
@@ -84,10 +85,6 @@ const filteredSeats = computed(() => {
     return selectedStatus.value === 'all' || seat.status === selectedStatus.value
   })
 })
-
-function formatCurrency(cents: number) {
-  return `${Intl.NumberFormat(getDisplayDateLocale(locale.value)).format(cents / 100)} VND`
-}
 
 function parsePriceInputValue(value: string) {
   const price = Number(value)
@@ -290,7 +287,7 @@ definePageMeta({
             id="custom-seat-price"
             v-model="customPriceInput"
             inputmode="decimal"
-            :placeholder="formatCurrency(0).replace('0', '500000')"
+            :placeholder="formatCurrency(50000000, 'VND', getDisplayDateLocale(locale))"
             :disabled="areOverrideActionsDisabled"
           />
           <p class="text-xs text-muted-foreground">

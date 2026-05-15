@@ -185,10 +185,17 @@ function isMinor(birthDate?: Date | string | null) {
   }
   return age < 18
 }
+
+definePageMeta({
+  title: 'Saved Attendees',
+  breadcrumb: 'Saved Attendees',
+  layout: 'dashboard',
+  middleware: ['auth'],
+})
 </script>
 
 <template>
-  <div class="space-y-6 max-w-5xl mx-auto">
+  <div class="space-y-6">
     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
       <div>
         <h1 class="text-3xl font-bold tracking-tight">
@@ -265,31 +272,18 @@ function isMinor(birthDate?: Date | string | null) {
     </div>
 
     <!-- Empty State -->
-    <div
+    <Empty
       v-else-if="attendees.length === 0"
-      class="text-center py-12 px-4 border rounded-xl bg-muted/20 border-dashed"
+      class="border border-dashed"
     >
-      <div class="mx-auto w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
-        <UserIcon class="w-8 h-8 text-muted-foreground" />
-      </div>
-      <h3 class="text-lg font-semibold mb-1">
-        No attendees saved
-      </h3>
-      <p class="text-muted-foreground mb-6 max-w-sm mx-auto">
-        Save the details of people you frequently buy tickets for to speed up your checkout process.
-      </p>
-      <div class="flex justify-center gap-3">
-        <Button
-          variant="outline"
-          @click="createFromProfile"
-        >
-          Add Myself
-        </Button>
-        <Button @click="openCreateDialog">
-          Add Attendee
-        </Button>
-      </div>
-    </div>
+      <EmptyHeader>
+        <EmptyMedia variant="icon">
+          <UserIcon />
+        </EmptyMedia>
+        <EmptyTitle>No attendees saved</EmptyTitle>
+        <EmptyDescription> Save the details of people you frequently buy tickets for to speed up your checkout process.</EmptyDescription>
+      </EmptyHeader>
+    </Empty>
 
     <!-- Grid View -->
     <div

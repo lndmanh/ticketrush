@@ -1,4 +1,4 @@
-import { and, eq, inArray } from 'drizzle-orm'
+import { and, desc, eq, gte, inArray, or } from 'drizzle-orm'
 import { z } from 'zod'
 import type { AdminDashboardResponse, AdminDashboardChartPoint, AdminDashboardEventRow, AdminDashboardCalendarSession } from '~~/types/admin-dashboard'
 import { success } from '~~/server/utils/apiResponse'
@@ -6,25 +6,26 @@ import { localeSchema } from '#shared/schemas/ticketingSchema'
 import { sourceLocale } from '~~/i18n-constants'
 import { getDisplayDateLocale } from '~~/shared/utils/locales'
 import { localizeEvent, localizeVenue, mapEventTranslationsByEventId, mapVenueTranslationsByVenueId, resolveContentLocale } from '~~/server/utils/i18n/content-localization'
-import { EventStatus, HoldStatus, OrderStatus, QueueStatus, SeatStatus } from '#shared/commonEnums'
+import { AdminAnalyticsTimeRange, EventStatus, HoldStatus, OrderStatus, QueueStatus, SeatStatus } from '#shared/commonEnums'
+import { DEFAULT_ADMIN_ANALYTICS_TIME_RANGE, getAdminAnalyticsRangeStart } from '#shared/adminAnalyticsTimeRanges'
 
 const adminDashboardQuerySchema = z.object({
   locale: localeSchema.default(sourceLocale).catch(sourceLocale),
+  range: z.nativeEnum(AdminAnalyticsTimeRange).default(DEFAULT_ADMIN_ANALYTICS_TIME_RANGE).catch(DEFAULT_ADMIN_ANALYTICS_TIME_RANGE),
 })
 
 export default defineEventHandler(async (event) => {
   const query = await getValidatedQuery(event, rawQuery => adminDashboardQuerySchema.parse(rawQuery))
   const contentLocale = resolveContentLocale(query.locale)
+  const rangeStart = getAdminAnalyticsRangeStart(query.range)
   const db = useDB()
-  const [events, venues, eventSessions, eventSeats, orders, tickets, seatHolds, queueEntries] = await Promise.all([
+  const [events, venues, eventSessions, eventSeats, seatHolds, queueEntries] = await Promise.all([
     db.select().from(tables.events).all(),
     db.select().from(tables.venues).all(),
     db.select().from(tables.eventSessions).all(),
     db.select().from(tables.eventSeats).all(),
-    db.select().from(tables.orders).all(),
-    db.select().from(tables.tickets).all(),
-    db.select().from(tables.seatHolds).all(),
-    db.select().from(tables.queueEntries).all(),
+    db.select().from(tables.seatHolds).where(eq(tables.seatHolds.status, HoldStatus.Active)).all(),
+    db.select().from(tables.queueEntries).where(eq(tables.queueEntries.status, QueueStatus.Waiting)).all(),
   ])
 
   const eventIds = events.map(eventItem => eventItem.id)
@@ -76,14 +77,20 @@ export default defineEventHandler(async (event) => {
     sessionsByEventId.set(session.eventId, current)
   }
 
+  const confirmedOrders = await db.select().from(tables.orders).where(and(
+    eq(tables.orders.status, OrderStatus.Confirmed),
+    or(gte(tables.orders.confirmedAt, rangeStart), gte(tables.orders.createdAt, rangeStart)),
+  )).orderBy(desc(tables.orders.confirmedAt), desc(tables.orders.createdAt)).all()
+  const confirmedOrderIds = confirmedOrders.map(order => order.id)
+  const tickets = confirmedOrderIds.length > 0
+    ? await db.select().from(tables.tickets).where(inArray(tables.tickets.orderId, confirmedOrderIds)).all()
+    : []
   const ticketsByOrderId = new Map<number, typeof tickets>()
   for (const ticket of tickets) {
     const current = ticketsByOrderId.get(ticket.orderId) ?? []
     current.push(ticket)
     ticketsByOrderId.set(ticket.orderId, current)
   }
-
-  const confirmedOrders = orders.filter(order => order.status === OrderStatus.Confirmed)
   const confirmedOrdersByEventId = new Map<number, typeof confirmedOrders>()
   const confirmedOrdersBySessionId = new Map<number, typeof confirmedOrders>()
   for (const order of confirmedOrders) {
@@ -102,21 +109,21 @@ export default defineEventHandler(async (event) => {
   const soldSeatsCount = eventSeats.filter(seat => seat.status === SeatStatus.Sold).length
   const activeEventsCount = events.filter(event => event.status !== EventStatus.Draft).length
   const activeSessionsCount = eventSessions.filter(session => session.status !== EventStatus.Draft).length
-  const activeHoldsCount = seatHolds.filter(hold => hold.status === HoldStatus.Active).length
-  const queueWaitingCount = queueEntries.filter(entry => entry.status === QueueStatus.Waiting).length
+  const activeHoldsCount = seatHolds.length
+  const queueWaitingCount = queueEntries.length
 
-  const chartByMonth = new Map<string, { label: string, sortAt: number, revenueCents: number, ticketsSold: number }>()
+  const chartByDay = new Map<string, { label: string, sortAt: number, revenueCents: number, ticketsSold: number }>()
   for (const order of confirmedOrders) {
     const orderDate = new Date(order.confirmedAt ?? order.createdAt)
-    const monthLabel = orderDate.toLocaleDateString(getDisplayDateLocale(contentLocale), { month: 'short' })
-    const monthKey = `${orderDate.getFullYear()}-${String(orderDate.getMonth() + 1).padStart(2, '0')}`
-    const current = chartByMonth.get(monthKey) ?? { label: monthLabel, sortAt: orderDate.getTime(), revenueCents: 0, ticketsSold: 0 }
+    const dayLabel = orderDate.toLocaleDateString(getDisplayDateLocale(contentLocale), { month: 'short', day: 'numeric' })
+    const dayKey = getIsoDate(orderDate)
+    const current = chartByDay.get(dayKey) ?? { label: dayLabel, sortAt: orderDate.getTime(), revenueCents: 0, ticketsSold: 0 }
     current.revenueCents += order.amountCents
     current.ticketsSold += (ticketsByOrderId.get(order.id) ?? []).length
-    chartByMonth.set(monthKey, current)
+    chartByDay.set(dayKey, current)
   }
 
-  const chart: AdminDashboardChartPoint[] = [...chartByMonth.entries()]
+  const chart: AdminDashboardChartPoint[] = [...chartByDay.entries()]
     .sort((left, right) => left[1].sortAt - right[1].sortAt)
     .map(([, value]) => ({
       label: value.label,
@@ -235,4 +242,11 @@ function getSessionStatusLabel(session: typeof tables.eventSessions.$inferSelect
   }
 
   return 'Scheduled'
+}
+
+function getIsoDate(date: Date) {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
 }

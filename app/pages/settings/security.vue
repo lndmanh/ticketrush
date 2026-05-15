@@ -194,8 +194,10 @@
                 <ItemTitle>{{ provider.name }}</ItemTitle>
                 <ItemDescription>
                   <template v-if="getLinkedAccount(provider.id)">
-                    {{ getLinkedAccount(provider.id)?.email }} · Linked {{
-                      formatRelativeTime(getLinkedAccount(provider.id)?.linkedAt ?? '') }}
+                    {{ getLinkedAccount(provider.id)?.email }} · Linked
+                    <span :title="formatDateTime(getLinkedAccount(provider.id)?.linkedAt, getDisplayDateLocale(locale), { fallback: '' })">
+                      {{ formatRelativeTime(getLinkedAccount(provider.id)?.linkedAt ?? '', { locale: getDisplayDateLocale(locale) }) }}
+                    </span>
                   </template>
                   <template v-else>
                     Not connected
@@ -485,7 +487,8 @@ import { Field as VeeField, useForm } from 'vee-validate'
 import { Field, FieldLabel, FieldError } from '@/components/ui/field'
 import { changePasswordSchema } from '#shared/schemas/userSchema'
 import { calculatePasswordStrength } from '@/utils/passwordValidation'
-import { formatRelativeTime } from '@/lib/utils'
+import { getDisplayDateLocale } from '@/lib/localizedEvents'
+import { formatDateTime, formatRelativeTime } from '@/lib/utils'
 import { AUTH_ERROR_MESSAGES, AUTH_SUCCESS_MESSAGES } from '#shared/constants/authMessages'
 import { AVAILABLE_PROVIDERS } from '#shared/constants/oauthProviders'
 
@@ -500,9 +503,11 @@ definePageMeta({
   breadcrumb: 'Security',
   middleware: 'auth',
   layout: 'dashboard',
+  fullWidth: false,
 })
 
 const route = useRoute()
+const { locale } = useI18n()
 
 function getQueryString(value: string | string[] | null | undefined) {
   if (typeof value === 'string') {

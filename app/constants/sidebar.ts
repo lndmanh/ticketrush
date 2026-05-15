@@ -1,19 +1,5 @@
 import type { SidebarContext, SidebarGuardUser, SidebarItem } from '~~/types/common'
-import {
-  CalendarRange,
-  ContactRound,
-  FlagIcon,
-  Home,
-  LayoutDashboardIcon,
-  ListChecksIcon,
-  MapPin,
-  Settings,
-  Shield,
-  ShieldCheck,
-  Ticket,
-  UserCog2Icon,
-  UsersIcon,
-} from '@lucide/vue'
+import { CalendarRange, ContactRound, FlagIcon, Home, LayoutDashboardIcon, ListChecksIcon, MapPin, ReceiptText, Shield, ShieldCheck, Ticket, UsersIcon, UserIcon, Settings } from '@lucide/vue'
 
 export const SIDEBAR_CONTEXTS: SidebarContext[] = [
   {
@@ -23,10 +9,10 @@ export const SIDEBAR_CONTEXTS: SidebarContext[] = [
     showBack: true,
     sections: [
       {
-        title: 'nav.account',
+        title: 'nav.profile',
         items: [
+          { title: 'nav.profile', url: '/settings/profile', icon: UserIcon },
           { title: 'nav.security', url: '/settings/security', icon: Shield },
-          { title: 'nav.saved_attendees', url: '/settings/saved-attendees', icon: ContactRound },
         ],
       },
     ],
@@ -36,7 +22,6 @@ export const SIDEBAR_CONTEXTS: SidebarContext[] = [
     match: '/admin',
     variant: 'inset',
     showBack: true,
-    guard: (user: SidebarGuardUser) => user?.isAdmin === true,
     sections: [
       {
         title: 'nav.overview',
@@ -44,6 +29,7 @@ export const SIDEBAR_CONTEXTS: SidebarContext[] = [
           { title: 'nav.dashboard', url: '/admin', icon: LayoutDashboardIcon },
           { title: 'nav.events', url: '/admin/events', icon: CalendarRange },
           { title: 'nav.venues', url: '/admin/venues', icon: MapPin },
+          { title: 'nav.transactions', url: '/admin/transactions', icon: ReceiptText },
         ],
       },
       {
@@ -72,8 +58,8 @@ export const SIDEBAR_CONTEXTS: SidebarContext[] = [
           { title: 'nav.home', url: '/', icon: Home },
           { title: 'nav.events', url: '/events', icon: CalendarRange },
           { title: 'nav.my_tickets', url: '/tickets', icon: Ticket },
-          { title: 'nav.saved_attendees', url: '/tickets/saved-attendees', icon: ContactRound },
-          { title: 'nav.security', url: '/settings/security', icon: Settings },
+          { title: 'nav.saved_attendees', url: '/attendees', icon: ContactRound },
+          { title: 'nav.settings', url: '/settings', icon: Settings },
         ],
       },
       {
@@ -81,13 +67,6 @@ export const SIDEBAR_CONTEXTS: SidebarContext[] = [
         guard: (user: SidebarGuardUser) => user?.isAdmin === true,
         items: [
           { title: 'nav.admin_dashboard', url: '/admin', icon: LayoutDashboardIcon },
-        ],
-      },
-      {
-        title: 'nav.support',
-        secondary: true,
-        items: [
-          { title: 'nav.help_support', url: '/support', icon: UserCog2Icon },
         ],
       },
     ],

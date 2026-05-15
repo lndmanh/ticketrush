@@ -6,6 +6,7 @@ import AdminChartCard from '@/components/admin/charts/AdminChartCard.vue'
 import { apiRequest } from '@/utils/apiRequest'
 import { parseApiError } from '@/utils/apiError'
 import { getDisplayDateLocale } from '@/lib/localizedEvents'
+import { formatCurrency, formatDateTime } from '@/lib/utils'
 import { apiRoutes } from '#shared/apiRoutes'
 import { EventStatus, SeatStatus } from '#shared/commonEnums'
 import { toast } from 'vue-sonner'
@@ -88,7 +89,7 @@ const launchChecklist = computed(() => {
       label: t('admin.event_checklist_sales_window'),
       value: Boolean(detail.value.event.salesStartAt && detail.value.event.salesEndAt),
       hint: detail.value.event.salesStartAt && detail.value.event.salesEndAt
-        ? t('admin.event_checklist_sales_window_ok', { date: formatDateTime(detail.value.event.salesStartAt) })
+        ? t('admin.event_checklist_sales_window_ok', { date: formatDateTime(detail.value.event.salesStartAt, getDisplayDateLocale(locale.value)) })
         : t('admin.event_checklist_sales_window_fail'),
     },
     {
@@ -121,14 +122,6 @@ const seatStatusOption = computed(() => {
     centerLabel: t('admin.event_stat_sold_seats'),
   })
 })
-
-function formatCurrency(cents: number) {
-  return `${Intl.NumberFormat(getDisplayDateLocale(locale.value)).format(cents / 100)} VND`
-}
-
-function formatDateTime(value: string | Date) {
-  return new Date(value).toLocaleString(getDisplayDateLocale(locale.value))
-}
 
 function openVenueSync(session: AdminEventWorkspaceSession | null) {
   if (!session) {
@@ -219,7 +212,7 @@ definePageMeta({
             <div class="flex flex-wrap items-center gap-2 text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
               <span>{{ detail.event.status.replaceAll('_', ' ') }}</span>
               <span class="h-1 w-1 rounded-full bg-border" />
-              <span>{{ formatDateTime(detail.event.startsAt) }}</span>
+              <span>{{ formatDateTime(detail.event.startsAt, getDisplayDateLocale(locale)) }}</span>
             </div>
             <div>
               <h1 class="text-balance text-3xl font-semibold tracking-[-0.06em] text-foreground md:text-4xl">
@@ -266,7 +259,7 @@ definePageMeta({
           <div class="flex items-center gap-3 text-muted-foreground">
             <CircleDollarSign class="size-4" /><span class="text-[11px] uppercase tracking-[0.22em]">{{ $t('admin.event_stat_revenue') }}</span>
           </div><p class="mt-4 text-2xl font-semibold tracking-[-0.05em] text-foreground">
-            {{ formatCurrency(dashboard.revenueCents || 0) }}
+            {{ formatCurrency(dashboard.revenueCents || 0, 'VND', getDisplayDateLocale(locale)) }}
           </p><p class="mt-2 text-sm text-muted-foreground">
             {{ dashboard.soldSeatsCount }} seats converted so far.
           </p>
@@ -397,7 +390,7 @@ definePageMeta({
                 </p>
               </div>
               <p class="text-sm font-medium text-foreground">
-                {{ formatCurrency(row.revenueCents) }}
+                {{ formatCurrency(row.revenueCents, 'VND', getDisplayDateLocale(locale)) }}
               </p>
             </div>
           </div>
@@ -427,7 +420,7 @@ definePageMeta({
                 </p>
               </div>
               <p class="text-sm text-muted-foreground">
-                {{ formatCurrency(order.amountCents) }}
+                {{ formatCurrency(order.amountCents, 'VND', getDisplayDateLocale(locale)) }}
               </p>
             </div>
           </div>

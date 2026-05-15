@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ArrowRight, Clock3, LucideSparkles, Ticket } from '@lucide/vue'
 import { getDisplayDateLocale } from '@/lib/localizedEvents'
+import { formatCurrency, formatDate, formatTime } from '@/lib/utils'
 import type { PublicEventSessionSummary, PublicSessionSectionPriceSummary } from '~~/types/events'
 import { EventStatus } from '#shared/commonEnums'
 
@@ -15,20 +16,20 @@ const props = defineProps<{
 const bookingPath = computed(() => `/events/${props.eventSlug}/sessions/${props.session.publicId}/seats`)
 const dateLocale = computed(() => getDisplayDateLocale(locale.value))
 
-const monthLabel = computed(() => new Date(props.session.startsAt).toLocaleDateString(dateLocale.value, {
+const monthLabel = computed(() => formatDate(props.session.startsAt, dateLocale.value, {
   month: 'short',
 }))
 
-const dayLabel = computed(() => new Date(props.session.startsAt).toLocaleDateString(dateLocale.value, {
+const dayLabel = computed(() => formatDate(props.session.startsAt, dateLocale.value, {
   day: '2-digit',
 }))
 
-const weekdayLabel = computed(() => new Date(props.session.startsAt).toLocaleDateString(dateLocale.value, {
+const weekdayLabel = computed(() => formatDate(props.session.startsAt, dateLocale.value, {
   weekday: 'short',
 }))
 
 const timeRangeLabel = computed(() => {
-  const startsAt = new Date(props.session.startsAt).toLocaleTimeString(dateLocale.value, {
+  const startsAt = formatTime(props.session.startsAt, dateLocale.value, {
     hour: 'numeric',
     minute: '2-digit',
   })
@@ -37,7 +38,7 @@ const timeRangeLabel = computed(() => {
     return startsAt
   }
 
-  const endsAt = new Date(props.session.endsAt).toLocaleTimeString(dateLocale.value, {
+  const endsAt = formatTime(props.session.endsAt, dateLocale.value, {
     hour: 'numeric',
     minute: '2-digit',
   })
@@ -82,9 +83,6 @@ const lowestTicket = computed(() => {
   return lowest
 })
 
-function formatCurrency(value: number, currency: string) {
-  return `${Intl.NumberFormat(dateLocale.value).format(value / 100)} ${currency}`
-}
 </script>
 
 <template>
@@ -128,7 +126,7 @@ function formatCurrency(value: number, currency: string) {
             {{ lowestTicket ? t('event_card.from_label') : t('event_card.pricing_label') }}
           </p>
           <p class="mt-1 text-sm font-semibold text-foreground">
-            {{ lowestTicket ? formatCurrency(lowestTicket.priceCents, lowestTicket.currency) : t('event_card.section_pricing_coming_soon') }}
+            {{ lowestTicket ? formatCurrency(lowestTicket.priceCents, lowestTicket.currency, dateLocale) : t('event_card.section_pricing_coming_soon') }}
           </p>
         </div>
       </div>
@@ -151,7 +149,7 @@ function formatCurrency(value: number, currency: string) {
                 {{ sectionPrice.sectionNameSnapshot }}
               </p>
               <p class="mt-1 font-mono text-xs text-muted-foreground">
-                {{ formatCurrency(sectionPrice.priceCents, sectionPrice.currency) }}
+                {{ formatCurrency(sectionPrice.priceCents, sectionPrice.currency, dateLocale) }}
               </p>
             </div>
           </div>

@@ -15,6 +15,7 @@ type Transaction = ReturnType<typeof useDB>
 
 type EventSessionSeatMap = {
   seats: typeof tables.eventSeats.$inferSelect[]
+  sections: typeof tables.venueSections.$inferSelect[]
   sectionPrices: typeof tables.sessionSectionPrices.$inferSelect[]
   seatOverrides: typeof tables.sessionSeatOverrides.$inferSelect[]
 }
@@ -92,6 +93,18 @@ class EventSessionService extends IDatabaseService<typeof tables.eventSessions.$
       .where(eq(tables.eventSeats.eventSessionId, eventSessionId))
       .all()
 
+    const sectionIds = [...new Set(seats.flatMap((seat) => {
+      return typeof seat.venueSectionId === 'number' ? [seat.venueSectionId] : []
+    }))]
+
+    const sections = sectionIds.length > 0
+      ? await this.db
+          .select()
+          .from(tables.venueSections)
+          .where(inArray(tables.venueSections.id, sectionIds))
+          .all()
+      : []
+
     const sectionPrices = await this.db
       .select()
       .from(tables.sessionSectionPrices)
@@ -105,7 +118,7 @@ class EventSessionService extends IDatabaseService<typeof tables.eventSessions.$
       .where(eq(tables.sessionSeatOverrides.eventSessionId, eventSessionId))
       .all()
 
-    return { seats, sectionPrices, seatOverrides }
+    return { seats, sections, sectionPrices, seatOverrides }
   }
 
   async listSessionSectionPrices(eventSessionId: number) {

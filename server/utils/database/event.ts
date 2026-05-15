@@ -38,6 +38,7 @@ type EventDetail = {
     sectionPrices: typeof tables.sessionSectionPrices.$inferSelect[]
     seatOverrides: typeof tables.sessionSeatOverrides.$inferSelect[]
     seats: typeof tables.eventSeats.$inferSelect[]
+    sections: typeof tables.venueSections.$inferSelect[]
   }>
 }
 

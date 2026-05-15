@@ -4,6 +4,7 @@ import { CalendarRange, Mail, MapPin, Ticket, UserRound } from '@lucide/vue'
 import type { ApiResponse } from '~~/types/api'
 import type { TicketDetailData } from '~~/types/ticketing'
 import { getDisplayDateLocale } from '@/lib/localizedEvents'
+import { formatCurrency, formatDate, formatDateTime } from '@/lib/utils'
 
 const route = useRoute()
 const ticketId = computed(() => route.params.id.toString())
@@ -28,22 +29,16 @@ const sectionLabel = computed(() => {
 const rowLabel = computed(() => ticketBundle.value?.orderItem?.rowLabel || t('tickets.detail_open_floor'))
 const issuedAtLabel = computed(() => {
   const issuedAt = ticketBundle.value?.ticket.issuedAt
-  if (!issuedAt) {
-    return t('tickets.detail_unknown')
-  }
-
-  return new Date(issuedAt).toLocaleDateString(getDisplayDateLocale(locale.value), {
+  return formatDate(issuedAt, getDisplayDateLocale(locale.value), {
+    fallback: t('tickets.detail_unknown'),
     month: 'short',
     day: 'numeric',
     year: 'numeric',
   })
 })
 const sessionTimeLabel = computed(() => {
-  if (!ticketSessionStartsAt.value) {
-    return t('tickets.time_tba')
-  }
-
-  return new Date(ticketSessionStartsAt.value).toLocaleString(getDisplayDateLocale(locale.value), {
+  return formatDateTime(ticketSessionStartsAt.value, getDisplayDateLocale(locale.value), {
+    fallback: t('tickets.time_tba'),
     month: 'short',
     day: 'numeric',
     hour: 'numeric',
@@ -56,7 +51,7 @@ const orderTotalLabel = computed(() => {
     return t('tickets.detail_unknown')
   }
 
-  return `${Intl.NumberFormat(getDisplayDateLocale(locale.value)).format(amountCents / 100)} VND`
+  return formatCurrency(amountCents, 'VND', getDisplayDateLocale(locale.value))
 })
 
 const statusLabel = computed(() => {

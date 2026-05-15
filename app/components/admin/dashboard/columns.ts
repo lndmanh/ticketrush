@@ -5,25 +5,8 @@ import type { AdminDashboardEventRow } from '~~/types/admin-dashboard'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { getDisplayDateLocale } from '@/lib/localizedEvents'
+import { formatCurrency, formatDateTime, formatNumber } from '@/lib/utils'
 import { EventStatus } from '#shared/commonEnums'
-
-function formatCurrency(cents: number, displayLocale: string) {
-  return new Intl.NumberFormat(displayLocale, {
-    style: 'currency',
-    currency: 'USD',
-    maximumFractionDigits: 0,
-  }).format(cents / 100)
-}
-
-function formatDate(value: string | Date | null, displayLocale: string, fallback: string) {
-  if (!value) return fallback
-  return new Date(value).toLocaleDateString(displayLocale, {
-    month: 'short',
-    day: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-  })
-}
 
 function getStatusVariant(status: string): 'default' | 'outline' {
   return status === EventStatus.Draft ? 'outline' : 'default'
@@ -97,7 +80,7 @@ export function createAdminDashboardColumns(): ColumnDef<AdminDashboardEventRow>
       cell: ({ row }) => h(
         'span',
         { class: 'font-mono text-sm font-semibold' },
-        formatCurrency(row.original.revenueCents, getDisplayLocale()),
+        formatCurrency(row.original.revenueCents, 'USD', getDisplayLocale()),
       ),
     },
     {
@@ -106,7 +89,13 @@ export function createAdminDashboardColumns(): ColumnDef<AdminDashboardEventRow>
       cell: ({ row }) => h(
         'span',
         { class: 'whitespace-nowrap text-sm text-muted-foreground' },
-        formatDate(row.original.nextSessionAt, getDisplayLocale(), t('admin.dashboard_not_scheduled')),
+        formatDateTime(row.original.nextSessionAt, getDisplayLocale(), {
+          fallback: t('admin.dashboard_not_scheduled'),
+          month: 'short',
+          day: 'numeric',
+          hour: 'numeric',
+          minute: '2-digit',
+        }),
       ),
     },
     {
@@ -115,7 +104,7 @@ export function createAdminDashboardColumns(): ColumnDef<AdminDashboardEventRow>
       cell: ({ row }) => h(
         'span',
         { class: 'font-mono text-sm text-muted-foreground' },
-        row.original.totalViews.toLocaleString(getDisplayLocale()),
+        formatNumber(row.original.totalViews, getDisplayLocale()),
       ),
     },
   ]

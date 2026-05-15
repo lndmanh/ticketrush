@@ -2,6 +2,7 @@
 import { computed, type Component } from 'vue'
 import { ArrowRight, Clock3 } from '@lucide/vue'
 import { getDisplayDateLocale } from '@/lib/localizedEvents'
+import { formatDateTime } from '@/lib/utils'
 
 interface AdminFeaturedEventCardProps {
   eyebrow: string
@@ -24,7 +25,7 @@ const props = withDefaults(defineProps<AdminFeaturedEventCardProps>(), {
 })
 
 const { locale } = useI18n()
-const formattedStartsAt = computed(() => new Date(props.startsAt).toLocaleString(getDisplayDateLocale(locale.value)))
+const formattedStartsAt = computed(() => formatDateTime(props.startsAt, getDisplayDateLocale(locale.value)))
 const formattedStatus = computed(() => props.status.replaceAll('_', ' '))
 const badgeIcon = computed(() => props.leadingIcon ?? Clock3)
 </script>

@@ -2,6 +2,7 @@
 import { CircleDollarSign, PieChart, Ticket, TrendingUp } from '@lucide/vue'
 import AdminChartCard from '@/components/admin/charts/AdminChartCard.vue'
 import { getDisplayDateLocale } from '@/lib/localizedEvents'
+import { formatCurrency } from '@/lib/utils'
 import { AgeBracket } from '#shared/commonEnums'
 
 const { t, locale } = useI18n()
@@ -72,10 +73,6 @@ const recentOrderSampleOption = computed(() => {
   })
 })
 
-function formatCurrency(cents: number) {
-  return `${Intl.NumberFormat(getDisplayDateLocale(locale.value)).format(cents / 100)} VND`
-}
-
 definePageMeta({
   title: 'Event sales',
   breadcrumb: 'Sales',
@@ -97,7 +94,7 @@ definePageMeta({
           <div class="flex items-center gap-3 text-muted-foreground">
             <CircleDollarSign class="size-4" /><span class="text-[11px] uppercase tracking-[0.22em]">{{ $t('admin_event_sales.revenue_label') }}</span>
           </div><p class="mt-4 text-2xl font-semibold tracking-[-0.05em] text-foreground">
-            {{ formatCurrency(dashboard.revenueCents || 0) }}
+            {{ formatCurrency(dashboard.revenueCents || 0, 'VND', getDisplayDateLocale(locale)) }}
           </p><p class="mt-2 text-sm text-muted-foreground">
             {{ $t('admin_event_sales.revenue_desc') }}
           </p>
@@ -119,7 +116,7 @@ definePageMeta({
           <div class="flex items-center gap-3 text-muted-foreground">
             <Ticket class="size-4" /><span class="text-[11px] uppercase tracking-[0.22em]">{{ $t('admin_event_sales.revenue_per_seat_label') }}</span>
           </div><p class="mt-4 text-2xl font-semibold tracking-[-0.05em] text-foreground">
-            {{ formatCurrency(revenuePerSeat) }}
+            {{ formatCurrency(revenuePerSeat, 'VND', getDisplayDateLocale(locale)) }}
           </p><p class="mt-2 text-sm text-muted-foreground">
             {{ $t('admin_event_sales.revenue_per_seat_desc') }}
           </p>
@@ -190,7 +187,7 @@ definePageMeta({
                 </p>
               </div>
               <p class="text-sm text-muted-foreground">
-                {{ formatCurrency(order.amountCents) }}
+                {{ formatCurrency(order.amountCents, 'VND', getDisplayDateLocale(locale)) }}
               </p>
             </div>
           </div>

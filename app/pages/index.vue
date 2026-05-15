@@ -14,6 +14,7 @@ import {
 import { Motion, motion } from 'motion-v'
 import type { PaginatedApiResponse } from '~~/types/api'
 import type { EventCatalogItem, EventCatalogQueryOptions } from '~~/types/events'
+import { formatDateTime } from '@/lib/utils'
 import { EventCatalogSort } from '#shared/commonEnums'
 
 const { t, locale } = useI18n()
@@ -118,11 +119,8 @@ const heroDropDate = computed(() => {
 })
 
 function formatEventDate(date: string | Date | null | undefined) {
-  if (!date) {
-    return t('home.live_soon')
-  }
-
-  return new Date(date).toLocaleString(locale.value, {
+  return formatDateTime(date, locale.value, {
+    fallback: t('home.live_soon'),
     month: 'short',
     day: 'numeric',
     hour: 'numeric',

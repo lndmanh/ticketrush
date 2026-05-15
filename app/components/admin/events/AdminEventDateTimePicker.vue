@@ -66,7 +66,7 @@ function getTimePart(value: string) {
   return `${hour}:${minute}`
 }
 
-function formatDateTime(datePart: string, timePart: string) {
+function combineDateTimeParts(datePart: string, timePart: string) {
   const normalizedTime = timePartPattern.test(timePart) ? timePart : defaultTimePart
   return `${datePart}T${normalizedTime}`
 }
@@ -83,7 +83,7 @@ const calendarValue = computed<DateValue | undefined>({
       return
     }
 
-    modelValue.value = formatDateTime(value.toString(), timeValue.value || defaultTimePart)
+    modelValue.value = combineDateTimeParts(value.toString(), timeValue.value || defaultTimePart)
   },
 })
 
@@ -113,7 +113,7 @@ function updateTime(value: string) {
     return
   }
 
-  modelValue.value = formatDateTime(datePart, value)
+  modelValue.value = combineDateTimeParts(datePart, value)
 }
 
 function clearDateTime() {

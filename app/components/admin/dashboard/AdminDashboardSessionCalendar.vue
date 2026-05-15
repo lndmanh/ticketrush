@@ -17,7 +17,7 @@ import {
   CalendarPrev,
   CalendarRoot,
 } from 'reka-ui'
-import { cn } from '@/lib/utils'
+import { cn, formatCurrency, formatDate, formatTime } from '@/lib/utils'
 import { getDisplayDateLocale } from '@/lib/localizedEvents'
 
 const props = defineProps<{
@@ -66,26 +66,11 @@ function getDayNumber(day: DateValue) {
 }
 
 function formatSelectedDate(value: string) {
-  return new Date(`${value}T00:00:00`).toLocaleDateString(dateLocale.value, {
+  return formatDate(`${value}T00:00:00`, dateLocale.value, {
     weekday: 'long',
     month: 'short',
     day: 'numeric',
   })
-}
-
-function formatTime(value: string | Date) {
-  return new Date(value).toLocaleTimeString(dateLocale.value, {
-    hour: 'numeric',
-    minute: '2-digit',
-  })
-}
-
-function formatCurrency(cents: number) {
-  return new Intl.NumberFormat(dateLocale.value, {
-    style: 'currency',
-    currency: 'USD',
-    maximumFractionDigits: 0,
-  }).format(cents / 100)
 }
 
 function getStatusVariant(statusLabel: string): 'default' | 'outline' | 'secondary' {
@@ -244,7 +229,7 @@ function getVenueLabel(session: AdminDashboardCalendarSession) {
                   {{ session.eventTitle }}
                 </p>
                 <p class="truncate text-sm text-muted-foreground">
-                  {{ session.label }} · {{ formatTime(session.startsAt) }}
+                  {{ session.label }} · {{ formatTime(session.startsAt, dateLocale) }}
                 </p>
               </div>
               <Badge
@@ -263,7 +248,7 @@ function getVenueLabel(session: AdminDashboardCalendarSession) {
               <div class="flex items-center gap-2">
                 <Ticket class="size-3.5 shrink-0" />
                 <span>{{ getSeatSummary(session) }}</span>
-                <span class="ml-auto font-mono text-xs text-foreground">{{ formatCurrency(session.revenueCents) }}</span>
+                <span class="ml-auto font-mono text-xs text-foreground">{{ formatCurrency(session.revenueCents, 'USD', dateLocale) }}</span>
               </div>
             </div>
 

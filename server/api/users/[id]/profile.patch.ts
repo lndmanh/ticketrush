@@ -1,14 +1,17 @@
-import { z } from 'zod'
-import { emailSchema } from '#shared/schemas/userSchema'
+import { updateProfileSchema } from '#shared/schemas/userSchema'
 import userService from '~~/server/utils/database/user'
 import { getAuthorizedUserId } from '~~/server/utils/authorization'
 import { apiError, success, zodErrorToFieldErrors } from '~~/server/utils/apiResponse'
-import type { UserProfileModel } from '~~/types/models/profile'
+import type { ProfileUpdateData } from '~~/types/models/profile'
 
-const updateProfileSchema = z.object({
-  name: z.string().min(1, 'Name is required').trim(),
-  email: emailSchema,
-})
+function parseBirthDate(value: string | null) {
+  if (!value) {
+    return null
+  }
+
+  const date = new Date(`${value}T00:00:00.000Z`)
+  return Number.isNaN(date.getTime()) ? null : date
+}
 
 export default defineEventHandler(async (event) => {
   const userId = await getAuthorizedUserId(event)
@@ -28,17 +31,23 @@ export default defineEventHandler(async (event) => {
     id: userId,
     name: result.data.name,
     email: result.data.email,
+    phone: result.data.phone,
+    birthDate: parseBirthDate(result.data.birthDate),
+    gender: result.data.gender,
   })
 
   if (!updatedUser) {
     throw apiError({ status: 500, statusText: 'Internal Server Error', code: 'PROFILE_UPDATE_FAILED', message: 'Failed to update the user profile.' })
   }
 
-  const response: Pick<UserProfileModel, 'id' | 'username' | 'name' | 'email'> = {
+  const response: ProfileUpdateData = {
     id: updatedUser.id,
     username: updatedUser.username,
     name: updatedUser.name,
     email: updatedUser.email,
+    phone: updatedUser.phone,
+    birthDate: updatedUser.birthDate,
+    gender: updatedUser.gender,
   }
 
   return success(response)

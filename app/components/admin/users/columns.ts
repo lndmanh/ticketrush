@@ -11,12 +11,19 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { ArrowUpDown, MoreHorizontal, Pencil, Trash2 } from '@lucide/vue'
 import type { User } from '~~/shared/db'
-import { formatRelativeTime } from '@/lib/utils'
+import { getDisplayDateLocale } from '@/lib/localizedEvents'
+import { formatDateTime, formatRelativeTime } from '@/lib/utils'
 
 export function createColumns(
   onEdit: (user: User) => void,
   onDelete: (userId: number) => void,
 ): ColumnDef<User>[] {
+  const { locale } = useI18n()
+
+  function getDisplayLocale() {
+    return getDisplayDateLocale(locale.value)
+  }
+
   return [
     {
       id: 'select',
@@ -100,7 +107,10 @@ export function createColumns(
         }, () => ['Created at', h(ArrowUpDown, { class: 'ml-2 h-4 w-4' })])
       },
       cell: ({ row }) =>
-        h('div', { class: 'text-sm text-muted-foreground whitespace-nowrap' }, formatRelativeTime(row.getValue('createdAt'))),
+        h('div', {
+          class: 'text-sm text-muted-foreground whitespace-nowrap',
+          title: formatDateTime(row.original.createdAt, getDisplayLocale()),
+        }, formatRelativeTime(row.original.createdAt, { locale: getDisplayLocale() })),
     },
     {
       accessorKey: 'lastLoginAt',
@@ -111,7 +121,10 @@ export function createColumns(
         }, () => ['Last Login', h(ArrowUpDown, { class: 'ml-2 h-4 w-4' })])
       },
       cell: ({ row }) =>
-        h('div', { class: 'text-sm text-muted-foreground whitespace-nowrap' }, formatRelativeTime(row.getValue('lastLoginAt'))),
+        h('div', {
+          class: 'text-sm text-muted-foreground whitespace-nowrap',
+          title: row.original.lastLoginAt ? formatDateTime(row.original.lastLoginAt, getDisplayLocale()) : undefined,
+        }, row.original.lastLoginAt ? formatRelativeTime(row.original.lastLoginAt, { locale: getDisplayLocale() }) : '—'),
     },
     {
       id: 'actions',

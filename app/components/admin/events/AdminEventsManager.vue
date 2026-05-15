@@ -152,7 +152,7 @@
               </Badge>
             </div>
             <p class="text-sm text-muted-foreground">
-              {{ getAutosaveVenueName(unfinishedDraft.venueId) }} · saved {{ formatDateTime(unfinishedDraft.updatedAt) }}
+              {{ getAutosaveVenueName(unfinishedDraft.venueId) }} · saved {{ formatDateTime(unfinishedDraft.updatedAt, getDisplayDateLocale(locale)) }}
             </p>
           </div>
           <div class="flex shrink-0 gap-2">
@@ -206,6 +206,7 @@ import { createColumns } from './columns'
 import { apiRequest } from '@/utils/apiRequest'
 import { parseApiError } from '@/utils/apiError'
 import { getDisplayDateLocale } from '@/lib/localizedEvents'
+import { formatDateTime } from '@/lib/utils'
 import { apiRoutes } from '#shared/apiRoutes'
 import { EventStatus } from '#shared/commonEnums'
 
@@ -254,9 +255,6 @@ const featuredPriorityEvent = computed(() => priorityRows.value[0] ?? null)
 
 const firstDraftEventId = computed(() => draftRows.value[0]?.id ?? null)
 
-function formatDateTime(value: string | Date) {
-  return new Date(value).toLocaleString(getDisplayDateLocale(locale.value))
-}
 
 async function fetchEvents() {
   try {

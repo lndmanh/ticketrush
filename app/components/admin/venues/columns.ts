@@ -9,11 +9,18 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import type { Venue } from '#shared/db'
-import { formatRelativeTime } from '@/lib/utils'
+import { getDisplayDateLocale } from '@/lib/localizedEvents'
+import { formatDateTime, formatRelativeTime } from '@/lib/utils'
 
 export function createColumns(
   onOpenStudio: (venueId: number) => void,
 ): ColumnDef<Venue>[] {
+  const { locale } = useI18n()
+
+  function getDisplayLocale() {
+    return getDisplayDateLocale(locale.value)
+  }
+
   return [
     {
       accessorKey: 'name',
@@ -49,8 +56,11 @@ export function createColumns(
       header: 'Updated',
       cell: ({ row }) => h(
         'div',
-        { class: 'text-sm text-muted-foreground whitespace-nowrap' },
-        row.original.updatedAt ? formatRelativeTime(row.original.updatedAt) : '—',
+        {
+          class: 'text-sm text-muted-foreground whitespace-nowrap',
+          title: row.original.updatedAt ? formatDateTime(row.original.updatedAt, getDisplayLocale()) : undefined,
+        },
+        row.original.updatedAt ? formatRelativeTime(row.original.updatedAt, { locale: getDisplayLocale() }) : '—',
       ),
     },
     {

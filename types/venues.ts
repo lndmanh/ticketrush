@@ -1,4 +1,5 @@
 import type { Venue } from '#shared/db'
+import type { SeatLayoutMode } from '#shared/commonEnums'
 
 export interface VenueDetailSeat {
   id: number
@@ -24,6 +25,11 @@ export interface VenueDetailSection {
   name: string
   color: string
   sortOrder: number
+  gridX: number
+  gridY: number
+  gridW: number
+  gridH: number
+  seatLayoutMode: SeatLayoutMode
   rows: VenueDetailRow[]
 }
 

@@ -12,6 +12,7 @@ import { toast } from 'vue-sonner'
 import { apiRequest } from '@/utils/apiRequest'
 import { parseApiError } from '@/utils/apiError'
 import { getDisplayDateLocale } from '@/lib/localizedEvents'
+import { formatCurrency, formatDateTime } from '@/lib/utils'
 import { AgeBracket, OrderStatus, SavedAttendeeGender, TicketHolderSource } from '#shared/commonEnums'
 
 const route = useRoute()
@@ -19,6 +20,7 @@ const { locale, t } = useI18n()
 const { user } = useUserSession()
 const orderId = computed(() => route.params.orderId.toString())
 const holdPublicId = computed(() => typeof route.query.hold === 'string' ? route.query.hold : '')
+const displayLocale = computed(() => getDisplayDateLocale(locale.value))
 const isSubmitting = ref(false)
 const isCancelling = ref(false)
 const currentTime = ref(Date.now())

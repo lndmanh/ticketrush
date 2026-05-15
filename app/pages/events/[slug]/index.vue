@@ -3,6 +3,7 @@ import { CalendarRange, MapPin, Ticket } from '@lucide/vue'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { getDisplayDateLocale } from '@/lib/localizedEvents'
+import { formatDate } from '@/lib/utils'
 import { apiRoutes } from '#shared/apiRoutes'
 import type { EventDetailResponse } from '~~/types/events'
 
@@ -41,14 +42,14 @@ const dateRangeLabel = computed(() => {
   const displayLocale = getDisplayDateLocale(locale.value)
 
   if (firstDate.toDateString() === lastDate.toDateString()) {
-    return firstDate.toLocaleDateString(displayLocale, {
+    return formatDate(firstDate, displayLocale, {
       weekday: 'long',
       month: 'long',
       day: 'numeric',
     })
   }
 
-  return `${firstDate.toLocaleDateString(displayLocale, { month: 'short', day: 'numeric' })} – ${lastDate.toLocaleDateString(displayLocale, { month: 'short', day: 'numeric' })}`
+  return `${formatDate(firstDate, displayLocale, { month: 'short', day: 'numeric' })} – ${formatDate(lastDate, displayLocale, { month: 'short', day: 'numeric' })}`
 })
 
 const venueLabel = computed(() => {
