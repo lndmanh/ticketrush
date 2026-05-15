@@ -89,9 +89,6 @@ export default defineNuxtConfig({
   },
 
   routeRules: routeRules,
-  future: {
-    compatibilityVersion: 5,
-  },
 
   experimental: {
     emitRouteChunkError: 'automatic-immediate',
