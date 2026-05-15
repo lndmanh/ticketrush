@@ -1,4 +1,4 @@
-import type { UpdateProfileInput } from '#shared/schemas/profileSchema'
+import type { UpdateProfileInput } from '#shared/schemas/userSchema'
 
 export interface LinkedAccount {
   provider: string

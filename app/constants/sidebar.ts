@@ -1,22 +1,23 @@
 import type { SidebarContext, SidebarGuardUser, SidebarItem } from '~~/types/common'
-import {
-  CalendarRange,
-  ContactRound,
-  FlagIcon,
-  Home,
-  LayoutDashboardIcon,
-  ListChecksIcon,
-  MapPin,
-  ReceiptText,
-  Shield,
-  ShieldCheck,
-  Ticket,
-  UserRound,
-  UserCog2Icon,
-  UsersIcon,
-} from '@lucide/vue'
+import { CalendarRange, ContactRound, FlagIcon, Home, LayoutDashboardIcon, ListChecksIcon, MapPin, ReceiptText, Shield, ShieldCheck, Ticket, UsersIcon, UserIcon, Settings } from '@lucide/vue'
 
 export const SIDEBAR_CONTEXTS: SidebarContext[] = [
+  {
+    id: 'settings',
+    match: '/settings',
+    variant: 'inset',
+    showBack: true,
+    sections: [
+      {
+        title: 'nav.profile',
+        items: [
+          { title: 'nav.profile', url: '/settings/profile', icon: UserIcon },
+          { title: 'nav.saved_attendees', url: '/tickets/saved-attendees', icon: ContactRound },
+          { title: 'nav.security', url: '/settings/security', icon: Shield },
+        ],
+      },
+    ],
+  },
   {
     id: 'admin',
     match: '/admin',
@@ -58,9 +59,7 @@ export const SIDEBAR_CONTEXTS: SidebarContext[] = [
           { title: 'nav.home', url: '/', icon: Home },
           { title: 'nav.events', url: '/events', icon: CalendarRange },
           { title: 'nav.my_tickets', url: '/tickets', icon: Ticket },
-          { title: 'nav.account', url: '/settings/account', icon: UserRound },
-          { title: 'nav.saved_attendees', url: '/tickets/saved-attendees', icon: ContactRound },
-          { title: 'nav.security', url: '/settings/security', icon: Shield },
+          { title: 'nav.settings', url: '/settings', icon: Settings },
         ],
       },
       {
@@ -68,13 +67,6 @@ export const SIDEBAR_CONTEXTS: SidebarContext[] = [
         guard: (user: SidebarGuardUser) => user?.isAdmin === true,
         items: [
           { title: 'nav.admin_dashboard', url: '/admin', icon: LayoutDashboardIcon },
-        ],
-      },
-      {
-        title: 'nav.support',
-        secondary: true,
-        items: [
-          { title: 'nav.help_support', url: '/settings/security', icon: UserCog2Icon },
         ],
       },
     ],

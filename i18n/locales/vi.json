@@ -265,6 +265,22 @@
     "waiting_room_title": "Điều khiển phòng chờ",
     "waiting_room_desc": "Điều chỉnh ngưỡng hàng chờ, kích thước lượt vào và thời lượng cửa sổ vào sự kiện hot."
   },
+  "account_page": {
+    "title": "Hồ sơ tài khoản",
+    "breadcrumb": "Tài khoản",
+    "heading": "Thông tin hồ sơ",
+    "description": "Cập nhật thông tin cá nhân dùng cho checkout, biên nhận và liên lạc tài khoản.",
+    "full_name": "Họ và tên",
+    "email": "Email",
+    "phone": "Số điện thoại",
+    "country_code": "Mã quốc gia",
+    "clear_phone": "Xóa số điện thoại",
+    "birth_date": "Ngày sinh",
+    "gender": "Giới tính",
+    "complete": "Lưu hồ sơ",
+    "saved_toast": "Đã cập nhật hồ sơ",
+    "save_error": "Không thể cập nhật hồ sơ"
+  },
   "event_card": {
     "venue_label": "Địa điểm",
     "venue_tba": "Địa điểm sẽ được thông báo",

@@ -5,5 +5,5 @@ definePageMeta({
   middleware: ['auth'],
 })
 
-await navigateTo('/settings/account', { replace: true })
+await navigateTo('/settings/profile', { replace: true })
 </script>

@@ -1,4 +1,4 @@
-import { updateProfileSchema } from '#shared/schemas/profileSchema'
+import { updateProfileSchema } from '#shared/schemas/userSchema'
 import userService from '~~/server/utils/database/user'
 import { getAuthorizedUserId } from '~~/server/utils/authorization'
 import { apiError, success, zodErrorToFieldErrors } from '~~/server/utils/apiResponse'

@@ -9,6 +9,14 @@ import type { BreadcrumbItemType } from '~~/types/common'
 const router = useRouter()
 const route = useRoute()
 
+// get fullWidth from page meta, default to true
+const fullWidth = computed(() => {
+  if (typeof route.meta.fullWidth === 'boolean') {
+    return route.meta.fullWidth
+  }
+  return true
+})
+
 function getRouteTitle(meta: { breadcrumb?: unknown, title?: unknown } | undefined) {
   if (!meta) return null
   if (typeof meta.breadcrumb === 'string' && meta.breadcrumb.length > 0) return meta.breadcrumb
@@ -230,6 +238,7 @@ const { loggedIn, user } = useUserSession()
           :class="cn(
             'flex flex-1 flex-col gap-4 py-4 md:gap-6 md:py-6',
             className,
+            !fullWidth && 'max-w-screen-2xl',
           )"
         >
           <div
