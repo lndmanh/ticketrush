@@ -10,7 +10,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { formatRelativeTime } from '@/lib/utils'
+import { formatDateTime, formatRelativeTime } from '@/lib/utils'
 import { getDisplayDateLocale } from '@/lib/localizedEvents'
 
 export interface EventTableRow {
@@ -32,8 +32,8 @@ export function createColumns(
 ): ColumnDef<EventTableRow>[] {
   const { locale } = useI18n()
 
-  function formatDateTime(value: string | Date) {
-    return new Date(value).toLocaleString(getDisplayDateLocale(locale.value))
+  function getDisplayLocale() {
+    return getDisplayDateLocale(locale.value)
   }
 
   return [
@@ -67,20 +67,23 @@ export function createColumns(
         variant: 'ghost',
         onClick: () => column.toggleSorting(column.getIsSorted() === 'asc'),
       }, () => ['Starts', h(ArrowUpDown, { class: 'ml-2 h-4 w-4' })]),
-      cell: ({ row }) => h('div', { class: 'text-sm whitespace-nowrap text-muted-foreground' }, formatDateTime(row.original.startsAt)),
+      cell: ({ row }) => h('div', { class: 'text-sm whitespace-nowrap text-muted-foreground' }, formatDateTime(row.original.startsAt, getDisplayLocale())),
     },
     {
       accessorKey: 'salesStartAt',
       header: 'Sales window',
-      cell: ({ row }) => h('div', { class: 'text-sm text-muted-foreground whitespace-nowrap' }, formatDateTime(row.original.salesStartAt)),
+      cell: ({ row }) => h('div', { class: 'text-sm text-muted-foreground whitespace-nowrap' }, formatDateTime(row.original.salesStartAt, getDisplayLocale())),
     },
     {
       accessorKey: 'updatedAt',
       header: 'Updated',
       cell: ({ row }) => h(
         'div',
-        { class: 'text-sm text-muted-foreground whitespace-nowrap' },
-        row.original.updatedAt ? formatRelativeTime(row.original.updatedAt) : '—',
+        {
+          class: 'text-sm text-muted-foreground whitespace-nowrap',
+          title: row.original.updatedAt ? formatDateTime(row.original.updatedAt, getDisplayLocale()) : undefined,
+        },
+        row.original.updatedAt ? formatRelativeTime(row.original.updatedAt, { locale: getDisplayLocale() }) : '—',
       ),
     },
     {

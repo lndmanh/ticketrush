@@ -9,6 +9,7 @@ import AdminDashboardSessionCalendar from '@/components/admin/dashboard/AdminDas
 import DataTable from '@/components/DataTable.vue'
 import { createAdminDashboardColumns } from '@/components/admin/dashboard/columns'
 import { getDisplayDateLocale } from '@/lib/localizedEvents'
+import { formatCurrency, formatNumber, formatPercent } from '@/lib/utils'
 import { apiRoutes } from '#shared/apiRoutes'
 
 const emptyDashboard: AdminDashboardResponse = {
@@ -192,35 +193,18 @@ function getIsoDate(date: Date) {
   return `${year}-${month}-${day}`
 }
 
-function formatCurrency(cents: number) {
-  return new Intl.NumberFormat(getDisplayDateLocale(locale.value), {
-    style: 'currency',
-    currency: 'USD',
-    maximumFractionDigits: 0,
-  }).format(cents / 100)
-}
-
 function formatCompactCurrency(cents: number) {
-  return new Intl.NumberFormat(getDisplayDateLocale(locale.value), {
-    style: 'currency',
-    currency: 'USD',
+  return formatCurrency(cents, 'USD', getDisplayDateLocale(locale.value), {
     notation: 'compact',
     maximumFractionDigits: 1,
-  }).format(cents / 100)
+  })
 }
 
 function formatCompactNumber(value: number) {
-  return new Intl.NumberFormat(getDisplayDateLocale(locale.value), {
+  return formatNumber(value, getDisplayDateLocale(locale.value), {
     notation: 'compact',
     maximumFractionDigits: 1,
-  }).format(value)
-}
-
-function formatPercent(value: number) {
-  return new Intl.NumberFormat(getDisplayDateLocale(locale.value), {
-    style: 'percent',
-    maximumFractionDigits: 0,
-  }).format(value)
+  })
 }
 
 definePageMeta({
@@ -247,7 +231,7 @@ definePageMeta({
     <section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
       <AdminDashboardKpiCard
         label="Total revenue"
-        :value="formatCurrency(summary.totalRevenueCents)"
+        :value="formatCurrency(summary.totalRevenueCents, 'USD', getDisplayDateLocale(locale))"
         :description="$t('admin.dashboard_total_revenue_desc')"
         :trend-label="$t('admin.dashboard_confirmed')"
         trend-direction="up"
@@ -302,7 +286,7 @@ definePageMeta({
             :description="$t('admin.dashboard_performance_desc')"
             :option="revenueChartOption"
             :height="320"
-            :stat="formatCurrency(summary.totalRevenueCents)"
+            :stat="formatCurrency(summary.totalRevenueCents, 'USD', getDisplayDateLocale(locale))"
             stat-label="Total revenue"
             tone="emerald"
           />

@@ -1,5 +1,6 @@
 import type { SeatMapLayout, SeatMapRow, SeatMapSeat, SeatMapSeatOverrideSummary, SeatMapSectionPriceSummary, SeatMapTicketType } from '~~/types/seatmap'
 import { getDisplayDateLocale } from '~~/shared/utils/locales'
+import { formatCurrency } from '@/lib/utils'
 import { SeatStatus, SeatLayoutMode } from '#shared/commonEnums'
 
 const fallbackSectionColors = ['#111827', '#0F766E', '#1D4ED8', '#B45309', '#BE123C']
@@ -233,5 +234,5 @@ export function getRowStyle(row: SeatMapRow) {
 }
 
 export function formatSeatMapCurrency(value: number, currency = 'VND', locale = 'vi') {
-  return `${Intl.NumberFormat(getDisplayDateLocale(locale)).format(value / 100)} ${currency}`
+  return formatCurrency(value, currency, getDisplayDateLocale(locale))
 }

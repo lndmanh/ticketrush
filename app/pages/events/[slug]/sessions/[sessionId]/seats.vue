@@ -4,6 +4,7 @@ import { ArrowLeft, CheckCircle2, ShoppingBag, Sparkles, TicketCheck, TicketPlus
 import NumberFlow from '@number-flow/vue'
 import { parseApiError } from '@/utils/apiError'
 import { getDisplayDateLocale } from '@/lib/localizedEvents'
+import { formatCurrency, formatDateTime } from '@/lib/utils'
 import { apiRoutes } from '#shared/apiRoutes'
 import { parseSeatmapRealtimeMessage } from '~~/types/seatmap-realtime'
 import type { SeatStatusDeltaChange } from '~~/types/seatmap-realtime'
@@ -131,7 +132,7 @@ const sessionTimeLabel = computed(() => {
     return 'Session time pending'
   }
 
-  return new Date(session.value.startsAt).toLocaleString(getDisplayDateLocale(locale.value), {
+  return formatDateTime(session.value.startsAt, getDisplayDateLocale(locale.value), {
     month: 'short',
     day: 'numeric',
     hour: 'numeric',
@@ -261,10 +262,6 @@ async function refreshSeatMapSafely() {
       seatMapRefreshPromise = null
     }
   } while (seatMapRefreshQueued)
-}
-
-function formatCurrency(value: number, currency = 'VND') {
-  return `${Intl.NumberFormat(getDisplayDateLocale(locale.value)).format(value / 100)} ${currency}`
 }
 
 function formatSeatLabel(seat: { sectionNameSnapshot: string, rowLabelSnapshot: string | null, seatLabelSnapshot: string }) {
@@ -793,7 +790,7 @@ definePageMeta({
                       </ItemContent>
                       <div class="relative ml-auto text-right">
                         <p class="font-mono text-sm font-semibold text-foreground">
-                          {{ formatCurrency(previewSeat.priceCents, previewSeat.currency) }}
+                          {{ formatCurrency(previewSeat.priceCents, previewSeat.currency, getDisplayDateLocale(locale)) }}
                         </p>
                         <p class="text-xs text-muted-foreground">
                           Expected add-on
@@ -883,7 +880,7 @@ definePageMeta({
                           </ItemContent>
                           <div class="ml-auto text-right">
                             <p class="font-mono text-sm font-semibold text-foreground">
-                              {{ formatCurrency(seat.priceCents, seat.currency) }}
+                              {{ formatCurrency(seat.priceCents, seat.currency, getDisplayDateLocale(locale)) }}
                             </p>
                           </div>
                           <ItemActions class="w-full justify-end sm:w-auto">

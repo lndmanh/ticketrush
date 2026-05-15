@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ArrowRight, CalendarRange, MapPin, Ticket } from '@lucide/vue'
 import { getDisplayDateLocale } from '@/lib/localizedEvents'
+import { formatDateTime } from '@/lib/utils'
 import { EventStatus } from '#shared/commonEnums'
 
 interface EventCardProps {
@@ -40,7 +41,7 @@ const firstSessionStartsAt = computed(() => {
 })
 
 const startsAtLabel = computed(() => {
-  return new Date(firstSessionStartsAt.value).toLocaleString(getDisplayDateLocale(locale.value), {
+  return formatDateTime(firstSessionStartsAt.value, getDisplayDateLocale(locale.value), {
     month: 'short',
     day: 'numeric',
     hour: 'numeric',

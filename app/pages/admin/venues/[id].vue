@@ -20,6 +20,7 @@ import {
 import { apiRequest } from '@/utils/apiRequest'
 import { parseApiError } from '@/utils/apiError'
 import { getDisplayDateLocale } from '@/lib/localizedEvents'
+import { formatDateTime } from '@/lib/utils'
 import { apiRoutes } from '#shared/apiRoutes'
 
 interface AdminEventListItem {
@@ -31,10 +32,7 @@ interface AdminEventListItem {
 }
 
 const { locale } = useI18n()
-
-function formatDateTime(value: string | Date) {
-  return new Date(value).toLocaleString(getDisplayDateLocale(locale.value))
-}
+const displayLocale = computed(() => getDisplayDateLocale(locale.value))
 
 type ConfigTab = 'details' | 'layout' | 'events'
 
@@ -701,7 +699,7 @@ definePageMeta({
                       >
                         <div>
                           <p class="text-sm font-medium">{{ event.title }}</p>
-                          <p class="text-xs text-muted-foreground">{{ formatDateTime(event.startsAt) }}</p>
+                          <p class="text-xs text-muted-foreground">{{ formatDateTime(event.startsAt, displayLocale) }}</p>
                         </div>
                         <p class="text-xs text-muted-foreground">{{ event.status }}</p>
                       </NuxtLink>

@@ -7,6 +7,7 @@ import { Check, Circle, Cloud, CloudAlert, Dot, Loader2 } from '@lucide/vue'
 import { apiRequest } from '@/utils/apiRequest'
 import { parseApiError } from '@/utils/apiError'
 import { getDisplayDateLocale } from '@/lib/localizedEvents'
+import { formatDateTime, formatTime } from '@/lib/utils'
 import { apiRoutes } from '#shared/apiRoutes'
 import { eventComposerSchema, getEventSessionTimingIssues } from '#shared/schemas/ticketingSchema'
 import type { Venue } from '#shared/db'
@@ -24,10 +25,7 @@ interface VenueOption {
 }
 
 const { locale } = useI18n()
-
-function formatDateTime(value: string | Date) {
-  return new Date(value).toLocaleString(getDisplayDateLocale(locale.value))
-}
+const displayLocale = computed(() => getDisplayDateLocale(locale.value))
 
 interface EventCreationStep {
   step: number
@@ -121,7 +119,7 @@ const autosaveLabel = computed(() => {
   }
 
   if (autosaveStatus.value === 'saved') {
-    return lastAutosavedAt.value ? `Saved ${lastAutosavedAt.value.toLocaleTimeString()}` : 'Draft saved'
+    return lastAutosavedAt.value ? `Saved ${formatTime(lastAutosavedAt.value, displayLocale.value)}` : 'Draft saved'
   }
 
   if (autosaveStatus.value === 'error') {
@@ -852,7 +850,7 @@ onUnmounted(() => {
         <AlertDialogHeader>
           <AlertDialogTitle>{{ $t('admin.event_create.restore_dialog_title') }}</AlertDialogTitle>
           <AlertDialogDescription>
-            {{ $t('admin.event_create.restore_dialog_desc', { title: pendingAutosaveDraft?.payload.title || $t('admin.events.untitled_event'), step: pendingAutosaveDraft?.lastSavedStep ?? 1, date: pendingAutosaveDraft?.updatedAt ? $t('admin.event_create.restore_dialog_date', { date: formatDateTime(pendingAutosaveDraft.updatedAt) }) : '' }) }}
+            {{ $t('admin.event_create.restore_dialog_desc', { title: pendingAutosaveDraft?.payload.title || $t('admin.events.untitled_event'), step: pendingAutosaveDraft?.lastSavedStep ?? 1, date: pendingAutosaveDraft?.updatedAt ? $t('admin.event_create.restore_dialog_date', { date: formatDateTime(pendingAutosaveDraft.updatedAt, displayLocale) }) : '' }) }}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>

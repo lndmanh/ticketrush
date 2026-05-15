@@ -11,12 +11,14 @@ import { toast } from 'vue-sonner'
 import { apiRequest } from '@/utils/apiRequest'
 import { parseApiError } from '@/utils/apiError'
 import { getDisplayDateLocale } from '@/lib/localizedEvents'
+import { formatCurrency, formatDateTime } from '@/lib/utils'
 import { AgeBracket, OrderStatus, SavedAttendeeGender, TicketHolderSource } from '#shared/commonEnums'
 
 const route = useRoute()
 const { locale } = useI18n()
 const orderId = computed(() => route.params.orderId.toString())
 const holdPublicId = computed(() => typeof route.query.hold === 'string' ? route.query.hold : '')
+const displayLocale = computed(() => getDisplayDateLocale(locale.value))
 const isSubmitting = ref(false)
 const currentTime = ref(Date.now())
 let holdClockIntervalId: number | null = null
@@ -58,14 +60,6 @@ const { handleSubmit, resetForm, values: formValues, meta: formMeta } = useForm(
 })
 
 const formInitializedOrderId = ref<number | null>(null)
-
-function formatCurrency(cents: number) {
-  return `${Intl.NumberFormat(getDisplayDateLocale(locale.value)).format(cents / 100)} VND`
-}
-
-function formatDateTime(value: string | Date) {
-  return new Date(value).toLocaleString(getDisplayDateLocale(locale.value))
-}
 
 function getValidGender(value: string | undefined | null): SavedAttendeeGenderInput {
   if (value === SavedAttendeeGender.Female || value === SavedAttendeeGender.Male || value === SavedAttendeeGender.NonBinary || value === SavedAttendeeGender.PreferNotToSay) {
@@ -373,7 +367,7 @@ definePageMeta({
                 </p>
               </div>
               <p class="font-mono text-sm">
-                {{ formatCurrency(item.unitPriceCents) }}
+                {{ formatCurrency(item.unitPriceCents, 'VND', displayLocale) }}
               </p>
             </div>
           </div>
@@ -383,7 +377,7 @@ definePageMeta({
               Order total
             </p>
             <p class="mt-2 text-4xl font-semibold tracking-[-0.06em]">
-              {{ formatCurrency(checkout.order.amountCents) }}
+              {{ formatCurrency(checkout.order.amountCents, 'VND', displayLocale) }}
             </p>
           </div>
 
@@ -395,7 +389,7 @@ definePageMeta({
               {{ checkout.event.title }}
             </p>
             <p class="mt-1">
-              {{ checkoutSessionStartsAt ? formatDateTime(checkoutSessionStartsAt) : 'Session time will be announced by the organizer.' }}
+              {{ formatDateTime(checkoutSessionStartsAt, displayLocale, { fallback: 'Session time will be announced by the organizer.' }) }}
             </p>
           </div>
         </div>

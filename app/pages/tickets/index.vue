@@ -3,6 +3,7 @@ import { ArrowRight, CalendarRange, MapPin, Ticket, UserRound } from '@lucide/vu
 import type { ApiResponse } from '~~/types/api'
 import type { TicketListItem } from '~~/types/ticketing'
 import { getDisplayDateLocale } from '@/lib/localizedEvents'
+import { formatDate, formatDateTime } from '@/lib/utils'
 
 const { locale } = useI18n()
 const { data: ticketsResponse } = await useAPI<ApiResponse<TicketListItem[]>>(() => '/api/tickets', {
@@ -11,7 +12,7 @@ const { data: ticketsResponse } = await useAPI<ApiResponse<TicketListItem[]>>(()
 const tickets = computed(() => ticketsResponse.value?.data ?? [])
 
 function formatIssuedAt(value: string | Date) {
-  return new Date(value).toLocaleDateString(getDisplayDateLocale(locale.value), {
+  return formatDate(value, getDisplayDateLocale(locale.value), {
     month: 'short',
     day: 'numeric',
     year: 'numeric',
@@ -19,11 +20,8 @@ function formatIssuedAt(value: string | Date) {
 }
 
 function formatEventTime(value: string | Date | null | undefined) {
-  if (!value) {
-    return 'Time to be announced'
-  }
-
-  return new Date(value).toLocaleString(getDisplayDateLocale(locale.value), {
+  return formatDateTime(value, getDisplayDateLocale(locale.value), {
+    fallback: 'Time to be announced',
     month: 'short',
     day: 'numeric',
     hour: 'numeric',

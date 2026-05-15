@@ -5,6 +5,8 @@ import type { ApiResponse } from '~~/types/api'
 import type { AdminTaskData, AdminTaskResult } from '~~/types/admin-tasks'
 import { apiRequest } from '@/utils/apiRequest'
 import { parseApiError } from '@/utils/apiError'
+import { getDisplayDateLocale } from '@/lib/localizedEvents'
+import { formatTime } from '@/lib/utils'
 
 interface TaskDefinition {
   id: string
@@ -44,7 +46,15 @@ const tasks: TaskDefinition[] = [
 
 const runningTasks = ref<Set<string>>(new Set())
 const taskResults = ref<Record<string, AdminTaskResult>>({})
-const { t } = useI18n()
+const { locale, t } = useI18n()
+
+function formatRanAt() {
+  return formatTime(new Date(), getDisplayDateLocale(locale.value), {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  })
+}
 
 const localizedTasks = computed(() => tasks.map(task => ({
   ...task,
@@ -65,7 +75,7 @@ async function runTask(task: TaskDefinition) {
     taskResults.value[task.id] = {
       success: true,
       data: response.data,
-      ranAt: new Date().toLocaleTimeString(),
+      ranAt: formatRanAt(),
     }
     toast.success(t('admin.tasks.completed', { title: task.title }))
   }
@@ -74,7 +84,7 @@ async function runTask(task: TaskDefinition) {
     taskResults.value[task.id] = {
       success: false,
       error: message,
-      ranAt: new Date().toLocaleTimeString(),
+      ranAt: formatRanAt(),
     }
     toast.error(t('admin.tasks.task_failed', { title: task.title, message }))
   }
