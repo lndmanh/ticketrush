@@ -12,7 +12,6 @@ export const SIDEBAR_CONTEXTS: SidebarContext[] = [
         title: 'nav.profile',
         items: [
           { title: 'nav.profile', url: '/settings/profile', icon: UserIcon },
-          { title: 'nav.saved_attendees', url: '/tickets/saved-attendees', icon: ContactRound },
           { title: 'nav.security', url: '/settings/security', icon: Shield },
         ],
       },
@@ -59,6 +58,7 @@ export const SIDEBAR_CONTEXTS: SidebarContext[] = [
           { title: 'nav.home', url: '/', icon: Home },
           { title: 'nav.events', url: '/events', icon: CalendarRange },
           { title: 'nav.my_tickets', url: '/tickets', icon: Ticket },
+          { title: 'nav.saved_attendees', url: '/attendees', icon: ContactRound },
           { title: 'nav.settings', url: '/settings', icon: Settings },
         ],
       },
