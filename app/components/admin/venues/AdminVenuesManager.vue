@@ -230,6 +230,7 @@ import { venueBuilderSchema } from '#shared/schemas/ticketingSchema'
 import type { VenueBuilderInput } from '#shared/schemas/ticketingSchema'
 import { Rows3 } from '@lucide/vue'
 import DataTable from '@/components/DataTable.vue'
+import { getVenueLayoutPresetSections, venueLayoutPresets } from '@/lib/venueLayoutPresets'
 import { apiRequest } from '@/utils/apiRequest'
 import { parseApiError } from '@/utils/apiError'
 import { apiRoutes } from '#shared/apiRoutes'
@@ -319,17 +320,23 @@ const tableLoading = ref(false)
 const dialogLoading = ref(false)
 const showDialog = ref(false)
 
-const defaultValues: VenueBuilderInput = {
-  slug: '',
-  name: '',
-  description: '',
-  city: 'Ho Chi Minh City',
-  country: 'Vietnam',
-  address: '',
-  coverImage: '',
-  sections: [
-    { code: 'VIP', name: 'Front Row', color: '#0F766E', rowCount: 1, seatsPerRow: 2 },
-  ],
+function getDefaultVenueValues(): VenueBuilderInput {
+  const firstPreset = venueLayoutPresets[0]
+
+  if (!firstPreset) {
+    throw new Error('Missing default venue layout preset')
+  }
+
+  return {
+    slug: '',
+    name: '',
+    description: '',
+    city: 'Ho Chi Minh City',
+    country: 'Vietnam',
+    address: '',
+    coverImage: '',
+    sections: getVenueLayoutPresetSections(firstPreset),
+  }
 }
 
 const {
@@ -337,34 +344,9 @@ const {
   resetForm,
   setFieldError,
 } = useForm({
-  initialValues: { ...defaultValues },
+  initialValues: getDefaultVenueValues(),
   validationSchema: venueBuilderSchema,
 })
-
-function buildVenuePayload(formValues: VenueBuilderInput) {
-  return {
-    ...formValues,
-    sections: formValues.sections.map((section, index) => ({
-      code: section.code,
-      name: section.name,
-      color: section.color,
-      sortOrder: index,
-      rows: Array.from({ length: section.rowCount }, (_, rowIndex) => ({
-        label: String.fromCharCode(65 + rowIndex),
-        sortOrder: rowIndex,
-        seats: Array.from({ length: section.seatsPerRow }, (_, seatIndex) => ({
-          label: `${seatIndex + 1}`,
-          seatNumber: seatIndex + 1,
-          x: seatIndex,
-          y: rowIndex,
-          sortOrder: seatIndex,
-          accessibilityLabel: `${String.fromCharCode(65 + rowIndex)}-${seatIndex + 1}`,
-          isAccessible: false,
-        })),
-      })),
-    })),
-  }
-}
 
 const onSubmit = handleSubmit(
   async (formValues) => {
@@ -372,7 +354,7 @@ const onSubmit = handleSubmit(
       dialogLoading.value = true
       const response = await apiRequest(apiRoutes.ADMIN_VENUES, {
         method: 'POST',
-        body: buildVenuePayload(formValues),
+        body: formValues,
       })
       if (!response.success) throw response
 
@@ -424,7 +406,7 @@ async function fetchVenues() {
 }
 
 function openCreateDialog() {
-  resetForm({ values: { ...defaultValues } })
+  resetForm({ values: getDefaultVenueValues() })
   showDialog.value = true
 }
 
@@ -434,7 +416,7 @@ function openStudio(venueId: number) {
 
 function closeDialog() {
   showDialog.value = false
-  resetForm({ values: { ...defaultValues } })
+  resetForm({ values: getDefaultVenueValues() })
 }
 
 const columns = computed(() => createColumns(openStudio))

@@ -197,13 +197,7 @@ export const createVenueSchema = z.object({
   }),
 })
 
-export const venueBuilderSchema = createVenueSchema.omit({
-  sections: true,
-}).extend({
-  sections: z.array(sectionBlueprintSchema)
-    .min(1, 'At least one section is required')
-    .superRefine(addDuplicateSectionCodeIssues),
-})
+export const venueBuilderSchema = createVenueSchema
 
 export const updateVenueSchema = createVenueSchema.extend({
   id: commonSchemaFragments.positiveId,

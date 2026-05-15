@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest'
+import { createVenueSchema, venueBuilderSchema } from '#shared/schemas/ticketingSchema'
 import { getSectionGridCells } from '@/lib/seatmapGrid'
 import {
   getVenueLayoutPresetCompactSummary,
   getVenueLayoutPresetSeatCount,
+  getVenueLayoutPresetSections,
   getVenueLayoutPresetSummary,
   venueLayoutPresets,
 } from '@/lib/venueLayoutPresets'
@@ -64,5 +66,27 @@ describe('venueLayoutPresets', () => {
     expect(getVenueLayoutPresetSeatCount(clubPreset)).toBe(122)
     expect(getVenueLayoutPresetSummary(clubPreset)).toBe('3 sections · 122 seats')
     expect(getVenueLayoutPresetCompactSummary(clubPreset)).toContain('Front VIP: 4×8 @ 0,0')
+  })
+
+  it('uses first preset sections as valid create venue input', () => {
+    const firstPreset = venueLayoutPresets[0]
+
+    if (!firstPreset) {
+      throw new Error('Missing first venue layout preset')
+    }
+
+    const payload = {
+      slug: 'preset-backed-venue',
+      name: 'Preset Backed Venue',
+      description: '',
+      city: 'Ho Chi Minh City',
+      country: 'Vietnam',
+      address: '1 Test Street',
+      coverImage: '',
+      sections: getVenueLayoutPresetSections(firstPreset),
+    }
+
+    expect(createVenueSchema.safeParse(payload).success).toBe(true)
+    expect(venueBuilderSchema.safeParse(payload).success).toBe(true)
   })
 })
