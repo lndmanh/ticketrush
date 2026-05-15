@@ -5,6 +5,7 @@ import {
   AgeBracket,
   EventStatus,
   HoldStatus,
+  OrderPaymentMethod,
   OrderStatus,
   PricingMode,
   QueueStatus,
@@ -25,6 +26,7 @@ export const eventStatusSchema = z.enum(EventStatus)
 export const seatStatusSchema = z.enum(SeatStatus)
 export const holdStatusSchema = z.enum(HoldStatus)
 export const orderStatusSchema = z.enum(OrderStatus)
+export const orderPaymentMethodSchema = z.enum(OrderPaymentMethod)
 export const ticketStatusSchema = z.enum(TicketStatus)
 export const queueStatusSchema = z.enum(QueueStatus)
 export const ageBracketSchema = z.enum(AgeBracket)
@@ -657,6 +659,7 @@ export const confirmCheckoutSchema = z.object({
   customerPhone: z.string().trim().optional(),
   customerAgeBracket: ageBracketSchema.optional(),
   customerGender: genderSchema.optional(),
+  payment: orderPaymentMethodSchema,
   ticketHolders: z.array(checkoutTicketHolderSchema).min(1, 'Assign a ticket holder to each ticket'),
 })
 

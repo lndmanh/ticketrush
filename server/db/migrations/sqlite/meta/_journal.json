@@ -36,6 +36,13 @@
       "when": 1778724009231,
       "tag": "0004_charming_the_phantom",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1778842218553,
+      "tag": "0005_glamorous_star_brand",
+      "breakpoints": true
     }
   ]
 }

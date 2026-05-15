@@ -1,5 +1,6 @@
 import type { Event, EventSession, Order, OrderItem, SeatHold, Ticket } from '#shared/db'
 import type { DateLike } from '~~/types/events'
+import type { SeatPricingSource } from '#shared/commonEnums'
 
 export interface EventSessionGateResponse {
   shouldQueue: boolean
@@ -35,7 +36,7 @@ export interface CheckoutStartData {
 
 export interface CheckoutDetailData {
   order: Order
-  items: OrderItem[]
+  items: (OrderItem & { pricingSource?: SeatPricingSource })[]
   tickets: Ticket[]
   hold: SeatHold | null | undefined
   event: Event | null | undefined

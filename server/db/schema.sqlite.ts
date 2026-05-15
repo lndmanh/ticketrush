@@ -1,7 +1,7 @@
 import { sqliteTable, text, integer, unique, index, foreignKey } from 'drizzle-orm/sqlite-core'
 import { relations } from 'drizzle-orm'
 import type { WebAuthnCredential } from '#auth-utils'
-import type { AgeBracket, AuthTokenType, SavedAttendeeGender as CommonSavedAttendeeGender, SeatPricingSource } from '#shared/commonEnums'
+import type { AgeBracket, AuthTokenType, OrderPaymentMethod, SavedAttendeeGender as CommonSavedAttendeeGender, SeatPricingSource } from '#shared/commonEnums'
 import { EventDraftAutosaveStatus, EventStatus, HoldStatus, OrderStatus, PricingMode, QueueStatus, SeatLayoutMode, SeatStatus, TicketStatus } from '#shared/commonEnums'
 
 const timestampColumns = {
@@ -372,6 +372,7 @@ export const orders = sqliteTable('orders', {
   customerGender: text('customer_gender').$type<CommonSavedAttendeeGender>(),
   amountCents: integer('amount_cents').notNull().default(0),
   currency: text('currency').notNull().default('VND'),
+  payment: text('payment').$type<OrderPaymentMethod>(),
   status: text('status').notNull().default(OrderStatus.Pending).$type<OrderStatus>(),
   checkoutSessionId: text('checkout_session_id').notNull().unique(),
   confirmedAt: integer('confirmed_at', { mode: 'timestamp' }),

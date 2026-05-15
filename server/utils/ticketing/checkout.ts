@@ -8,6 +8,7 @@ import savedAttendeeService from '~~/server/utils/database/savedAttendee'
 import { broadcastSeatStatusDelta, createSeatStatusChanges } from '~~/server/utils/ticketing/seatmap-realtime'
 import type { SeatmapRealtimeNamespace } from '~~/server/utils/ticketing/seatmap-realtime'
 import { HoldStatus, OrderStatus, SeatStatus, TicketHolderSource, TicketStatus } from '#shared/commonEnums'
+import type { OrderPaymentMethod } from '#shared/commonEnums'
 
 type EventSeatRow = typeof tables.eventSeats.$inferSelect
 type SeatHoldItemRow = typeof tables.seatHoldItems.$inferSelect
@@ -216,6 +217,7 @@ class CheckoutService {
         rowLabel: snapshot.rowLabel,
         seatLabel: snapshot.seatLabel,
         unitPriceCents: snapshot.unitPriceCents,
+        pricingSource: snapshot.pricingSource,
         quantity: snapshot.quantity,
         createdAt: snapshot.createdAt,
         updatedAt: snapshot.updatedAt,
@@ -455,6 +457,7 @@ class CheckoutService {
       customerPhone?: string
       customerAgeBracket?: string
       customerGender?: string
+      payment: OrderPaymentMethod
       ticketHolders: CheckoutTicketHolderInput[]
     },
     realtimeNamespace?: SeatmapRealtimeNamespace,
@@ -538,9 +541,9 @@ class CheckoutService {
           attendeePhone: cleanText(savedAttendee.phone),
           attendeeBirthDate: savedAttendee.birthDate ?? null,
           attendeeGender: savedAttendee.gender ?? null,
-          attendeeGuardianName: cleanText(savedAttendee.guardianName),
-          attendeeGuardianEmail: cleanText(savedAttendee.guardianEmail),
-          attendeeGuardianPhone: cleanText(savedAttendee.guardianPhone),
+          attendeeGuardianName: cleanText(assignment.holder?.guardianName) ?? cleanText(savedAttendee.guardianName),
+          attendeeGuardianEmail: cleanText(assignment.holder?.guardianEmail) ?? cleanText(savedAttendee.guardianEmail),
+          attendeeGuardianPhone: cleanText(assignment.holder?.guardianPhone) ?? cleanText(savedAttendee.guardianPhone),
           attendeeNotes: cleanText(savedAttendee.notes),
           attendeeAccessibilityNeeds: cleanText(savedAttendee.accessibilityNeeds),
         })
@@ -584,6 +587,7 @@ class CheckoutService {
         customerGender: payload.customerGender ?? null,
         amountCents,
         currency,
+        payment: payload.payment,
         status: OrderStatus.Pending,
         confirmedAt: null,
         updatedAt: now,

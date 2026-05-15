@@ -50,6 +50,13 @@ export enum OrderStatus {
   Cancelled = 'cancelled',
 }
 
+export enum OrderPaymentMethod {
+  Visa = 'visa',
+  Mastercard = 'mastercard',
+  Paypal = 'paypal',
+  Bank = 'bank',
+}
+
 export enum TicketStatus {
   Issued = 'issued',
   CheckedIn = 'checked_in',

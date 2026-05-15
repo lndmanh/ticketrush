@@ -24,6 +24,7 @@ export default defineEventHandler(async (event) => {
       customerPhone: result.data.customerPhone,
       customerAgeBracket: result.data.customerAgeBracket,
       customerGender: result.data.customerGender,
+      payment: result.data.payment,
       ticketHolders: result.data.ticketHolders,
     },
     realtimeNamespace,
