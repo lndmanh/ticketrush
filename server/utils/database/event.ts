@@ -1,6 +1,7 @@
 import { and, asc, eq, inArray } from 'drizzle-orm'
 import type { Event, EventSession, OrderItem, TicketTypeTranslation, Venue } from '#shared/db'
 import type { CreateEventInput, EventSessionDraftInput, EventTranslationInput, UpdateEventInput } from '#shared/schemas/ticketingSchema'
+import { getVietnamProvinceName, normalizeVietnamProvinceKey } from '#shared/constants/vietnamProvinces'
 import { IDatabaseService } from '~~/types/db/database-service'
 import { createPublicEventId } from '~~/server/utils/ticketing/ids'
 import eventSessionService from '~~/server/utils/database/event-session'
@@ -520,6 +521,8 @@ class EventService extends IDatabaseService<Event> {
       item.slug,
       item.venue?.name,
       item.venue?.city,
+      getVietnamProvinceName(item.venue?.city, 'vi'),
+      getVietnamProvinceName(item.venue?.city, 'en'),
       item.venue?.country,
       item.venue?.address,
     ].filter((value): value is string => typeof value === 'string' && value.length > 0)
@@ -536,6 +539,8 @@ class EventService extends IDatabaseService<Event> {
       item.venue?.name,
       item.venue?.address,
       item.venue?.city,
+      getVietnamProvinceName(item.venue?.city, 'vi'),
+      getVietnamProvinceName(item.venue?.city, 'en'),
       item.venue?.country,
     ].filter((value): value is string => typeof value === 'string' && value.length > 0)
 
@@ -638,7 +643,7 @@ class EventService extends IDatabaseService<Event> {
 
   async getEventCatalog(options: EventCatalogQueryOptions): Promise<EventCatalogResult> {
     const normalizedCountry = options.country.trim().toLowerCase()
-    const normalizedCity = options.city.trim().toLowerCase()
+    const normalizedCity = normalizeVietnamProvinceKey(options.city)?.toLowerCase() ?? options.city.trim().toLowerCase()
     const normalizedVenue = options.venue.trim().toLowerCase()
     const searchTokens = getSearchTokens(options.q)
     const locationTokens = getSearchTokens(options.location || options.area)
