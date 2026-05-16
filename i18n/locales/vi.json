@@ -392,7 +392,13 @@
     "trust_attendees_title": "Người tham dự đã lưu",
     "trust_attendees_desc": "Tái sử dụng hồ sơ khi đặt vé theo nhóm.",
     "trust_reserved_title": "Chỗ ngồi đặt trước",
-    "trust_reserved_desc": "Đi thẳng từ suất diễn đến sơ đồ ghế."
+    "trust_reserved_desc": "Đi thẳng từ suất diễn đến sơ đồ ghế.",
+    "big_event": "Sự kiện lớn",
+    "upcoming_carousel_eyebrow": "Sự kiện sắp diễn ra",
+    "upcoming_carousel_title": "Thêm show sắp mở bán",
+    "upcoming_carousel_empty": "Các sự kiện sắp diễn ra sẽ sớm xuất hiện tại đây.",
+    "carousel_previous": "Sự kiện trước",
+    "carousel_next": "Sự kiện tiếp theo"
   },
   "events": {
     "page_title": "Sự kiện",
