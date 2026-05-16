@@ -164,6 +164,16 @@
     "services": "Services",
     "connect": "Connect",
     "about_us": "About",
+    "events": "Events",
+    "support": "Support",
+    "platform": "Platform",
+    "sell_tickets": "Sell tickets",
+    "event_dashboard": "Event dashboard",
+    "check_in_tools": "Check-in tools",
+    "payout_support": "Payout support",
+    "support_email": "Support email",
+    "organizer_login": "Organizer login",
+    "help_center": "Help center",
     "our_work": "Our Work",
     "faq": "FAQ",
     "contact": "Contact",
@@ -190,6 +200,10 @@
     "clear_filters": "Clear filters",
     "seo_title": "Blog — No Name Studio",
     "seo_description": "Insights, tutorials, and updates from No Name Studio."
+  },
+  "header": {
+    "my_tickets": "My tickets",
+    "login": "Login"
   },
   "nav": {
     "quick_search": "Quick Search",

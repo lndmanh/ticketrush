@@ -164,6 +164,16 @@
     "services": "Dịch vụ",
     "connect": "Kết nối",
     "about_us": "Về chúng tôi",
+    "events": "Sự kiện",
+    "support": "Hỗ trợ",
+    "platform": "Nền tảng",
+    "sell_tickets": "Bán vé",
+    "event_dashboard": "Bảng điều khiển sự kiện",
+    "check_in_tools": "Công cụ check-in",
+    "payout_support": "Hỗ trợ thanh toán",
+    "support_email": "Email hỗ trợ",
+    "organizer_login": "Đăng nhập ban tổ chức",
+    "help_center": "Trung tâm trợ giúp",
     "our_work": "Công việc của chúng tôi",
     "faq": "FAQ",
     "contact": "Liên hệ",
@@ -190,6 +200,10 @@
     "clear_filters": "Xóa bộ lọc",
     "seo_title": "Blog — No Name Studio",
     "seo_description": "Thông tin, hướng dẫn và cập nhật từ No Name Studio."
+  },
+  "header": {
+    "my_tickets": "Vé của tôi",
+    "login": "Đăng nhập"
   },
   "nav": {
     "quick_search": "Tìm kiếm nhanh",

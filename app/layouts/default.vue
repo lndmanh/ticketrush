@@ -483,7 +483,7 @@ const { enable: i18nEnabled, triggerType, dropdownType } = useConfig().value.hea
 const { loggedIn } = useUserSession()
 const isMobileMenuOpen = ref(false)
 
-const headerCtaLabel = computed(() => loggedIn.value ? 'My tickets' : 'Login')
+const headerCtaLabel = computed(() => loggedIn.value ? $t('header.my_tickets') : $t('header.login'))
 const headerCtaTarget = computed(() => loggedIn.value ? '/tickets' : '/auth/login')
 
 const { y: scrollY } = useWindowScroll()
