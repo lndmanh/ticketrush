@@ -22,6 +22,7 @@ import { parseApiError } from '@/utils/apiError'
 import { getDisplayDateLocale } from '@/lib/localizedEvents'
 import { formatDateTime } from '@/lib/utils'
 import { apiRoutes } from '#shared/apiRoutes'
+import { getCountryOptions, getVietnamProvinceCityOptions, VIETNAM_COUNTRY_VALUE } from '#shared/constants/location'
 
 interface AdminEventListItem {
   id: number
@@ -33,6 +34,8 @@ interface AdminEventListItem {
 
 const { locale } = useI18n()
 const displayLocale = computed(() => getDisplayDateLocale(locale.value))
+const countryOptions = computed(() => getCountryOptions(locale.value))
+const cityOptions = computed(() => getVietnamProvinceCityOptions(locale.value))
 
 type ConfigTab = 'details' | 'layout' | 'events'
 
@@ -56,7 +59,7 @@ const defaultIdentityValues: VenueIdentityInput = {
   name: '',
   description: '',
   city: 'Ho Chi Minh City',
-  country: 'Vietnam',
+  country: VIETNAM_COUNTRY_VALUE,
   address: '',
   coverImage: '',
 }
@@ -480,12 +483,27 @@ definePageMeta({
                       <FieldLabel for="edit-venue-city">
                         {{ $t('admin.venues.city') }}
                       </FieldLabel>
-                      <Input
-                        id="edit-venue-city"
+                      <Select
                         :model-value="field.value"
-                        :aria-invalid="!!errors.length"
                         @update:model-value="field.onChange"
-                      />
+                      >
+                        <SelectTrigger
+                          id="edit-venue-city"
+                          :aria-invalid="!!errors.length"
+                          @blur="field.onBlur"
+                        >
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem
+                            v-for="option in cityOptions"
+                            :key="option.value"
+                            :value="option.value"
+                          >
+                            {{ option.label }}
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
                       <FieldError
                         v-if="errors.length"
                         :errors="errors"
@@ -501,12 +519,27 @@ definePageMeta({
                       <FieldLabel for="edit-venue-country">
                         {{ $t('admin.venues.country') }}
                       </FieldLabel>
-                      <Input
-                        id="edit-venue-country"
+                      <Select
                         :model-value="field.value"
-                        :aria-invalid="!!errors.length"
                         @update:model-value="field.onChange"
-                      />
+                      >
+                        <SelectTrigger
+                          id="edit-venue-country"
+                          :aria-invalid="!!errors.length"
+                          @blur="field.onBlur"
+                        >
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem
+                            v-for="option in countryOptions"
+                            :key="option.value"
+                            :value="option.value"
+                          >
+                            {{ option.label }}
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
                       <FieldError
                         v-if="errors.length"
                         :errors="errors"

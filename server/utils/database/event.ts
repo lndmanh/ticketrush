@@ -21,6 +21,7 @@ import {
   normalizeTranslationText,
   resolveContentLocale,
 } from '~~/server/utils/i18n/content-localization'
+import { VIETNAM_PROVINCE_CITY_OPTIONS } from '#shared/constants/location'
 import type { SeatmapRealtimeNamespace } from '~~/server/utils/ticketing/seatmap-realtime'
 import { broadcastSeatmapResyncRequiredWithKnownVersion } from '~~/server/utils/ticketing/seatmap-realtime'
 import type {
@@ -60,6 +61,42 @@ function valuesContainEveryToken(values: string[], tokens: string[]) {
   }
 
   return tokens.every(token => values.some(value => value.toLowerCase().includes(token)))
+}
+
+function normalizeLocationText(value: string) {
+  return value
+    .trim()
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '')
+    .toLowerCase()
+}
+
+function getLocationSearchTokens(value: string) {
+  return normalizeLocationText(value)
+    .split(/\s+/)
+    .filter(token => token.length > 0)
+}
+
+function getLocationSearchTokenGroups(value: string) {
+  const normalizedQuery = normalizeLocationText(value)
+  const matchedOption = VIETNAM_PROVINCE_CITY_OPTIONS.find((option) => {
+    return [option.value, option.labels.vi, option.labels.en].some(optionValue => normalizeLocationText(optionValue) === normalizedQuery)
+  })
+
+  if (matchedOption) {
+    return [matchedOption.value, matchedOption.labels.vi, matchedOption.labels.en].map(getLocationSearchTokens)
+  }
+
+  return [getLocationSearchTokens(value)]
+}
+
+function locationValuesContainEveryToken(values: string[], tokens: string[]) {
+  if (tokens.length === 0) {
+    return true
+  }
+
+  const normalizedValues = values.map(value => normalizeLocationText(value))
+  return tokens.every(token => normalizedValues.some(value => value.includes(token)))
 }
 
 function getDateWindowBounds(dateFilter: EventCatalogDateFilter | string) {
@@ -528,8 +565,8 @@ class EventService extends IDatabaseService<Event> {
     return valuesContainEveryToken(values, searchTokens)
   }
 
-  private matchesCatalogLocation(item: EventCatalogItem, locationTokens: string[]) {
-    if (locationTokens.length === 0) {
+  private matchesCatalogLocation(item: EventCatalogItem, locationTokenGroups: string[][]) {
+    if (locationTokenGroups.length === 0) {
       return true
     }
 
@@ -540,7 +577,7 @@ class EventService extends IDatabaseService<Event> {
       item.venue?.country,
     ].filter((value): value is string => typeof value === 'string' && value.length > 0)
 
-    return valuesContainEveryToken(values, locationTokens)
+    return locationTokenGroups.some(tokens => locationValuesContainEveryToken(values, tokens))
   }
 
   private getAddressAreas(address: string, city: string, country: string) {
@@ -642,7 +679,7 @@ class EventService extends IDatabaseService<Event> {
     const normalizedCity = options.city.trim().toLowerCase()
     const normalizedVenue = options.venue.trim().toLowerCase()
     const searchTokens = getSearchTokens(options.q)
-    const locationTokens = getSearchTokens(options.location || options.area)
+    const locationTokenGroups = getLocationSearchTokenGroups(options.location || options.area)
     const items = await this.getPublicEventCatalogItems(options.locale)
 
     const filteredItems = items.filter((item) => {
@@ -655,7 +692,7 @@ class EventService extends IDatabaseService<Event> {
         && countryMatches
         && cityMatches
         && venueMatches
-        && this.matchesCatalogLocation(item, locationTokens)
+        && this.matchesCatalogLocation(item, locationTokenGroups)
         && this.matchesCatalogDate(item, options.date)
         && this.matchesCatalogSearch(item, searchTokens)
     })

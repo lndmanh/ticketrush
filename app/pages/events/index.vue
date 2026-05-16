@@ -2,9 +2,10 @@
 import { CalendarDays, ChevronLeft, ChevronRight, Search, SlidersHorizontal, X, MapPin, Calendar as CalendarIcon } from '@lucide/vue'
 import { DateFormatter, getLocalTimeZone, parseDate } from '@internationalized/date'
 import type { DateValue } from '@internationalized/date'
-import type { ApiResponse, PaginatedApiResponse } from '~~/types/api'
-import type { EventCatalogItem, EventCatalogLocationOptions } from '~~/types/events'
+import type { PaginatedApiResponse } from '~~/types/api'
+import type { EventCatalogItem } from '~~/types/events'
 import { EventCatalogSort } from '#shared/commonEnums'
+import { getLocationLabelByValue, getVietnamProvinceCityOptions, VIETNAM_PROVINCE_CITY_OPTIONS } from '#shared/constants/location'
 
 const EVENTS_PAGE_SIZE = 9
 
@@ -142,10 +143,6 @@ const { data: catalogResponse, pending, error: catalogFetchError } = await useAP
   query: catalogQuery,
 })
 
-const { data: locationResponse } = await useAPI<ApiResponse<EventCatalogLocationOptions>>(() => '/api/events/locations', {
-  query: computed(() => ({ locale: locale.value })),
-})
-
 const catalog = computed(() => {
   const response = catalogResponse.value
   if (!response || !response.success) return null
@@ -169,36 +166,11 @@ const pagination = computed(() => catalog.value?.pagination ?? {
   hasPreviousPage: false,
 })
 
-const locationOptions = computed<string[]>(() => {
-  const response = locationResponse.value
-  if (!response || !response.success) {
-    return []
-  }
+const cityOptions = computed(() => getVietnamProvinceCityOptions(locale.value))
 
-  const locations = new Set<string>()
-  const data: EventCatalogLocationOptions = response.data
-
-  for (const country of data.countries) {
-    locations.add(country)
-  }
-
-  for (const city of data.cities) {
-    locations.add(city)
-  }
-
-  for (const area of data.areas) {
-    locations.add(area)
-  }
-
-  for (const venue of data.venues) {
-    locations.add(venue.name)
-    locations.add(venue.address)
-  }
-
-  return Array.from(locations)
-    .filter(Boolean)
-    .sort((left, right) => left.localeCompare(right))
-})
+function getLocationFilterLabel(value: string) {
+  return getLocationLabelByValue(VIETNAM_PROVINCE_CITY_OPTIONS, value, locale.value)
+}
 
 const activeFilterCount = computed(() => {
   let count = 0
@@ -214,7 +186,7 @@ const activeFilterChips = computed(() => {
     chips.push({ key: 'q', label: t('events.search_keyword_label'), value: activeKeyword.value })
   }
   if (activeLocation.value) {
-    chips.push({ key: 'location', label: t('events.search_location_label'), value: activeLocation.value })
+    chips.push({ key: 'location', label: t('events.search_location_label'), value: getLocationFilterLabel(activeLocation.value) })
   }
   if (activeDate.value) {
     chips.push({ key: 'date', label: t('events.search_date_label'), value: activeDate.value })
@@ -256,26 +228,27 @@ definePageMeta({
         </div>
 
         <ButtonGroup class="w-full flex-col gap-2 md:flex-row md:gap-0 [&>*]:max-md:rounded-full [&>*]:max-md:border-l">
-          <InputGroup class="h-12 bg-background/80 md:flex-[1.1] md:rounded-r-none md:border-r-0">
-            <InputGroupAddon>
-              <MapPin class="size-4 text-muted-foreground" />
-            </InputGroupAddon>
-            <InputGroupInput
+          <Select
+            v-model="locationInput"
+          >
+            <SelectTrigger
               id="event-location"
-              v-model="locationInput"
-              class="h-12 text-sm"
+              class="h-12 bg-background/80 px-4 text-left font-normal md:flex-[1.1] md:rounded-r-none md:border-r-0"
               :aria-label="$t('events.search_location_label')"
-              :placeholder="$t('events.search_location_placeholder')"
-              list="location-options"
-            />
-            <datalist id="location-options">
-              <option
-                v-for="loc in locationOptions"
-                :key="loc"
-                :value="loc"
-              />
-            </datalist>
-          </InputGroup>
+            >
+              <MapPin class="mr-2 size-4 shrink-0 text-muted-foreground" />
+              <SelectValue :placeholder="$t('events.search_location_placeholder')" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem
+                v-for="option in cityOptions"
+                :key="option.value"
+                :value="option.value"
+              >
+                {{ option.label }}
+              </SelectItem>
+            </SelectContent>
+          </Select>
 
           <Popover>
             <PopoverTrigger as-child>
