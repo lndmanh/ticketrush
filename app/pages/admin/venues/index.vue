@@ -2,8 +2,8 @@
 import AdminVenuesManager from '@/components/admin/venues/AdminVenuesManager.vue'
 
 definePageMeta({
-  title: 'Venues',
-  breadcrumb: 'Venues',
+  title: 'nav.venues',
+  breadcrumb: 'nav.venues',
   middleware: ['auth', 'admin'],
   layout: 'dashboard',
 })
