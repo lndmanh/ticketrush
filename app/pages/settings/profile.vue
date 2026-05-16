@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { AlertTriangle } from '@lucide/vue'
+import { AlertTriangle, SaveIcon } from '@lucide/vue'
 import { toast } from 'vue-sonner'
 import { Field as VeeField, useForm } from 'vee-validate'
 import { apiRoutes } from '#shared/apiRoutes'
@@ -197,6 +197,7 @@ const onSaveProfile = handleProfileSubmit(async (formValues) => {
                 :is-loading="isSaving"
                 :disabled="isSaving || !profileMeta.valid"
               >
+                <SaveIcon class="w-4 h-4" />
                 {{ $t('account_page.complete') }}
               </Button>
             </div>
@@ -218,7 +219,6 @@ const onSaveProfile = handleProfileSubmit(async (formValues) => {
         </div>
         <Button
           variant="destructive"
-          class="shadow-lg shadow-destructive/20"
           @click="confirmDeleteAccount"
         >
           {{ $t('account_page.delete_action') }}
