@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { Activity, Clock3, LogOut, RefreshCw, TicketCheck, Users, Wifi } from '@lucide/vue'
+import { Motion } from 'motion-v'
 import { toast } from 'vue-sonner'
 import type { QueueEntry } from '#shared/db'
 import type { ApiResponse } from '~~/types/api'
@@ -8,6 +10,7 @@ import { apiRequest } from '@/utils/apiRequest'
 import { parseApiError } from '@/utils/apiError'
 import { apiRoutes } from '#shared/apiRoutes'
 import { QueueStatus } from '#shared/commonEnums'
+import { formatWaitingRoomDuration, getWaitingRoomRemainingSeconds } from '@/utils/waitingRoomTimer'
 
 const route = useRoute()
 const { t } = useI18n()
@@ -21,6 +24,7 @@ const isLeaving = ref(false)
 const queueError = ref('')
 const realtimeStatus = ref<'connecting' | 'connected' | 'disconnected'>('connecting')
 const currentTime = ref(Date.now())
+const queueStateReceivedAt = ref<number | null>(null)
 let queueClockIntervalId: number | null = null
 const hasRedirected = ref(false)
 let refreshQueuePromise: Promise<void> | null = null
@@ -74,14 +78,14 @@ const { open, close } = useWebSocket(socketUrl, {
 })
 
 const estimatedWaitLabel = computed(() => {
-  const totalSeconds = queueState.value?.estimatedWaitSeconds ?? 0
-  if (totalSeconds <= 0) {
+  const totalSeconds = queueState.value?.estimatedWaitSeconds
+  const receivedAt = queueStateReceivedAt.value
+  if (totalSeconds === undefined || receivedAt === null) {
     return t('waiting_room.any_moment')
   }
 
-  const minutes = Math.floor(totalSeconds / 60)
-  const seconds = totalSeconds % 60
-  return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
+  const remainingSeconds = getWaitingRoomRemainingSeconds(totalSeconds, receivedAt, currentTime.value)
+  return formatWaitingRoomDuration(remainingSeconds)
 })
 
 const passWindowLabel = computed(() => {
@@ -144,6 +148,7 @@ async function joinQueue() {
 }
 
 async function handleQueueState(state: QueueState | null, options: { allowRejoin: boolean } = { allowRejoin: true }) {
+  queueStateReceivedAt.value = state ? Date.now() : null
   queueState.value = state
   queueError.value = ''
 
@@ -264,8 +269,12 @@ async function leaveQueue() {
 }
 
 onMounted(async () => {
+  queueClockIntervalId = window.setInterval(() => {
+    currentTime.value = Date.now()
+  }, 1000)
+
   try {
-    queueState.value = await joinQueue()
+    await handleQueueState(await joinQueue())
     await refreshQueueStatus()
     open()
   }
@@ -275,10 +284,6 @@ onMounted(async () => {
   finally {
     isJoining.value = false
   }
-
-  queueClockIntervalId = window.setInterval(() => {
-    currentTime.value = Date.now()
-  }, 1000)
 })
 
 onUnmounted(() => {
@@ -296,125 +301,181 @@ definePageMeta({
 </script>
 
 <template>
-  <main class="flex min-h-[76dvh] items-center justify-center py-10">
-    <section class="surface-shell w-full max-w-3xl">
-      <div class="surface-core space-y-8 px-6 py-8 text-center md:px-10 md:py-12">
-        <span class="section-eyebrow mx-auto">
-          {{ $t('waiting_room.eyebrow') }}
-        </span>
+  <main class="relative flex min-h-[calc(100dvh_-_var(--header-height,0px))] items-center justify-center overflow-hidden bg-background px-4 py-10 sm:px-6 lg:px-8">
+    <div
+      class="pointer-events-none absolute inset-x-8 top-1/2 h-72 -translate-y-1/2 rounded-full bg-muted/45 blur-3xl"
+      aria-hidden="true"
+    />
 
-        <div class="space-y-4">
-          <h1 class="display-title mx-auto max-w-2xl text-balance md:text-5xl">
-            {{ $t('waiting_room.title') }}
-          </h1>
-          <p class="mx-auto max-w-[34rem] text-base leading-8 text-muted-foreground">
-            {{ $t('waiting_room.desc') }}
-          </p>
-        </div>
+    <Motion
+      as="section"
+      class="relative w-full max-w-xl"
+      :initial="{ opacity: 0, y: 18, scale: 0.98 }"
+      :animate="{ opacity: 1, y: 0, scale: 1 }"
+      :transition="{ duration: 0.5, ease: [0.32, 0.72, 0, 1] }"
+      :aria-label="$t('waiting_room.title')"
+    >
+      <Card class="overflow-hidden rounded-[2rem] border-border/70 bg-card shadow-2xl shadow-primary/5 py-0">
+        <CardHeader class="flex flex-col gap-6 p-6 sm:p-8">
+          <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <Badge
+              :variant="realtimeStatus === 'connected' ? 'default' : 'secondary'"
+              class="flex w-fit gap-2 rounded-full px-3 py-1"
+            >
+              <Wifi
+                class="size-3.5"
+                aria-hidden="true"
+              />
+              {{ realtimeStatusLabel }}
+            </Badge>
 
-        <div class="grid gap-4 md:grid-cols-3">
-          <TicketSummaryMetric
-            :label="$t('waiting_room.position_label')"
-            :value="queueState?.position || '—'"
-            :hint="$t('waiting_room.position_hint')"
-          />
-          <TicketSummaryMetric
-            :label="$t('waiting_room.waiting_label')"
-            :value="queueState?.waitingCount || 0"
-            :hint="$t('waiting_room.waiting_hint')"
-          />
-          <TicketSummaryMetric
-            :label="$t('waiting_room.admitted_label')"
-            :value="queueState?.admittedCount || 0"
-            :hint="$t('waiting_room.admitted_hint')"
-          />
-        </div>
+            <Badge
+              v-if="passWindowLabel"
+              variant="secondary"
+              class="flex w-fit gap-2 rounded-full px-3 py-1"
+            >
+              <TicketCheck
+                class="size-3.5"
+                aria-hidden="true"
+              />
+              {{ $t('waiting_room.admission_window') }} · {{ passWindowLabel }}
+            </Badge>
+          </div>
 
-        <div class="flex items-center justify-center gap-2">
-          <span class="text-sm text-muted-foreground">
-            {{ $t('waiting_room.realtime_status') }}
-          </span>
-          <Badge
-            :variant="realtimeStatus === 'connected' ? 'default' : 'secondary'"
-            class="rounded-full"
-            aria-live="polite"
-            :aria-label="realtimeStatusLabel"
+          <div class="flex flex-col gap-2 text-center sm:text-left">
+            <p class="text-sm font-medium text-muted-foreground">
+              {{ $t('waiting_room.eyebrow') }}
+            </p>
+            <CardTitle class="text-balance text-3xl font-semibold leading-none tracking-[-0.05em] sm:text-4xl">
+              {{ $t('waiting_room.title') }}
+            </CardTitle>
+          </div>
+        </CardHeader>
+
+        <CardContent class="flex flex-col gap-6 px-6 pb-6 sm:px-8 sm:pb-8">
+          <section
+            class="flex flex-col items-center gap-4 text-center"
+            :aria-label="$t('waiting_room.estimated_wait')"
           >
-            {{ realtimeStatusLabel }}
-          </Badge>
-        </div>
-
-        <div class="surface-shell">
-          <div class="surface-core space-y-4 text-left">
-            <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-              <div>
-                <p class="text-sm text-muted-foreground">
-                  {{ $t('waiting_room.estimated_wait') }}
-                </p>
-                <p class="mt-2 text-3xl font-semibold tracking-[-0.04em]">
-                  {{ estimatedWaitLabel }}
-                </p>
-              </div>
-
-              <div
-                v-if="passWindowLabel"
-                class="rounded-full bg-primary px-4 py-2 text-sm text-primary-foreground"
-              >
-                {{ $t('waiting_room.admission_window') }} · {{ passWindowLabel }}
-              </div>
-            </div>
-
-            <div>
-              <Progress
-                :model-value="queueProgress"
-                class="h-2"
-                :aria-label="$t('waiting_room.queue_progress_label')"
-                :aria-valuetext="queueProgressValueText"
+            <div class="flex size-12 items-center justify-center rounded-2xl bg-muted">
+              <Clock3
+                class="size-5 text-muted-foreground"
+                aria-hidden="true"
               />
             </div>
+
+            <div class="flex flex-col gap-2">
+              <p class="text-sm font-medium text-muted-foreground">
+                {{ $t('waiting_room.estimated_wait') }}
+              </p>
+              <p class="text-balance text-5xl font-semibold leading-none tracking-[-0.08em] tabular-nums sm:text-6xl">
+                {{ estimatedWaitLabel }}
+              </p>
+            </div>
+          </section>
+
+          <div class="flex flex-col gap-3">
+            <Progress
+              :model-value="queueProgress"
+              class="h-2.5"
+              :aria-label="$t('waiting_room.queue_progress_label')"
+              :aria-valuetext="queueProgressValueText"
+            />
+            <div class="flex items-center justify-between gap-3 text-sm text-muted-foreground">
+              <span>{{ $t('waiting_room.queue_progress_label') }}</span>
+              <span class="tabular-nums">{{ queueProgress }}%</span>
+            </div>
           </div>
-        </div>
 
-        <div class="rounded-[1.75rem] bg-accent px-5 py-5 text-left">
-          <p class="text-sm text-muted-foreground">
-            {{ $t('waiting_room.status_label') }}
-          </p>
-          <p class="mt-2 text-xl font-semibold tracking-[-0.04em]">
-            {{ queueStatusLabel }}
-          </p>
-          <p class="mt-3 text-sm leading-7 text-muted-foreground">
-            {{ $t('waiting_room.keep_page_open') }}
-          </p>
-        </div>
+          <Separator />
 
-        <div
-          v-if="queueError"
-          role="alert"
-          class="rounded-[1.5rem] border border-rose-200/70 bg-rose-50 px-5 py-4 text-left text-sm text-rose-950 dark:border-rose-300/15 dark:bg-rose-500/10 dark:text-rose-100"
-        >
-          {{ queueError }}
-        </div>
+          <section
+            class="grid gap-3 sm:grid-cols-2"
+            aria-live="polite"
+          >
+            <div class="flex flex-col gap-2 rounded-2xl bg-muted/50 p-4">
+              <div class="flex items-center gap-2 text-sm text-muted-foreground">
+                <Users
+                  class="size-4"
+                  aria-hidden="true"
+                />
+                <span>{{ $t('waiting_room.position_label') }}</span>
+              </div>
+              <p class="text-2xl font-semibold tracking-[-0.04em] tabular-nums">
+                {{ queueState?.position ?? '—' }}
+              </p>
+            </div>
 
-        <div class="flex flex-col gap-3 md:flex-row md:justify-center">
+            <div class="flex flex-col gap-2 rounded-2xl bg-muted/50 p-4">
+              <p class="text-sm text-muted-foreground">
+                {{ $t('waiting_room.waiting_label') }}
+              </p>
+              <p class="text-2xl font-semibold tracking-[-0.04em] tabular-nums">
+                {{ queueState?.waitingCount ?? 0 }}
+              </p>
+            </div>
+          </section>
+
+          <section
+            class="rounded-2xl bg-muted/45 p-4"
+            aria-live="polite"
+          >
+            <div class="flex items-start gap-3">
+              <div class="flex size-9 shrink-0 items-center justify-center rounded-full bg-background">
+                <Activity
+                  class="size-4 text-muted-foreground"
+                  aria-hidden="true"
+                />
+              </div>
+              <div class="flex min-w-0 flex-1 flex-col gap-1">
+                <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <p class="text-sm font-medium">
+                    {{ queueStatusLabel }}
+                  </p>
+                </div>
+                <p class="text-sm leading-6 text-muted-foreground">
+                  {{ $t('waiting_room.keep_page_open') }}
+                </p>
+              </div>
+            </div>
+          </section>
+
+          <Alert
+            v-if="queueError"
+            variant="destructive"
+          >
+            <AlertDescription>{{ queueError }}</AlertDescription>
+          </Alert>
+        </CardContent>
+
+        <CardFooter class="flex flex-col gap-3 border-t p-6 sm:flex-row sm:items-center sm:justify-between sm:p-8">
           <Button
-            variant="outline"
-            class="rounded-full"
+            class="w-full rounded-full active:scale-[0.98] sm:w-auto"
             :disabled="isJoining"
             @click="refreshQueueStatusSafely"
           >
+            <RefreshCw
+              data-icon="inline-start"
+              :class="{ 'animate-spin': isJoining }"
+              aria-hidden="true"
+            />
             {{ $t('waiting_room.refresh_status') }}
           </Button>
+
           <Button
             variant="ghost"
-            class="rounded-full"
-            :is-loading="isLeaving"
-            :disabled="isJoining"
+            class="w-full rounded-full active:scale-[0.98] sm:w-auto"
+            :disabled="isJoining || isLeaving"
             @click="leaveQueue"
           >
-            {{ $t('waiting_room.leave') }}
+            <LogOut
+              data-icon="inline-start"
+              aria-hidden="true"
+            />
+            {{ isLeaving ? $t('waiting_room.leaving') : $t('waiting_room.leave') }}
           </Button>
-        </div>
-      </div>
-    </section>
+        </CardFooter>
+      </Card>
+    </Motion>
   </main>
 </template>
