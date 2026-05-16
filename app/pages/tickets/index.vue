@@ -4,9 +4,24 @@ import { OrderStatus, TicketStatus } from '#shared/commonEnums'
 import type { ApiResponse } from '~~/types/api'
 import type { TicketListItem } from '~~/types/ticketing'
 import { getDisplayDateLocale } from '@/lib/localizedEvents'
+import { timeRangeDurations } from '#shared/timeRangeDurations'
 
 type TicketStatusFilter = 'all' | 'success' | 'processing' | 'cancelled'
 type TicketTimeFilter = '24h' | '7d' | '30d' | 'all'
+
+const rangeOptions: Array<{ value: TicketTimeFilter, label: string }> = [
+  { value: '24h', label: 'Last 24h' },
+  { value: '7d', label: 'Last 7 days' },
+  { value: '30d', label: 'Last 30 days' },
+  { value: 'all', label: 'All time' },
+]
+
+const statusTabs: Array<{ value: TicketStatusFilter, label: string }> = [
+  { value: 'all', label: 'Tất cả' },
+  { value: 'success', label: 'Thành công' },
+  { value: 'processing', label: 'Đang xử lý' },
+  { value: 'cancelled', label: 'Đã hủy' },
+]
 
 const { locale, t } = useI18n()
 const selectedRange = ref<TicketTimeFilter>('7d')
@@ -34,23 +49,34 @@ const filteredTickets = computed(() => {
 })
 
 function matchesSelectedStatus(ticket: TicketListItem) {
+  const isCancelled = ticket.status === TicketStatus.Cancelled || ticket.order?.status === OrderStatus.Cancelled
+
   if (selectedStatus.value === 'all') {
     return true
   }
 
   if (selectedStatus.value === 'success') {
-    return ticket.status === TicketStatus.Issued || ticket.status === TicketStatus.CheckedIn || ticket.order?.status === OrderStatus.Confirmed
+    return !isCancelled
+      && (ticket.status === TicketStatus.Issued || ticket.status === TicketStatus.CheckedIn || ticket.order?.status === OrderStatus.Confirmed)
   }
 
   if (selectedStatus.value === 'processing') {
     return ticket.order?.status === OrderStatus.Pending
   }
 
-  return ticket.status === TicketStatus.Cancelled || ticket.order?.status === OrderStatus.Cancelled
+  return isCancelled
+}
+
+function getTicketStatusLabel(status: TicketStatus) {
+  const key = `tickets.status_${status}`
+  const translated = t(key)
+  return translated === key ? status.replaceAll('_', ' ') : translated
 }
 
 function matchesSelectedRange(value: string | Date) {
-  if (selectedRange.value === 'all') {
+  const range = selectedRange.value
+
+  if (range === 'all') {
     return true
   }
 
@@ -59,17 +85,22 @@ function matchesSelectedRange(value: string | Date) {
     return false
   }
 
+  const duration = getTicketTimeRangeDuration(range)
   const diff = Date.now() - issuedAt
 
-  if (selectedRange.value === '24h') {
-    return diff >= 0 && diff <= 24 * 60 * 60 * 1000
+  return diff >= 0 && diff <= duration
+}
+
+function getTicketTimeRangeDuration(range: Exclude<TicketTimeFilter, 'all'>) {
+  if (range === '24h') {
+    return timeRangeDurations.last24Hours
   }
 
-  if (selectedRange.value === '7d') {
-    return diff >= 0 && diff <= 7 * 24 * 60 * 60 * 1000
+  if (range === '7d') {
+    return timeRangeDurations.last7Days
   }
 
-  return diff >= 0 && diff <= 30 * 24 * 60 * 60 * 1000
+  return timeRangeDurations.last30Days
 }
 
 function formatEventTime(value: string | Date | null | undefined) {
@@ -89,12 +120,6 @@ function getShortTicketId(value: string) {
   return value.length > 10 ? value.slice(-10) : value
 }
 
-function getTicketStatusLabel(status: TicketStatus) {
-  const key = `tickets.status_${status}`
-  const translated = t(key)
-  return translated === key ? status.replaceAll('_', ' ') : translated
-}
-
 definePageMeta({
   breadcrumb: 'nav.my_tickets',
   layout: 'dashboard',
@@ -103,14 +128,58 @@ definePageMeta({
 </script>
 
 <template>
-  <main class="space-y-6 pb-8 pt-6">
+  <main class="space-y-6">
     <div class="space-y-4">
-      <TicketFilter
-        v-model:selected-range="selectedRange"
-        :total-tickets="tickets.length"
-        :filtered-tickets="filteredTickets.length"
-      />
-      <TicketStatusTabs v-model="selectedStatus" />
+      <Card>
+<CardContent class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <p class="text-sm text-muted-foreground">
+          Đang hiển thị {{ filteredTickets.length }}/{{ tickets.length }} vé
+        </p>
+
+        <div class="ml-auto flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center sm:justify-end sm:gap-4">
+          <Label
+            for="ticket-time-range"
+            class="shrink-0 text-sm font-semibold text-muted-foreground"
+          >
+            Lọc theo ngày
+          </Label>
+          <div class="w-full">
+            <Select v-model="selectedRange">
+              <SelectTrigger
+                id="ticket-time-range"
+              >
+                <SelectValue placeholder="Select range" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem
+                  v-for="option in rangeOptions"
+                  :key="option.value"
+                  :value="option.value"
+                >
+                  {{ option.label }}
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+</CardContent>
+      </Card>
+
+      <Tabs
+        v-model="selectedStatus"
+        class="w-full"
+      >
+        <TabsList class="grid h-auto w-full grid-cols-2 gap-1 p-2 sm:grid-cols-4">
+          <TabsTrigger
+            v-for="tab in statusTabs"
+            :key="tab.value"
+            :value="tab.value"
+            class="px-4 py-3 font-semibold"
+          >
+            {{ tab.label }}
+          </TabsTrigger>
+        </TabsList>
+      </Tabs>
     </div>
 
     <section
@@ -193,7 +262,7 @@ definePageMeta({
 
     <Empty
       v-else
-      class="border border-dashed"
+      class="rounded-xl border bg-card/60 py-16"
     >
       <EmptyHeader>
         <EmptyMedia variant="icon">

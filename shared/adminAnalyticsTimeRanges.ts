@@ -1,4 +1,5 @@
 import { AdminAnalyticsTimeRange } from '#shared/commonEnums'
+import { timeRangeDurations } from '#shared/timeRangeDurations'
 
 export const DEFAULT_ADMIN_ANALYTICS_TIME_RANGE = AdminAnalyticsTimeRange.Last7Days
 
@@ -15,10 +16,10 @@ export const adminAnalyticsTimeRangeOptions: AdminAnalyticsTimeRangeOption[] = [
 ]
 
 const adminAnalyticsTimeRangeDurations: Record<AdminAnalyticsTimeRange, number> = {
-  [AdminAnalyticsTimeRange.Last24Hours]: 24 * 60 * 60 * 1000,
-  [AdminAnalyticsTimeRange.Last3Days]: 3 * 24 * 60 * 60 * 1000,
-  [AdminAnalyticsTimeRange.Last7Days]: 7 * 24 * 60 * 60 * 1000,
-  [AdminAnalyticsTimeRange.Last30Days]: 30 * 24 * 60 * 60 * 1000,
+  [AdminAnalyticsTimeRange.Last24Hours]: timeRangeDurations.last24Hours,
+  [AdminAnalyticsTimeRange.Last3Days]: timeRangeDurations.last3Days,
+  [AdminAnalyticsTimeRange.Last7Days]: timeRangeDurations.last7Days,
+  [AdminAnalyticsTimeRange.Last30Days]: timeRangeDurations.last30Days,
 }
 
 export function getAdminAnalyticsRangeStart(range: AdminAnalyticsTimeRange, now = new Date()) {
