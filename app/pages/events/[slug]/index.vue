@@ -2,6 +2,20 @@
 import type { DateValue } from '@internationalized/date'
 import { CalendarDate, getLocalTimeZone, today } from '@internationalized/date'
 import { CalendarClock, CalendarDays, CalendarRange, ChevronLeft, ChevronRight, Clock3, List, MapPin, Ticket, ArrowRight } from '@lucide/vue'
+import {
+  CalendarCell,
+  CalendarCellTrigger,
+  CalendarGrid,
+  CalendarGridBody,
+  CalendarGridHead,
+  CalendarGridRow,
+  CalendarHeadCell,
+  CalendarHeader,
+  CalendarHeading,
+  CalendarNext,
+  CalendarPrev,
+  CalendarRoot,
+} from 'reka-ui'
 import { Motion } from 'motion-v'
 import { getDisplayDateLocale } from '@/lib/localizedEvents'
 import { cn, formatCurrency, formatDate, formatTime } from '@/lib/utils'
