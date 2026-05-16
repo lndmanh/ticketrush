@@ -118,12 +118,27 @@
                   <FieldLabel for="venue-dialog-city">
                     {{ $t('admin.venues.city') }}
                   </FieldLabel>
-                  <Input
-                    id="venue-dialog-city"
+                  <Select
                     :model-value="field.value"
-                    :aria-invalid="!!errors.length"
                     @update:model-value="field.onChange"
-                  />
+                  >
+                    <SelectTrigger
+                      id="venue-dialog-city"
+                      :aria-invalid="!!errors.length"
+                      @blur="field.onBlur"
+                    >
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem
+                        v-for="option in cityOptions"
+                        :key="option.value"
+                        :value="option.value"
+                      >
+                        {{ option.label }}
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
                   <FieldError
                     v-if="errors.length"
                     :errors="errors"
@@ -139,12 +154,27 @@
                   <FieldLabel for="venue-dialog-country">
                     {{ $t('admin.venues.country') }}
                   </FieldLabel>
-                  <Input
-                    id="venue-dialog-country"
+                  <Select
                     :model-value="field.value"
-                    :aria-invalid="!!errors.length"
                     @update:model-value="field.onChange"
-                  />
+                  >
+                    <SelectTrigger
+                      id="venue-dialog-country"
+                      :aria-invalid="!!errors.length"
+                      @blur="field.onBlur"
+                    >
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem
+                        v-for="option in countryOptions"
+                        :key="option.value"
+                        :value="option.value"
+                      >
+                        {{ option.label }}
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
                   <FieldError
                     v-if="errors.length"
                     :errors="errors"
@@ -223,12 +253,14 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { Field as VeeField, useForm } from 'vee-validate'
 import { toast } from 'vue-sonner'
 import type { Venue } from '#shared/db'
 import { venueBuilderSchema } from '#shared/schemas/ticketingSchema'
 import type { VenueBuilderInput } from '#shared/schemas/ticketingSchema'
 import { Rows3 } from '@lucide/vue'
+import { getCountryOptions, getVietnamProvinceCityOptions, VIETNAM_COUNTRY_VALUE } from '#shared/constants/location'
 import DataTable from '@/components/DataTable.vue'
 import { getVenueLayoutPresetSections, venueLayoutPresets } from '@/lib/venueLayoutPresets'
 import { apiRequest } from '@/utils/apiRequest'
@@ -319,6 +351,9 @@ const venues = ref<Venue[]>([])
 const tableLoading = ref(false)
 const dialogLoading = ref(false)
 const showDialog = ref(false)
+const { locale } = useI18n()
+const countryOptions = computed(() => getCountryOptions(locale.value))
+const cityOptions = computed(() => getVietnamProvinceCityOptions(locale.value))
 
 function getDefaultVenueValues(): VenueBuilderInput {
   const firstPreset = venueLayoutPresets[0]
@@ -332,7 +367,7 @@ function getDefaultVenueValues(): VenueBuilderInput {
     name: '',
     description: '',
     city: 'Ho Chi Minh City',
-    country: 'Vietnam',
+    country: VIETNAM_COUNTRY_VALUE,
     address: '',
     coverImage: '',
     sections: getVenueLayoutPresetSections(firstPreset),

@@ -7,6 +7,7 @@ import type { AdminVenueTranslationData } from '~~/types/admin-localization'
 import type { VenueTranslationInput } from '#shared/schemas/ticketingSchema'
 import { venueTranslationSchema } from '#shared/schemas/ticketingSchema'
 import { languageNames, locales, sourceLocale } from '~~/i18n-constants'
+import { getVietnamProvinceCityOptions } from '#shared/constants/location'
 import { apiRequest } from '@/utils/apiRequest'
 import { parseApiError } from '@/utils/apiError'
 import { apiRoutes } from '#shared/apiRoutes'
@@ -19,6 +20,7 @@ const translatableLocales = locales.filter(localeCode => localeCode !== sourceLo
 const initialLocale = translatableLocales[0] ?? sourceLocale
 const selectedLocale = ref(initialLocale)
 const isSaving = ref(false)
+const cityOptions = computed(() => getVietnamProvinceCityOptions(selectedLocale.value))
 
 const { data: translationResponse, refresh } = await useAPI<ApiResponse<AdminVenueTranslationData>>(() => apiRoutes.adminVenueTranslations(props.venueId))
 
@@ -35,7 +37,7 @@ const defaultValues: VenueTranslationInput = {
   address: '',
 }
 
-const { handleSubmit, resetForm } = useForm<VenueTranslationInput>({
+const { handleSubmit, resetForm, setFieldValue } = useForm<VenueTranslationInput>({
   initialValues: defaultValues,
   validationSchema: venueTranslationSchema,
   keepValuesOnUnmount: true,
@@ -208,17 +210,43 @@ watch([translationData, selectedLocale], resetSelectedLocaleForm, { immediate: t
               name="city"
             >
               <Field :data-invalid="!!errors.length">
-                <FieldLabel for="venue-translation-city">
-                  City
-                </FieldLabel>
-                <Input
-                  id="venue-translation-city"
-                  :model-value="field.value ?? ''"
-                  :aria-invalid="!!errors.length"
-                  placeholder="Localized city"
-                  @update:model-value="field.onChange"
-                  @blur="field.onBlur"
-                />
+                <div class="flex items-end gap-2">
+                  <div class="flex-1 space-y-2">
+                    <FieldLabel for="venue-translation-city">
+                      City
+                    </FieldLabel>
+                    <Select
+                      :model-value="field.value ?? ''"
+                      @update:model-value="field.onChange"
+                    >
+                      <SelectTrigger
+                        id="venue-translation-city"
+                        :aria-invalid="!!errors.length"
+                        @blur="field.onBlur"
+                      >
+                        <SelectValue placeholder="Localized city" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem
+                          v-for="option in cityOptions"
+                          :key="option.value"
+                          :value="option.label"
+                        >
+                          {{ option.label }}
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    class="shrink-0"
+                    @click="setFieldValue('city', '')"
+                  >
+                    Clear
+                  </Button>
+                </div>
                 <FieldDescription>{{ translationData?.venue.city }}</FieldDescription>
                 <FieldError
                   v-if="errors.length"
