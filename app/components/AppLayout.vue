@@ -8,6 +8,11 @@ import type { BreadcrumbItemType } from '~~/types/common'
 
 const router = useRouter()
 const route = useRoute()
+const { t } = useI18n()
+
+function resolveTitle(title: string) {
+  return title.includes('.') ? t(title) : title
+}
 
 // get fullWidth from page meta, default to true
 const fullWidth = computed(() => {
@@ -19,15 +24,15 @@ const fullWidth = computed(() => {
 
 function getRouteTitle(meta: { breadcrumb?: unknown, title?: unknown } | undefined) {
   if (!meta) return null
-  if (typeof meta.breadcrumb === 'string' && meta.breadcrumb.length > 0) return meta.breadcrumb
-  if (typeof meta.title === 'string' && meta.title.length > 0) return meta.title
+  if (typeof meta.breadcrumb === 'string' && meta.breadcrumb.length > 0) return resolveTitle(meta.breadcrumb)
+  if (typeof meta.title === 'string' && meta.title.length > 0) return resolveTitle(meta.title)
 
   return null
 }
 
 const breadcrumbs = computed<BreadcrumbItemType[]>(() => {
   const path = route.path
-  const crumbs: BreadcrumbItemType[] = [{ title: 'Home', href: '/' }]
+  const crumbs: BreadcrumbItemType[] = [{ title: t('common.home'), href: '/' }]
 
   if (path === '/') return crumbs
 

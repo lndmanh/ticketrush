@@ -69,6 +69,13 @@
     "inventory": "Tồn kho",
     "step": "Bước"
   },
+  "data_table": {
+    "reload": "Tải lại",
+    "columns": "Cột",
+    "rows_selected": "Đã chọn {selected} trên {total} hàng.",
+    "previous": "Trước",
+    "next": "Sau"
+  },
   "admin_event_sync": {
     "title": "Đồng bộ sơ đồ địa điểm",
     "description": "Xử lý giá khu vực cho {session} trước khi áp dụng sơ đồ địa điểm hiện tại.",
@@ -164,6 +171,16 @@
     "services": "Dịch vụ",
     "connect": "Kết nối",
     "about_us": "Về chúng tôi",
+    "events": "Sự kiện",
+    "support": "Hỗ trợ",
+    "platform": "Nền tảng",
+    "sell_tickets": "Bán vé",
+    "event_dashboard": "Bảng điều khiển sự kiện",
+    "check_in_tools": "Công cụ check-in",
+    "payout_support": "Hỗ trợ thanh toán",
+    "support_email": "Email hỗ trợ",
+    "organizer_login": "Đăng nhập ban tổ chức",
+    "help_center": "Trung tâm trợ giúp",
     "our_work": "Công việc của chúng tôi",
     "faq": "FAQ",
     "contact": "Liên hệ",
@@ -191,6 +208,10 @@
     "seo_title": "Blog — No Name Studio",
     "seo_description": "Thông tin, hướng dẫn và cập nhật từ No Name Studio."
   },
+  "header": {
+    "my_tickets": "Vé của tôi",
+    "login": "Đăng nhập"
+  },
   "nav": {
     "quick_search": "Tìm kiếm nhanh",
     "search_features": "Tìm kiếm tính năng...",
@@ -214,8 +235,10 @@
     "overview": "Tổng quan",
     "dashboard": "Bảng điều khiển",
     "venues": "Địa điểm",
+    "transactions": "Giao dịch",
     "users": "Người dùng",
     "system": "Hệ thống",
+    "settings": "Cài đặt",
     "tasks": "Tác vụ",
     "waiting_room": "Phòng chờ",
     "feature_flags": "Cờ tính năng",
@@ -313,7 +336,15 @@
     "gender": "Giới tính",
     "complete": "Lưu hồ sơ",
     "saved_toast": "Đã cập nhật hồ sơ",
-    "save_error": "Không thể cập nhật hồ sơ"
+    "save_error": "Không thể cập nhật hồ sơ",
+    "delete_title": "Xóa tài khoản vĩnh viễn",
+    "delete_description": "Sau khi xóa tài khoản, bạn sẽ không thể khôi phục. Hãy chắc chắn trước khi tiếp tục. Toàn bộ dữ liệu của bạn sẽ bị xóa vĩnh viễn.",
+    "delete_action": "Xóa tài khoản",
+    "delete_dialog_title": "Xóa tài khoản",
+    "delete_dialog_description": "Bạn có chắc muốn xóa tài khoản không? Hành động này sẽ xóa vĩnh viễn toàn bộ dữ liệu của bạn và không thể hoàn tác.",
+    "delete_error": "Không thể xóa tài khoản",
+    "name_required": "Vui lòng nhập họ và tên",
+    "email_required": "Vui lòng nhập email hợp lệ"
   },
   "event_card": {
     "venue_label": "Địa điểm",
@@ -747,7 +778,15 @@
     "missing_subtitle": "Vé có thể đã bị xóa hoặc liên kết này không thuộc tài khoản của bạn.",
     "return_to_wallet": "Quay lại ví vé",
     "time_tba": "Thời gian sẽ được thông báo",
-    "empty_wallet_desc": "Ví này lưu mã QR, chỗ ngồi và thời gian sự kiện."
+    "empty_wallet_desc": "Ví này lưu mã QR, chỗ ngồi và thời gian sự kiện.",
+    "last_24h": "24 giờ qua",
+    "last_7_days": "7 ngày qua",
+    "last_30_days": "30 ngày qua",
+    "all_time": "Tất cả",
+    "status_all": "Tất cả",
+    "status_success": "Thành công",
+    "status_processing": "Đang xử lý",
+    "status_cancelled": "Đã hủy"
   },
   "notifications": {
     "open": "Mở thông báo",
@@ -857,6 +896,12 @@
     "dashboard_total_revenue": "Tổng doanh thu",
     "dashboard_total_revenue_desc": "Doanh thu thanh toán đã xác nhận trên mọi sự kiện được theo dõi.",
     "dashboard_confirmed": "Đã xác nhận",
+    "dashboard_range_label": "Khoảng thời gian",
+    "dashboard_range_placeholder": "Chọn khoảng thời gian",
+    "dashboard_range_last_24h": "24 giờ qua",
+    "dashboard_range_last_3d": "3 ngày qua",
+    "dashboard_range_last_7d": "7 ngày qua",
+    "dashboard_range_last_30d": "30 ngày qua",
     "dashboard_seats_listed": "Ghế đã niêm yết",
     "dashboard_seats_listed_desc": "Tồn kho đặt chỗ và vé thường được tạo từ sơ đồ địa điểm.",
     "dashboard_sold_count": "{count} đã bán",
@@ -1048,6 +1093,10 @@
       "view_all": "Xem tất cả",
       "unknown_venue": "Địa điểm không xác định",
       "no_venue": "Chưa chọn địa điểm",
+      "autosave_saved_at": "{venue} · đã lưu {date}",
+      "status_draft": "Bản nháp",
+      "status_published": "Đã xuất bản",
+      "status_cancelled": "Đã hủy",
       "published": "Sự kiện đã xuất bản",
       "unpublished": "Sự kiện đã chuyển về bản nháp",
       "draft_saved": "Bản nháp sự kiện đã lưu",
@@ -1056,6 +1105,34 @@
       "unpublish_failed": "Không thể hủy xuất bản sự kiện",
       "load_failed": "Không thể tải sự kiện",
       "discard_failed": "Không thể hủy bản nháp tự lưu"
+    },
+    "transactions": {
+      "title": "Giao dịch",
+      "breadcrumb": "Giao dịch",
+      "desc": "Theo dõi đơn hàng đã xác nhận, thông tin người mua, chỗ ngồi và thời gian thanh toán.",
+      "range": "Khoảng thời gian",
+      "select_range": "Chọn khoảng thời gian",
+      "range_last_24h": "24 giờ qua",
+      "range_last_3d": "3 ngày qua",
+      "range_last_7d": "7 ngày qua",
+      "range_last_30d": "30 ngày qua",
+      "search": "Tìm kiếm giao dịch",
+      "empty_title": "Chưa có giao dịch",
+      "empty_desc": "Các đơn hàng đã xác nhận sẽ xuất hiện tại đây sau khi người mua hoàn tất thanh toán.",
+      "order_id": "Mã đơn hàng",
+      "buyer_info": "Thông tin người mua",
+      "no_buyer_name": "Chưa có tên người mua",
+      "no_buyer_email": "Chưa có email người mua",
+      "seat_info": "Thông tin chỗ ngồi",
+      "no_seats": "Chưa có chỗ ngồi",
+      "total_amount": "Tổng tiền",
+      "payment_time": "Thời gian thanh toán",
+      "status": "Trạng thái",
+      "status_pending": "Đang chờ",
+      "status_confirmed": "Đã xác nhận",
+      "status_expired": "Đã hết hạn",
+      "status_cancelled": "Đã hủy",
+      "load_failed": "Không thể tải giao dịch"
     },
     "event_create": {
       "page_title": "Tạo sự kiện",
@@ -1449,7 +1526,10 @@
     "save_failed": "Không thể lưu người tham dự. Vui lòng thử lại.",
     "deleted": "Xóa người tham dự thành công",
     "delete_failed": "Không thể xóa người tham dự. Vui lòng thử lại.",
-    "delete_confirm": "Bạn có chắc muốn xóa người tham dự này? Hành động này không thể hoàn tác."
+    "delete_confirm": "Bạn có chắc muốn xóa người tham dự này? Hành động này không thể hoàn tác.",
+    "legal_name_required": "Vui lòng nhập họ tên pháp lý",
+    "birth_date_future": "Ngày sinh không được ở tương lai",
+    "contact_required": "Cần ít nhất một phương thức liên hệ"
   },
   "dashboard": {
     "page_title": "Bảng điều khiển",

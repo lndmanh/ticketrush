@@ -31,7 +31,7 @@ const emptyDashboard: AdminDashboardResponse = {
   sessions: [],
 }
 
-const { locale } = useI18n()
+const { t, locale } = useI18n()
 const selectedRange = ref(DEFAULT_ADMIN_ANALYTICS_TIME_RANGE)
 const { data: dashboardResponse, refresh } = await useAPI<ApiResponse<AdminDashboardResponse>>(() => apiRoutes.ADMIN_DASHBOARD, {
   query: computed(() => ({ locale: locale.value, range: selectedRange.value })),
@@ -62,7 +62,7 @@ const sessionCountsByDate = computed(() => {
   }, {})
 })
 
-const occupancyLabel = computed(() => `${formatPercent(summary.value.occupancyRate)} occupied`)
+const occupancyLabel = computed(() => t('admin.dashboard_occupancy_badge', { percent: formatPercent(summary.value.occupancyRate) }))
 
 const revenueChartOption = computed<EChartsOption>(() => {
   const isDark = colorMode.value === 'dark'
@@ -131,7 +131,7 @@ const revenueChartOption = computed<EChartsOption>(() => {
     ],
     series: [
       {
-        name: 'Revenue',
+        name: t('admin.dashboard_chart_revenue'),
         type: 'line',
         smooth: true,
         symbolSize: 7,
@@ -145,7 +145,7 @@ const revenueChartOption = computed<EChartsOption>(() => {
         },
       },
       {
-        name: 'Tickets',
+        name: t('admin.dashboard_chart_tickets'),
         type: 'line',
         smooth: true,
         yAxisIndex: 1,
@@ -162,11 +162,11 @@ const revenueChartOption = computed<EChartsOption>(() => {
 const seatMixOption = computed(() => {
   return createDonutChartOption({
     data: [
-      { label: 'Sold', value: summary.value.soldSeatsCount },
-      { label: 'Available', value: Math.max(summary.value.totalSeatsListed - summary.value.soldSeatsCount, 0) },
+      { label: t('admin.dashboard_sold'), value: summary.value.soldSeatsCount },
+      { label: t('admin.dashboard_available'), value: Math.max(summary.value.totalSeatsListed - summary.value.soldSeatsCount, 0) },
     ],
     centerValue: formatPercent(summary.value.occupancyRate),
-    centerLabel: 'Occupancy',
+    centerLabel: t('admin.dashboard_occupancy'),
   })
 })
 
@@ -210,8 +210,8 @@ function formatCompactNumber(value: number) {
 }
 
 definePageMeta({
-  title: 'Admin Dashboard',
-  breadcrumb: 'Admin',
+  title: 'admin.dashboard_title',
+  breadcrumb: 'admin.dashboard_breadcrumb',
   middleware: ['auth', 'admin'],
   layout: 'dashboard',
 })
@@ -232,13 +232,13 @@ definePageMeta({
         <Label
           for="admin-dashboard-range"
           class="text-sm text-muted-foreground"
-        >Range</Label>
+        >{{ $t('admin.dashboard_range_label') }}</Label>
         <Select v-model="selectedRange">
           <SelectTrigger
             id="admin-dashboard-range"
             class="w-36"
           >
-            <SelectValue placeholder="Select range" />
+            <SelectValue :placeholder="$t('admin.dashboard_range_placeholder')" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem
@@ -246,7 +246,7 @@ definePageMeta({
               :key="option.value"
               :value="option.value"
             >
-              {{ option.label }}
+              {{ $t(`admin.dashboard_range_${option.value}`) }}
             </SelectItem>
           </SelectContent>
         </Select>
@@ -255,7 +255,7 @@ definePageMeta({
 
     <section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
       <AdminDashboardKpiCard
-        label="Total revenue"
+        :label="$t('admin.dashboard_total_revenue')"
         :value="formatCurrency(summary.totalRevenueCents, 'USD', getDisplayDateLocale(locale))"
         :description="$t('admin.dashboard_total_revenue_desc')"
         :trend-label="$t('admin.dashboard_confirmed')"
@@ -270,7 +270,7 @@ definePageMeta({
         :label="$t('admin.dashboard_seats_listed')"
         :value="formatCompactNumber(summary.totalSeatsListed)"
         :description="$t('admin.dashboard_seats_listed_desc')"
-        :trend-label="`${summary.soldSeatsCount} sold`"
+        :trend-label="$t('admin.dashboard_sold_count', { count: summary.soldSeatsCount })"
         trend-direction="neutral"
       >
         <template #icon>
@@ -294,7 +294,7 @@ definePageMeta({
         :label="$t('admin.dashboard_total_views')"
         :value="formatCompactNumber(summary.totalViews)"
         :description="$t('admin.dashboard_total_views_desc')"
-        trend-label="Tracking pending"
+        :trend-label="$t('admin.dashboard_tracking_pending')"
         trend-direction="neutral"
       >
         <template #icon>
@@ -312,7 +312,7 @@ definePageMeta({
             :option="revenueChartOption"
             :height="320"
             :stat="formatCurrency(summary.totalRevenueCents, 'USD', getDisplayDateLocale(locale))"
-            stat-label="Total revenue"
+            :stat-label="$t('admin.dashboard_total_revenue')"
             tone="emerald"
           />
 
@@ -322,7 +322,7 @@ definePageMeta({
             :option="seatMixOption"
             :height="320"
             :stat="formatPercent(summary.occupancyRate)"
-            stat-label="Occupancy"
+            :stat-label="$t('admin.dashboard_occupancy')"
             tone="slate"
           />
         </div>
@@ -339,7 +339,7 @@ definePageMeta({
               variant="outline"
               class="w-fit rounded-full"
             >
-              {{ dashboard.events.length }} event{{ dashboard.events.length === 1 ? '' : 's' }}
+              {{ $t('admin.dashboard_event_count', { count: dashboard.events.length }) }}
             </Badge>
           </CardHeader>
           <CardContent class="space-y-4">
@@ -347,7 +347,7 @@ definePageMeta({
               :columns="columns"
               :data="dashboard.events"
               :loading="isRefreshing"
-              search-placeholder="Search events, venues, statuses"
+              :search-placeholder="$t('admin.dashboard_search_placeholder')"
               :empty-title="$t('admin.dashboard_empty_title')"
               :empty-description="$t('admin.dashboard_empty_desc')"
               @update:data="refreshDashboard"

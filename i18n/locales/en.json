@@ -69,6 +69,13 @@
     "inventory": "Inventory",
     "step": "Step"
   },
+  "data_table": {
+    "reload": "Reload",
+    "columns": "Columns",
+    "rows_selected": "{selected} of {total} row(s) selected.",
+    "previous": "Previous",
+    "next": "Next"
+  },
   "admin_event_sync": {
     "title": "Sync venue layout",
     "description": "Resolve section pricing for {session} before applying the current venue layout.",
@@ -164,6 +171,16 @@
     "services": "Services",
     "connect": "Connect",
     "about_us": "About",
+    "events": "Events",
+    "support": "Support",
+    "platform": "Platform",
+    "sell_tickets": "Sell tickets",
+    "event_dashboard": "Event dashboard",
+    "check_in_tools": "Check-in tools",
+    "payout_support": "Payout support",
+    "support_email": "Support email",
+    "organizer_login": "Organizer login",
+    "help_center": "Help center",
     "our_work": "Our Work",
     "faq": "FAQ",
     "contact": "Contact",
@@ -191,6 +208,10 @@
     "seo_title": "Blog — No Name Studio",
     "seo_description": "Insights, tutorials, and updates from No Name Studio."
   },
+  "header": {
+    "my_tickets": "My tickets",
+    "login": "Login"
+  },
   "nav": {
     "quick_search": "Quick Search",
     "search_features": "Search features...",
@@ -214,6 +235,7 @@
     "overview": "Overview",
     "dashboard": "Dashboard",
     "venues": "Venues",
+    "transactions": "Transactions",
     "users": "Users",
     "system": "System",
     "tasks": "Tasks",
@@ -314,7 +336,15 @@
     "gender": "Gender",
     "complete": "Save profile",
     "saved_toast": "Profile updated",
-    "save_error": "We could not update your profile"
+    "save_error": "We could not update your profile",
+    "delete_title": "Permanently Delete Account",
+    "delete_description": "Once you delete your account, there is no going back. Please be certain. All your data will be permanently removed.",
+    "delete_action": "Delete Account",
+    "delete_dialog_title": "Delete Account",
+    "delete_dialog_description": "Are you sure you want to delete your account? This will permanently delete all your data and cannot be undone.",
+    "delete_error": "Failed to delete account",
+    "name_required": "Name is required",
+    "email_required": "Valid email is required"
   },
   "event_card": {
     "venue_label": "Venue",
@@ -747,7 +777,15 @@
     "missing_subtitle": "The pass may have been removed, or this link may not belong to your account.",
     "return_to_wallet": "Return to wallet",
     "time_tba": "Time to be announced",
-    "empty_wallet_desc": "This wallet stores the QR pass, seat assignment, and event timing."
+    "empty_wallet_desc": "This wallet stores the QR pass, seat assignment, and event timing.",
+    "last_24h": "Last 24 hours",
+    "last_7_days": "Last 7 days",
+    "last_30_days": "Last 30 days",
+    "all_time": "All time",
+    "status_all": "All",
+    "status_success": "Success",
+    "status_processing": "Processing",
+    "status_cancelled": "Cancelled"
   },
   "notifications": {
     "open": "Open notifications",
@@ -873,6 +911,8 @@
     "special": "One special character (e.g. !, #, $...)"
   },
   "admin": {
+    "dashboard_title": "Admin Dashboard",
+    "dashboard_breadcrumb": "Admin",
     "dashboard_eyebrow": "Command center",
     "dashboard_desc": "Events, venues, and account activity in one place.",
     "dashboard_analytics_title": "Sales analytics at a glance.",
@@ -880,6 +920,12 @@
     "dashboard_total_revenue": "Total revenue",
     "dashboard_total_revenue_desc": "Confirmed checkout revenue across every tracked event.",
     "dashboard_confirmed": "Confirmed",
+    "dashboard_range_label": "Range",
+    "dashboard_range_placeholder": "Select range",
+    "dashboard_range_last_24h": "Last 24 hours",
+    "dashboard_range_last_3d": "Last 3 days",
+    "dashboard_range_last_7d": "Last 7 days",
+    "dashboard_range_last_30d": "Last 30 days",
     "dashboard_seats_listed": "Seats listed",
     "dashboard_seats_listed_desc": "Reserved and general inventory generated from venue maps.",
     "dashboard_sold_count": "{count} sold",
@@ -1073,6 +1119,10 @@
       "view_all": "View all",
       "unknown_venue": "Unknown venue",
       "no_venue": "No venue selected",
+      "autosave_saved_at": "{venue} · saved {date}",
+      "status_draft": "Draft",
+      "status_published": "Published",
+      "status_cancelled": "Cancelled",
       "published": "Event published",
       "unpublished": "Event moved back to draft",
       "draft_saved": "Draft event saved",
@@ -1081,6 +1131,34 @@
       "unpublish_failed": "Failed to unpublish event",
       "load_failed": "Failed to load events",
       "discard_failed": "Failed to discard autosave draft"
+    },
+    "transactions": {
+      "title": "Transactions",
+      "breadcrumb": "Transactions",
+      "desc": "Review confirmed orders, buyer details, seats, and payment timing.",
+      "range": "Range",
+      "select_range": "Select range",
+      "range_last_24h": "Last 24 hours",
+      "range_last_3d": "Last 3 days",
+      "range_last_7d": "Last 7 days",
+      "range_last_30d": "Last 30 days",
+      "search": "Search transactions",
+      "empty_title": "No transactions found",
+      "empty_desc": "Confirmed orders will appear here once buyers complete checkout.",
+      "order_id": "Order ID",
+      "buyer_info": "Buyer info",
+      "no_buyer_name": "No buyer name",
+      "no_buyer_email": "No buyer email",
+      "seat_info": "Seat info",
+      "no_seats": "No seats",
+      "total_amount": "Total amount",
+      "payment_time": "Payment time",
+      "status": "Status",
+      "status_pending": "Pending",
+      "status_confirmed": "Confirmed",
+      "status_expired": "Expired",
+      "status_cancelled": "Cancelled",
+      "load_failed": "Failed to load transactions"
     },
     "event_create": {
       "page_title": "Create Event",
@@ -1474,7 +1552,10 @@
     "save_failed": "Failed to save attendee. Please try again.",
     "deleted": "Attendee deleted successfully",
     "delete_failed": "Failed to delete attendee. Please try again.",
-    "delete_confirm": "Are you sure you want to delete this attendee? This action cannot be undone."
+    "delete_confirm": "Are you sure you want to delete this attendee? This action cannot be undone.",
+    "legal_name_required": "Legal name is required",
+    "birth_date_future": "Birth date cannot be in the future",
+    "contact_required": "At least one contact method is required"
   },
   "dashboard": {
     "page_title": "Dashboard",

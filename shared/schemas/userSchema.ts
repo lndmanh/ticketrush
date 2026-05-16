@@ -132,8 +132,8 @@ export const profileBirthDateSchema = z.string()
 export const profileGenderSchema = z.enum(SavedAttendeeGender).nullable()
 
 export const updateProfileSchema = z.object({
-  name: z.string().trim().min(1, 'Name is required'),
-  email: emailSchema,
+  name: z.string().trim().min(1, 'account_page.name_required'),
+  email: z.email({ error: 'account_page.email_required' }),
   phone: profilePhoneSchema,
   birthDate: profileBirthDateSchema,
   gender: profileGenderSchema,

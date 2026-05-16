@@ -24,9 +24,13 @@ const props = withDefaults(defineProps<AdminFeaturedEventCardProps>(), {
   leadingIcon: undefined,
 })
 
-const { locale } = useI18n()
+const { locale, t, te } = useI18n()
 const formattedStartsAt = computed(() => formatDateTime(props.startsAt, getDisplayDateLocale(locale.value)))
-const formattedStatus = computed(() => props.status.replaceAll('_', ' '))
+const formattedStatus = computed(() => {
+  const statusKey = `admin.events.status_${props.status}`
+
+  return te(statusKey) ? t(statusKey) : props.status.replaceAll('_', ' ')
+})
 const badgeIcon = computed(() => props.leadingIcon ?? Clock3)
 </script>
 
