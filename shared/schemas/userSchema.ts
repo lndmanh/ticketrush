@@ -78,7 +78,16 @@ export const userUpdateSchema = createUpdateSchema(users, {
   password: z.string().min(1).optional(),
   emailVerified: z.boolean().optional(),
   isAdmin: z.boolean().optional(),
+  isLocked: z.boolean().optional(),
 })
+
+/**
+ * Schema for the dedicated lock/unlock endpoint.
+ */
+export const adminUserLockSchema = z.object({
+  isLocked: z.boolean(),
+})
+export type AdminUserLockInput = z.infer<typeof adminUserLockSchema>
 
 export const adminUserCreateFormSchema = createUserSchema.pick({
   username: true,

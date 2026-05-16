@@ -67,7 +67,8 @@
     "subtotal": "Subtotal",
     "refresh": "Refresh",
     "inventory": "Inventory",
-    "step": "Step"
+    "step": "Step",
+    "account_locked_banner": "Your account has been locked. Please contact support for assistance."
   },
   "data_table": {
     "reload": "Reload",
@@ -1253,7 +1254,18 @@
       "save_failed": "Failed to save the user record",
       "load_failed": "Failed to load the user records",
       "delete_failed": "Failed to delete the user record",
-      "batch_delete_failed": "Failed to delete the selected users"
+      "batch_delete_failed": "Failed to delete the selected users",
+      "lock_user_title": "Lock account?",
+      "lock_user_desc": "Locking {username}'s account will immediately prevent them from signing in or accessing the platform.",
+      "unlock_user_title": "Unlock account?",
+      "unlock_user_desc": "Unlocking {username}'s account will restore their access to the platform.",
+      "lock_confirm": "Lock account",
+      "unlock_confirm": "Unlock account",
+      "lock_action": "Lock account",
+      "unlock_action": "Unlock account",
+      "user_locked": "Account locked",
+      "user_unlocked": "Account unlocked",
+      "lock_failed": "Failed to update account lock status"
     },
     "venues": {
       "title": "Venues",

@@ -67,7 +67,8 @@
     "subtotal": "Tạm tính",
     "refresh": "Làm mới",
     "inventory": "Tồn kho",
-    "step": "Bước"
+    "step": "Bước",
+    "account_locked_banner": "Tài khoản của bạn đã bị khóa. Vui lòng liên hệ hỗ trợ để được giải quyết."
   },
   "data_table": {
     "reload": "Tải lại",
@@ -1227,7 +1228,18 @@
       "save_failed": "Không thể lưu hồ sơ người dùng",
       "load_failed": "Không thể tải hồ sơ người dùng",
       "delete_failed": "Không thể xóa hồ sơ người dùng",
-      "batch_delete_failed": "Không thể xóa người dùng đã chọn"
+      "batch_delete_failed": "Không thể xóa người dùng đã chọn",
+      "lock_user_title": "Khóa tài khoản?",
+      "lock_user_desc": "Khóa tài khoản {username} sẽ ngay lập tức ngăn họ đăng nhập hoặc truy cập nền tảng.",
+      "unlock_user_title": "Mở khóa tài khoản?",
+      "unlock_user_desc": "Mở khóa tài khoản {username} sẽ khôi phục quyền truy cập nền tảng của họ.",
+      "lock_confirm": "Khóa tài khoản",
+      "unlock_confirm": "Mở khóa tài khoản",
+      "lock_action": "Khóa tài khoản",
+      "unlock_action": "Mở khóa tài khoản",
+      "user_locked": "Tài khoản đã bị khóa",
+      "user_unlocked": "Tài khoản đã được mở khóa",
+      "lock_failed": "Không thể cập nhật trạng thái khóa tài khoản"
     },
     "venues": {
       "title": "Địa điểm",

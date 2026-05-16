@@ -26,6 +26,7 @@ export const apiRoutes = {
   AUTH_GOOGLE: '/api/auth/google',
   AUTH_OAUTH_URL: '/api/auth/oauth/url',
   AUTH_OAUTH_UNLINK: '/api/auth/oauth/unlink',
+  AUTH_ACCOUNT_STATUS: '/api/auth/account-status',
   MY_PASSKEYS: '/api/users/me/passkeys',
 
   MY_PROFILE: '/api/users/me',
@@ -50,6 +51,7 @@ export const apiRoutes = {
   adminVenueTranslations: (venueId: string | number) => `/api/admin/venues/${venueId}/translations`,
   adminVenueTranslation: (venueId: string | number, locale: string) => `/api/admin/venues/${venueId}/translations/${locale}`,
   adminUser: (userId: string | number) => `/api/admin/users/${userId}`,
+  adminUserLock: (userId: string | number) => `/api/admin/users/${userId}/lock`,
   event: (slug: string) => `/api/events/${slug}`,
   eventSession: (sessionId: string | number) => `/api/event-sessions/${sessionId}`,
   eventSessionGate: (sessionId: string | number) => `/api/event-sessions/${sessionId}/gate`,
