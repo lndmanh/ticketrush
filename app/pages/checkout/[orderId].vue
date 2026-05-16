@@ -3,7 +3,7 @@ import { apiRoutes } from '#shared/apiRoutes'
 import { Field as VeeField, useForm } from 'vee-validate'
 import { ArrowLeft, ChevronDown, CreditCard, Landmark, UserRound, UsersRound, PencilLine, Ticket, WalletCards } from '@lucide/vue'
 import type { SavedAttendeeFormInput, SavedAttendeeGender as SavedAttendeeGenderInput } from '#shared/schemas/savedAttendeeSchema'
-import { checkoutCustomerSchema } from '#shared/schemas/ticketingSchema'
+import { checkoutCustomerSchema, confirmCheckoutSchema } from '#shared/schemas/ticketingSchema'
 import type { CheckoutCustomerInput, CheckoutTicketHolderInput } from '#shared/schemas/ticketingSchema'
 import type { ApiResponse } from '~~/types/api'
 import type { CheckoutCancelData, CheckoutDetailData } from '~~/types/ticketing'
@@ -109,7 +109,7 @@ const defaultValues: CheckoutCustomerInput = {
 
 const selfAttendee = computed(() => savedAttendees.value.find(attendee => attendee.isSelf) ?? null)
 
-const { handleSubmit, resetForm, setFieldValue, values: formValues, meta: formMeta } = useForm({
+const { handleSubmit, resetForm, values: formValues, meta: formMeta } = useForm({
   initialValues: { ...defaultValues },
   validationSchema: checkoutCustomerSchema,
 })
@@ -951,16 +951,22 @@ const onSubmit = handleSubmit(
     isSubmitting.value = true
 
     try {
+      const payload = {
+        checkoutSessionId: checkout.value.order.checkoutSessionId,
+        holdPublicId: holdPublicId.value,
+        ...values,
+        payment: selectedPaymentMethod.value,
+        ticketHolders: ticketHolderDrafts.value.map(toPayloadHolder),
+      }
+      const payloadResult = confirmCheckoutSchema.safeParse(payload)
+      if (!payloadResult.success) {
+        toast.error(payloadResult.error.issues[0]?.message ?? t('checkout.fix_highlighted'))
+        return
+      }
+
       const response = await apiRequest(apiRoutes.CHECKOUT_CONFIRM, {
         method: 'POST',
-        body: {
-          checkoutSessionId: checkout.value.order.checkoutSessionId,
-          holdPublicId: holdPublicId.value,
-          userId: checkout.value.order.userId,
-          ...values,
-          payment: selectedPaymentMethod.value,
-          ticketHolders: ticketHolderDrafts.value.map(toPayloadHolder),
-        },
+        body: payloadResult.data,
       })
       if (!response.success) throw response
 
@@ -1432,40 +1438,73 @@ definePageMeta({
 
               <FieldGroup>
                 <div class="grid gap-3 md:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
-                  <Field>
-                    <FieldLabel for="checkout-billing-name">
-                      {{ $t('checkout.full_name') }}
-                    </FieldLabel>
-                    <Input
-                      id="checkout-billing-name"
-                      :model-value="formValues.customerName"
-                      :placeholder="$t('checkout.full_name')"
-                      @update:model-value="value => setFieldValue('customerName', String(value))"
-                    />
-                  </Field>
-                  <Field>
-                    <FieldLabel for="checkout-billing-email">
-                      {{ $t('checkout.email') }}
-                    </FieldLabel>
-                    <Input
-                      id="checkout-billing-email"
-                      :model-value="formValues.customerEmail"
-                      type="email"
-                      placeholder="you@example.com"
-                      @update:model-value="value => setFieldValue('customerEmail', String(value))"
-                    />
-                  </Field>
-                  <Field class="md:col-span-2 lg:col-span-1 xl:col-span-2">
-                    <FieldLabel for="checkout-billing-phone">
-                      {{ $t('checkout.phone') }}
-                    </FieldLabel>
-                    <Input
-                      id="checkout-billing-phone"
-                      :model-value="formValues.customerPhone"
-                      placeholder="+84 90 000 0000"
-                      @update:model-value="value => setFieldValue('customerPhone', String(value))"
-                    />
-                  </Field>
+                  <VeeField
+                    v-slot="{ field, errors }"
+                    name="customerName"
+                  >
+                    <Field :data-invalid="!!errors.length">
+                      <FieldLabel for="checkout-billing-name">
+                        {{ $t('checkout.full_name') }}
+                      </FieldLabel>
+                      <Input
+                        id="checkout-billing-name"
+                        v-bind="field"
+                        :placeholder="$t('checkout.full_name')"
+                        :aria-invalid="!!errors.length"
+                      />
+                      <FieldError
+                        v-if="errors.length"
+                        :errors="errors"
+                      />
+                    </Field>
+                  </VeeField>
+                  <VeeField
+                    v-slot="{ field, errors }"
+                    name="customerEmail"
+                    :validate-on-input="true"
+                  >
+                    <Field :data-invalid="!!errors.length">
+                      <FieldLabel for="checkout-billing-email">
+                        {{ $t('checkout.email') }}
+                      </FieldLabel>
+                      <Input
+                        id="checkout-billing-email"
+                        v-bind="field"
+                        type="email"
+                        placeholder="you@example.com"
+                        :aria-invalid="!!errors.length"
+                      />
+                      <FieldError
+                        v-if="errors.length"
+                        :errors="errors"
+                      />
+                    </Field>
+                  </VeeField>
+                  <VeeField
+                    v-slot="{ field, errors }"
+                    name="customerPhone"
+                    :validate-on-input="true"
+                  >
+                    <Field
+                      class="md:col-span-2 lg:col-span-1 xl:col-span-2"
+                      :data-invalid="!!errors.length"
+                    >
+                      <FieldLabel for="checkout-billing-phone">
+                        {{ $t('checkout.phone') }}
+                      </FieldLabel>
+                      <Input
+                        id="checkout-billing-phone"
+                        v-bind="field"
+                        type="tel"
+                        placeholder="+84 90 000 0000"
+                        :aria-invalid="!!errors.length"
+                      />
+                      <FieldError
+                        v-if="errors.length"
+                        :errors="errors"
+                      />
+                    </Field>
+                  </VeeField>
                 </div>
               </FieldGroup>
             </div>

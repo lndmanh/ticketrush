@@ -16,6 +16,13 @@ function optionalEmailSchema() {
   ]).optional()
 }
 
+export function optionalPhoneSchema() {
+  return z.union([
+    z.string().trim().max(0),
+    z.string().trim().regex(/^\+?[0-9\s().-]{7,20}$/, 'saved_attendees.phone_invalid'),
+  ]).optional()
+}
+
 function birthDateSchema() {
   return z.preprocess(
     (value) => {
@@ -37,12 +44,12 @@ const savedAttendeeBaseSchema = z.object({
   legalName: z.string().trim().min(1, 'saved_attendees.legal_name_required'),
   preferredName: optionalTextSchema(),
   email: optionalEmailSchema(),
-  phone: optionalTextSchema(),
+  phone: optionalPhoneSchema(),
   birthDate: birthDateSchema(),
   gender: savedAttendeeGenderSchema.optional(),
   guardianName: optionalTextSchema(),
   guardianEmail: optionalEmailSchema(),
-  guardianPhone: optionalTextSchema(),
+  guardianPhone: optionalPhoneSchema(),
   notes: optionalTextSchema(),
   accessibilityNeeds: optionalTextSchema(),
   isSelf: z.boolean().optional(),

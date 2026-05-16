@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { commonSchemaFragments } from './index'
-import { savedAttendeeFormSchema } from './savedAttendeeSchema'
+import { optionalPhoneSchema, savedAttendeeFormSchema } from './savedAttendeeSchema'
 import {
   AgeBracket,
   EventStatus,
@@ -656,7 +656,7 @@ export const confirmCheckoutSchema = z.object({
   holdPublicId: commonSchemaFragments.nonEmptyString('Hold ID'),
   customerName: commonSchemaFragments.nonEmptyString('Customer name'),
   customerEmail: z.email({ error: 'Valid email is required' }),
-  customerPhone: z.string().trim().optional(),
+  customerPhone: optionalPhoneSchema(),
   customerAgeBracket: ageBracketSchema.optional(),
   customerGender: genderSchema.optional(),
   payment: orderPaymentMethodSchema,

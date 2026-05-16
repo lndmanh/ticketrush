@@ -542,6 +542,7 @@ definePageMeta({
               <VeeField
                 v-slot="{ field, errors }"
                 name="phone"
+                :validate-on-input="true"
               >
                 <Field :data-invalid="!!errors.length">
                   <FieldLabel>{{ $t('saved_attendees.phone') }}</FieldLabel>
@@ -549,6 +550,7 @@ definePageMeta({
                     v-bind="field"
                     type="tel"
                     placeholder="+1234567890"
+                    :aria-invalid="!!errors.length"
                   />
                   <FieldError
                     v-if="errors.length"
@@ -676,12 +678,14 @@ definePageMeta({
                 <VeeField
                   v-slot="{ field, errors }"
                   name="guardianPhone"
+                  :validate-on-input="true"
                 >
                   <Field :data-invalid="!!errors.length">
                     <FieldLabel>{{ $t('saved_attendees.guardian_phone') }}</FieldLabel>
                     <Input
                       v-bind="field"
                       type="tel"
+                      :aria-invalid="!!errors.length"
                     />
                     <FieldError
                       v-if="errors.length"
