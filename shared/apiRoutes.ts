@@ -88,14 +88,6 @@ export const routeRules = {
     ssr: false,
     prerender: false,
   },
-  '/admin/studio/login': {
-    ssr: true,
-    index: false,
-  },
-  '/admin/studio/login/**': {
-    ssr: true,
-    index: false,
-  },
   // Directory-level redirects are auto-generated from .navigation.yml files
   // by the ~/modules/navigation-redirects module at build time
 } as const
