@@ -34,6 +34,11 @@ export interface CheckoutStartData {
   publicId: string
 }
 
+export interface CheckoutCancelData {
+  order: Order
+  hold: SeatHold | null | undefined
+}
+
 export interface CheckoutDetailData {
   order: Order
   items: (OrderItem & { pricingSource?: SeatPricingSource })[]

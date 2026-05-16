@@ -1,4 +1,5 @@
 import { and, desc, eq, gt } from 'drizzle-orm'
+import type { CheckoutCancelData, CheckoutDetailData } from '~~/types/ticketing'
 import type { CheckoutTicketHolderInput } from '#shared/schemas/ticketingSchema'
 import type { SavedAttendeeGender } from '#shared/schemas/savedAttendeeSchema'
 import { createPublicOrderId, createPublicTicketId, createQrToken } from '~~/server/utils/ticketing/ids'
@@ -298,7 +299,7 @@ class CheckoutService {
     return null
   }
 
-  async cancelPendingCheckout(orderPublicId: string, userId: number, sessionKey: string, realtimeNamespace?: SeatmapRealtimeNamespace) {
+  async cancelPendingCheckout(orderPublicId: string, userId: number, sessionKey: string, realtimeNamespace?: SeatmapRealtimeNamespace): Promise<CheckoutCancelData> {
     const checkout = await this.getCheckoutByPublicId(orderPublicId)
     const now = new Date()
 

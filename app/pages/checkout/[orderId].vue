@@ -130,20 +130,27 @@ function getCheckoutSectionLabel(value: string | null | undefined) {
   return value && value.length > 0 ? value : t('tickets.detail_unknown')
 }
 
+function getDraftModeBadgeLabel(draft: TicketHolderDraft) {
+  const name = draft.holder.preferredName?.trim() || draft.holder.legalName?.trim()
+  if (name) {
+    return name
+  }
+
+  if (draft.source === TicketHolderSource.Account) {
+    return t('checkout.use_buyer_details')
+  }
+  if (draft.source === TicketHolderSource.SavedAttendee) {
+    return t('checkout.select_saved_attendee')
+  }
+  return t('checkout.enter_manually')
+}
+
 function formatDateTime(value: string | Date) {
   return new Date(value).toLocaleString(getDisplayDateLocale(locale.value))
 }
 
 function getSavedAttendeeOptionLabel(attendee: SavedAttendeeModel) {
   return attendee.email ? `${attendee.legalName} · ${attendee.email}` : attendee.legalName
-}
-
-function getAccountHolderOptionLabel() {
-  const name = selfAttendeeProfile.value.name || t('checkout.account_holder_option')
-  const email = selfAttendeeProfile.value.email
-  const accountLabel = t('checkout.account_holder_option')
-  const profileLabel = email ? `${name} · ${email}` : name
-  return `${accountLabel} · ${profileLabel}`
 }
 
 function getPaymentMethodLabel(payment: OrderPaymentMethod | null | undefined) {
@@ -889,6 +896,15 @@ async function openTicketWallet() {
   await navigateTo('/tickets')
 }
 
+async function createAttendee() {
+  // redirect to attendee in a new tab to preserve checkout state in case of accidental navigation
+  await navigateTo('/attendees', {
+    open: {
+      target: '_blank',
+    },
+  })
+}
+
 async function cancelCheckout() {
   if (!checkout.value?.order || isCancelling.value) {
     return
@@ -1003,7 +1019,7 @@ definePageMeta({
         id="checkout-information-form"
         @submit.prevent="onSubmit"
       >
-        <div class="border-b px-4 py-4 md:px-5">
+        <div class="px-4 md:px-5">
           <div class="flex items-start justify-between gap-3">
             <Button
               variant="outline"
@@ -1075,7 +1091,7 @@ definePageMeta({
                     v-else
                     class="size-3.5"
                   />
-                  {{ draft.source === TicketHolderSource.Account ? $t('checkout.use_buyer_details') : draft.source === TicketHolderSource.SavedAttendee ? $t('checkout.select_saved_attendee') : $t('checkout.enter_manually') }}
+                  {{ getDraftModeBadgeLabel(draft) }}
                 </span>
                 <ChevronDown
                   class="size-4 transition-transform"
@@ -1132,40 +1148,52 @@ definePageMeta({
                 v-if="draft.source === TicketHolderSource.SavedAttendee"
                 class="space-y-2"
               >
-                <FieldLabel :for="`attendee-${draft.eventSeatId}`">
-                  {{ $t('checkout.saved_attendee_label') }}
-                </FieldLabel>
-                <Select
-                  :model-value="getHolderSelectValue(draft)"
-                  @update:model-value="value => updateHolderSelection(draft, typeof value === 'string' ? value : undefined)"
-                >
-                  <SelectTrigger
-                    :id="`attendee-${draft.eventSeatId}`"
-                    class="w-full bg-background/60"
+                <template v-if="savedAttendees.length > 0">
+                  <FieldLabel :for="`attendee-${draft.eventSeatId}`">
+                    {{ $t('checkout.saved_attendee_label') }}
+                  </FieldLabel>
+                  <Select
+                    :model-value="getHolderSelectValue(draft)"
+                    @update:model-value="value => updateHolderSelection(draft, typeof value === 'string' ? value : undefined)"
                   >
-                    <SelectValue :placeholder="$t('checkout.attendee_placeholder')" />
-                  </SelectTrigger>
-                  <SelectContent
-                    position="item-aligned"
-                    class="max-w-[calc(100vw-2rem)]"
-                  >
-                    <SelectItem
-                      :value="accountHolderOptionValue"
-                      class="min-h-10 max-w-full"
+                    <SelectTrigger
+                      :id="`attendee-${draft.eventSeatId}`"
+                      class="w-full bg-background/60"
                     >
-                      {{ getAccountHolderOptionLabel() }}
-                    </SelectItem>
-                    <SelectSeparator v-if="savedAttendees.length > 0" />
-                    <SelectItem
-                      v-for="attendee in savedAttendees"
-                      :key="attendee.id"
-                      :value="String(attendee.id)"
-                      class="min-h-10 max-w-full"
+                      <SelectValue :placeholder="$t('checkout.attendee_placeholder')" />
+                    </SelectTrigger>
+                    <SelectContent
+                      position="item-aligned"
+                      class="max-w-[calc(100vw-2rem)]"
                     >
-                      {{ getSavedAttendeeOptionLabel(attendee) }}
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
+                      <SelectItem
+                        v-for="attendee in savedAttendees"
+                        :key="attendee.id"
+                        :value="String(attendee.id)"
+                        class="min-h-10 max-w-full"
+                      >
+                        {{ getSavedAttendeeOptionLabel(attendee) }}
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </template>
+                <template v-else>
+                  <Empty>
+                    <EmptyHeader>
+                      <EmptyMedia variant="icon">
+                        <UsersRound />
+                      </EmptyMedia>
+                      <EmptyTitle>{{ $t('checkout.no_saved_attendees') }}</EmptyTitle>
+                    </EmptyHeader>
+                    <EmptyContent>
+                      <div class="flex gap-2">
+                        <Button @click="createAttendee">
+                          {{ $t('checkout.create_attendee') }}
+                        </Button>
+                      </div>
+                    </EmptyContent>
+                  </Empty>
+                </template>
               </div>
 
               <div
