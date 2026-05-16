@@ -69,6 +69,13 @@
     "inventory": "Inventory",
     "step": "Step"
   },
+  "data_table": {
+    "reload": "Reload",
+    "columns": "Columns",
+    "rows_selected": "{selected} of {total} row(s) selected.",
+    "previous": "Previous",
+    "next": "Next"
+  },
   "admin_event_sync": {
     "title": "Sync venue layout",
     "description": "Resolve section pricing for {session} before applying the current venue layout.",
@@ -904,6 +911,8 @@
     "special": "One special character (e.g. !, #, $...)"
   },
   "admin": {
+    "dashboard_title": "Admin Dashboard",
+    "dashboard_breadcrumb": "Admin",
     "dashboard_eyebrow": "Command center",
     "dashboard_desc": "Events, venues, and account activity in one place.",
     "dashboard_analytics_title": "Sales analytics at a glance.",
@@ -911,6 +920,12 @@
     "dashboard_total_revenue": "Total revenue",
     "dashboard_total_revenue_desc": "Confirmed checkout revenue across every tracked event.",
     "dashboard_confirmed": "Confirmed",
+    "dashboard_range_label": "Range",
+    "dashboard_range_placeholder": "Select range",
+    "dashboard_range_last_24h": "Last 24 hours",
+    "dashboard_range_last_3d": "Last 3 days",
+    "dashboard_range_last_7d": "Last 7 days",
+    "dashboard_range_last_30d": "Last 30 days",
     "dashboard_seats_listed": "Seats listed",
     "dashboard_seats_listed_desc": "Reserved and general inventory generated from venue maps.",
     "dashboard_sold_count": "{count} sold",

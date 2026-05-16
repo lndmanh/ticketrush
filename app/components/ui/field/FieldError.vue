@@ -8,14 +8,6 @@ const props = defineProps<{
   errors?: Array<string | { message: string | undefined } | undefined>
 }>()
 
-const { t, te } = useI18n()
-
-function translateMessage(message: string | undefined) {
-  if (!message) return message
-
-  return te(message) ? t(message) : message
-}
-
 const content = computed(() => {
   if (!props.errors || props.errors.length === 0)
     return null
@@ -49,7 +41,7 @@ const content = computed(() => {
     <slot v-if="$slots.default" />
 
     <template v-else-if="typeof content === 'string'">
-      {{ translateMessage(content) }}
+      {{ content }}
     </template>
 
     <ul
@@ -60,7 +52,7 @@ const content = computed(() => {
         v-for="(error, index) in content"
         :key="index"
       >
-        {{ translateMessage(error) }}
+        {{ error }}
       </li>
     </ul>
   </div>
