@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { QueueStatus } from '#shared/commonEnums'
-import { CAPTCHA_PASS_TTL_SECONDS, createCaptchaPass, createCaptchaRequiredError, hasCaptchaPass, parseCaptchaPassRecord, requireCaptchaPassOrLiveQueueEntry, requireSeatAccessProof } from '~~/server/utils/ticketing/captcha-pass'
+import { BOOKING_SESSION_TTL_SECONDS, createBookingSession, createCaptchaRequiredError, hasBookingSession, requireBookingSession, requireBookingSessionOrQueueEntry } from '~~/server/utils/ticketing/captcha-pass'
 
 afterEach(() => {
   vi.unstubAllGlobals()
@@ -11,104 +11,50 @@ afterEach(() => {
 beforeEach(() => {
   vi.useFakeTimers()
   vi.setSystemTime(new Date('2026-05-16T00:00:00.000Z'))
+
+  vi.stubGlobal('createError', (opts: Record<string, unknown>) => Object.assign(new Error(String(opts.statusText ?? '')), opts))
+  vi.stubGlobal('tables', {
+    queueEntries: {
+      eventSessionId: 'eventSessionId',
+      customerKey: 'customerKey',
+    },
+  })
 })
 
-describe('booking captcha pass helper', () => {
-  it('uses a ten minute captcha pass TTL', () => {
-    expect(CAPTCHA_PASS_TTL_SECONDS).toBe(600)
+describe('booking session captcha access', () => {
+  it('uses a ten minute session TTL', () => {
+    expect(BOOKING_SESSION_TTL_SECONDS).toBe(600)
   })
 
-  it('parses a valid captcha pass record', () => {
-    expect(parseCaptchaPassRecord(JSON.stringify({
-      eventSessionId: 12,
-      customerKey: 'customer_1',
-      createdAt: '2026-05-16T00:00:00.000Z',
-    }))).toEqual({
-      eventSessionId: 12,
-      customerKey: 'customer_1',
-      createdAt: '2026-05-16T00:00:00.000Z',
-    })
-  })
-
-  it('rejects invalid captcha pass records', () => {
-    expect(parseCaptchaPassRecord(null)).toBeNull()
-    expect(parseCaptchaPassRecord('not json')).toBeNull()
-    expect(parseCaptchaPassRecord(JSON.stringify({ eventSessionId: 0, customerKey: 'customer_1', createdAt: '2026-05-16T00:00:00.000Z' }))).toBeNull()
-    expect(parseCaptchaPassRecord(JSON.stringify({ eventSessionId: 12, customerKey: '', createdAt: '2026-05-16T00:00:00.000Z' }))).toBeNull()
-    expect(parseCaptchaPassRecord(JSON.stringify({ eventSessionId: 12, customerKey: 'customer_1', createdAt: '' }))).toBeNull()
-  })
-
-  it('writes a captcha pass with the configured ttl', async () => {
+  it('creates a booking session in KV with the configured TTL', async () => {
     const set = vi.fn()
     vi.stubGlobal('useKV', () => ({
       set,
       get: vi.fn(),
     }))
 
-    const record = await createCaptchaPass(12, 'customer_1')
+    const result = await createBookingSession(12, 'customer_1')
 
-    expect(record.eventSessionId).toBe(12)
-    expect(record.customerKey).toBe('customer_1')
-    expect(set).toHaveBeenCalledWith('booking-captcha-pass:12:customer_1', expect.any(String), { ttl: CAPTCHA_PASS_TTL_SECONDS })
+    expect(result.eventSessionId).toBe(12)
+    expect(result.customerKey).toBe('customer_1')
+    expect(result.createdAt).toBe('2026-05-16T00:00:00.000Z')
+    expect(set).toHaveBeenCalledWith('booking-session:12:customer_1', '2026-05-16T00:00:00.000Z', { ttl: BOOKING_SESSION_TTL_SECONDS })
   })
 
-  it('rejects invalid captcha pass input before writing', async () => {
-    const set = vi.fn()
+  it('detects an existing booking session', async () => {
     vi.stubGlobal('useKV', () => ({
-      set,
-      get: vi.fn(),
+      get: vi.fn().mockResolvedValue('2026-05-16T00:00:00.000Z'),
     }))
 
-    await expect(createCaptchaPass(0, 'customer_1')).rejects.toMatchObject({
-      data: {
-        error: {
-          code: 'CAPTCHA_REQUIRED',
-        },
-      },
-    })
-    expect(set).not.toHaveBeenCalled()
+    await expect(hasBookingSession(12, 'customer_1')).resolves.toBe(true)
   })
 
-  it('accepts a fresh matching captcha pass record', async () => {
+  it('returns false when no booking session exists', async () => {
     vi.stubGlobal('useKV', () => ({
-      set: vi.fn(),
-      get: vi.fn().mockResolvedValue(JSON.stringify({
-        eventSessionId: 12,
-        customerKey: 'customer_1',
-        createdAt: '2026-05-16T00:00:00.000Z',
-      })),
+      get: vi.fn().mockResolvedValue(null),
     }))
 
-    await expect(hasCaptchaPass(12, 'customer_1')).resolves.toBe(true)
-  })
-
-  it('rejects expired or mismatched captcha pass records', async () => {
-    const get = vi.fn()
-    vi.stubGlobal('useKV', () => ({
-      set: vi.fn(),
-      get,
-    }))
-
-    get.mockResolvedValueOnce(JSON.stringify({
-      eventSessionId: 12,
-      customerKey: 'customer_1',
-      createdAt: '2026-05-15T23:49:59.000Z',
-    }))
-    await expect(hasCaptchaPass(12, 'customer_1')).resolves.toBe(false)
-
-    get.mockResolvedValueOnce(JSON.stringify({
-      eventSessionId: 12,
-      customerKey: 'customer_1',
-      createdAt: '2026-05-16T00:10:01.000Z',
-    }))
-    await expect(hasCaptchaPass(12, 'customer_1')).resolves.toBe(false)
-
-    get.mockResolvedValueOnce(JSON.stringify({
-      eventSessionId: 12,
-      customerKey: 'customer_2',
-      createdAt: '2026-05-16T00:00:00.000Z',
-    }))
-    await expect(hasCaptchaPass(12, 'customer_1')).resolves.toBe(false)
+    await expect(hasBookingSession(12, 'customer_1')).resolves.toBe(false)
   })
 
   it('creates the captcha required error shape', () => {
@@ -125,24 +71,20 @@ describe('booking captcha pass helper', () => {
     })
   })
 
-  it('rejects seat access without proof', async () => {
-    vi.stubGlobal('useDB', () => ({
-      select: () => ({
-        from: () => ({
-          where: () => ({
-            get: async () => ({
-              status: QueueStatus.Waiting,
-            }),
-          }),
-        }),
-      }),
-    }))
+  it('passes requireBookingSession when session exists', async () => {
     vi.stubGlobal('useKV', () => ({
-      set: vi.fn(),
+      get: vi.fn().mockResolvedValue('2026-05-16T00:00:00.000Z'),
+    }))
+
+    await expect(requireBookingSession(12, 'customer_1')).resolves.toBeUndefined()
+  })
+
+  it('rejects requireBookingSession when no session exists', async () => {
+    vi.stubGlobal('useKV', () => ({
       get: vi.fn().mockResolvedValue(null),
     }))
 
-    await expect(requireSeatAccessProof(12, 'customer_1')).rejects.toMatchObject({
+    await expect(requireBookingSession(12, 'customer_1')).rejects.toMatchObject({
       status: 403,
       data: {
         error: {
@@ -152,9 +94,26 @@ describe('booking captcha pass helper', () => {
     })
   })
 
-  it('allows waiting and active-admission queue entries for live queue access', async () => {
+  it('allows access with booking session even without queue entry', async () => {
     vi.stubGlobal('useKV', () => ({
-      set: vi.fn(),
+      get: vi.fn().mockResolvedValue('2026-05-16T00:00:00.000Z'),
+    }))
+
+    vi.stubGlobal('useDB', () => ({
+      select: () => ({
+        from: () => ({
+          where: () => ({
+            get: async () => null,
+          }),
+        }),
+      }),
+    }))
+
+    await expect(requireBookingSessionOrQueueEntry(12, 'customer_1')).resolves.toBeUndefined()
+  })
+
+  it('allows access with queue entry even without booking session', async () => {
+    vi.stubGlobal('useKV', () => ({
       get: vi.fn().mockResolvedValue(null),
     }))
 
@@ -170,22 +129,31 @@ describe('booking captcha pass helper', () => {
       }),
     }))
 
-    await expect(requireCaptchaPassOrLiveQueueEntry(12, 'customer_1')).resolves.toBeUndefined()
+    await expect(requireBookingSessionOrQueueEntry(12, 'customer_1')).resolves.toBeUndefined()
+  })
+
+  it('rejects when neither booking session nor queue entry exists', async () => {
+    vi.stubGlobal('useKV', () => ({
+      get: vi.fn().mockResolvedValue(null),
+    }))
 
     vi.stubGlobal('useDB', () => ({
       select: () => ({
         from: () => ({
           where: () => ({
-            get: async () => ({
-              status: QueueStatus.Admitted,
-              passToken: 'pass_1',
-              expiresAt: new Date('2026-05-16T00:05:00.000Z'),
-            }),
+            get: async () => null,
           }),
         }),
       }),
     }))
 
-    await expect(requireCaptchaPassOrLiveQueueEntry(12, 'customer_1')).resolves.toBeUndefined()
+    await expect(requireBookingSessionOrQueueEntry(12, 'customer_1')).rejects.toMatchObject({
+      status: 403,
+      data: {
+        error: {
+          code: 'CAPTCHA_REQUIRED',
+        },
+      },
+    })
   })
 })

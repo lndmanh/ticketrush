@@ -2,7 +2,7 @@ import { and, eq } from 'drizzle-orm'
 import { apiError } from '~~/server/utils/apiResponse'
 import { isActiveQueueAdmission } from '~~/server/utils/ticketing/queue-admission-state'
 import queueService from '~~/server/utils/ticketing/queue'
-import { createCaptchaRequiredError, hasCaptchaPass } from '~~/server/utils/ticketing/captcha-pass'
+import { createCaptchaRequiredError, hasBookingSession } from '~~/server/utils/ticketing/captcha-pass'
 import { QueueStatus } from '#shared/commonEnums'
 
 export enum BookingAccessDecision {
@@ -46,7 +46,7 @@ function classifyQueueProof(entry: Awaited<ReturnType<typeof getQueueEntry>>): Q
 }
 
 export async function resolveBookingAccess(eventSessionId: number, customerKey: string, passToken?: string): Promise<BookingAccessResult> {
-  if (await hasCaptchaPass(eventSessionId, customerKey)) {
+  if (await hasBookingSession(eventSessionId, customerKey)) {
     const shouldQueue = await queueService.shouldQueue(eventSessionId, customerKey, passToken)
 
     return {

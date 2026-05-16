@@ -2,7 +2,7 @@ import { bookingCaptchaPassSchema } from '#shared/schemas/ticketingSchema'
 import { EventStatus } from '#shared/commonEnums'
 import eventSessionService from '~~/server/utils/database/event-session'
 import { apiError, success, zodErrorToFieldErrors } from '~~/server/utils/apiResponse'
-import { CAPTCHA_PASS_TTL_SECONDS, createCaptchaPass } from '~~/server/utils/ticketing/captcha-pass'
+import { BOOKING_SESSION_TTL_SECONDS, createBookingSession } from '~~/server/utils/ticketing/captcha-pass'
 import { getTicketingSessionKey } from '~~/server/utils/ticketing/session'
 import type { BookingCaptchaPassResponse } from '~~/types/ticketing'
 
@@ -47,11 +47,11 @@ export default defineEventHandler(async (event) => {
     throw apiError({ status: 403, statusText: 'Forbidden', code: 'CAPTCHA_FAILED', message: 'Captcha verification failed. Please try again.' })
   }
 
-  await createCaptchaPass(session.id, getTicketingSessionKey(event))
+  await createBookingSession(session.id, getTicketingSessionKey(event))
 
   const response: BookingCaptchaPassResponse = {
     sessionPublicId: session.publicId,
-    expiresInSeconds: CAPTCHA_PASS_TTL_SECONDS,
+    expiresInSeconds: BOOKING_SESSION_TTL_SECONDS,
   }
 
   return success(response)

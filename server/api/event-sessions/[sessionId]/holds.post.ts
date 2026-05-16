@@ -5,7 +5,7 @@ import holdService from '~~/server/utils/ticketing/holds'
 import { apiError, success, zodErrorToFieldErrors } from '~~/server/utils/apiResponse'
 import { getSeatmapRealtimeEnv } from '~~/server/utils/ticketing/seatmap-realtime'
 import { getTicketingSessionKey } from '~~/server/utils/ticketing/session'
-import { requireSeatAccessProof } from '~~/server/utils/ticketing/captcha-pass'
+import { requireBookingSession } from '~~/server/utils/ticketing/captcha-pass'
 import { EventStatus } from '#shared/commonEnums'
 
 export default defineEventHandler(async (event) => {
@@ -40,7 +40,7 @@ export default defineEventHandler(async (event) => {
   }
 
   const sessionKey = getTicketingSessionKey(event)
-  await requireSeatAccessProof(session.id, sessionKey)
+  await requireBookingSession(session.id, sessionKey)
   const userSession = await requireUserSession(event)
   const result = await readValidatedBody(event, body => createSeatHoldSchema.safeParse({ ...body, eventSessionId: session.id }))
   if (!result.success) {

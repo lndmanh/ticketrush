@@ -15,7 +15,7 @@ function stubQueueEntry(entry: { status: QueueStatus, passToken?: string | null,
   }))
 }
 
-function stubCaptchaPass(value: string | null) {
+function stubBookingSession(value: string | null) {
   vi.stubGlobal('useKV', () => ({
     set: vi.fn(),
     get: vi.fn().mockResolvedValue(value),
@@ -31,7 +31,16 @@ afterEach(() => {
 beforeEach(() => {
   vi.useFakeTimers()
   vi.setSystemTime(new Date('2026-05-16T00:01:00.000Z'))
-  stubCaptchaPass(null)
+
+  vi.stubGlobal('createError', (opts: Record<string, unknown>) => Object.assign(new Error(String(opts.statusText ?? '')), opts))
+  vi.stubGlobal('tables', {
+    queueEntries: {
+      eventSessionId: 'eventSessionId',
+      customerKey: 'customerKey',
+    },
+  })
+
+  stubBookingSession(null)
   stubQueueEntry(null)
 })
 
@@ -49,12 +58,8 @@ describe('booking access helper', () => {
     })
   })
 
-  it('allows fresh captcha passes when queue pressure is low', async () => {
-    stubCaptchaPass(JSON.stringify({
-      eventSessionId: 12,
-      customerKey: 'customer_1',
-      createdAt: '2026-05-16T00:00:00.000Z',
-    }))
+  it('allows booking sessions when queue pressure is low', async () => {
+    stubBookingSession('2026-05-16T00:00:00.000Z')
     vi.spyOn(queueService, 'shouldQueue').mockResolvedValue(false)
 
     await expect(resolveBookingAccess(12, 'customer_1', 'pass_1')).resolves.toEqual({
@@ -63,12 +68,8 @@ describe('booking access helper', () => {
     })
   })
 
-  it('requires the queue when queue pressure is high despite captcha', async () => {
-    stubCaptchaPass(JSON.stringify({
-      eventSessionId: 12,
-      customerKey: 'customer_1',
-      createdAt: '2026-05-16T00:00:00.000Z',
-    }))
+  it('requires the queue when queue pressure is high despite booking session', async () => {
+    stubBookingSession('2026-05-16T00:00:00.000Z')
     vi.spyOn(queueService, 'shouldQueue').mockResolvedValue(true)
 
     await expect(resolveBookingAccess(12, 'customer_1', 'pass_1')).resolves.toEqual({

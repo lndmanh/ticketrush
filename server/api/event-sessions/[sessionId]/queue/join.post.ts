@@ -3,7 +3,7 @@ import eventSessionService from '~~/server/utils/database/event-session'
 import queueService from '~~/server/utils/ticketing/queue'
 import { apiError, success, zodErrorToFieldErrors } from '~~/server/utils/apiResponse'
 import { getTicketingSessionKey } from '~~/server/utils/ticketing/session'
-import { requireCaptchaPassOrLiveQueueEntry } from '~~/server/utils/ticketing/captcha-pass'
+import { requireBookingSessionOrQueueEntry } from '~~/server/utils/ticketing/captcha-pass'
 
 export default defineEventHandler(async (event) => {
   const sessionPublicId = getRouterParam(event, 'sessionId')
@@ -23,7 +23,7 @@ export default defineEventHandler(async (event) => {
   }
 
   const customerKey = getTicketingSessionKey(event)
-  await requireCaptchaPassOrLiveQueueEntry(session.id, customerKey)
+  await requireBookingSessionOrQueueEntry(session.id, customerKey)
   const joined = await queueService.joinQueue(session.id, customerKey, userSession.user?.id)
   const response: Awaited<ReturnType<typeof queueService.joinQueue>> = joined
   return success(response)
