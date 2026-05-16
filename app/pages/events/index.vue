@@ -210,14 +210,13 @@ const pageSummary = computed(() => {
 definePageMeta({
   title: 'Events',
   breadcrumb: 'Events',
-  defaultLayoutContained: false,
 })
 </script>
 
 <template>
   <AppLayout
     :hide-header="true"
-    class-name="relative gap-8 overflow-hidden md:gap-10 max-w-[90rem] px-4 mt-16 pb-3 sm:px-6 lg:px-10"
+    class-name="relative gap-8 overflow-hidden md:gap-10 max-w-screen-2xl px-4 mt-16 pb-3 sm:px-6 lg:px-10"
   >
     <div class="relative space-y-5 py-3">
       <TicketCheckoutRecoveryBanner />
@@ -230,6 +229,7 @@ definePageMeta({
           <Label for="event-location">{{ $t('events.search_location_label') }}</Label>
           <Label for="event-date">{{ $t('events.search_date_label') }}</Label>
           <Label for="event-keyword">{{ $t('events.search_keyword_label') }}</Label>
+          <Label for="event-sort-filter">{{ $t('events.sort_label') }}</Label>
         </div>
 
         <ButtonGroup class="w-full flex-col gap-2 md:flex-row md:gap-0 [&>*]:max-md:rounded-full [&>*]:max-md:border-l">
@@ -238,8 +238,8 @@ definePageMeta({
           >
             <SelectTrigger
               id="event-location"
-              class="h-12 bg-background/80 px-4 text-left font-normal md:flex-[1.1] md:rounded-r-none md:border-r-0"
               :aria-label="$t('events.search_location_label')"
+              class="h-12 bg-background/80 px-4 text-left font-normal data-[size=default]:h-12 md:flex-[1.1] md:rounded-none md:border-r-0"
             >
               <MapPin class="mr-2 size-4 shrink-0 text-muted-foreground" />
               <SelectValue :placeholder="$t('events.search_location_placeholder')" />
@@ -308,6 +308,29 @@ definePageMeta({
             />
           </InputGroup>
 
+          <Select
+            v-model="activeSort"
+            @update:model-value="replaceCatalogQuery(1)"
+          >
+            <SelectTrigger
+              id="event-sort-filter"
+              :aria-label="$t('events.sort_label')"
+              class="h-12 bg-background/80 px-4 text-left font-normal data-[size=default]:h-12 md:flex-[0.85] md:rounded-none md:border-r-0"
+            >
+              <SlidersHorizontal class="mr-2 size-4 shrink-0 text-muted-foreground" />
+              <SelectValue :placeholder="$t('events.sort_soonest')" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem
+                v-for="option in sortOptions"
+                :key="option.value"
+                :value="option.value"
+              >
+                {{ option.label }}
+              </SelectItem>
+            </SelectContent>
+          </Select>
+
           <Button
             type="submit"
             class="h-12 px-5 md:rounded-none"
@@ -350,56 +373,6 @@ definePageMeta({
     </div>
 
     <section class="space-y-5">
-      <div
-        v-if="events.length > 0"
-        class="flex flex-col gap-3 rounded-lg border bg-card/60 p-3 md:flex-row md:items-center md:justify-between"
-      >
-        <div class="flex flex-wrap items-center gap-2">
-          <Badge
-            variant="secondary"
-            class="rounded-full"
-          >
-            <SlidersHorizontal class="size-3.5" />
-            {{ resultSummary }}
-          </Badge>
-          <Badge
-            v-if="pending"
-            variant="outline"
-            class="rounded-full"
-          >
-            {{ $t('events.badge_loading') }}
-          </Badge>
-        </div>
-        <div class="flex items-center gap-3">
-          <div class="flex items-center gap-2">
-            <Label
-              for="event-sort-filter"
-              class="text-sm text-muted-foreground whitespace-nowrap"
-            >{{ $t('events.sort_label') }}</Label>
-            <Select
-              v-model="activeSort"
-              @update:model-value="replaceCatalogQuery(1)"
-            >
-              <SelectTrigger
-                id="event-sort-filter"
-                class="h-9 rounded-full text-xs"
-              >
-                <SelectValue :placeholder="$t('events.sort_soonest')" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem
-                  v-for="option in sortOptions"
-                  :key="option.value"
-                  :value="option.value"
-                >
-                  {{ option.label }}
-                </SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-      </div>
-
       <Card
         v-if="catalogError"
         class="border-destructive/30 bg-destructive/5 shadow-none"

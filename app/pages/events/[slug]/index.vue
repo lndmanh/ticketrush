@@ -382,9 +382,10 @@ definePageMeta({
 </script>
 
 <template>
-  <main
+  <AppLayout
     v-if="event"
-    class-name="relative gap-8 overflow-hidden px-4 py-16 md:-mx-6 md:px-6 md:py-24 lg:-mx-10 lg:px-10"
+    :hide-header="true"
+    class-name="relative gap-8 overflow-hidden max-w-screen-2xl px-4 mt-8 sm:px-6 lg:px-10"
   >
     <!-- Start of Event Info -->
     <section class="relative overflow-hidden rounded-[2rem] bg-card shadow-2xl shadow-black/20">
@@ -843,5 +844,5 @@ definePageMeta({
         </div>
       </div>
     </section>
-  </main>
+  </AppLayout>
 </template>
