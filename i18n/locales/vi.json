@@ -761,7 +761,15 @@
     "missing_subtitle": "Vé có thể đã bị xóa hoặc liên kết này không thuộc tài khoản của bạn.",
     "return_to_wallet": "Quay lại ví vé",
     "time_tba": "Thời gian sẽ được thông báo",
-    "empty_wallet_desc": "Ví này lưu mã QR, chỗ ngồi và thời gian sự kiện."
+    "empty_wallet_desc": "Ví này lưu mã QR, chỗ ngồi và thời gian sự kiện.",
+    "last_24h": "24 giờ qua",
+    "last_7_days": "7 ngày qua",
+    "last_30_days": "30 ngày qua",
+    "all_time": "Tất cả",
+    "status_all": "Tất cả",
+    "status_success": "Thành công",
+    "status_processing": "Đang xử lý",
+    "status_cancelled": "Đã hủy"
   },
   "notifications": {
     "open": "Mở thông báo",

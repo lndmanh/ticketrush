@@ -9,21 +9,21 @@ import { timeRangeDurations } from '#shared/timeRangeDurations'
 type TicketStatusFilter = 'all' | 'success' | 'processing' | 'cancelled'
 type TicketTimeFilter = '24h' | '7d' | '30d' | 'all'
 
+const { locale, t } = useI18n()
+
 const rangeOptions: Array<{ value: TicketTimeFilter, label: string }> = [
-  { value: '24h', label: 'Last 24h' },
-  { value: '7d', label: 'Last 7 days' },
-  { value: '30d', label: 'Last 30 days' },
-  { value: 'all', label: 'All time' },
+  { value: '24h', label: t('tickets.last_24h') },
+  { value: '7d', label: t('tickets.last_7_days') },
+  { value: '30d', label: t('tickets.last_30_days') },
+  { value: 'all', label: t('tickets.all_time') },
 ]
 
 const statusTabs: Array<{ value: TicketStatusFilter, label: string }> = [
-  { value: 'all', label: 'Tất cả' },
-  { value: 'success', label: 'Thành công' },
-  { value: 'processing', label: 'Đang xử lý' },
-  { value: 'cancelled', label: 'Đã hủy' },
+  { value: 'all', label: t('tickets.status_all') },
+  { value: 'success', label: t('tickets.status_success') },
+  { value: 'processing', label: t('tickets.status_processing') },
+  { value: 'cancelled', label: t('tickets.status_cancelled') },
 ]
-
-const { locale, t } = useI18n()
 const selectedRange = ref<TicketTimeFilter>('7d')
 const selectedStatus = ref<TicketStatusFilter>('all')
 
