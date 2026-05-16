@@ -41,7 +41,7 @@ const content = computed(() => {
     <slot v-if="$slots.default" />
 
     <template v-else-if="typeof content === 'string'">
-      {{ content }}
+      {{ $t(content) }}
     </template>
 
     <ul
@@ -52,7 +52,7 @@ const content = computed(() => {
         v-for="(error, index) in content"
         :key="index"
       >
-        {{ error }}
+        {{ $t(error) }}
       </li>
     </ul>
   </div>
