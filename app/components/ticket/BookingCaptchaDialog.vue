@@ -3,6 +3,7 @@ import { CheckCircle2, Loader2, ShieldCheck, ShieldAlert } from '@lucide/vue'
 import { apiRoutes } from '#shared/apiRoutes'
 import { parseApiError } from '@/utils/apiError'
 import { apiRequest } from '@/utils/apiRequest'
+import { clearEventSessionAccessData } from '@/utils/eventSessionAccessData'
 import type { ApiResponse } from '~~/types/api'
 import type { PublicEventSessionSummary } from '~~/types/events'
 import type { BookingCaptchaPassResponse } from '~~/types/ticketing'
@@ -90,6 +91,7 @@ async function verifyCaptcha(token: string) {
     }
 
     state.value = 'success'
+    clearEventSessionAccessData(sessionPublicId, clearNuxtData)
     await navigateTo(`/events/${props.eventSlug}/sessions/${sessionPublicId}/seats`)
   }
   catch (error: unknown) {
@@ -129,13 +131,6 @@ async function verifyCaptcha(token: string) {
       </DialogHeader>
 
       <div class="space-y-4">
-        <p
-          v-if="session"
-          class="rounded-lg border bg-muted/35 p-4 text-sm font-medium text-foreground"
-        >
-          {{ session.label }}
-        </p>
-
         <Alert v-if="state === 'error'" variant="destructive">
           <ShieldAlert
             aria-hidden="true"

@@ -3,6 +3,7 @@ import { toast } from 'vue-sonner'
 import { ArrowLeft, CheckCircle2, ShoppingBag, Sparkles, TicketCheck, TicketPlus, Trash2, XCircle, RefreshCw } from '@lucide/vue'
 import NumberFlow from '@number-flow/vue'
 import { parseApiError } from '@/utils/apiError'
+import { getEventSessionGateFetchKey, getEventSessionSeatmapFetchKey } from '@/utils/eventSessionAccessData'
 import { getDisplayDateLocale } from '@/lib/localizedEvents'
 import { formatCurrency, formatDateTime } from '@/lib/utils'
 import { apiRoutes } from '#shared/apiRoutes'
@@ -27,6 +28,8 @@ const sessionPublicId = computed(() => typeof route.params.sessionId === 'string
 const passToken = computed(() => typeof route.query.pass === 'string' ? route.query.pass : undefined)
 const requestUrl = useRequestURL()
 const { locale } = useI18n()
+const gateFetchKey = computed(() => getEventSessionGateFetchKey(sessionPublicId.value, passToken.value))
+const seatMapFetchKey = computed(() => getEventSessionSeatmapFetchKey(sessionPublicId.value, locale.value))
 
 const { data: detailResponse, error: detailFetchError } = await useAPI<ApiResponse<EventSessionDetailResponse>>(() => apiRoutes.eventSession(sessionPublicId.value), {
   query: computed(() => ({ locale: locale.value })),
@@ -36,6 +39,7 @@ const event = computed(() => detail.value?.event ?? null)
 const session = computed(() => detail.value?.session ?? null)
 
 const { data: gateResponse, error: gateFetchError } = await useAPI<ApiResponse<EventSessionGateResponse>>(() => apiRoutes.eventSessionGate(sessionPublicId.value), {
+  key: gateFetchKey,
   query: computed(() => passToken.value ? { pass: passToken.value } : {}),
 })
 const gateRequiresQueue = computed(() => Boolean(gateResponse.value?.success && gateResponse.value.data.shouldQueue))
@@ -66,6 +70,7 @@ if (!gateRequiresQueueAtLoad && selfAttendeeStatus.value && !selfAttendeeStatus.
 }
 
 const { data: seatMapResponse, refresh: refreshSeatMap, error: seatMapFetchError } = await useAPI<ApiResponse<SessionSeatMapResponse>>(() => apiRoutes.eventSessionSeatmap(sessionPublicId.value), {
+  key: seatMapFetchKey,
   query: computed(() => ({ locale: locale.value })),
   immediate: !gateRequiresQueueAtLoad,
 })
