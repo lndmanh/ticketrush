@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { Field as VeeField, useForm } from 'vee-validate'
 import { toast } from 'vue-sonner'
 import { DateFormatter, getLocalTimeZone, parseDate } from '@internationalized/date'
@@ -13,11 +13,14 @@ import { getMissingSelfAttendeeFields, SelfAttendeeRequirement } from '#shared/u
 import type { ApiResponse } from '~~/types/api'
 import type { DeletedPayload } from '~~/types/common'
 import type { SavedAttendeeModel } from '~~/types/models/saved-attendee'
-import { PlusIcon, UserIcon, Trash2Icon, Edit2Icon, ShieldIcon, CalendarDays } from '@lucide/vue'
+import { PlusIcon, UserIcon, Trash2Icon, Edit2Icon, CalendarDays } from '@lucide/vue'
 
-const { data: attendeesResponse, refresh, status, error: fetchError } = useAPI<ApiResponse<SavedAttendeeModel[]>>(() => apiRoutes.SAVED_ATTENDEES)
+const attendeesResponse = ref<ApiResponse<SavedAttendeeModel[]> | null>(null)
+const loading = ref(true)
+const fetchError = ref<string | null>(null)
+
 const attendees = computed(() => {
-  const data = attendeesResponse.value?.data || []
+  const data = attendeesResponse.value?.success ? attendeesResponse.value.data : []
   return [...data].sort((left, right) => {
     if (left.isSelf !== right.isSelf) {
       return left.isSelf ? -1 : 1
@@ -26,7 +29,6 @@ const attendees = computed(() => {
     return left.id - right.id
   })
 })
-const loading = computed(() => status.value === 'pending')
 
 const isDialogOpen = ref(false)
 const isSubmitting = ref(false)
@@ -61,9 +63,30 @@ const defaultValues: AttendeeFormValues = {
   accessibilityNeeds: '',
 }
 
-const { handleSubmit, resetForm, setFieldValue, setValues, values: formValues } = useForm<AttendeeFormValues>({
+const { handleSubmit, resetForm, setFieldValue, values: formValues } = useForm<AttendeeFormValues>({
   initialValues: defaultValues,
   validationSchema: savedAttendeeFormSchema,
+})
+
+async function refresh() {
+  loading.value = true
+  fetchError.value = null
+
+  try {
+    const response = await apiRequest<ApiResponse<SavedAttendeeModel[]>>(apiRoutes.SAVED_ATTENDEES)
+    if (!response.success) throw response
+    attendeesResponse.value = response
+  }
+  catch (error) {
+    fetchError.value = parseApiError(error, 'Failed to load attendees. Please try again.').message
+  }
+  finally {
+    loading.value = false
+  }
+}
+
+onMounted(() => {
+  refresh()
 })
 
 const dateFormatter = computed(() => new DateFormatter(locale.value, { dateStyle: 'medium' }))
@@ -112,7 +135,7 @@ function clearBirthDate() {
 
 function openCreateDialog() {
   editingId.value = null
-  resetForm({ values: defaultValues })
+  resetForm({ values: { ...defaultValues } })
   isDialogOpen.value = true
 }
 
@@ -132,7 +155,7 @@ type AttendeeItem = {
   isSelf?: boolean | null
 }
 
-function openEditDialog(attendee: AttendeeItem) {
+async function openEditDialog(attendee: AttendeeItem) {
   editingId.value = attendee.id
 
   let formattedBirthDate: string | undefined = undefined
@@ -143,20 +166,24 @@ function openEditDialog(attendee: AttendeeItem) {
     }
   }
 
-  setValues({
-    legalName: attendee.legalName,
-    preferredName: attendee.preferredName || undefined,
-    email: attendee.email || undefined,
-    phone: attendee.phone || undefined,
-    birthDate: formattedBirthDate,
-    gender: attendee.gender || SavedAttendeeGender.PreferNotToSay,
-    guardianName: attendee.guardianName || undefined,
-    guardianEmail: attendee.guardianEmail || undefined,
-    guardianPhone: attendee.guardianPhone || undefined,
-    notes: attendee.notes || undefined,
-    accessibilityNeeds: attendee.accessibilityNeeds || undefined,
-  })
   isDialogOpen.value = true
+  await nextTick()
+
+  resetForm({
+    values: {
+      legalName: attendee.legalName,
+      preferredName: attendee.preferredName || undefined,
+      email: attendee.email || undefined,
+      phone: attendee.phone || undefined,
+      birthDate: formattedBirthDate,
+      gender: attendee.gender || SavedAttendeeGender.PreferNotToSay,
+      guardianName: attendee.guardianName || undefined,
+      guardianEmail: attendee.guardianEmail || undefined,
+      guardianPhone: attendee.guardianPhone || undefined,
+      notes: attendee.notes || undefined,
+      accessibilityNeeds: attendee.accessibilityNeeds || undefined,
+    },
+  })
 }
 
 const onSubmit = handleSubmit(async (values) => {
@@ -260,6 +287,12 @@ function getMissingSelfFieldLabel(field: SelfAttendeeRequirement) {
   return labels[field]
 }
 
+const selfAttendeeMissingFields = computed(() => {
+  const self = attendees.value.find(a => a.isSelf)
+  if (!self) return []
+  return getMissingSelfFields(self).map(getMissingSelfFieldLabel)
+})
+
 definePageMeta({
   title: 'saved_attendees.page_title',
   breadcrumb: 'saved_attendees.breadcrumb',
@@ -281,14 +314,6 @@ definePageMeta({
       </div>
       <div class="flex gap-2">
         <Button
-          variant="outline"
-          :disabled="loading"
-          @click="createFromProfile"
-        >
-          <UserIcon class="size-4" />
-          Add Myself
-        </Button>
-        <Button
           :disabled="loading"
           @click="openCreateDialog"
         >
@@ -297,6 +322,16 @@ definePageMeta({
         </Button>
       </div>
     </div>
+
+    <!-- Self Attendee Missing Fields Alert -->
+    <Alert
+      v-if="selfAttendeeMissingFields.length > 0"
+      variant="destructive"
+    >
+      <AlertDescription>
+        Complete required profile fields before booking: {{ selfAttendeeMissingFields.join(', ') }}.
+      </AlertDescription>
+    </Alert>
 
     <!-- Loading State -->
     <div
@@ -360,85 +395,58 @@ definePageMeta({
     </Empty>
 
     <!-- Grid View -->
-    <div
+    <ItemGroup
       v-else
       class="grid gap-4 md:grid-cols-2 lg:grid-cols-3"
     >
-      <Card
+      <Item
         v-for="attendee in attendees"
         :key="attendee.id"
-        class="flex flex-col relative overflow-hidden group"
+        variant="outline"
+        class="items-start"
       >
-        <div
-          v-if="attendee.isSelf"
-          class="absolute top-0 right-0 bg-primary/10 text-primary text-xs font-semibold px-2 py-1 rounded-bl-lg"
-        >
-          {{ $t('saved_attendees.self_badge') }}
-        </div>
-        <div class="p-5 flex-1 space-y-4">
-          <div class="flex items-start justify-between">
-            <div class="flex items-center space-x-3">
-              <div class="flex items-center justify-center w-10 h-10 rounded-full bg-primary/10 text-primary font-medium">
-                {{ getInitials(attendee.preferredName || attendee.legalName) }}
-              </div>
-              <div>
-                <h3 class="font-semibold text-lg leading-tight truncate max-w-[140px] sm:max-w-[180px]">
-                  {{ attendee.preferredName || attendee.legalName }}
-                </h3>
-                <p
-                  v-if="attendee.preferredName"
-                  class="text-xs text-muted-foreground truncate"
-                >
-                  {{ $t('saved_attendees.legal_label', { name: attendee.legalName }) }}
-                </p>
-              </div>
-            </div>
+        <ItemMedia variant="icon">
+          {{ getInitials(attendee.preferredName || attendee.legalName) }}
+        </ItemMedia>
+
+        <ItemContent class="min-w-0">
+          <div class="flex items-start gap-2">
+            <ItemTitle class="max-w-full truncate">
+              {{ attendee.preferredName || attendee.legalName }}
+            </ItemTitle>
+            <Badge
+              v-if="attendee.isSelf"
+              variant="secondary"
+            >
+              Self
+            </Badge>
           </div>
 
-          <div class="text-sm space-y-1.5 pt-1">
-            <div
-              v-if="attendee.email"
-              class="flex items-center text-muted-foreground"
-            >
-              <span class="truncate">{{ attendee.email }}</span>
-            </div>
-            <div
-              v-if="attendee.phone"
-              class="flex items-center text-muted-foreground"
-            >
-              <span class="truncate">{{ attendee.phone }}</span>
-            </div>
-            <div
-              v-if="!attendee.email && !attendee.phone"
-              class="text-muted-foreground italic text-xs"
-            >
-              {{ $t('saved_attendees.no_contact') }}
-            </div>
+          <ItemDescription v-if="attendee.preferredName">
+            Legal: {{ attendee.legalName }}
+          </ItemDescription>
+          <ItemDescription v-if="attendee.email">
+            {{ attendee.email }}
+          </ItemDescription>
+          <ItemDescription v-if="attendee.phone">
+            {{ attendee.phone }}
+          </ItemDescription>
+          <ItemDescription v-if="!attendee.email && !attendee.phone">
+            No direct contact info
+          </ItemDescription>
+          <ItemDescription v-if="attendee.guardianName">
+            Guardian: {{ attendee.guardianName }}
+          </ItemDescription>
 
-            <div
-              v-if="isMinor(attendee.birthDate)"
-              class="inline-flex items-center bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300 text-xs px-2 py-0.5 rounded-full mt-2"
-            >
-              <ShieldIcon class="w-3 h-3 mr-1" />
-              {{ $t('saved_attendees.minor_badge') }}
-            </div>
-            <div
-              v-if="attendee.guardianName"
-              class="text-xs text-muted-foreground mt-1 line-clamp-1"
-            >
-              {{ $t('saved_attendees.guardian_prefix', { name: attendee.guardianName }) }}
-            </div>
-          </div>
-
-          <div
-            v-if="attendee.isSelf && getMissingSelfFields(attendee).length > 0"
-            class="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-200"
+          <Badge
+            v-if="isMinor(attendee.birthDate)"
+            variant="outline"
           >
-            Complete required profile fields before booking: {{ getMissingSelfFields(attendee).map(getMissingSelfFieldLabel).join(', ') }}.
-          </div>
-        </div>
+            Minor
+          </Badge>
+        </ItemContent>
 
-        <div class="border-t p-2 flex justify-end gap-1 bg-muted/20 opacity-100 sm:opacity-0 focus-within:opacity-100 group-hover:opacity-100 transition-opacity">
+        <ItemActions class="w-full justify-end sm:w-auto">
           <Button
             variant="ghost"
             size="sm"
@@ -457,9 +465,9 @@ definePageMeta({
             <Trash2Icon class="w-4 h-4 mr-1.5" />
             Delete
           </Button>
-        </div>
-      </Card>
-    </div>
+        </ItemActions>
+      </Item>
+    </ItemGroup>
 
     <!-- Create/Edit Dialog -->
     <Dialog v-model:open="isDialogOpen">
@@ -476,27 +484,6 @@ definePageMeta({
           @submit.prevent="onSubmit"
         >
           <FieldGroup>
-            <div class="flex items-center justify-between p-3 border rounded-lg bg-muted/20 mb-4">
-              <div>
-                <p class="font-medium text-sm">
-                  This is my profile
-                </p>
-                <p class="text-xs text-muted-foreground">
-                  Check this if you are saving your own details.
-                </p>
-              </div>
-              <VeeField
-                v-slot="{ field, value }"
-                name="isSelf"
-                type="checkbox"
-              >
-                <Switch
-                  :model-value="value"
-                  @update:model-value="field.onChange"
-                />
-              </VeeField>
-            </div>
-
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
               <VeeField
                 v-slot="{ field, errors }"
