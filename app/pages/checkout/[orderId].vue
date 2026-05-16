@@ -923,7 +923,7 @@ definePageMeta({
 <template>
   <main
     v-if="checkout"
-    class="min-h-screen bg-[#050605] text-foreground"
+    class="min-h-screen"
   >
     <section class="grid items-start gap-4 p-3 md:p-4 lg:grid-cols-[minmax(28rem,0.95fr)_minmax(24rem,0.85fr)]">
       <form
