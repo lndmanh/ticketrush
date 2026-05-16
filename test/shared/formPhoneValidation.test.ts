@@ -4,11 +4,30 @@ import { savedAttendeeFormSchema } from '#shared/schemas/savedAttendeeSchema'
 import { confirmCheckoutSchema } from '#shared/schemas/ticketingSchema'
 
 describe('form phone validation schemas', () => {
+  it('requires core saved attendee information fields', () => {
+    const result = savedAttendeeFormSchema.safeParse({
+      legalName: '',
+      preferredName: 'Jane',
+      notes: 'Window seat preferred',
+    })
+
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      const paths = result.error.issues.map(issue => issue.path.join('.'))
+      expect(paths).toContain('legalName')
+      expect(paths).toContain('email')
+      expect(paths).toContain('phone')
+      expect(paths).toContain('birthDate')
+      expect(paths).toContain('gender')
+    }
+  })
+
   it('rejects alphabetic saved attendee phone fields', () => {
     const result = savedAttendeeFormSchema.safeParse({
       legalName: 'Jane Doe',
       email: 'jane@example.com',
       phone: 'not a phone number',
+      birthDate: '1990-01-01',
       guardianPhone: 'guardian phone',
       gender: SavedAttendeeGender.Female,
     })
@@ -38,6 +57,7 @@ describe('form phone validation schemas', () => {
             legalName: 'Jane Doe',
             email: 'jane@example.com',
             phone: 'holder phone',
+            birthDate: '1990-01-01',
             gender: SavedAttendeeGender.Female,
           },
           saveAsAttendee: false,
@@ -51,3 +71,4 @@ describe('form phone validation schemas', () => {
       expect(result.error.issues.map(issue => issue.path.join('.'))).toContain('ticketHolders.0.holder.phone')
     }
   })
+})

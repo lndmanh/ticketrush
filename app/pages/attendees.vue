@@ -38,9 +38,9 @@ const { t, locale } = useI18n()
 type AttendeeFormValues = {
   legalName: string
   preferredName?: string
-  email?: string
-  phone?: string
-  birthDate?: string
+  email: string
+  phone: string
+  birthDate: string | undefined
   gender: SavedAttendeeGender
   guardianName?: string
   guardianEmail?: string
@@ -488,12 +488,14 @@ definePageMeta({
               <VeeField
                 v-slot="{ field, errors }"
                 name="legalName"
+                :validate-on-input="true"
               >
                 <Field :data-invalid="!!errors.length">
                   <FieldLabel>{{ $t('saved_attendees.legal_name') }}</FieldLabel>
                   <Input
                     v-bind="field"
                     :placeholder="$t('saved_attendees.legal_name_placeholder')"
+                    :aria-invalid="!!errors.length"
                   />
                   <FieldError
                     v-if="errors.length"
@@ -524,6 +526,7 @@ definePageMeta({
               <VeeField
                 v-slot="{ field, errors }"
                 name="email"
+                :validate-on-input="true"
               >
                 <Field :data-invalid="!!errors.length">
                   <FieldLabel>{{ $t('saved_attendees.email') }}</FieldLabel>
@@ -531,6 +534,7 @@ definePageMeta({
                     v-bind="field"
                     type="email"
                     :placeholder="$t('saved_attendees.email_placeholder')"
+                    :aria-invalid="!!errors.length"
                   />
                   <FieldError
                     v-if="errors.length"
@@ -564,6 +568,7 @@ definePageMeta({
               <VeeField
                 v-slot="{ field, errors }"
                 name="birthDate"
+                :validate-on-change="true"
               >
                 <Field :data-invalid="!!errors.length">
                   <FieldLabel for="attendee-birth-date">
@@ -617,6 +622,7 @@ definePageMeta({
               <VeeField
                 v-slot="{ field, value, errors }"
                 name="gender"
+                :validate-on-change="true"
               >
                 <Field :data-invalid="!!errors.length">
                   <FieldLabel>{{ $t('saved_attendees.gender') }}</FieldLabel>
@@ -624,7 +630,7 @@ definePageMeta({
                     :model-value="value"
                     @update:model-value="field.onChange"
                   >
-                    <SelectTrigger>
+                    <SelectTrigger :aria-invalid="!!errors.length">
                       <SelectValue :placeholder="$t('saved_attendees.gender_placeholder')" />
                     </SelectTrigger>
                     <SelectContent>

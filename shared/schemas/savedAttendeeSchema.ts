@@ -16,6 +16,10 @@ function optionalEmailSchema() {
   ]).optional()
 }
 
+function requiredEmailSchema() {
+  return z.string().trim().min(1, 'saved_attendees.email_required').email('Email is invalid')
+}
+
 export function optionalPhoneSchema() {
   return z.union([
     z.string().trim().max(0),
@@ -23,30 +27,30 @@ export function optionalPhoneSchema() {
   ]).optional()
 }
 
-function birthDateSchema() {
+function requiredPhoneSchema() {
+  return z.string().trim().min(1, 'saved_attendees.phone_required').regex(/^\+?[0-9\s().-]{7,20}$/, 'saved_attendees.phone_invalid')
+}
+
+function requiredBirthDateSchema() {
   return z.preprocess(
     (value) => {
       if (typeof value === 'string' && value.trim() === '') {
-        return null
-      }
-
-      if (value === null) {
-        return null
+        return undefined
       }
 
       return value
     },
-    z.coerce.date().nullable().optional(),
+    z.coerce.date({ error: 'saved_attendees.birth_date_required' }),
   )
 }
 
 const savedAttendeeBaseSchema = z.object({
   legalName: z.string().trim().min(1, 'saved_attendees.legal_name_required'),
   preferredName: optionalTextSchema(),
-  email: optionalEmailSchema(),
-  phone: optionalPhoneSchema(),
-  birthDate: birthDateSchema(),
-  gender: savedAttendeeGenderSchema.optional(),
+  email: requiredEmailSchema(),
+  phone: requiredPhoneSchema(),
+  birthDate: requiredBirthDateSchema(),
+  gender: savedAttendeeGenderSchema,
   guardianName: optionalTextSchema(),
   guardianEmail: optionalEmailSchema(),
   guardianPhone: optionalPhoneSchema(),
