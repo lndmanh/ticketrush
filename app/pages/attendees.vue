@@ -177,7 +177,7 @@ const onSubmit = handleSubmit(async (values) => {
         body: payload,
       })
       if (!response.success) throw response
-      toast.success('Attendee updated successfully')
+      toast.success(t('saved_attendees.updated'))
     }
     else {
       const response = await apiRequest(apiRoutes.SAVED_ATTENDEES, {
@@ -185,13 +185,13 @@ const onSubmit = handleSubmit(async (values) => {
         body: payload,
       })
       if (!response.success) throw response
-      toast.success('Attendee saved successfully')
+      toast.success(t('saved_attendees.saved'))
     }
     isDialogOpen.value = false
     await refresh()
   }
   catch (error) {
-    toast.error(parseApiError(error, 'Failed to save attendee. Please try again.').message)
+    toast.error(parseApiError(error, t('saved_attendees.save_failed')).message)
   }
   finally {
     isSubmitting.value = false
@@ -199,7 +199,7 @@ const onSubmit = handleSubmit(async (values) => {
 })
 
 async function deleteAttendee(id: number) {
-  if (!window.confirm('Are you sure you want to delete this attendee? This action cannot be undone.')) {
+  if (!window.confirm(t('saved_attendees.delete_confirm'))) {
     return
   }
 
@@ -208,11 +208,11 @@ async function deleteAttendee(id: number) {
       method: 'DELETE',
     })
     if (!response.success) throw response
-    toast.success('Attendee deleted successfully')
+    toast.success(t('saved_attendees.deleted'))
     await refresh()
   }
   catch (error) {
-    toast.error(parseApiError(error, 'Failed to delete attendee. Please try again.').message)
+    toast.error(parseApiError(error, t('saved_attendees.delete_failed')).message)
   }
 }
 
@@ -261,8 +261,8 @@ function getMissingSelfFieldLabel(field: SelfAttendeeRequirement) {
 }
 
 definePageMeta({
-  title: 'Saved Attendees',
-  breadcrumb: 'Saved Attendees',
+  title: 'saved_attendees.page_title',
+  breadcrumb: 'saved_attendees.breadcrumb',
   layout: 'dashboard',
   middleware: ['auth'],
 })
@@ -273,18 +273,26 @@ definePageMeta({
     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
       <div>
         <h1 class="text-3xl font-bold tracking-tight">
-          Saved Attendees
+          {{ $t('saved_attendees.title') }}
         </h1>
         <p class="text-muted-foreground mt-1">
-          Manage profiles for quicker checkout when buying tickets for yourself and others.
+          {{ $t('saved_attendees.subtitle') }}
         </p>
       </div>
       <div class="flex gap-2">
         <Button
+          variant="outline"
+          :disabled="loading"
+          @click="createFromProfile"
+        >
+          <UserIcon class="size-4" />
+          Add Myself
+        </Button>
+        <Button
           :disabled="loading"
           @click="openCreateDialog"
         >
-          <PlusIcon data-icon="inline-start" />
+          <PlusIcon class="size-4" />
           Add Attendee
         </Button>
       </div>
@@ -322,17 +330,17 @@ definePageMeta({
       class="text-center py-12 px-4 border rounded-xl bg-destructive/10 border-destructive/20 border-dashed"
     >
       <h3 class="text-lg font-semibold text-destructive mb-1">
-        Failed to load attendees
+        {{ $t('saved_attendees.loading_failed') }}
       </h3>
       <p class="text-muted-foreground mb-6 max-w-sm mx-auto">
-        There was a problem communicating with the server. Please try again.
+        {{ $t('saved_attendees.loading_failed_desc') }}
       </p>
       <div class="flex justify-center">
         <Button
           variant="outline"
           @click="refresh()"
         >
-          Retry
+          {{ $t('saved_attendees.retry') }}
         </Button>
       </div>
     </div>
@@ -346,8 +354,8 @@ definePageMeta({
         <EmptyMedia variant="icon">
           <UserIcon />
         </EmptyMedia>
-        <EmptyTitle>No attendees saved</EmptyTitle>
-        <EmptyDescription> Save the details of people you frequently buy tickets for to speed up your checkout process.</EmptyDescription>
+        <EmptyTitle>{{ $t('saved_attendees.no_attendees') }}</EmptyTitle>
+        <EmptyDescription>{{ $t('saved_attendees.no_attendees_desc') }}</EmptyDescription>
       </EmptyHeader>
     </Empty>
 
@@ -365,7 +373,7 @@ definePageMeta({
           v-if="attendee.isSelf"
           class="absolute top-0 right-0 bg-primary/10 text-primary text-xs font-semibold px-2 py-1 rounded-bl-lg"
         >
-          Self
+          {{ $t('saved_attendees.self_badge') }}
         </div>
         <div class="p-5 flex-1 space-y-4">
           <div class="flex items-start justify-between">
@@ -381,7 +389,7 @@ definePageMeta({
                   v-if="attendee.preferredName"
                   class="text-xs text-muted-foreground truncate"
                 >
-                  Legal: {{ attendee.legalName }}
+                  {{ $t('saved_attendees.legal_label', { name: attendee.legalName }) }}
                 </p>
               </div>
             </div>
@@ -404,7 +412,7 @@ definePageMeta({
               v-if="!attendee.email && !attendee.phone"
               class="text-muted-foreground italic text-xs"
             >
-              No direct contact info
+              {{ $t('saved_attendees.no_contact') }}
             </div>
 
             <div
@@ -412,13 +420,13 @@ definePageMeta({
               class="inline-flex items-center bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300 text-xs px-2 py-0.5 rounded-full mt-2"
             >
               <ShieldIcon class="w-3 h-3 mr-1" />
-              Minor
+              {{ $t('saved_attendees.minor_badge') }}
             </div>
             <div
               v-if="attendee.guardianName"
               class="text-xs text-muted-foreground mt-1 line-clamp-1"
             >
-              Guardian: {{ attendee.guardianName }}
+              {{ $t('saved_attendees.guardian_prefix', { name: attendee.guardianName }) }}
             </div>
           </div>
 
@@ -436,7 +444,7 @@ definePageMeta({
             size="sm"
             @click="openEditDialog(attendee)"
           >
-            <Edit2Icon data-icon="inline-start" />
+            <Edit2Icon class="w-4 h-4 mr-1.5" />
             Edit
           </Button>
           <Button
@@ -446,7 +454,7 @@ definePageMeta({
             class="text-destructive hover:text-destructive"
             @click="deleteAttendee(attendee.id)"
           >
-            <Trash2Icon data-icon="inline-start" />
+            <Trash2Icon class="w-4 h-4 mr-1.5" />
             Delete
           </Button>
         </div>
@@ -457,9 +465,9 @@ definePageMeta({
     <Dialog v-model:open="isDialogOpen">
       <DialogScrollContent class="sm:max-w-[600px]">
         <DialogHeader>
-          <DialogTitle>{{ editingId ? 'Edit Attendee' : 'Add Attendee' }}</DialogTitle>
+          <DialogTitle>{{ editingId ? t('saved_attendees.dialog_edit_title') : t('saved_attendees.dialog_add_title') }}</DialogTitle>
           <DialogDescription>
-            Enter the details for this attendee. Information saved here can be auto-filled during checkout.
+            {{ $t('saved_attendees.dialog_desc') }}
           </DialogDescription>
         </DialogHeader>
 
@@ -468,6 +476,27 @@ definePageMeta({
           @submit.prevent="onSubmit"
         >
           <FieldGroup>
+            <div class="flex items-center justify-between p-3 border rounded-lg bg-muted/20 mb-4">
+              <div>
+                <p class="font-medium text-sm">
+                  This is my profile
+                </p>
+                <p class="text-xs text-muted-foreground">
+                  Check this if you are saving your own details.
+                </p>
+              </div>
+              <VeeField
+                v-slot="{ field, value }"
+                name="isSelf"
+                type="checkbox"
+              >
+                <Switch
+                  :model-value="value"
+                  @update:model-value="field.onChange"
+                />
+              </VeeField>
+            </div>
+
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
               <VeeField
                 v-slot="{ field, errors }"
@@ -745,13 +774,13 @@ definePageMeta({
               :disabled="isSubmitting"
               @click="isDialogOpen = false"
             >
-              Cancel
+              {{ $t('saved_attendees.cancel') }}
             </Button>
             <Button
               type="submit"
               :is-loading="isSubmitting"
             >
-              {{ editingId ? 'Save Changes' : 'Add Attendee' }}
+              {{ editingId ? $t('saved_attendees.save_changes') : $t('saved_attendees.add_attendee') }}
             </Button>
           </DialogFooter>
         </form>

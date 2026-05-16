@@ -40,7 +40,7 @@ async function deleteAccount() {
     }
   }
   catch (error) {
-    toast.error(parseApiError(error, 'Failed to delete account:').message)
+    toast.error(parseApiError(error, t('account_page.delete_error')).message)
   }
 }
 
@@ -210,11 +210,10 @@ const onSaveProfile = handleProfileSubmit(async (formValues) => {
         <div class="space-y-2">
           <div class="flex items-center gap-2 text-destructive font-bold">
             <AlertTriangle class="w-5 h-5" />
-            <CardTitle>Permanently Delete Account</CardTitle>
+            <CardTitle>{{ $t('account_page.delete_title') }}</CardTitle>
           </div>
           <CardDescription>
-            Once you delete your account, there is no going back. Please be certain.
-            All your data will be permanently removed.
+            {{ $t('account_page.delete_description') }}
           </CardDescription>
         </div>
         <Button
@@ -222,7 +221,7 @@ const onSaveProfile = handleProfileSubmit(async (formValues) => {
           class="shadow-lg shadow-destructive/20"
           @click="confirmDeleteAccount"
         >
-          Delete Account
+          {{ $t('account_page.delete_action') }}
         </Button>
       </div>
     </div>
@@ -234,21 +233,20 @@ const onSaveProfile = handleProfileSubmit(async (formValues) => {
     >
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Delete Account</AlertDialogTitle>
+          <AlertDialogTitle>{{ $t('account_page.delete_dialog_title') }}</AlertDialogTitle>
           <AlertDialogDescription>
-            Are you sure you want to delete your account? This will permanently delete all your data and cannot be
-            undone.
+            {{ $t('account_page.delete_dialog_description') }}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel @click="showDeleteAccountDialog = false">
-            Cancel
+            {{ $t('common.cancel') }}
           </AlertDialogCancel>
           <AlertDialogAction
             variant="destructive"
             @click="deleteAccount"
           >
-            Delete Account
+            {{ $t('account_page.delete_action') }}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
