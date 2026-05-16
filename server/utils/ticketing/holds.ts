@@ -3,6 +3,7 @@ import type { CreateSeatHoldInput } from '#shared/schemas/ticketingSchema'
 import { createPublicHoldId } from '~~/server/utils/ticketing/ids'
 import queueService from '~~/server/utils/ticketing/queue'
 import eventSessionService from '~~/server/utils/database/event-session'
+import { requireCompleteSelfAttendee } from '~~/server/utils/ticketing/self-attendee-gate'
 import { broadcastSeatStatusDelta, createSeatStatusChanges } from '~~/server/utils/ticketing/seatmap-realtime'
 import type { SeatmapRealtimeNamespace } from '~~/server/utils/ticketing/seatmap-realtime'
 import { isExpiredActiveHold } from '~~/server/utils/ticketing/hold-expiry'
@@ -176,7 +177,7 @@ class HoldService {
     }
   }
 
-  async createHold(input: CreateSeatHoldInput & { sessionKey: string }, userId?: number, realtimeNamespace?: SeatmapRealtimeNamespace) {
+  async createHold(input: CreateSeatHoldInput & { sessionKey: string }, userId: number, realtimeNamespace?: SeatmapRealtimeNamespace) {
     const session = await eventSessionService.getById(input.eventSessionId)
 
     if (!session) {
@@ -218,6 +219,8 @@ class HoldService {
       }
     }
 
+    await requireCompleteSelfAttendee(userId)
+
     const existingHold = await this.db
       .select()
       .from(tables.seatHolds)
@@ -249,7 +252,7 @@ class HoldService {
           publicId: createPublicHoldId(),
           eventId: session.eventId,
           eventSessionId: session.id,
-          userId: userId ?? null,
+          userId,
           sessionKey: input.sessionKey,
           idempotencyKey: input.idempotencyKey,
           status: HoldStatus.Active,

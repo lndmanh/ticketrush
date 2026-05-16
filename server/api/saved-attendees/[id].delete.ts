@@ -12,10 +12,18 @@ export default defineEventHandler(async (event) => {
 
   const deleted = await savedAttendeeService.delete(session.user.id, id)
 
-  if (!deleted) {
-    throw apiError({ status: 404, statusText: 'Not Found', code: 'SAVED_ATTENDEE_NOT_FOUND', message: 'Saved attendee not found.' })
+  switch (deleted) {
+    case 'self-attendee':
+      throw apiError({ status: 409, statusText: 'Conflict', code: 'SELF_ATTENDEE_CANNOT_BE_DELETED', message: 'Your required profile cannot be deleted.' })
+    case 'not-found':
+      throw apiError({ status: 404, statusText: 'Not Found', code: 'SAVED_ATTENDEE_NOT_FOUND', message: 'Saved attendee not found.' })
+    case 'deleted': {
+      const response: DeletedPayload = { deleted: true }
+      return success(response)
+    }
+    default: {
+      const unhandledResult: never = deleted
+      throw apiError({ status: 500, statusText: 'Internal Server Error', code: 'SAVED_ATTENDEE_DELETE_FAILED', message: `Unhandled saved attendee delete result: ${unhandledResult}` })
+    }
   }
-
-  const response: DeletedPayload = { deleted: true }
-  return success(response)
 })

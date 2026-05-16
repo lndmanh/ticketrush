@@ -1,6 +1,5 @@
 import { z } from 'zod'
 import { createInsertSchema, createSelectSchema, createUpdateSchema } from 'drizzle-zod'
-import { SavedAttendeeGender } from '#shared/commonEnums'
 import { users } from '~~/server/db/schema.sqlite'
 
 /**
@@ -120,23 +119,9 @@ export const changePasswordSchema = z.object({
 
 export type ChangePasswordInput = z.infer<typeof changePasswordSchema>
 
-export const profilePhoneSchema = z.string()
-  .trim()
-  .max(32, 'Phone number is too long')
-  .nullable()
-
-export const profileBirthDateSchema = z.string()
-  .regex(/^\d{4}-\d{2}-\d{2}$/, 'Birth date must use YYYY-MM-DD format')
-  .nullable()
-
-export const profileGenderSchema = z.enum(SavedAttendeeGender).nullable()
-
 export const updateProfileSchema = z.object({
   name: z.string().trim().min(1, 'Name is required'),
   email: emailSchema,
-  phone: profilePhoneSchema,
-  birthDate: profileBirthDateSchema,
-  gender: profileGenderSchema,
 })
 
 export const loginSchema = z.object({

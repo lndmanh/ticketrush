@@ -29,7 +29,7 @@ export default defineEventHandler(async (event) => {
   const holdBundle = await holdService.createHold({
     ...result.data,
     sessionKey,
-  }, userSession.user?.id, realtimeNamespace)
+  }, userSession.user.id, realtimeNamespace)
   if (!holdBundle) {
     throw apiError({ status: 500, statusText: 'Internal Server Error', code: 'ERROR', message: 'Failed to create seat hold.' })
   }

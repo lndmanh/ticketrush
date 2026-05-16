@@ -1,4 +1,5 @@
 import type { SavedAttendeeGender } from '#shared/schemas/savedAttendeeSchema'
+import type { SelfAttendeeRequirement } from '#shared/utils/selfAttendee'
 
 export interface SavedAttendeeModel {
   id: number
@@ -17,4 +18,10 @@ export interface SavedAttendeeModel {
   isSelf: boolean
   createdAt: Date
   updatedAt: Date
+}
+
+export interface SelfAttendeeStatusModel {
+  attendee: SavedAttendeeModel
+  missingFields: SelfAttendeeRequirement[]
+  isComplete: boolean
 }

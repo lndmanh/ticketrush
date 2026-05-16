@@ -8,7 +8,6 @@ import type { CheckoutCustomerInput, CheckoutTicketHolderInput } from '#shared/s
 import type { ApiResponse } from '~~/types/api'
 import type { CheckoutCancelData, CheckoutDetailData } from '~~/types/ticketing'
 import type { SavedAttendeeModel } from '~~/types/models/saved-attendee'
-import type { UserProfileModel } from '~~/types/models/profile'
 import { toast } from 'vue-sonner'
 import { apiRequest } from '@/utils/apiRequest'
 import { parseApiError } from '@/utils/apiError'
@@ -17,7 +16,6 @@ import { AgeBracket, OrderPaymentMethod, OrderStatus, SavedAttendeeGender, SeatP
 
 const route = useRoute()
 const { locale, t } = useI18n()
-const { user } = useUserSession()
 const orderId = computed(() => route.params.orderId.toString())
 const holdPublicId = computed(() => typeof route.query.hold === 'string' ? route.query.hold : '')
 const isSubmitting = ref(false)
@@ -33,10 +31,7 @@ const { data: checkoutResponse, refresh } = await useAPI<ApiResponse<CheckoutDet
 const checkout = computed(() => checkoutResponse.value?.data ?? null)
 
 const { data: savedAttendeesResponse } = await useAPI<ApiResponse<SavedAttendeeModel[]>>(() => '/api/saved-attendees')
-const savedAttendees = computed(() => savedAttendeesResponse.value?.data ?? [])
-
-const { data: profileResponse } = await useAPI<ApiResponse<UserProfileModel>>(() => apiRoutes.MY_PROFILE)
-const profile = computed(() => profileResponse.value?.data ?? null)
+const savedAttendees = computed(() => savedAttendeesResponse.value?.success ? savedAttendeesResponse.value.data : [])
 
 interface TicketHolderDraft {
   eventSeatId: number
@@ -112,6 +107,8 @@ const defaultValues: CheckoutCustomerInput = {
   customerGender: SavedAttendeeGender.PreferNotToSay,
 }
 
+const selfAttendee = computed(() => savedAttendees.value.find(attendee => attendee.isSelf) ?? null)
+
 const { handleSubmit, resetForm, setFieldValue, values: formValues, meta: formMeta } = useForm({
   initialValues: { ...defaultValues },
   validationSchema: checkoutCustomerSchema,
@@ -119,12 +116,7 @@ const { handleSubmit, resetForm, setFieldValue, values: formValues, meta: formMe
 
 const formInitializedOrderId = ref<number | null>(null)
 const paymentInitializedOrderId = ref<number | null>(null)
-
-const userProfile = computed(() => ({
-  name: profile.value?.name ?? user.value?.name ?? '',
-  email: profile.value?.email ?? '',
-  phone: profile.value?.phone ?? '',
-}))
+const billingDefaultedFromSelfOrderId = ref<number | null>(null)
 
 function formatCurrency(cents: number) {
   return `${Intl.NumberFormat(getDisplayDateLocale(locale.value)).format(cents / 100)} VND`
@@ -147,8 +139,8 @@ function getSavedAttendeeOptionLabel(attendee: SavedAttendeeModel) {
 }
 
 function getAccountHolderOptionLabel() {
-  const name = formValues.customerName || userProfile.value.name || t('checkout.account_holder_option')
-  const email = formValues.customerEmail || userProfile.value.email
+  const name = selfAttendeeProfile.value.name || t('checkout.account_holder_option')
+  const email = selfAttendeeProfile.value.email
   const accountLabel = t('checkout.account_holder_option')
   const profileLabel = email ? `${name} · ${email}` : name
   return `${accountLabel} · ${profileLabel}`
@@ -246,6 +238,17 @@ function refreshAccountHolderDraft(draft: TicketHolderDraft) {
   restoreOptionalHolderFields(draft.holder, preserved)
 }
 
+function refreshAccountHolderDraftFromSelfAttendee(draft: TicketHolderDraft) {
+  const preserved = preserveOptionalHolderFields(draft.holder)
+  draft.holder = createAccountHolderDraft()
+
+  if (draft.guardianSource === TicketHolderSource.Manual) {
+    draft.holder.guardianName = preserved.guardianName
+    draft.holder.guardianEmail = preserved.guardianEmail
+    draft.holder.guardianPhone = preserved.guardianPhone
+  }
+}
+
 function getValidGender(value: string | undefined | null): SavedAttendeeGenderInput {
   if (value === SavedAttendeeGender.Female || value === SavedAttendeeGender.Male || value === SavedAttendeeGender.NonBinary || value === SavedAttendeeGender.PreferNotToSay) {
     return value
@@ -254,20 +257,50 @@ function getValidGender(value: string | undefined | null): SavedAttendeeGenderIn
   return SavedAttendeeGender.PreferNotToSay
 }
 
+const selfAttendeeProfile = computed(() => ({
+  name: selfAttendee.value?.preferredName || selfAttendee.value?.legalName || '',
+  email: selfAttendee.value?.email ?? '',
+  phone: selfAttendee.value?.phone ?? '',
+  gender: getValidGender(selfAttendee.value?.gender),
+}))
+
+const selfAttendeeDraftSignature = computed(() => {
+  const attendee = selfAttendee.value
+
+  if (!attendee) {
+    return ''
+  }
+
+  return [
+    attendee.id,
+    attendee.legalName,
+    attendee.preferredName ?? '',
+    attendee.email ?? '',
+    attendee.phone ?? '',
+    attendee.birthDate ? String(attendee.birthDate) : '',
+    attendee.gender ?? '',
+    attendee.guardianName ?? '',
+    attendee.guardianEmail ?? '',
+    attendee.guardianPhone ?? '',
+    attendee.notes ?? '',
+    attendee.accessibilityNeeds ?? '',
+  ].join('|')
+})
+
 function createAccountHolderDraft(): DraftTicketHolder {
   return {
-    legalName: formValues.customerName ?? userProfile.value.name,
-    preferredName: undefined,
-    email: formValues.customerEmail ?? userProfile.value.email,
-    phone: formValues.customerPhone ?? userProfile.value.phone,
-    birthDate: undefined,
-    gender: getValidGender(formValues.customerGender),
-    guardianName: undefined,
-    guardianEmail: undefined,
-    guardianPhone: undefined,
-    notes: undefined,
-    accessibilityNeeds: undefined,
-    isSelf: false,
+    legalName: selfAttendee.value?.legalName ?? selfAttendeeProfile.value.name,
+    preferredName: selfAttendee.value?.preferredName ?? undefined,
+    email: selfAttendeeProfile.value.email,
+    phone: selfAttendeeProfile.value.phone,
+    birthDate: getSavedAttendeeDraftBirthDate(selfAttendee.value?.birthDate ?? null),
+    gender: selfAttendeeProfile.value.gender,
+    guardianName: selfAttendee.value?.guardianName ?? undefined,
+    guardianEmail: selfAttendee.value?.guardianEmail ?? undefined,
+    guardianPhone: selfAttendee.value?.guardianPhone ?? undefined,
+    notes: selfAttendee.value?.notes ?? undefined,
+    accessibilityNeeds: selfAttendee.value?.accessibilityNeeds ?? undefined,
+    isSelf: true,
   }
 }
 
@@ -479,6 +512,16 @@ function getSavedAttendeePayloadBirthDate(value: SavedAttendeeModel['birthDate']
   return parseSavedAttendeeBirthDate(value) ?? undefined
 }
 
+function getSavedAttendeeDraftBirthDate(value: SavedAttendeeModel['birthDate']) {
+  const birthDate = parseSavedAttendeeBirthDate(value)
+  if (!birthDate) {
+    return undefined
+  }
+
+  const [datePart] = birthDate.toISOString().split('T')
+  return datePart ?? undefined
+}
+
 function applyGuardianDetails(draft: TicketHolderDraft, name: string, email: string | null | undefined, phone: string | null | undefined) {
   draft.holder.guardianName = name
   draft.holder.guardianEmail = email ?? undefined
@@ -495,9 +538,9 @@ function applyGuardianSource(draft: TicketHolderDraft) {
   if (draft.guardianSource === TicketHolderSource.Account) {
     applyGuardianDetails(
       draft,
-      formValues.customerName || userProfile.value.name,
-      formValues.customerEmail || userProfile.value.email,
-      formValues.customerPhone || userProfile.value.phone,
+      formValues.customerName,
+      formValues.customerEmail,
+      formValues.customerPhone,
     )
     return
   }
@@ -576,27 +619,54 @@ function setDraftSource(draft: TicketHolderDraft, source: TicketHolderSource) {
   }
 }
 
-watch(checkout, (value) => {
+watch([checkout, selfAttendeeProfile], ([value]) => {
   if (!value?.order) {
     return
   }
 
-  if (formInitializedOrderId.value === value.order.id && formMeta.value.dirty) {
+  const hasSelfDefaults = Boolean(
+    selfAttendeeProfile.value.name
+    || selfAttendeeProfile.value.email
+    || selfAttendeeProfile.value.phone,
+  )
+
+  const isNewOrder = formInitializedOrderId.value !== value.order.id
+  const canApplyLateSelfDefaults = !isNewOrder
+    && billingDefaultedFromSelfOrderId.value !== value.order.id
+    && hasSelfDefaults
+    && !formMeta.value.dirty
+
+  if (!isNewOrder && !canApplyLateSelfDefaults) {
+    return
+  }
+
+  if (formMeta.value.dirty) {
     return
   }
 
   formInitializedOrderId.value = value.order.id
+  if (hasSelfDefaults) {
+    billingDefaultedFromSelfOrderId.value = value.order.id
+  }
 
   resetForm({
     values: {
-      customerName: value.order.customerName || userProfile.value.name,
-      customerEmail: value.order.customerEmail || userProfile.value.email,
-      customerPhone: value.order.customerPhone || userProfile.value.phone,
-      customerAgeBracket: value.order.customerAgeBracket ?? AgeBracket.TwentyFiveToThirtyFour,
-      customerGender: value.order.customerGender ?? SavedAttendeeGender.PreferNotToSay,
+      customerName: value.order.customerName || selfAttendeeProfile.value.name,
+      customerEmail: value.order.customerEmail || selfAttendeeProfile.value.email,
+      customerPhone: value.order.customerPhone || selfAttendeeProfile.value.phone,
+      customerAgeBracket: value.order.customerAgeBracket || defaultValues.customerAgeBracket,
+      customerGender: getValidGender(value.order.customerGender || selfAttendeeProfile.value.gender),
     },
   })
 }, { immediate: true })
+
+watch(selfAttendeeDraftSignature, () => {
+  for (const draft of ticketHolderDrafts.value) {
+    if (isAccountHolderSelection(draft)) {
+      refreshAccountHolderDraftFromSelfAttendee(draft)
+    }
+  }
+})
 
 watch(checkout, (value) => {
   if (!value?.order || paymentInitializedOrderId.value === value.order.id) {
@@ -615,10 +685,6 @@ watch(formValues, () => {
   for (const draft of ticketHolderDrafts.value) {
     const shouldSyncAccountGuardian = isUnderEighteen(draft) && draft.guardianSource === TicketHolderSource.Account
 
-    if (isAccountHolderSelection(draft)) {
-      refreshAccountHolderDraft(draft)
-    }
-
     if (shouldSyncAccountGuardian) {
       applyGuardianSource(draft)
     }
@@ -634,7 +700,13 @@ watch(
     formValues.customerName,
     formValues.customerEmail,
     formValues.customerPhone,
-    savedAttendees.value.map(attendee => attendee.id).join(','),
+    savedAttendees.value.map(attendee => [
+      attendee.id,
+      attendee.legalName,
+      attendee.email ?? '',
+      attendee.phone ?? '',
+      attendee.birthDate ? String(attendee.birthDate) : '',
+    ].join('|')).join(','),
   ].join(':')),
   () => {
     for (const draft of ticketHolderDrafts.value) {

@@ -20,9 +20,6 @@ export const users = sqliteTable('users', {
   emailVerified: integer('email_verified', { mode: 'boolean' }).notNull().default(false),
   isAdmin: integer('is_admin', { mode: 'boolean' }).notNull().default(false),
   lastLoginAt: integer('last_login_at', { mode: 'timestamp' }), // Can be null if never logged in
-  phone: text('phone'),
-  birthDate: integer('birth_date', { mode: 'timestamp' }),
-  gender: text('gender').$type<CommonSavedAttendeeGender>(),
   ...timestampColumns,
 })
 

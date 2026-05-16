@@ -5,6 +5,7 @@ import { createPublicOrderId, createPublicTicketId, createQrToken } from '~~/ser
 import holdService from '~~/server/utils/ticketing/holds'
 import analyticsService from '~~/server/utils/ticketing/analytics'
 import savedAttendeeService from '~~/server/utils/database/savedAttendee'
+import { requireCompleteSelfAttendee } from '~~/server/utils/ticketing/self-attendee-gate'
 import { broadcastSeatStatusDelta, createSeatStatusChanges } from '~~/server/utils/ticketing/seatmap-realtime'
 import type { SeatmapRealtimeNamespace } from '~~/server/utils/ticketing/seatmap-realtime'
 import { HoldStatus, OrderStatus, SeatStatus, TicketHolderSource, TicketStatus } from '#shared/commonEnums'
@@ -347,7 +348,7 @@ class CheckoutService {
     }
   }
 
-  async startCheckout(holdPublicId: string, sessionKey: string, realtimeNamespace?: SeatmapRealtimeNamespace) {
+  async startCheckout(holdPublicId: string, sessionKey: string, userId: number, realtimeNamespace?: SeatmapRealtimeNamespace) {
     const db = this.db
     const hold = await db.select().from(tables.seatHolds).where(eq(tables.seatHolds.publicId, holdPublicId)).get()
 
@@ -357,6 +358,10 @@ class CheckoutService {
 
     if (hold.sessionKey !== sessionKey) {
       throw createError({ statusCode: 403, statusMessage: 'Seat hold does not belong to the current session.' })
+    }
+
+    if (hold.userId !== userId) {
+      throw createError({ statusCode: 403, statusMessage: 'Seat hold does not belong to this user.' })
     }
 
     if (hold.status !== HoldStatus.Active || hold.expiresAt.getTime() <= Date.now()) {
@@ -387,6 +392,8 @@ class CheckoutService {
 
     const amountCents = holdItemSnapshots.reduce((total, item) => total + item.unitPriceCents, 0)
     const currency = holdItemSnapshots[0].currency
+
+    await requireCompleteSelfAttendee(userId)
 
     const existingOrder = await db.select().from(tables.orders).where(eq(tables.orders.holdId, hold.id)).get()
     if (existingOrder) {
@@ -506,6 +513,8 @@ class CheckoutService {
       throw createError({ statusCode: 400, statusMessage: 'Selected seat pricing could not be resolved.' })
     }
 
+    const selfAttendee = await requireCompleteSelfAttendee(payload.userId)
+
     const holdItems = holdBundle.holdItems
 
     const amountCents = holdItems.reduce((total, item) => total + item.priceCents, 0)
@@ -521,6 +530,24 @@ class CheckoutService {
 
       if (holderSnapshots.has(assignment.eventSeatId)) {
         throw createError({ statusCode: 400, statusMessage: 'Duplicate ticket holder assignment.' })
+      }
+
+      if (assignment.source === TicketHolderSource.Account) {
+        holderSnapshots.set(assignment.eventSeatId, {
+          eventSeatId: assignment.eventSeatId,
+          savedAttendeeId: selfAttendee.id,
+          attendeeName: cleanOrFallback(selfAttendee.preferredName, selfAttendee.legalName),
+          attendeeEmail: cleanOrFallback(selfAttendee.email, payload.customerEmail),
+          attendeePhone: cleanText(selfAttendee.phone),
+          attendeeBirthDate: selfAttendee.birthDate ?? null,
+          attendeeGender: selfAttendee.gender ?? null,
+          attendeeGuardianName: cleanText(selfAttendee.guardianName),
+          attendeeGuardianEmail: cleanText(selfAttendee.guardianEmail),
+          attendeeGuardianPhone: cleanText(selfAttendee.guardianPhone),
+          attendeeNotes: cleanText(selfAttendee.notes),
+          attendeeAccessibilityNeeds: cleanText(selfAttendee.accessibilityNeeds),
+        })
+        continue
       }
 
       if (assignment.source === TicketHolderSource.SavedAttendee) {

@@ -12,6 +12,7 @@ import type { ApiResponse } from '~~/types/api'
 import type { EventSessionDetailResponse } from '~~/types/events'
 import type { HoldData, EventSessionGateResponse } from '~~/types/ticketing'
 import type { SessionSeatMapResponse } from '~~/types/seatmap'
+import type { SelfAttendeeStatusModel } from '~~/types/models/saved-attendee'
 import { SeatStatus } from '#shared/commonEnums'
 import { CashAppIcon } from 'vue3-simple-icons'
 
@@ -42,6 +43,19 @@ if (gateResponse.value?.success && gateResponse.value.data.shouldQueue) {
   await navigateTo({
     path: `/waiting-room/${sessionPublicId.value}`,
     query: { slug: slug.value },
+  })
+}
+
+const { data: selfAttendeeStatusResponse } = await useAPI<ApiResponse<SelfAttendeeStatusModel>>(() => apiRoutes.SAVED_ATTENDEE_SELF_STATUS)
+const selfAttendeeStatus = computed(() => selfAttendeeStatusResponse.value?.success ? selfAttendeeStatusResponse.value.data : null)
+
+if (selfAttendeeStatus.value && !selfAttendeeStatus.value.isComplete) {
+  await navigateTo({
+    path: '/attendees',
+    query: {
+      returnTo: route.fullPath,
+      reason: 'complete-profile',
+    },
   })
 }
 
@@ -509,6 +523,18 @@ async function reserveSeats() {
     if (isSessionUnavailableError(parsedError)) {
       checkoutUnavailableError.value = parsedError
       toast.error('This session is no longer available for booking.')
+      return
+    }
+
+    if (parsedError.code === 'SELF_ATTENDEE_INCOMPLETE') {
+      toast.error(parsedError.message)
+      await navigateTo({
+        path: '/attendees',
+        query: {
+          returnTo: route.fullPath,
+          reason: 'complete-profile',
+        },
+      })
       return
     }
 

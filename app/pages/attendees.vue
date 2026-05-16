@@ -9,13 +9,23 @@ import { parseApiError } from '@/utils/apiError'
 import { apiRoutes } from '#shared/apiRoutes'
 import { savedAttendeeFormSchema } from '#shared/schemas/savedAttendeeSchema'
 import { SavedAttendeeGender } from '#shared/commonEnums'
+import { getMissingSelfAttendeeFields, SelfAttendeeRequirement } from '#shared/utils/selfAttendee'
 import type { ApiResponse } from '~~/types/api'
 import type { DeletedPayload } from '~~/types/common'
 import type { SavedAttendeeModel } from '~~/types/models/saved-attendee'
 import { PlusIcon, UserIcon, Trash2Icon, Edit2Icon, ShieldIcon, CalendarDays } from '@lucide/vue'
 
 const { data: attendeesResponse, refresh, status, error: fetchError } = useAPI<ApiResponse<SavedAttendeeModel[]>>(() => apiRoutes.SAVED_ATTENDEES)
-const attendees = computed(() => attendeesResponse.value?.data || [])
+const attendees = computed(() => {
+  const data = attendeesResponse.value?.data || []
+  return [...data].sort((left, right) => {
+    if (left.isSelf !== right.isSelf) {
+      return left.isSelf ? -1 : 1
+    }
+
+    return left.id - right.id
+  })
+})
 const loading = computed(() => status.value === 'pending')
 
 const isDialogOpen = ref(false)
@@ -35,7 +45,6 @@ type AttendeeFormValues = {
   guardianPhone?: string
   notes?: string
   accessibilityNeeds?: string
-  isSelf: boolean
 }
 
 const defaultValues: AttendeeFormValues = {
@@ -50,15 +59,12 @@ const defaultValues: AttendeeFormValues = {
   guardianPhone: '',
   notes: '',
   accessibilityNeeds: '',
-  isSelf: false,
 }
 
 const { handleSubmit, resetForm, setFieldValue, setValues, values: formValues } = useForm<AttendeeFormValues>({
   initialValues: defaultValues,
   validationSchema: savedAttendeeFormSchema,
 })
-
-const { user } = useUserSession()
 
 const dateFormatter = computed(() => new DateFormatter(locale.value, { dateStyle: 'medium' }))
 
@@ -149,20 +155,6 @@ function openEditDialog(attendee: AttendeeItem) {
     guardianPhone: attendee.guardianPhone || undefined,
     notes: attendee.notes || undefined,
     accessibilityNeeds: attendee.accessibilityNeeds || undefined,
-    isSelf: attendee.isSelf || false,
-  })
-  isDialogOpen.value = true
-}
-
-function createFromProfile() {
-  editingId.value = null
-  resetForm({
-    values: {
-      ...defaultValues,
-      legalName: user.value?.name || '',
-      email: user.value?.email || '',
-      isSelf: true,
-    },
   })
   isDialogOpen.value = true
 }
@@ -242,6 +234,32 @@ function isMinor(birthDate?: Date | string | null) {
   return age < 18
 }
 
+function getMissingSelfFields(attendee: AttendeeItem) {
+  if (!attendee.isSelf) {
+    return []
+  }
+
+  return getMissingSelfAttendeeFields({
+    legalName: attendee.legalName,
+    email: attendee.email ?? null,
+    phone: attendee.phone ?? null,
+    birthDate: attendee.birthDate ?? null,
+    gender: attendee.gender ?? null,
+  })
+}
+
+function getMissingSelfFieldLabel(field: SelfAttendeeRequirement) {
+  const labels: Record<SelfAttendeeRequirement, string> = {
+    [SelfAttendeeRequirement.LegalName]: 'legal name',
+    [SelfAttendeeRequirement.Email]: 'email',
+    [SelfAttendeeRequirement.Phone]: 'phone',
+    [SelfAttendeeRequirement.BirthDate]: 'birth date',
+    [SelfAttendeeRequirement.Gender]: 'gender',
+  }
+
+  return labels[field]
+}
+
 definePageMeta({
   title: 'Saved Attendees',
   breadcrumb: 'Saved Attendees',
@@ -263,18 +281,10 @@ definePageMeta({
       </div>
       <div class="flex gap-2">
         <Button
-          variant="outline"
-          :disabled="loading"
-          @click="createFromProfile"
-        >
-          <UserIcon class="size-4" />
-          Add Myself
-        </Button>
-        <Button
           :disabled="loading"
           @click="openCreateDialog"
         >
-          <PlusIcon class="size-4" />
+          <PlusIcon data-icon="inline-start" />
           Add Attendee
         </Button>
       </div>
@@ -411,6 +421,13 @@ definePageMeta({
               Guardian: {{ attendee.guardianName }}
             </div>
           </div>
+
+          <div
+            v-if="attendee.isSelf && getMissingSelfFields(attendee).length > 0"
+            class="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-200"
+          >
+            Complete required profile fields before booking: {{ getMissingSelfFields(attendee).map(getMissingSelfFieldLabel).join(', ') }}.
+          </div>
         </div>
 
         <div class="border-t p-2 flex justify-end gap-1 bg-muted/20 opacity-100 sm:opacity-0 focus-within:opacity-100 group-hover:opacity-100 transition-opacity">
@@ -419,16 +436,17 @@ definePageMeta({
             size="sm"
             @click="openEditDialog(attendee)"
           >
-            <Edit2Icon class="w-4 h-4 mr-1.5" />
+            <Edit2Icon data-icon="inline-start" />
             Edit
           </Button>
           <Button
+            v-if="!attendee.isSelf"
             variant="ghost"
             size="sm"
             class="text-destructive hover:text-destructive"
             @click="deleteAttendee(attendee.id)"
           >
-            <Trash2Icon class="w-4 h-4 mr-1.5" />
+            <Trash2Icon data-icon="inline-start" />
             Delete
           </Button>
         </div>
@@ -450,27 +468,6 @@ definePageMeta({
           @submit.prevent="onSubmit"
         >
           <FieldGroup>
-            <div class="flex items-center justify-between p-3 border rounded-lg bg-muted/20 mb-4">
-              <div>
-                <p class="font-medium text-sm">
-                  This is my profile
-                </p>
-                <p class="text-xs text-muted-foreground">
-                  Check this if you are saving your own details.
-                </p>
-              </div>
-              <VeeField
-                v-slot="{ field, value }"
-                name="isSelf"
-                type="checkbox"
-              >
-                <Switch
-                  :model-value="value"
-                  @update:model-value="field.onChange"
-                />
-              </VeeField>
-            </div>
-
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
               <VeeField
                 v-slot="{ field, errors }"

@@ -30,6 +30,7 @@ export const apiRoutes = {
 
   MY_PROFILE: '/api/users/me',
   SAVED_ATTENDEES: '/api/saved-attendees',
+  SAVED_ATTENDEE_SELF_STATUS: '/api/saved-attendees/self-status',
 
   adminEvent: (eventId: string | number) => `/api/admin/events/${eventId}`,
   adminEventDashboard: (eventId: string | number) => `/api/admin/events/${eventId}/dashboard`,

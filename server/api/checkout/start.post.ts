@@ -10,14 +10,19 @@ const startCheckoutSchema = z.object({
 })
 
 export default defineEventHandler(async (event) => {
-  await requireUserSession(event)
+  const session = await requireUserSession(event)
 
   const result = await readValidatedBody(event, body => startCheckoutSchema.safeParse(body))
   if (!result.success) {
     throw apiError({ status: 400, statusText: 'Bad Request', code: 'VALIDATION_ERROR', message: 'Invalid request.', fieldErrors: zodErrorToFieldErrors(result.error), cause: result.error })
   }
 
-  const checkout = await checkoutService.startCheckout(result.data.holdPublicId, getTicketingSessionKey(event), getSeatmapRealtimeEnv(event).SEATMAP_REALTIME_ROOM)
+  const checkout = await checkoutService.startCheckout(
+    result.data.holdPublicId,
+    getTicketingSessionKey(event),
+    session.user.id,
+    getSeatmapRealtimeEnv(event).SEATMAP_REALTIME_ROOM,
+  )
   const response: CheckoutStartData = {
     publicId: checkout.publicId,
   }
