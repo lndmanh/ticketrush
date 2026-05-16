@@ -229,13 +229,23 @@ definePageMeta({
         </p>
       </div>
       <div class="flex items-center gap-2">
-        <Label for="admin-dashboard-range" class="text-sm text-muted-foreground">Range</Label>
+        <Label
+          for="admin-dashboard-range"
+          class="text-sm text-muted-foreground"
+        >Range</Label>
         <Select v-model="selectedRange">
-          <SelectTrigger id="admin-dashboard-range" class="w-36">
+          <SelectTrigger
+            id="admin-dashboard-range"
+            class="w-36"
+          >
             <SelectValue placeholder="Select range" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem v-for="option in adminAnalyticsTimeRangeOptions" :key="option.value" :value="option.value">
+            <SelectItem
+              v-for="option in adminAnalyticsTimeRangeOptions"
+              :key="option.value"
+              :value="option.value"
+            >
               {{ option.label }}
             </SelectItem>
           </SelectContent>

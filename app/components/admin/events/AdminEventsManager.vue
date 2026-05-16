@@ -255,7 +255,6 @@ const featuredPriorityEvent = computed(() => priorityRows.value[0] ?? null)
 
 const firstDraftEventId = computed(() => draftRows.value[0]?.id ?? null)
 
-
 async function fetchEvents() {
   try {
     loading.value = true

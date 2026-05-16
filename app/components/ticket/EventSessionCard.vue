@@ -82,7 +82,6 @@ const lowestTicket = computed(() => {
 
   return lowest
 })
-
 </script>
 
 <template>

@@ -19,7 +19,8 @@ export function readTicketingSessionKeyFromCookieHeader(cookieHeader: string | n
 
     try {
       return decodeURIComponent(rawValue)
-    } catch {
+    }
+    catch {
       return rawValue
     }
   }

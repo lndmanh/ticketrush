@@ -14,6 +14,6 @@ definePageMeta({
 
 useSeo({
   title: $t('admin.transactions.title'),
-  description: $t('admin.transactions.description')
+  description: $t('admin.transactions.description'),
 })
 </script>
