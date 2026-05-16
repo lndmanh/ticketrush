@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { apiRoutes } from '#shared/apiRoutes'
 import { Field as VeeField, useForm } from 'vee-validate'
-import { ArrowLeft, ChevronDown, CreditCard, Landmark, UserRound, UsersRound, PencilLine, Ticket, WalletCards } from '@lucide/vue'
+import { ArrowLeft, ChevronDown, CreditCard, Landmark, UserRound, UsersRound, PencilLine, WalletCards } from '@lucide/vue'
 import type { SavedAttendeeFormInput, SavedAttendeeGender as SavedAttendeeGenderInput } from '#shared/schemas/savedAttendeeSchema'
 import { checkoutCustomerSchema, confirmCheckoutSchema } from '#shared/schemas/ticketingSchema'
 import type { CheckoutCustomerInput, CheckoutTicketHolderInput } from '#shared/schemas/ticketingSchema'
@@ -12,6 +12,7 @@ import { toast } from 'vue-sonner'
 import { apiRequest } from '@/utils/apiRequest'
 import { parseApiError } from '@/utils/apiError'
 import { getDisplayDateLocale } from '@/lib/localizedEvents'
+import { getCheckoutSuccessPath } from '@/utils/checkoutSuccess'
 import { AgeBracket, OrderPaymentMethod, OrderStatus, SavedAttendeeGender, SeatPricingSource, TicketHolderSource } from '#shared/commonEnums'
 
 const route = useRoute()
@@ -29,6 +30,10 @@ const { data: checkoutResponse, refresh } = await useAPI<ApiResponse<CheckoutDet
   query: computed(() => ({ locale: locale.value })),
 })
 const checkout = computed(() => checkoutResponse.value?.data ?? null)
+
+if (checkout.value?.order.status === OrderStatus.Confirmed) {
+  await navigateTo(getCheckoutSuccessPath(orderId.value), { replace: true })
+}
 
 const { data: savedAttendeesResponse } = await useAPI<ApiResponse<SavedAttendeeModel[]>>(() => '/api/saved-attendees')
 const savedAttendees = computed(() => savedAttendeesResponse.value?.success ? savedAttendeesResponse.value.data : [])
@@ -151,10 +156,6 @@ function formatDateTime(value: string | Date) {
 
 function getSavedAttendeeOptionLabel(attendee: SavedAttendeeModel) {
   return attendee.email ? `${attendee.legalName} · ${attendee.email}` : attendee.legalName
-}
-
-function getPaymentMethodLabel(payment: OrderPaymentMethod | null | undefined) {
-  return paymentMethodOptions.value.find(option => option.value === payment)?.label ?? t('tickets.detail_unknown')
 }
 
 function isAccountHolderSelection(draft: TicketHolderDraft) {
@@ -835,34 +836,6 @@ function toPayloadHolder(draft: TicketHolderDraft): CheckoutTicketHolderInput {
 }
 
 const checkoutSessionStartsAt = computed(() => checkout.value?.eventSession?.startsAt ?? null)
-const primaryCheckoutItem = computed(() => checkout.value?.items[0] ?? null)
-const confirmedTicketLabels = computed(() => {
-  if (!checkout.value) {
-    return []
-  }
-
-  return checkout.value.items.map(item => `${item.ticketLabel} · ${item.sectionLabel} ${item.seatLabel}`)
-})
-const orderConfirmedAtLabel = computed(() => {
-  const confirmedAt = checkout.value?.order.confirmedAt ?? checkout.value?.order.updatedAt ?? null
-  return confirmedAt ? formatDateTime(confirmedAt) : t('tickets.detail_unknown')
-})
-const orderStatusLabel = computed(() => {
-  const status = checkout.value?.order.status
-  if (status === OrderStatus.Confirmed) {
-    return t('checkout.status_confirmed')
-  }
-
-  if (status === OrderStatus.Pending) {
-    return t('checkout.status_pending')
-  }
-
-  if (status === OrderStatus.Cancelled) {
-    return t('checkout.status_cancelled')
-  }
-
-  return status ? status.replaceAll('_', ' ') : t('tickets.detail_unknown')
-})
 
 const holdTimeRemainingMs = computed(() => {
   const expiresAt = checkout.value?.hold?.expiresAt
@@ -890,10 +863,6 @@ const isHoldExpired = computed(() => holdTimeRemainingMs.value === 0)
 
 async function navigateBackToEvent() {
   await navigateTo(checkout.value?.event?.slug ? `/events/${checkout.value.event.slug}` : '/events')
-}
-
-async function openTicketWallet() {
-  await navigateTo('/tickets')
 }
 
 async function createAttendee() {
@@ -971,7 +940,7 @@ const onSubmit = handleSubmit(
       if (!response.success) throw response
 
       toast.success(t('checkout.order_confirmed_toast'))
-      await refresh()
+      await navigateTo(getCheckoutSuccessPath(orderId.value))
     }
     catch (error) {
       toast.error(parseApiError(error, t('checkout.order_confirm_error')).message)
@@ -1553,168 +1522,8 @@ definePageMeta({
         </div>
       </form>
 
-      <section
-        v-else
-        class="overflow-hidden"
-      >
-        <div class="border-b border-white/10 px-5 py-5 md:px-6">
-          <p class="text-xs font-semibold uppercase tracking-[0.24em] text-violet-300">
-            {{ $t('checkout.order_confirmed') }}
-          </p>
-          <h2 class="mt-2 text-3xl font-semibold tracking-[-0.04em] text-white">
-            {{ $t('checkout.tickets_in_wallet') }}
-          </h2>
-          <p class="mt-2 max-w-xl text-sm leading-6 text-white/60">
-            {{ $t('checkout.qr_ready_checkout_desc') }}
-          </p>
-          <Button
-            type="button"
-            class="mt-5 rounded-full px-5"
-            @click="openTicketWallet"
-          >
-            {{ $t('checkout.open_my_tickets') }}
-          </Button>
-        </div>
-
-        <div class="px-5 py-5 md:px-6">
-          <div class="grid items-start gap-5 xl:grid-cols-[minmax(17rem,21rem)_minmax(0,1fr)]">
-            <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-1">
-              <TicketQrCard
-                v-for="(ticket, ticketIndex) in checkout.tickets"
-                :key="ticket.id"
-                class="h-full min-w-0"
-                :payload="ticket.qrToken"
-                :title="$t('tickets.digital_entry_pass')"
-                :subtitle="ticket.attendeeEmail"
-                :ticket-label="confirmedTicketLabels[ticketIndex] ?? null"
-                :instruction="null"
-                :show-payload="false"
-              />
-            </div>
-
-            <div class="space-y-4">
-              <div class="rounded-[1.5rem] border border-white/10 bg-white/[0.04] p-5 shadow-xl shadow-black/20">
-                <p class="text-sm font-semibold text-white">
-                  {{ $t('checkout.qr_gate_title') }}
-                </p>
-                <p class="mt-2 text-sm leading-7 text-white/60">
-                  {{ $t('checkout.qr_gate_desc') }}
-                </p>
-              </div>
-
-              <div class="grid gap-3 sm:grid-cols-3 xl:grid-cols-1">
-                <div class="rounded-2xl border border-emerald-400/20 bg-emerald-500/10 p-4">
-                  <p class="text-xs uppercase tracking-[0.18em] text-emerald-300">
-                    {{ $t('common.status') }}
-                  </p>
-                  <p class="mt-2 text-base font-semibold text-emerald-100">
-                    {{ orderStatusLabel }}
-                  </p>
-                </div>
-                <div class="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
-                  <p class="text-xs uppercase tracking-[0.18em] text-white/45">
-                    {{ $t('checkout.ticket_assignments_title') }}
-                  </p>
-                  <p class="mt-2 text-base font-semibold text-white">
-                    {{ checkout.tickets.length }}
-                  </p>
-                </div>
-                <div class="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
-                  <p class="text-xs uppercase tracking-[0.18em] text-white/45">
-                    Email
-                  </p>
-                  <p class="mt-2 truncate text-base font-semibold text-white">
-                    {{ checkout.tickets[0]?.attendeeEmail ?? checkout.order.customerEmail }}
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
       <Card
-        v-if="checkout.order.status === OrderStatus.Confirmed"
-        class="overflow-hidden"
-      >
-        <CardHeader class="border-b border-white/10 px-6 py-6">
-          <div class="flex items-center justify-between gap-4">
-            <div class="flex items-center gap-3">
-              <div class="flex size-10 shrink-0 items-center justify-center rounded-2xl border border-violet-400/25 bg-violet-500/10 text-violet-300">
-                <Ticket class="size-5" />
-              </div>
-              <div>
-                <p class="text-xs font-semibold uppercase tracking-[0.22em] text-violet-300">
-                  {{ $t('checkout.summary_label') }}
-                </p>
-                <CardTitle class="mt-1 text-2xl tracking-[-0.04em] text-white">
-                  {{ $t('checkout.order_total') }}
-                </CardTitle>
-              </div>
-            </div>
-            <span class="rounded-full border border-emerald-400/20 bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-200">
-              {{ orderStatusLabel }}
-            </span>
-          </div>
-        </CardHeader>
-
-        <CardContent class="space-y-4 p-6">
-          <div
-            v-if="primaryCheckoutItem"
-            class="rounded-[1.5rem] border border-white/10 bg-black/25 p-5"
-          >
-            <div class="flex items-start justify-between gap-4">
-              <div class="min-w-0">
-                <p class="text-lg font-semibold text-white">
-                  {{ primaryCheckoutItem.ticketLabel }}
-                </p>
-                <p class="mt-1 text-sm text-white/55">
-                  {{ primaryCheckoutItem.sectionLabel }} · {{ primaryCheckoutItem.rowLabel }} · {{ primaryCheckoutItem.seatLabel }}
-                </p>
-              </div>
-              <p class="shrink-0 font-mono text-sm font-semibold text-white">
-                {{ formatCurrency(primaryCheckoutItem.unitPriceCents) }}
-              </p>
-            </div>
-          </div>
-
-          <div class="rounded-[1.5rem] bg-[#1b1d15] p-5 shadow-inner shadow-white/5">
-            <p class="text-sm text-white/55">
-              {{ $t('checkout.order_total') }}
-            </p>
-            <p class="mt-2 text-4xl font-semibold tracking-[-0.06em] text-white">
-              {{ formatCurrency(checkout.order.amountCents) }}
-            </p>
-          </div>
-
-          <div
-            v-if="checkout.order.payment"
-            class="rounded-[1.5rem] border border-white/10 bg-black/25 p-5"
-          >
-            <p class="text-sm text-white/55">
-              {{ $t('checkout.payment_method') }}
-            </p>
-            <p class="mt-2 text-lg font-semibold text-white">
-              {{ getPaymentMethodLabel(checkout.order.payment) }}
-            </p>
-          </div>
-
-          <div class="rounded-[1.5rem] border border-white/10 bg-black/25 p-5">
-            <p class="text-sm font-semibold text-white">
-              {{ checkout.event?.title ?? $t('checkout.page_title') }}
-            </p>
-            <p class="mt-1 text-sm text-white/55">
-              {{ orderConfirmedAtLabel }}
-            </p>
-            <p class="mt-2 text-xs text-white/40">
-              {{ $t('checkout.order_confirmed') }}
-            </p>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card
-        v-else
+        v-if="checkout.order.status !== OrderStatus.Confirmed"
         class="flex flex-col lg:sticky lg:top-4 lg:h-[calc(100dvh-2rem)] lg:overflow-hidden"
       >
         <CardContent class="flex min-h-0 flex-1 flex-col p-0">

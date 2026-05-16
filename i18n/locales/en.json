@@ -726,7 +726,18 @@
     "open_my_tickets": "Open my tickets",
     "order_confirmed_toast": "Order confirmed",
     "hold_expired_toast": "Your seat hold has expired. Please return to the event and choose seats again.",
-    "order_confirm_error": "We could not confirm the order"
+    "order_confirm_error": "We could not confirm the order",
+    "success_eyebrow": "Order confirmed",
+    "success_title": "You're all set.",
+    "success_desc": "Your order is complete. Your tickets are ready in your ticket wallet.",
+    "success_billing_summary": "Billing summary",
+    "success_ticket_count": "Tickets issued",
+    "success_confirmed_at": "Confirmed at",
+    "success_view_tickets": "View my tickets",
+    "success_browse_event": "Back to event",
+    "success_cancelled_badge": "Not completed",
+    "success_cancelled_title": "This checkout is no longer active.",
+    "success_cancelled_desc": "The order was not completed. You can return to the event and choose seats again."
   },
   "tickets": {
     "page_title": "My tickets",

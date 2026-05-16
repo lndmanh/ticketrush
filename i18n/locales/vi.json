@@ -727,7 +727,18 @@
     "open_my_tickets": "Mở vé của tôi",
     "order_confirmed_toast": "Đơn hàng đã xác nhận",
     "hold_expired_toast": "Thời gian giữ chỗ đã hết. Vui lòng quay lại sự kiện và chọn lại chỗ ngồi.",
-    "order_confirm_error": "Chúng tôi không thể xác nhận đơn hàng"
+    "order_confirm_error": "Chúng tôi không thể xác nhận đơn hàng",
+    "success_eyebrow": "Đơn hàng đã xác nhận",
+    "success_title": "Bạn đã hoàn tất.",
+    "success_desc": "Đơn hàng đã hoàn tất. Vé của bạn đã sẵn sàng trong ví vé.",
+    "success_billing_summary": "Tóm tắt thanh toán",
+    "success_ticket_count": "Vé đã phát hành",
+    "success_confirmed_at": "Xác nhận lúc",
+    "success_view_tickets": "Xem vé của tôi",
+    "success_browse_event": "Quay lại sự kiện",
+    "success_cancelled_badge": "Chưa hoàn tất",
+    "success_cancelled_title": "Thanh toán này không còn hoạt động.",
+    "success_cancelled_desc": "Đơn hàng chưa được hoàn tất. Bạn có thể quay lại sự kiện và chọn ghế lại."
   },
   "tickets": {
     "page_title": "Vé của tôi",
