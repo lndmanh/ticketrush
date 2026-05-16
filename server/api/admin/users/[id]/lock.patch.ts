@@ -1,4 +1,4 @@
-import { userUpdateSchema } from '#shared/schemas/userSchema'
+import { adminUserLockSchema } from '#shared/schemas/userSchema'
 import userService from '~~/server/utils/database/user'
 import { apiError, success, zodErrorToFieldErrors } from '~~/server/utils/apiResponse'
 import type { AdminUserModel } from '~~/types/models/profile'
@@ -13,25 +13,30 @@ export default defineEventHandler(async (event) => {
       code: 'INVALID_USER_ID',
     })
   }
-  const result = await readValidatedBody(event, body => userUpdateSchema.safeParse(body))
+
+  const result = await readValidatedBody(event, body => adminUserLockSchema.safeParse(body))
   if (!result.success) {
     throw apiError({
       status: 400,
       statusText: 'Bad Request',
-      message: 'Bad Request. The submitted user data is invalid.',
+      message: 'Bad Request. The submitted lock data is invalid.',
       code: 'VALIDATION_ERROR',
       fieldErrors: zodErrorToFieldErrors(result.error),
     })
   }
 
-  const { password, ...validatedData } = result.data
-  const updateData = {
-    ...validatedData,
-    id: userId,
-    ...(password?.trim() ? { password: await hashPassword(password) } : {}),
+  // Prevent admins from locking their own account
+  const session = await getUserSession(event)
+  if (session.user?.id === userId) {
+    throw apiError({
+      status: 403,
+      statusText: 'Forbidden',
+      message: 'You cannot lock your own account.',
+      code: 'SELF_LOCK_FORBIDDEN',
+    })
   }
 
-  const updatedUser = await userService.update(updateData)
+  const updatedUser = await userService.update({ id: userId, isLocked: result.data.isLocked })
   if (!updatedUser) {
     throw apiError({
       status: 404,

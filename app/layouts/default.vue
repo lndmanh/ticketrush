@@ -1,9 +1,13 @@
 <template>
   <div class="min-h-screen bg-background text-foreground">
-    <!-- Header — full-width at top, floats to pill on scroll -->
-    <div
-      ref="headerWrapperRef"
-      class="fixed top-0 left-0 right-0 z-50 flex justify-center"
+    <!-- Locked account banner + header stacked in a fixed column -->
+    <div class="fixed top-0 left-0 right-0 z-[60] flex flex-col">
+      <LockedAccountBanner />
+
+      <!-- Header — full-width at top, floats to pill on scroll -->
+      <div
+        ref="headerWrapperRef"
+        class="flex justify-center"
     >
       <header
         ref="headerRef"
@@ -82,7 +86,7 @@
               @click="handleHeaderCtaClick"
             >
               {{ headerCtaLabel }}
-              <ArrowRight class="ml-1.5 h-3.5 w-3.5 transition-transform duration-300 group-hover:translate-x-0.5" />
+              <ArrowRight />
             </Button>
           </nav>
 
@@ -139,6 +143,7 @@
           </div>
         </div>
       </header>
+      </div>
     </div>
 
     <!-- Full-Page Mobile Menu -->
@@ -456,6 +461,7 @@ import { useWindowScroll } from '@vueuse/core'
 import { Menu, X, ChevronLeft, ChevronRight, ArrowRight, SunIcon, MoonIcon, MailIcon } from '@lucide/vue'
 import { APP_MANIFEST } from '#shared/constants/manifest'
 import gsap from 'gsap'
+import LockedAccountBanner from '@/components/LockedAccountBanner.vue'
 
 const config = useConfig()
 
@@ -617,10 +623,3 @@ function handleHeaderCtaClick() {
   return navigateTo(headerCtaTarget.value)
 }
 </script>
-
-<style scoped>
-.hero-header :deep(button:hover),
-.hero-header :deep(a:not(.no-hover-bg):hover) {
-  background-color: rgba(255, 255, 255, 0.1) !important;
-}
-</style>

@@ -50,6 +50,13 @@
       "when": 1778903724644,
       "tag": "0006_clammy_harrier",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1778949692655,
+      "tag": "0007_fluffy_sentinels",
+      "breakpoints": true
     }
   ]
 }

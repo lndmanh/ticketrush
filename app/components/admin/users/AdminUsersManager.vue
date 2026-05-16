@@ -91,6 +91,34 @@
       </AlertDialogContent>
     </AlertDialog>
 
+    <AlertDialog v-model:open="lockDialogOpen">
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>
+            {{ userToLock?.isLocked ? $t('admin.users.unlock_user_title') : $t('admin.users.lock_user_title') }}
+          </AlertDialogTitle>
+          <AlertDialogDescription>
+            {{
+              userToLock?.isLocked
+                ? $t('admin.users.unlock_user_desc', { username: userToLock?.username })
+                : $t('admin.users.lock_user_desc', { username: userToLock?.username })
+            }}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel @click="closeLockDialog">
+            {{ $t('common.cancel') }}
+          </AlertDialogCancel>
+          <AlertDialogAction
+            :disabled="loading"
+            @click="confirmLockToggle"
+          >
+            {{ userToLock?.isLocked ? $t('admin.users.unlock_confirm') : $t('admin.users.lock_confirm') }}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+
     <Dialog v-model:open="showDialog">
       <DialogScrollContent class="max-w-2xl">
         <DialogHeader>
@@ -386,6 +414,8 @@ const editingUserId = ref<number | null>(null)
 const singleDeleteDialogOpen = ref(false)
 const batchDeleteDialogOpen = ref(false)
 const deleteUserId = ref<number | null>(null)
+const lockDialogOpen = ref(false)
+const lockUserId = ref<number | null>(null)
 
 const defaultFormData: UserFormValues = {
   id: 0,
@@ -492,7 +522,15 @@ const userToDelete = computed(() => {
   return users.value.find(user => user.id === deleteUserId.value) ?? null
 })
 
-const columns = computed(() => createColumns(handleEdit, handleDeleteConfirm))
+const userToLock = computed(() => {
+  if (lockUserId.value === null) {
+    return null
+  }
+
+  return users.value.find(user => user.id === lockUserId.value) ?? null
+})
+
+const columns = computed(() => createColumns(handleEdit, handleDeleteConfirm, handleLockToggle))
 
 async function fetchUsers() {
   try {
@@ -622,6 +660,49 @@ function openBatchDeleteDialog() {
 async function confirmBatchDelete() {
   batchDeleteDialogOpen.value = false
   await handleBatchDelete()
+}
+
+function handleLockToggle(user: User) {
+  lockUserId.value = user.id
+  lockDialogOpen.value = true
+}
+
+function closeLockDialog() {
+  lockDialogOpen.value = false
+  lockUserId.value = null
+}
+
+async function confirmLockToggle() {
+  if (lockUserId.value === null) {
+    return
+  }
+
+  const user = userToLock.value
+  if (!user) {
+    closeLockDialog()
+    return
+  }
+
+  const userId = lockUserId.value
+  const nextLocked = !user.isLocked
+  closeLockDialog()
+
+  try {
+    loading.value = true
+    const response = await apiRequest<ApiResponse<{ user: AdminUserModel }>>(apiRoutes.adminUserLock(userId), {
+      method: 'PATCH',
+      body: { isLocked: nextLocked },
+    })
+    if (!response.success) throw response
+    toast.success(nextLocked ? 'User locked successfully' : 'User unlocked successfully')
+    await fetchUsers()
+  }
+  catch (error) {
+    toast.error(parseApiError(error, 'Failed to update the user lock status').message)
+  }
+  finally {
+    loading.value = false
+  }
 }
 
 onMounted(() => {
