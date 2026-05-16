@@ -2,26 +2,10 @@
 import type { DateValue } from '@internationalized/date'
 import { CalendarDate, getLocalTimeZone, today } from '@internationalized/date'
 import { CalendarClock, CalendarDays, CalendarRange, ChevronLeft, ChevronRight, Clock3, List, MapPin, Ticket, ArrowRight } from '@lucide/vue'
-import {
-  CalendarCell,
-  CalendarCellTrigger,
-  CalendarGrid,
-  CalendarGridBody,
-  CalendarGridHead,
-  CalendarGridRow,
-  CalendarHeadCell,
-  CalendarHeader,
-  CalendarHeading,
-  CalendarNext,
-  CalendarPrev,
-  CalendarRoot,
-} from 'reka-ui'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Motion } from 'motion-v'
 import { getDisplayDateLocale } from '@/lib/localizedEvents'
 import { cn, formatCurrency, formatDate, formatTime } from '@/lib/utils'
+import { getEventFallbackImage } from '@/utils/fallbackImages'
 import { apiRoutes } from '#shared/apiRoutes'
 import { EventCatalogSort, EventStatus } from '#shared/commonEnums'
 import type { PaginatedApiResponse } from '~~/types/api'
@@ -483,7 +467,7 @@ definePageMeta({
 
         <div class="order-1 h-72 overflow-hidden md:h-96 lg:order-2 lg:h-auto lg:min-h-[28rem]">
           <img
-            :src="event.coverImage || `https://picsum.photos/seed/${event.slug}/1600/1100`"
+            :src="event.coverImage || getEventFallbackImage(event.slug)"
             :alt="event.title"
             class="size-full object-cover"
           >
