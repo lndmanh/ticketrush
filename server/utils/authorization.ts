@@ -2,6 +2,41 @@ import type { H3Event } from 'h3'
 import userService from '~~/server/utils/database/user'
 import { apiError } from '~~/server/utils/apiResponse'
 
+export function resolveAuthorizedTargetUserId(targetId: string | undefined, sessionUserId: number): number {
+  const currentUserId = Number(sessionUserId)
+
+  if (!Number.isSafeInteger(currentUserId) || currentUserId <= 0) {
+    throw apiError({
+      status: 401,
+      statusText: 'Unauthorized',
+      message: 'Unauthorized. Your session is invalid. Please sign in again.',
+      code: 'INVALID_SESSION',
+    })
+  }
+
+  if (!targetId) {
+    throw apiError({
+      status: 400,
+      statusText: 'Bad Request',
+      message: 'Bad Request. User ID parameter is missing.',
+      code: 'RESOURCE_ACCESS_DENIED',
+    })
+  }
+
+  const resolvedTargetId = targetId === 'me' ? currentUserId : Number(targetId)
+
+  if (!Number.isSafeInteger(resolvedTargetId) || resolvedTargetId <= 0) {
+    throw apiError({
+      status: 400,
+      statusText: 'Bad Request',
+      message: 'Bad Request. The provided user ID is not a valid number.',
+      code: 'RESOURCE_ACCESS_DENIED',
+    })
+  }
+
+  return resolvedTargetId
+}
+
 /**
  * Get the target user ID from route parameter and verify access permissions.
  * - Admins can access any user's data
@@ -14,7 +49,11 @@ import { apiError } from '~~/server/utils/apiResponse'
  */
 export async function getAuthorizedUserId(event: H3Event, paramName = 'id'): Promise<number> {
   const session = await requireUserSession(event)
-  const currentUserId = session.user.id
+  const currentUserId = Number(session.user.id)
+
+  // Get the target user ID from route parameter
+  const targetId = getRouterParam(event, paramName)
+  const resolvedTargetId = resolveAuthorizedTargetUserId(targetId, currentUserId)
 
   // Get the current user from database to check admin status
   const currentUser = await userService.getById(currentUserId)
@@ -23,30 +62,6 @@ export async function getAuthorizedUserId(event: H3Event, paramName = 'id'): Pro
       status: 404,
       statusText: 'Not Found',
       message: 'Authenticated user account not found.',
-      code: 'RESOURCE_ACCESS_DENIED',
-    })
-  }
-
-  // Get the target user ID from route parameter
-  const targetId = getRouterParam(event, paramName)
-  if (!targetId) {
-    throw apiError({
-      status: 400,
-      statusText: 'Bad Request',
-      message: 'Bad Request. User ID parameter is missing.',
-      code: 'RESOURCE_ACCESS_DENIED',
-    })
-  }
-
-  // Resolve "me" to the current user's ID
-  const resolvedTargetId = targetId === 'me' ? currentUserId : Number(targetId)
-
-  // Validate that the resolved ID is a valid number
-  if (isNaN(resolvedTargetId)) {
-    throw apiError({
-      status: 400,
-      statusText: 'Bad Request',
-      message: 'Bad Request. The provided user ID is not a valid number.',
       code: 'RESOURCE_ACCESS_DENIED',
     })
   }
