@@ -304,11 +304,11 @@ definePageMeta({
 <template>
   <div class="space-y-6">
     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-      <div>
-        <h1 class="text-3xl font-bold tracking-tight">
+      <div class="flex flex-col gap-1">
+        <h1 class="text-2xl font-semibold tracking-tight">
           {{ $t('saved_attendees.title') }}
         </h1>
-        <p class="text-muted-foreground mt-1">
+        <p class="text-sm text-muted-foreground">
           {{ $t('saved_attendees.subtitle') }}
         </p>
       </div>
