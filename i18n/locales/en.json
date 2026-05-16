@@ -1563,10 +1563,26 @@
     "breadcrumb": "Dashboard",
     "placeholder": "Your personal dashboard will appear here once your first order is processed."
   },
+  "booking_captcha": {
+    "title": "Verify before booking",
+    "description": "Complete this check to continue to seats or the waiting room for {session}.",
+    "notice_title": "Protected ticket sale",
+    "notice_desc": "This extra check helps keep high-demand booking fair and stable.",
+    "waiting": "Complete the captcha to continue",
+    "verifying": "Verifying…",
+    "success": "Verified. Taking you to booking…",
+    "error_title": "Verification failed",
+    "error_retry": "Please complete the challenge again.",
+    "blocked_title": "Captcha verification required",
+    "blocked_desc": "Please start booking from the event page and complete the captcha before entering this session.",
+    "blocked_hint": "Direct access to seats and the waiting room is blocked without captcha verification.",
+    "back_to_event": "Back to event",
+    "browse_events": "Browse events"
+  },
   "waiting_room": {
     "eyebrow": "Waiting room",
-    "title": "Stay here while we pace access to the seat map.",
-    "desc": "TicketRush is admitting customers in small batches so the inventory stays correct and the purchase flow feels stable.",
+    "title": "You’re in line.",
+    "desc": "We’ll move you to seats when your turn opens.",
     "realtime_status": "Realtime status",
     "realtime_live": "Live",
     "realtime_connecting": "Connecting",
@@ -1590,13 +1606,15 @@
     "status_label": "Status",
     "joining": "Joining queue\u2026",
     "waiting_for_admission": "Waiting for admission",
-    "keep_page_open": "Please keep this page open. We refresh your status automatically and will move you into the seat map once your window opens.",
+    "keep_page_open": "Keep this page open. We’ll update your place automatically.",
     "refresh_status": "Refresh status",
     "leave": "Leave waiting room",
+    "leaving": "Leaving…",
     "left_queue": "You left the queue",
     "leave_failed": "We could not leave the queue right now",
     "join_failed": "We could not join the waiting room. Please try again.",
-    "lost_contact": "We lost contact with the queue for a moment. We will keep retrying automatically."
+    "lost_contact": "We lost contact with the queue for a moment. We will keep retrying automatically.",
+    "queue_facts": "Queue"
   },
   "seats_toast": {
     "seats_taken": "Some of the selected seats are no longer available. We refreshed the map for you.",

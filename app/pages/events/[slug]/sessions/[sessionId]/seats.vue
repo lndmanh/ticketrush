@@ -38,18 +38,24 @@ const session = computed(() => detail.value?.session ?? null)
 const { data: gateResponse, error: gateFetchError } = await useAPI<ApiResponse<EventSessionGateResponse>>(() => apiRoutes.eventSessionGate(sessionPublicId.value), {
   query: computed(() => passToken.value ? { pass: passToken.value } : {}),
 })
+const gateRequiresQueue = computed(() => Boolean(gateResponse.value?.success && gateResponse.value.data.shouldQueue))
+const gateRequiresQueueAtLoad = Boolean(gateResponse.value?.success && gateResponse.value.data.shouldQueue)
+const hasRedirectedToWaitingRoom = ref(false)
 
-if (gateResponse.value?.success && gateResponse.value.data.shouldQueue) {
+if (gateRequiresQueueAtLoad) {
+  hasRedirectedToWaitingRoom.value = true
   await navigateTo({
     path: `/waiting-room/${sessionPublicId.value}`,
     query: { slug: slug.value },
   })
 }
 
-const { data: selfAttendeeStatusResponse } = await useAPI<ApiResponse<SelfAttendeeStatusModel>>(() => apiRoutes.SAVED_ATTENDEE_SELF_STATUS)
+const { data: selfAttendeeStatusResponse } = await useAPI<ApiResponse<SelfAttendeeStatusModel>>(() => apiRoutes.SAVED_ATTENDEE_SELF_STATUS, {
+  immediate: !gateRequiresQueueAtLoad,
+})
 const selfAttendeeStatus = computed(() => selfAttendeeStatusResponse.value?.success ? selfAttendeeStatusResponse.value.data : null)
 
-if (selfAttendeeStatus.value && !selfAttendeeStatus.value.isComplete) {
+if (!gateRequiresQueueAtLoad && selfAttendeeStatus.value && !selfAttendeeStatus.value.isComplete) {
   await navigateTo({
     path: '/attendees',
     query: {
@@ -61,8 +67,24 @@ if (selfAttendeeStatus.value && !selfAttendeeStatus.value.isComplete) {
 
 const { data: seatMapResponse, refresh: refreshSeatMap, error: seatMapFetchError } = await useAPI<ApiResponse<SessionSeatMapResponse>>(() => apiRoutes.eventSessionSeatmap(sessionPublicId.value), {
   query: computed(() => ({ locale: locale.value })),
+  immediate: !gateRequiresQueueAtLoad,
 })
 const seatMap = computed(() => seatMapResponse.value?.success ? seatMapResponse.value.data : null)
+const queueRequiredAccessError = computed(() => {
+  const parsedErrors = [
+    parseApiFetchState(gateResponse.value, gateFetchError.value),
+    parseApiFetchState(seatMapResponse.value, seatMapFetchError.value),
+  ]
+
+  for (const parsedError of parsedErrors) {
+    if (parsedError && isQueueRequiredAccessError(parsedError)) {
+      return parsedError
+    }
+  }
+
+  return null
+})
+const shouldEnterWaitingRoom = computed(() => gateRequiresQueue.value || Boolean(queueRequiredAccessError.value))
 const selectedSeatIds = ref<number[]>([])
 const previewSeatIds = ref<number[]>([])
 const previewTicketItems = new Map<number, HTMLElement>()
@@ -89,8 +111,12 @@ const { open, close } = useWebSocket(socketUrl, {
   },
   immediate: false,
   async onConnected() {
+    if (isSeatSelectionBlocked.value) {
+      return
+    }
+
     await refreshSeatMapSafely()
-    if (sessionUnavailableError.value) {
+    if (isSeatSelectionBlocked.value) {
       return
     }
 
@@ -98,7 +124,7 @@ const { open, close } = useWebSocket(socketUrl, {
     realtimeStatus.value = 'connected'
   },
   onDisconnected() {
-    if (sessionUnavailableError.value) {
+    if (isSeatSelectionBlocked.value) {
       realtimeStatus.value = 'disconnected'
       return
     }
@@ -107,7 +133,7 @@ const { open, close } = useWebSocket(socketUrl, {
     void refreshSeatMapSafely()
   },
   onError() {
-    if (sessionUnavailableError.value) {
+    if (isSeatSelectionBlocked.value) {
       realtimeStatus.value = 'disconnected'
       return
     }
@@ -231,6 +257,36 @@ const sessionUnavailableError = computed(() => {
   return null
 })
 
+const captchaAccessError = computed(() => {
+  const parsedErrors = [
+    checkoutUnavailableError.value,
+    parseApiFetchState(gateResponse.value, gateFetchError.value),
+    parseApiFetchState(seatMapResponse.value, seatMapFetchError.value),
+  ]
+
+  for (const parsedError of parsedErrors) {
+    if (parsedError && isCaptchaAccessError(parsedError)) {
+      return parsedError
+    }
+  }
+
+  return null
+})
+
+const isSeatSelectionBlocked = computed(() => Boolean(shouldEnterWaitingRoom.value || sessionUnavailableError.value || captchaAccessError.value))
+
+watch(shouldEnterWaitingRoom, async (value) => {
+  if (!value || hasRedirectedToWaitingRoom.value) {
+    return
+  }
+
+  hasRedirectedToWaitingRoom.value = true
+  await navigateTo({
+    path: `/waiting-room/${sessionPublicId.value}`,
+    query: { slug: slug.value },
+  })
+}, { immediate: true })
+
 function parseApiFetchState(response: ApiResponse<unknown> | null | undefined, fetchError: unknown) {
   if (fetchError) {
     return parseApiError(fetchError)
@@ -248,6 +304,14 @@ function isSessionUnavailableError(error: ReturnType<typeof parseApiError>) {
     || error.code === 'SESSION_NOT_FOUND'
     || error.code === 'EVENT_NOT_FOUND'
     || error.message === 'This session is not available for booking.'
+}
+
+function isCaptchaAccessError(error: ReturnType<typeof parseApiError>) {
+  return error.code === 'CAPTCHA_REQUIRED'
+}
+
+function isQueueRequiredAccessError(error: ReturnType<typeof parseApiError>) {
+  return error.code === 'QUEUE_REQUIRED'
 }
 
 function stopSeatMapRefresh() {
@@ -437,7 +501,7 @@ function applySeatChanges(changes: SeatStatusDeltaChange[], version: number) {
 }
 
 async function handleRealtimeMessage(rawValue: string) {
-  if (sessionUnavailableError.value) {
+  if (isSeatSelectionBlocked.value) {
     return
   }
 
@@ -482,7 +546,7 @@ async function handleRealtimeMessage(rawValue: string) {
 }
 
 async function reserveSeats() {
-  if (!session.value || sessionUnavailableError.value || selectedSeatIds.value.length === 0) {
+  if (!session.value || isSeatSelectionBlocked.value || selectedSeatIds.value.length === 0) {
     return
   }
 
@@ -544,11 +608,23 @@ async function reserveSeats() {
     }
 
     if (statusCode === 403) {
-      toast.error(message)
-      await navigateTo({
-        path: `/waiting-room/${sessionPublicId.value}`,
-        query: { slug: slug.value },
-      })
+      if (parsedError.code === 'CAPTCHA_REQUIRED') {
+        checkoutUnavailableError.value = parsedError
+        toast.error(message)
+        return
+      }
+
+      if (parsedError.code === 'QUEUE_REQUIRED' || !parsedError.code) {
+        hasRedirectedToWaitingRoom.value = true
+        toast.error(message)
+        await navigateTo({
+          path: `/waiting-room/${sessionPublicId.value}`,
+          query: { slug: slug.value },
+        })
+        return
+      }
+
+      checkoutUnavailableError.value = parsedError
       return
     }
 
@@ -557,13 +633,13 @@ async function reserveSeats() {
   }
   finally {
     isSubmitting.value = false
-    if (!sessionUnavailableError.value) {
+    if (!hasRedirectedToWaitingRoom.value && !isSeatSelectionBlocked.value) {
       await refreshSeatMapSafely()
     }
   }
 }
 
-watch(sessionUnavailableError, (value) => {
+watch(isSeatSelectionBlocked, (value) => {
   if (!value) {
     return
   }
@@ -575,7 +651,7 @@ watch(sessionUnavailableError, (value) => {
 }, { immediate: true })
 
 watch(seatMap, (value) => {
-  if (sessionUnavailableError.value) {
+  if (isSeatSelectionBlocked.value) {
     return
   }
 
@@ -608,12 +684,12 @@ watch(seatMap, (value) => {
 }, { deep: true, immediate: true })
 
 onMounted(() => {
-  if (sessionUnavailableError.value) {
+  if (isSeatSelectionBlocked.value) {
     return
   }
 
   fallbackRefreshTimer = setInterval(() => {
-    if (!sessionUnavailableError.value) {
+    if (!isSeatSelectionBlocked.value) {
       void refreshSeatMapSafely()
     }
   }, 15000)
@@ -637,7 +713,7 @@ definePageMeta({
 
 <template>
   <main
-    v-if="sessionUnavailableError"
+    v-if="sessionUnavailableError || captchaAccessError"
     aria-live="polite"
     class="relative flex min-h-[100dvh] items-center justify-center overflow-hidden bg-background px-4 py-10 text-foreground"
   >
@@ -651,32 +727,50 @@ definePageMeta({
         >
           <XCircle class="size-7" />
         </EmptyMedia>
-        <EmptyTitle>This session is no longer available</EmptyTitle>
+        <EmptyTitle>{{ captchaAccessError ? $t('booking_captcha.blocked_title') : 'This session is no longer available' }}</EmptyTitle>
         <EmptyDescription>
-          The organizer has made this session unavailable while you were choosing seats. Your selection has been cleared and checkout is closed for this session.
+          {{ captchaAccessError ? $t('booking_captcha.blocked_desc') : 'The organizer has made this session unavailable while you were choosing seats. Your selection has been cleared and checkout is closed for this session.' }}
         </EmptyDescription>
       </EmptyHeader>
 
       <EmptyContent class="space-y-5">
         <div class="rounded-2xl border bg-muted/30 px-4 py-3 text-sm text-muted-foreground">
-          You can browse other available events, or check again later if the organizer republishes this event.
+          {{ captchaAccessError ? $t('booking_captcha.blocked_hint') : 'You can browse other available events, or check again later if the organizer republishes this event.' }}
         </div>
 
         <div class="flex flex-col gap-2 sm:flex-row sm:justify-center">
-          <Button as-child>
-            <NuxtLink to="/events">
-              <ArrowLeft class="size-4" />
-              Browse events
-            </NuxtLink>
-          </Button>
-          <Button
-            as-child
-            variant="outline"
-          >
-            <NuxtLink to="/">
-              Go home
-            </NuxtLink>
-          </Button>
+          <template v-if="captchaAccessError">
+            <Button as-child>
+              <NuxtLink :to="slug ? `/events/${slug}` : '/events'">
+                <ArrowLeft class="size-4" />
+                {{ $t('booking_captcha.back_to_event') }}
+              </NuxtLink>
+            </Button>
+            <Button
+              as-child
+              variant="outline"
+            >
+              <NuxtLink to="/events">
+                {{ $t('booking_captcha.browse_events') }}
+              </NuxtLink>
+            </Button>
+          </template>
+          <template v-else>
+            <Button as-child>
+              <NuxtLink to="/events">
+                <ArrowLeft class="size-4" />
+                {{ $t('booking_captcha.browse_events') }}
+              </NuxtLink>
+            </Button>
+            <Button
+              as-child
+              variant="outline"
+            >
+              <NuxtLink to="/">
+                {{ $t('common.go_home') }}
+              </NuxtLink>
+            </Button>
+          </template>
         </div>
       </EmptyContent>
     </Empty>

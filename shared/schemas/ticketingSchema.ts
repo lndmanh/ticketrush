@@ -634,6 +634,10 @@ export const joinQueueSchema = z.object({
   eventSessionId: commonSchemaFragments.positiveId,
 })
 
+export const bookingCaptchaPassSchema = z.object({
+  'cf-turnstile-response': commonSchemaFragments.nonEmptyString('Captcha response'),
+})
+
 export const ticketHolderSourceSchema = z.enum(TicketHolderSource)
 
 export const checkoutTicketHolderSchema = z.object({
@@ -697,6 +701,7 @@ export type PublishEventInput = z.infer<typeof publishEventSchema>
 export type CreateSeatHoldInput = z.infer<typeof createSeatHoldSchema>
 export type ReleaseSeatHoldInput = z.infer<typeof releaseSeatHoldSchema>
 export type JoinQueueInput = z.infer<typeof joinQueueSchema>
+export type BookingCaptchaPassInput = z.infer<typeof bookingCaptchaPassSchema>
 export type TicketHolderSourceInput = z.infer<typeof ticketHolderSourceSchema>
 export type CheckoutTicketHolderInput = z.infer<typeof checkoutTicketHolderSchema>
 export type ConfirmCheckoutInput = z.infer<typeof confirmCheckoutSchema>

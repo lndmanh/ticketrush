@@ -1,4 +1,6 @@
 import eventSessionService from '~~/server/utils/database/event-session'
+import { readTicketingSessionKeyFromCookieHeader } from '~~/server/utils/ticketing/session'
+import { BookingAccessDecision, resolveBookingAccess } from '~~/server/utils/ticketing/booking-access'
 import { serializeSeatmapRealtimeMessage } from '~~/types/seatmap-realtime'
 import { EventStatus } from '#shared/commonEnums'
 
@@ -11,7 +13,12 @@ function isSeatmapPeerContext(value: unknown): value is SeatmapPeerContext {
   return typeof value === 'object'
     && value !== null
     && 'sessionPublicId' in value
+    && typeof value.sessionPublicId === 'string'
+    && value.sessionPublicId.trim() !== ''
     && 'version' in value
+    && typeof value.version === 'number'
+    && Number.isSafeInteger(value.version)
+    && value.version >= 0
 }
 
 export default defineWebSocketHandler({
@@ -26,6 +33,21 @@ export default defineWebSocketHandler({
     const session = await eventSessionService.getByPublicId(sessionPublicId)
     if (!session || session.status === EventStatus.Draft || session.status === EventStatus.Cancelled) {
       throw new Response('Session not found.', { status: 404 })
+    }
+
+    const customerKey = readTicketingSessionKeyFromCookieHeader(request.headers.get('cookie'))
+    if (!customerKey) {
+      throw new Response('Unauthorized.', { status: 401 })
+    }
+
+    const access = await resolveBookingAccess(session.id, customerKey)
+
+    if (access.decision === BookingAccessDecision.QueueRequired) {
+      throw new Response('Join the waiting room before choosing seats.', { status: 403 })
+    }
+
+    if (access.decision === BookingAccessDecision.Forbidden) {
+      throw new Response('Complete the captcha check before choosing seats.', { status: 403 })
     }
 
     return {

@@ -5,6 +5,8 @@ import holdService from '~~/server/utils/ticketing/holds'
 import { apiError, success, zodErrorToFieldErrors } from '~~/server/utils/apiResponse'
 import { getSeatmapRealtimeEnv } from '~~/server/utils/ticketing/seatmap-realtime'
 import { getTicketingSessionKey } from '~~/server/utils/ticketing/session'
+import { requireSeatAccessProof } from '~~/server/utils/ticketing/captcha-pass'
+import { EventStatus } from '#shared/commonEnums'
 
 export default defineEventHandler(async (event) => {
   const sessionPublicId = getRouterParam(event, 'sessionId')
@@ -17,7 +19,28 @@ export default defineEventHandler(async (event) => {
     throw apiError({ status: 404, statusText: 'Not Found', code: 'SESSION_NOT_FOUND', message: 'Event session not found.' })
   }
 
+  if (session.status === EventStatus.Draft || session.status === EventStatus.Cancelled) {
+    throw apiError({ status: 404, statusText: 'Not Found', code: 'SESSION_NOT_FOUND', message: 'Event session not found.' })
+  }
+
+  if (session.status !== EventStatus.Published && session.status !== EventStatus.OnSale) {
+    throw apiError({ status: 409, statusText: 'Conflict', code: 'SESSION_NOT_BOOKABLE', message: 'This session is not available for booking.' })
+  }
+
+  const now = Date.now()
+  const salesStartAt = new Date(session.salesStartAt).getTime()
+  const salesEndAt = new Date(session.salesEndAt).getTime()
+  if (salesStartAt > now || salesEndAt < now) {
+    throw apiError({ status: 409, statusText: 'Conflict', code: 'SESSION_NOT_BOOKABLE', message: 'This session is not available for booking.' })
+  }
+
+  const sectionPrices = await eventSessionService.listSessionSectionPrices(session.id)
+  if (sectionPrices.length === 0) {
+    throw apiError({ status: 409, statusText: 'Conflict', code: 'SESSION_NOT_BOOKABLE', message: 'This session is not available for booking.' })
+  }
+
   const sessionKey = getTicketingSessionKey(event)
+  await requireSeatAccessProof(session.id, sessionKey)
   const userSession = await requireUserSession(event)
   const result = await readValidatedBody(event, body => createSeatHoldSchema.safeParse({ ...body, eventSessionId: session.id }))
   if (!result.success) {

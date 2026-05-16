@@ -16,7 +16,7 @@
           <NuxtLink
             ref="logoRef"
             to="/"
-            class="flex items-center gap-2.5 group pr-6 mr-6"
+            class="flex items-center gap-2.5 group pr-6 mr-6 no-hover-bg"
             style="border-right-style: solid; border-right-width: 1px; border-right-color: rgba(255,255,255,0.2);"
           >
             <NuxtImg
@@ -24,7 +24,7 @@
               :alt="APP_MANIFEST.short_name"
               class="h-6 w-6 transition-all duration-300"
             />
-            <span class="text-md font-semibold tracking-tight text-primary hover:text-foreground">
+            <span class="text-md font-semibold tracking-tight text-foreground">
               {{ APP_MANIFEST.short_name }}
             </span>
           </NuxtLink>
@@ -619,18 +619,8 @@ function handleHeaderCtaClick() {
 </script>
 
 <style scoped>
-/* When header is over the hero (not scrolled), force white text & icons */
-.hero-header :deep(*) {
-  color: white !important;
-  transition: color 0.5s ease;
-}
-.hero-header :deep(svg) {
-  color: white !important;
-  stroke: white;
-  transition: color 0.5s ease, stroke 0.5s ease;
-}
 .hero-header :deep(button:hover),
-.hero-header :deep(a:hover) {
+.hero-header :deep(a:not(.no-hover-bg):hover) {
   background-color: rgba(255, 255, 255, 0.1) !important;
 }
 </style>

@@ -43,6 +43,8 @@ const RECOMMENDED_EVENT_DISPLAY_LIMIT = 6
 const recommendedCarouselRef = ref<HTMLElement | null>(null)
 const canScrollRecommendationsLeft = ref(false)
 const canScrollRecommendationsRight = ref(false)
+const selectedBookingSession = ref<PublicEventSessionSummary | null>(null)
+const isBookingCaptchaDialogOpen = ref(false)
 
 const { data: detailResponse } = await useAPI<ApiResponse<EventDetailResponse>>(() => apiRoutes.event(slug.value), {
   query: computed(() => ({ locale: locale.value })),
@@ -349,12 +351,9 @@ function getSessionStatusLabel(session: PublicEventSessionSummary) {
   return translated === key ? session.status.replaceAll('_', ' ') : translated
 }
 
-function getSessionBookingPath(session: PublicEventSessionSummary) {
-  if (!event.value) {
-    return '#'
-  }
-
-  return `/events/${event.value.slug}/sessions/${session.publicId}/seats`
+function openBookingCaptchaDialog(session: PublicEventSessionSummary) {
+  selectedBookingSession.value = session
+  isBookingCaptchaDialogOpen.value = true
 }
 
 function scrollToSessions() {
@@ -475,7 +474,7 @@ definePageMeta({
                 aria-hidden="true"
                 class="size-4"
               />
-              Mua vé ngay
+              {{ $t('event_card.book_tickets') }}
             </Button>
           </div>
         </div>
@@ -548,6 +547,7 @@ definePageMeta({
           :session="session"
           :section-prices="session.sectionPrices"
           :event-slug="event.slug"
+          @book="openBookingCaptchaDialog"
         />
       </div>
 
@@ -716,12 +716,11 @@ definePageMeta({
 
                   <Button
                     v-if="isSessionBookable(session)"
-                    as-child
+                    type="button"
                     class="w-full rounded-full md:w-auto"
+                    @click="openBookingCaptchaDialog(session)"
                   >
-                    <NuxtLink :to="getSessionBookingPath(session)">
-                      {{ $t('event_card.book_tickets') }}
-                    </NuxtLink>
+                    {{ $t('event_card.book_tickets') }}
                   </Button>
                   <Button
                     v-else
@@ -844,5 +843,11 @@ definePageMeta({
         </div>
       </div>
     </section>
+
+    <TicketBookingCaptchaDialog
+      v-model:open="isBookingCaptchaDialogOpen"
+      :session="selectedBookingSession"
+      :event-slug="event.slug"
+    />
   </AppLayout>
 </template>

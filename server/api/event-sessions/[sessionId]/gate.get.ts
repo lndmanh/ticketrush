@@ -1,7 +1,8 @@
 import eventSessionService from '~~/server/utils/database/event-session'
-import queueService from '~~/server/utils/ticketing/queue'
 import { apiError, success } from '~~/server/utils/apiResponse'
 import { getTicketingSessionKey } from '~~/server/utils/ticketing/session'
+import { createCaptchaRequiredError } from '~~/server/utils/ticketing/captcha-pass'
+import { BookingAccessDecision, resolveBookingAccess } from '~~/server/utils/ticketing/booking-access'
 import type { EventSessionGateResponse } from '~~/types/ticketing'
 import { EventStatus } from '#shared/commonEnums'
 
@@ -22,10 +23,14 @@ export default defineEventHandler(async (event) => {
 
   const passToken = getQuery(event).pass
   const customerKey = getTicketingSessionKey(event)
-  const shouldQueue = await queueService.shouldQueue(session.id, customerKey, typeof passToken === 'string' ? passToken : undefined)
+  const access = await resolveBookingAccess(session.id, customerKey, typeof passToken === 'string' ? passToken : undefined)
+
+  if (access.decision === BookingAccessDecision.Forbidden) {
+    throw createCaptchaRequiredError()
+  }
 
   const response: EventSessionGateResponse = {
-    shouldQueue,
+    shouldQueue: access.shouldQueue,
     sessionPublicId: session.publicId,
     eventId: session.eventId,
   }

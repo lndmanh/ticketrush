@@ -8,6 +8,11 @@ export interface EventSessionGateResponse {
   eventId: number
 }
 
+export interface BookingCaptchaPassResponse {
+  sessionPublicId: string
+  expiresInSeconds: number
+}
+
 export interface QueueStateEntry {
   status: QueueStatus
   expiresAt?: DateLike | null

@@ -2,6 +2,7 @@ import { z } from 'zod'
 import eventSessionService from '~~/server/utils/database/event-session'
 import { apiError, success } from '~~/server/utils/apiResponse'
 import { getTicketingSessionKey } from '~~/server/utils/ticketing/session'
+import { requireSeatBookingAccess } from '~~/server/utils/ticketing/booking-access'
 import type { SeatMapStatus, SessionSeatMapResponse } from '~~/types/seatmap'
 import { localeSchema } from '#shared/schemas/ticketingSchema'
 import { sourceLocale } from '~~/i18n-constants'
@@ -97,7 +98,7 @@ export default defineEventHandler(async (event) => {
     throw apiError({ status: 404, statusText: 'Not Found', code: 'SESSION_NOT_FOUND', message: 'Session not found.' })
   }
 
-  getTicketingSessionKey(event)
+  await requireSeatBookingAccess(session.id, getTicketingSessionKey(event))
 
   await getValidatedQuery(event, rawQuery => seatMapQuerySchema.parse(rawQuery))
   const realtimeNamespace = getSeatmapRealtimeEnv(event).SEATMAP_REALTIME_ROOM
