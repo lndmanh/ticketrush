@@ -1,7 +1,9 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { Field as VeeField, useForm } from 'vee-validate'
 import { toast } from 'vue-sonner'
+import { DateFormatter, getLocalTimeZone, parseDate } from '@internationalized/date'
+import type { DateValue } from '@internationalized/date'
 import { apiRequest } from '@/utils/apiRequest'
 import { parseApiError } from '@/utils/apiError'
 import { apiRoutes } from '#shared/apiRoutes'
@@ -10,7 +12,7 @@ import { SavedAttendeeGender } from '#shared/commonEnums'
 import type { ApiResponse } from '~~/types/api'
 import type { DeletedPayload } from '~~/types/common'
 import type { SavedAttendeeModel } from '~~/types/models/saved-attendee'
-import { PlusIcon, UserIcon, Trash2Icon, Edit2Icon, ShieldIcon } from '@lucide/vue'
+import { PlusIcon, UserIcon, Trash2Icon, Edit2Icon, ShieldIcon, CalendarDays } from '@lucide/vue'
 
 const { data: attendeesResponse, refresh, status, error: fetchError } = useAPI<ApiResponse<SavedAttendeeModel[]>>(() => apiRoutes.SAVED_ATTENDEES)
 const attendees = computed(() => attendeesResponse.value?.data || [])
@@ -19,6 +21,7 @@ const loading = computed(() => status.value === 'pending')
 const isDialogOpen = ref(false)
 const isSubmitting = ref(false)
 const editingId = ref<number | null>(null)
+const { t, locale } = useI18n()
 
 type AttendeeFormValues = {
   legalName: string
@@ -50,12 +53,56 @@ const defaultValues: AttendeeFormValues = {
   isSelf: false,
 }
 
-const { handleSubmit, resetForm, setValues } = useForm({
+const { handleSubmit, resetForm, setFieldValue, setValues, values: formValues } = useForm<AttendeeFormValues>({
   initialValues: defaultValues,
   validationSchema: savedAttendeeFormSchema,
 })
 
 const { user } = useUserSession()
+
+const dateFormatter = computed(() => new DateFormatter(locale.value, { dateStyle: 'medium' }))
+
+const birthDateValue = computed<DateValue | undefined>({
+  get: () => parseBirthDateValue(formValues.birthDate),
+  set: (value) => {
+    setFieldValue('birthDate', value ? value.toString() : undefined)
+  },
+})
+
+const birthDateLabel = computed(() => {
+  if (!birthDateValue.value) {
+    return t('saved_attendees.birth_date')
+  }
+
+  return dateFormatter.value.format(birthDateValue.value.toDate(getLocalTimeZone()))
+})
+
+const showGuardianFields = computed(() => isMinor(formValues.birthDate))
+
+watch(showGuardianFields, (shouldShowGuardianFields) => {
+  if (shouldShowGuardianFields) return
+
+  setFieldValue('guardianName', undefined)
+  setFieldValue('guardianEmail', undefined)
+  setFieldValue('guardianPhone', undefined)
+})
+
+function parseBirthDateValue(value?: string | null) {
+  if (!value) {
+    return undefined
+  }
+
+  try {
+    return parseDate(value)
+  }
+  catch {
+    return undefined
+  }
+}
+
+function clearBirthDate() {
+  setFieldValue('birthDate', undefined)
+}
 
 function openCreateDialog() {
   editingId.value = null
@@ -123,10 +170,19 @@ function createFromProfile() {
 const onSubmit = handleSubmit(async (values) => {
   isSubmitting.value = true
   try {
+    const payload: AttendeeFormValues = showGuardianFields.value
+      ? values
+      : {
+          ...values,
+          guardianName: undefined,
+          guardianEmail: undefined,
+          guardianPhone: undefined,
+        }
+
     if (editingId.value) {
       const response = await apiRequest<ApiResponse<SavedAttendeeModel | null>>(apiRoutes.savedAttendee(editingId.value), {
         method: 'PATCH',
-        body: values,
+        body: payload,
       })
       if (!response.success) throw response
       toast.success('Attendee updated successfully')
@@ -134,7 +190,7 @@ const onSubmit = handleSubmit(async (values) => {
     else {
       const response = await apiRequest(apiRoutes.SAVED_ATTENDEES, {
         method: 'POST',
-        body: values,
+        body: payload,
       })
       if (!response.success) throw response
       toast.success('Attendee saved successfully')
@@ -495,11 +551,47 @@ definePageMeta({
                 name="birthDate"
               >
                 <Field :data-invalid="!!errors.length">
-                  <FieldLabel>{{ $t('saved_attendees.birth_date') }}</FieldLabel>
-                  <Input
-                    v-bind="field"
-                    type="date"
-                  />
+                  <FieldLabel for="attendee-birth-date">
+                    {{ $t('saved_attendees.birth_date') }}
+                  </FieldLabel>
+                  <Popover>
+                    <PopoverTrigger as-child>
+                      <Button
+                        id="attendee-birth-date"
+                        type="button"
+                        variant="outline"
+                        class="w-full justify-start font-normal"
+                        :class="!field.value && 'text-muted-foreground'"
+                        :aria-invalid="!!errors.length"
+                      >
+                        <CalendarDays data-icon="inline-start" />
+                        <span class="truncate">{{ birthDateLabel }}</span>
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent
+                      align="start"
+                      class="w-auto p-0"
+                    >
+                      <Calendar
+                        v-model="birthDateValue"
+                        initial-focus
+                        layout="month-and-year"
+                      />
+                      <div
+                        v-if="field.value"
+                        class="border-t p-3"
+                      >
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          class="w-full"
+                          @click="clearBirthDate"
+                        >
+                          {{ $t('events.clear_date') }}
+                        </Button>
+                      </div>
+                    </PopoverContent>
+                  </Popover>
                   <FieldError
                     v-if="errors.length"
                     :errors="errors"
@@ -543,7 +635,10 @@ definePageMeta({
               </VeeField>
             </div>
 
-            <div class="pt-4 border-t">
+            <div
+              v-if="showGuardianFields"
+              class="pt-4 border-t"
+            >
               <h4 class="text-sm font-medium mb-3">
                 {{ $t('saved_attendees.guardian_section') }}
               </h4>
