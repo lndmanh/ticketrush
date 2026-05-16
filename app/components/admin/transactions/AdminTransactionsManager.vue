@@ -13,13 +13,13 @@
         <Label
           for="admin-transactions-range"
           class="text-sm text-muted-foreground"
-        >Range</Label>
+        >{{ $t('admin.transactions.range') }}</Label>
         <Select v-model="selectedRange">
           <SelectTrigger
             id="admin-transactions-range"
             class="w-36"
           >
-            <SelectValue placeholder="Select range" />
+            <SelectValue :placeholder="$t('admin.transactions.select_range')" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem
@@ -27,7 +27,7 @@
               :key="option.value"
               :value="option.value"
             >
-              {{ option.label }}
+              {{ $t(`admin.transactions.range_${option.value}`) }}
             </SelectItem>
           </SelectContent>
         </Select>
