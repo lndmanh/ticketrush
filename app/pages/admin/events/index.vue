@@ -2,8 +2,8 @@
 import AdminEventsManager from '@/components/admin/events/AdminEventsManager.vue'
 
 definePageMeta({
-  title: 'Events',
-  breadcrumb: 'Events',
+  title: 'admin.events.title',
+  breadcrumb: 'admin.events.title',
   middleware: ['auth', 'admin'],
   layout: 'dashboard',
 })
