@@ -328,7 +328,15 @@
     "gender": "Gender",
     "complete": "Save profile",
     "saved_toast": "Profile updated",
-    "save_error": "We could not update your profile"
+    "save_error": "We could not update your profile",
+    "delete_title": "Permanently Delete Account",
+    "delete_description": "Once you delete your account, there is no going back. Please be certain. All your data will be permanently removed.",
+    "delete_action": "Delete Account",
+    "delete_dialog_title": "Delete Account",
+    "delete_dialog_description": "Are you sure you want to delete your account? This will permanently delete all your data and cannot be undone.",
+    "delete_error": "Failed to delete account",
+    "name_required": "Name is required",
+    "email_required": "Valid email is required"
   },
   "event_card": {
     "venue_label": "Venue",
@@ -1496,7 +1504,10 @@
     "save_failed": "Failed to save attendee. Please try again.",
     "deleted": "Attendee deleted successfully",
     "delete_failed": "Failed to delete attendee. Please try again.",
-    "delete_confirm": "Are you sure you want to delete this attendee? This action cannot be undone."
+    "delete_confirm": "Are you sure you want to delete this attendee? This action cannot be undone.",
+    "legal_name_required": "Legal name is required",
+    "birth_date_future": "Birth date cannot be in the future",
+    "contact_required": "At least one contact method is required"
   },
   "dashboard": {
     "page_title": "Dashboard",

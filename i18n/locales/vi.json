@@ -328,7 +328,15 @@
     "gender": "Giới tính",
     "complete": "Lưu hồ sơ",
     "saved_toast": "Đã cập nhật hồ sơ",
-    "save_error": "Không thể cập nhật hồ sơ"
+    "save_error": "Không thể cập nhật hồ sơ",
+    "delete_title": "Xóa tài khoản vĩnh viễn",
+    "delete_description": "Sau khi xóa tài khoản, bạn sẽ không thể khôi phục. Hãy chắc chắn trước khi tiếp tục. Toàn bộ dữ liệu của bạn sẽ bị xóa vĩnh viễn.",
+    "delete_action": "Xóa tài khoản",
+    "delete_dialog_title": "Xóa tài khoản",
+    "delete_dialog_description": "Bạn có chắc muốn xóa tài khoản không? Hành động này sẽ xóa vĩnh viễn toàn bộ dữ liệu của bạn và không thể hoàn tác.",
+    "delete_error": "Không thể xóa tài khoản",
+    "name_required": "Vui lòng nhập họ và tên",
+    "email_required": "Vui lòng nhập email hợp lệ"
   },
   "event_card": {
     "venue_label": "Địa điểm",
@@ -1472,7 +1480,10 @@
     "save_failed": "Không thể lưu người tham dự. Vui lòng thử lại.",
     "deleted": "Xóa người tham dự thành công",
     "delete_failed": "Không thể xóa người tham dự. Vui lòng thử lại.",
-    "delete_confirm": "Bạn có chắc muốn xóa người tham dự này? Hành động này không thể hoàn tác."
+    "delete_confirm": "Bạn có chắc muốn xóa người tham dự này? Hành động này không thể hoàn tác.",
+    "legal_name_required": "Vui lòng nhập họ tên pháp lý",
+    "birth_date_future": "Ngày sinh không được ở tương lai",
+    "contact_required": "Cần ít nhất một phương thức liên hệ"
   },
   "dashboard": {
     "page_title": "Bảng điều khiển",

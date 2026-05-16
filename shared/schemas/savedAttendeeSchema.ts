@@ -34,7 +34,7 @@ function birthDateSchema() {
 }
 
 const savedAttendeeBaseSchema = z.object({
-  legalName: commonSchemaFragments.nonEmptyString('Legal name'),
+  legalName: z.string().trim().min(1, 'saved_attendees.legal_name_required'),
   preferredName: optionalTextSchema(),
   email: optionalEmailSchema(),
   phone: optionalTextSchema(),
@@ -53,7 +53,7 @@ function addSavedAttendeeFormIssues(data: z.infer<typeof savedAttendeeBaseSchema
     ctx.addIssue({
       code: 'custom',
       path: ['birthDate'],
-      message: 'Birth date cannot be in the future',
+      message: 'saved_attendees.birth_date_future',
     })
   }
 
@@ -62,7 +62,7 @@ function addSavedAttendeeFormIssues(data: z.infer<typeof savedAttendeeBaseSchema
     ctx.addIssue({
       code: 'custom',
       path: ['email'],
-      message: 'At least one contact method is required',
+      message: 'saved_attendees.contact_required',
     })
   }
 }
