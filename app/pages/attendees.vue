@@ -8,12 +8,12 @@ import { apiRequest } from '@/utils/apiRequest'
 import { parseApiError } from '@/utils/apiError'
 import { apiRoutes } from '#shared/apiRoutes'
 import { savedAttendeeFormSchema } from '#shared/schemas/savedAttendeeSchema'
-import { SavedAttendeeGender } from '#shared/commonEnums'
+import { SavedAttendeeGender, TicketHolderSource } from '#shared/commonEnums'
 import { getMissingSelfAttendeeFields, SelfAttendeeRequirement } from '#shared/utils/selfAttendee'
 import type { ApiResponse } from '~~/types/api'
 import type { DeletedPayload } from '~~/types/common'
 import type { SavedAttendeeModel } from '~~/types/models/saved-attendee'
-import { PlusIcon, UserIcon, Trash2Icon, Edit2Icon, CalendarDays } from '@lucide/vue'
+import { PlusIcon, UserIcon, Trash2Icon, Edit2Icon, CalendarDays, PencilLine, UserRound, UsersRound } from '@lucide/vue'
 
 const attendeesResponse = ref<ApiResponse<SavedAttendeeModel[]> | null>(null)
 const loading = ref(true)
@@ -33,6 +33,8 @@ const attendees = computed(() => {
 const isDialogOpen = ref(false)
 const isSubmitting = ref(false)
 const editingId = ref<number | null>(null)
+const guardianSource = ref<TicketHolderSource>(TicketHolderSource.Manual)
+const guardianSavedAttendeeId = ref<string | null>(null)
 const { t, locale } = useI18n()
 
 definePageMeta({
@@ -120,10 +122,18 @@ const birthDateLabel = computed(() => {
 })
 
 const showGuardianFields = computed(() => isMinor(formValues.birthDate))
+const selfAttendee = computed(() => attendees.value.find(attendee => attendee.isSelf) ?? null)
+const canUseSelfAsGuardian = computed(() => {
+  const self = selfAttendee.value
+  return Boolean(self && editingId.value !== self.id)
+})
+const guardianAttendeeOptions = computed(() => attendees.value.filter(attendee => attendee.id !== editingId.value))
 
 watch(showGuardianFields, (shouldShowGuardianFields) => {
   if (shouldShowGuardianFields) return
 
+  guardianSource.value = TicketHolderSource.Manual
+  guardianSavedAttendeeId.value = null
   setFieldValue('guardianName', undefined)
   setFieldValue('guardianEmail', undefined)
   setFieldValue('guardianPhone', undefined)
@@ -148,6 +158,8 @@ function clearBirthDate() {
 
 function openCreateDialog() {
   editingId.value = null
+  guardianSource.value = TicketHolderSource.Manual
+  guardianSavedAttendeeId.value = null
   resetForm({ values: { ...defaultValues } })
   isDialogOpen.value = true
 }
@@ -168,6 +180,107 @@ type AttendeeItem = {
   isSelf?: boolean | null
 }
 
+function normalizeGuardianValue(value?: string | null) {
+  return value?.trim() ?? ''
+}
+
+function hasGuardianDetails(attendee: AttendeeItem) {
+  return Boolean(
+    normalizeGuardianValue(attendee.guardianName)
+    || normalizeGuardianValue(attendee.guardianEmail)
+    || normalizeGuardianValue(attendee.guardianPhone),
+  )
+}
+
+function guardianMatchesAttendee(guardian: AttendeeItem, candidate: AttendeeItem) {
+  return normalizeGuardianValue(guardian.guardianName) === normalizeGuardianValue(candidate.legalName)
+    && normalizeGuardianValue(guardian.guardianEmail) === normalizeGuardianValue(candidate.email)
+    && normalizeGuardianValue(guardian.guardianPhone) === normalizeGuardianValue(candidate.phone)
+}
+
+function getGuardianSelection(attendee: AttendeeItem): { source: TicketHolderSource, savedAttendeeId: string | null } {
+  if (!hasGuardianDetails(attendee)) {
+    return { source: TicketHolderSource.Manual, savedAttendeeId: null }
+  }
+
+  const self = selfAttendee.value
+  if (self && attendee.id !== self.id && guardianMatchesAttendee(attendee, self)) {
+    return { source: TicketHolderSource.Account, savedAttendeeId: null }
+  }
+
+  const matchedAttendee = attendees.value.find((candidate) => {
+    return candidate.id !== attendee.id && guardianMatchesAttendee(attendee, candidate)
+  })
+
+  if (matchedAttendee) {
+    return { source: TicketHolderSource.SavedAttendee, savedAttendeeId: String(matchedAttendee.id) }
+  }
+
+  return { source: TicketHolderSource.Manual, savedAttendeeId: null }
+}
+
+function getGuardianAttendeeById(value: string | null | undefined) {
+  if (!value) {
+    return null
+  }
+
+  const attendeeId = Number(value)
+  if (!Number.isInteger(attendeeId)) {
+    return null
+  }
+
+  return guardianAttendeeOptions.value.find(attendee => attendee.id === attendeeId) ?? null
+}
+
+function applyGuardianDetails(attendee: AttendeeItem) {
+  setFieldValue('guardianName', attendee.legalName)
+  setFieldValue('guardianEmail', attendee.email ?? undefined)
+  setFieldValue('guardianPhone', attendee.phone ?? undefined)
+}
+
+function setGuardianSource(source: TicketHolderSource) {
+  if (source === TicketHolderSource.Account) {
+    const self = selfAttendee.value
+    if (!self || editingId.value === self.id) {
+      guardianSource.value = TicketHolderSource.Manual
+      guardianSavedAttendeeId.value = null
+      return
+    }
+
+    guardianSource.value = TicketHolderSource.Account
+    guardianSavedAttendeeId.value = null
+    applyGuardianDetails(self)
+    return
+  }
+
+  if (source === TicketHolderSource.SavedAttendee) {
+    guardianSource.value = TicketHolderSource.SavedAttendee
+    guardianSavedAttendeeId.value = null
+    setFieldValue('guardianName', undefined)
+    setFieldValue('guardianEmail', undefined)
+    setFieldValue('guardianPhone', undefined)
+    return
+  }
+
+  guardianSource.value = TicketHolderSource.Manual
+  guardianSavedAttendeeId.value = null
+}
+
+function updateGuardianSavedAttendee(value: string | undefined) {
+  const attendee = getGuardianAttendeeById(value)
+  if (!attendee) {
+    guardianSavedAttendeeId.value = null
+    return
+  }
+
+  guardianSavedAttendeeId.value = String(attendee.id)
+  applyGuardianDetails(attendee)
+}
+
+function getAttendeeOptionLabel(attendee: AttendeeItem) {
+  return attendee.email ? `${attendee.legalName} · ${attendee.email}` : attendee.legalName
+}
+
 async function openEditDialog(attendee: AttendeeItem) {
   editingId.value = attendee.id
 
@@ -181,6 +294,9 @@ async function openEditDialog(attendee: AttendeeItem) {
 
   isDialogOpen.value = true
   await nextTick()
+  const guardianSelection = getGuardianSelection(attendee)
+  guardianSource.value = guardianSelection.source
+  guardianSavedAttendeeId.value = guardianSelection.savedAttendeeId
 
   resetForm({
     values: {
@@ -200,6 +316,11 @@ async function openEditDialog(attendee: AttendeeItem) {
 }
 
 const onSubmit = handleSubmit(async (values) => {
+  if (showGuardianFields.value && guardianSource.value === TicketHolderSource.SavedAttendee && !guardianSavedAttendeeId.value) {
+    toast.error(t('saved_attendees.guardian_saved_attendee_required'))
+    return
+  }
+
   isSubmitting.value = true
   try {
     const payload: AttendeeFormValues = showGuardianFields.value
@@ -301,7 +422,7 @@ function getMissingSelfFieldLabel(field: SelfAttendeeRequirement) {
 }
 
 const selfAttendeeMissingFields = computed(() => {
-  const self = attendees.value.find(a => a.isSelf)
+  const self = selfAttendee.value
   if (!self) return []
   return getMissingSelfFields(self).map(getMissingSelfFieldLabel)
 })
@@ -665,21 +786,118 @@ const selfAttendeeMissingFields = computed(() => {
 
             <div
               v-if="showGuardianFields"
-              class="pt-4 border-t"
+              class="pt-4 border-t space-y-4"
             >
               <h4 class="text-sm font-medium mb-3">
                 {{ $t('saved_attendees.guardian_section') }}
               </h4>
+
+              <div class="space-y-3">
+                <div
+                  class="grid grid-cols-1 gap-3 md:grid-cols-3"
+                  role="radiogroup"
+                  :aria-label="$t('saved_attendees.guardian_method')"
+                >
+                  <button
+                    type="button"
+                    role="radio"
+                    :disabled="!canUseSelfAsGuardian"
+                    :aria-checked="guardianSource === TicketHolderSource.Account"
+                    :class="[
+                      'inline-flex items-center justify-center gap-2 rounded-xl border px-3 py-2 text-sm font-medium transition',
+                      guardianSource === TicketHolderSource.Account ? 'border-primary/30 bg-primary/10 text-primary' : 'bg-muted/20 text-muted-foreground hover:text-foreground',
+                      !canUseSelfAsGuardian ? 'cursor-not-allowed opacity-50 hover:text-muted-foreground' : '',
+                    ]"
+                    @click="setGuardianSource(TicketHolderSource.Account)"
+                  >
+                    <UserRound class="size-4" />
+                    {{ $t('saved_attendees.guardian_use_self') }}
+                  </button>
+
+                  <button
+                    type="button"
+                    role="radio"
+                    :disabled="guardianAttendeeOptions.length === 0"
+                    :aria-checked="guardianSource === TicketHolderSource.SavedAttendee"
+                    :class="[
+                      'inline-flex items-center justify-center gap-2 rounded-xl border px-3 py-2 text-sm font-medium transition',
+                      guardianSource === TicketHolderSource.SavedAttendee ? 'border-primary/30 bg-primary/10 text-primary' : 'bg-muted/20 text-muted-foreground hover:text-foreground',
+                      guardianAttendeeOptions.length === 0 ? 'cursor-not-allowed opacity-50 hover:text-muted-foreground' : '',
+                    ]"
+                    @click="setGuardianSource(TicketHolderSource.SavedAttendee)"
+                  >
+                    <UsersRound class="size-4" />
+                    {{ $t('saved_attendees.guardian_select_attendee') }}
+                  </button>
+
+                  <button
+                    type="button"
+                    role="radio"
+                    :aria-checked="guardianSource === TicketHolderSource.Manual"
+                    :class="[
+                      'inline-flex items-center justify-center gap-2 rounded-xl border px-3 py-2 text-sm font-medium transition',
+                      guardianSource === TicketHolderSource.Manual ? 'border-primary/30 bg-primary/10 text-primary' : 'bg-muted/20 text-muted-foreground hover:text-foreground',
+                    ]"
+                    @click="setGuardianSource(TicketHolderSource.Manual)"
+                  >
+                    <PencilLine class="size-4" />
+                    {{ $t('saved_attendees.guardian_enter_manually') }}
+                  </button>
+                </div>
+
+                <FieldDescription v-if="guardianAttendeeOptions.length === 0">
+                  {{ $t('saved_attendees.guardian_no_saved_attendees') }}
+                </FieldDescription>
+
+                <div
+                  v-if="guardianSource === TicketHolderSource.SavedAttendee"
+                  class="space-y-2"
+                >
+                  <FieldLabel for="guardian-saved-attendee">
+                    {{ $t('saved_attendees.guardian_saved_attendee') }}
+                  </FieldLabel>
+                  <Select
+                    :model-value="guardianSavedAttendeeId ?? undefined"
+                    @update:model-value="value => updateGuardianSavedAttendee(typeof value === 'string' ? value : undefined)"
+                  >
+                    <SelectTrigger
+                      id="guardian-saved-attendee"
+                      class="w-full bg-background/60"
+                    >
+                      <SelectValue :placeholder="$t('saved_attendees.guardian_attendee_placeholder')" />
+                    </SelectTrigger>
+                    <SelectContent
+                      position="item-aligned"
+                      class="max-w-[calc(100vw-2rem)]"
+                    >
+                      <SelectItem
+                        v-for="attendee in guardianAttendeeOptions"
+                        :key="attendee.id"
+                        :value="String(attendee.id)"
+                        class="min-h-10 max-w-full"
+                      >
+                        {{ getAttendeeOptionLabel(attendee) }}
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
               <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <VeeField
                   v-slot="{ field, errors }"
                   name="guardianName"
                 >
                   <Field :data-invalid="!!errors.length">
-                    <FieldLabel>{{ $t('saved_attendees.guardian_name') }}</FieldLabel>
+                    <FieldLabel for="attendee-guardian-name">
+                      {{ $t('saved_attendees.guardian_name') }}
+                    </FieldLabel>
                     <Input
+                      id="attendee-guardian-name"
                       v-bind="field"
                       :placeholder="$t('saved_attendees.guardian_name_placeholder')"
+                      :readonly="guardianSource !== TicketHolderSource.Manual"
+                      :aria-invalid="!!errors.length"
                     />
                     <FieldError
                       v-if="errors.length"
@@ -694,10 +912,14 @@ const selfAttendeeMissingFields = computed(() => {
                   :validate-on-input="true"
                 >
                   <Field :data-invalid="!!errors.length">
-                    <FieldLabel>{{ $t('saved_attendees.guardian_phone') }}</FieldLabel>
+                    <FieldLabel for="attendee-guardian-phone">
+                      {{ $t('saved_attendees.guardian_phone') }}
+                    </FieldLabel>
                     <Input
+                      id="attendee-guardian-phone"
                       v-bind="field"
                       type="tel"
+                      :readonly="guardianSource !== TicketHolderSource.Manual"
                       :aria-invalid="!!errors.length"
                     />
                     <FieldError
@@ -713,10 +935,15 @@ const selfAttendeeMissingFields = computed(() => {
                     name="guardianEmail"
                   >
                     <Field :data-invalid="!!errors.length">
-                      <FieldLabel>{{ $t('saved_attendees.guardian_email') }}</FieldLabel>
+                      <FieldLabel for="attendee-guardian-email">
+                        {{ $t('saved_attendees.guardian_email') }}
+                      </FieldLabel>
                       <Input
+                        id="attendee-guardian-email"
                         v-bind="field"
                         type="email"
+                        :readonly="guardianSource !== TicketHolderSource.Manual"
+                        :aria-invalid="!!errors.length"
                       />
                       <FieldError
                         v-if="errors.length"
