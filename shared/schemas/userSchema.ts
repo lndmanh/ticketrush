@@ -7,24 +7,24 @@ import { users } from '~~/server/db/schema.sqlite'
  * Requires: min 8 chars, lowercase, uppercase, number, and special character
  */
 export const passwordComplexitySchema = z.string()
-  .min(8, 'Password must be at least 8 characters')
-  .regex(/[a-z]/, 'Password must contain at least one lowercase letter')
-  .regex(/[A-Z]/, 'Password must contain at least one uppercase letter')
-  .regex(/[0-9]/, 'Password must contain at least one number')
-  .regex(/[^a-zA-Z0-9]/, 'Password must contain at least one special character')
+  .min(8, 'validation.password_min')
+  .regex(/[a-z]/, 'validation.password_lowercase')
+  .regex(/[A-Z]/, 'validation.password_uppercase')
+  .regex(/[0-9]/, 'validation.password_number')
+  .regex(/[^a-zA-Z0-9]/, 'validation.password_special')
 
 /**
  * Username validation schema
  */
 export const usernameSchema = z.string()
-  .min(3, 'Username must be at least 3 characters')
-  .max(50, 'Username too long')
-  .regex(/^[a-z0-9_-]+$/, 'Username can only contain lowercase letters, numbers, hyphens, and underscores')
+  .min(3, 'validation.username_min')
+  .max(50, 'validation.username_max')
+  .regex(/^[a-z0-9_-]+$/, 'validation.username_format')
 
 /**
  * Email validation schema
  */
-export const emailSchema = z.email({ error: 'Valid email is required' })
+export const emailSchema = z.email({ error: 'validation.email_required' })
 
 /**
  * Schema for user registration (frontend form).
@@ -44,13 +44,13 @@ export const emailSchema = z.email({ error: 'Valid email is required' })
 export const registerUserSchema = z.object({
   'username': usernameSchema,
   'email': emailSchema,
-  'name': z.string().min(1, 'Name is required'),
+  'name': z.string().min(1, 'validation.name_required'),
   'password': passwordComplexitySchema,
-  'confirm-password': z.string().min(1, 'Please confirm your password'),
-  'cf-turnstile-response': z.string().min(1, 'Validation token is required'),
+  'confirm-password': z.string().min(1, 'validation.password_confirm_required'),
+  'cf-turnstile-response': z.string().min(1, 'validation.token_required'),
   'redirect-to': z.string().optional(),
 }).refine(data => data['confirm-password'] === data.password, {
-  error: 'Passwords do not match',
+  error: 'validation.passwords_mismatch',
   path: ['confirm-password'],
 })
 
@@ -60,8 +60,8 @@ export const registerUserSchema = z.object({
 export const createUserSchema = createInsertSchema(users, {
   username: usernameSchema,
   email: emailSchema,
-  name: z.string().min(1, 'Name is required'),
-  password: z.string().min(1, 'Password hash is required'),
+  name: z.string().min(1, 'validation.name_required'),
+  password: z.string().min(1, 'validation.password_hash_required'),
   emailVerified: z.boolean().default(false),
   lastLoginAt: z.date().optional(),
   isAdmin: z.boolean().default(false),
@@ -71,11 +71,11 @@ export const createUserSchema = createInsertSchema(users, {
  * Schema for updating a user (all fields optional except id).
  */
 export const userUpdateSchema = createUpdateSchema(users, {
-  id: z.coerce.number().int().positive('User ID is required'),
+  id: z.coerce.number().int().positive('validation.user_id_required'),
   username: usernameSchema.optional(),
   email: emailSchema.optional(),
-  name: z.string().min(1).optional(),
-  password: z.string().min(1).optional(),
+  name: z.string().min(1, 'validation.name_required').optional(),
+  password: z.string().min(1, 'validation.password_required').optional(),
   emailVerified: z.boolean().optional(),
   isAdmin: z.boolean().optional(),
   isLocked: z.boolean().optional(),
@@ -118,24 +118,24 @@ export const userSelectSchema = createSelectSchema(users)
  * Validates current password, new password complexity, and confirmation match.
  */
 export const changePasswordSchema = z.object({
-  currentPassword: z.string().min(1, 'Current password is required'),
+  currentPassword: z.string().min(1, 'validation.current_password_required'),
   newPassword: passwordComplexitySchema,
-  confirmPassword: z.string().min(1, 'Please confirm your new password'),
+  confirmPassword: z.string().min(1, 'validation.new_password_confirm_required'),
 }).refine(data => data.newPassword === data.confirmPassword, {
-  error: 'Passwords do not match',
+  error: 'validation.passwords_mismatch',
   path: ['confirmPassword'],
 })
 
 export type ChangePasswordInput = z.infer<typeof changePasswordSchema>
 
 export const updateProfileSchema = z.object({
-  name: z.string().trim().min(1, 'Name is required'),
+  name: z.string().trim().min(1, 'validation.name_required'),
   email: emailSchema,
 })
 
 export const loginSchema = z.object({
-  'username': z.string().min(1, 'Username is required'),
-  'password': z.string().min(1, 'Password is required'),
+  'username': z.string().min(1, 'validation.username_required'),
+  'password': z.string().min(1, 'validation.password_required'),
   'cf-turnstile-response': z.string(),
   'redirect-to': z.string().optional(),
 })

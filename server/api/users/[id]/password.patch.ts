@@ -21,7 +21,7 @@ export default defineEventHandler(async (event) => {
   // Verify current password
   const isValidPassword = await verifyPassword(user.password, result.data.currentPassword)
   if (!isValidPassword) {
-    throw apiError({ status: 401, statusText: 'Unauthorized', code: 'CURRENT_PASSWORD_INCORRECT', message: 'The current password provided is incorrect.' })
+    throw apiError({ status: 401, statusText: 'Unauthorized', code: 'CURRENT_PASSWORD_INCORRECT', message: 'validation.current_password_incorrect' })
   }
 
   // Hash new password
