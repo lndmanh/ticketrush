@@ -70,13 +70,6 @@ async function updateLocale(code: string) {
           {{ $t('common.admin') }}
         </DropdownMenuItem>
         <DropdownMenuItem
-          v-if="loggedIn"
-          @click="navigateTo('/settings/profile')"
-        >
-          <UserIcon />
-          {{ $t('common.account') }}
-        </DropdownMenuItem>
-        <DropdownMenuItem
           v-else
           @click="navigateTo('/auth/login')"
         >

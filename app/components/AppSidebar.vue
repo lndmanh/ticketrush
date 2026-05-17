@@ -1,21 +1,25 @@
 <script setup lang="ts">
 import { motion, AnimatePresence } from 'motion-v'
-import { ArrowLeft, SearchIcon } from '@lucide/vue'
+import { ArrowLeft, SearchIcon, LogOut, LogIn } from '@lucide/vue'
 
 import NavMain from '@/components/nav/NavMain.vue'
 import NavSecondary from '@/components/nav/NavSecondary.vue'
 import NavUser from '@/components/nav/NavUser.vue'
 import type { SidebarProps } from '@/components/ui/sidebar'
-import { useSidebar } from '@/components/ui/sidebar/utils'
 
 const props = withDefaults(defineProps<SidebarProps>(), {
   variant: 'inset',
 })
 
 const { toggleIsOpen } = useHotSearch()
-const { open } = useSidebar()
 const { activeContext, primarySections, secondarySections, showBack, isContextView, showMainSidebar } = useSidebarContext()
-const config = useRuntimeConfig()
+const { loggedIn, clear } = useUserSession()
+
+function logout() {
+  clear().then(() => {
+    location.reload()
+  })
+}
 </script>
 
 <template>
@@ -92,12 +96,27 @@ const config = useRuntimeConfig()
 
     <Separator />
     <SidebarFooter>
-      <span
-        v-show="open"
-        class="text-sm text-muted-foreground"
-      >
-        {{ config.public.version! }}
-      </span>
+      <SidebarMenu>
+        <SidebarMenuItem>
+          <Button
+            v-if="loggedIn"
+            class="w-full"
+            variant="destructive"
+            @click="logout"
+          >
+            <LogOut class="size-4" />
+            {{ $t('common.log_out') }}
+          </Button>
+          <Button
+            v-else
+            class="w-full"
+            @click="navigateTo('/auth/login')"
+          >
+            <LogIn class="size-4" />
+            {{ $t('common.sign_in') }}
+          </Button>
+        </SidebarMenuItem>
+      </SidebarMenu>
     </SidebarFooter>
   </Sidebar>
 </template>
