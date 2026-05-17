@@ -11,6 +11,7 @@ interface BarChartOptions {
   maxItems?: number
   minHeight?: number
   monochrome?: boolean
+  valueFormatter?: (value: number) => string
 }
 
 interface DonutChartOptions {
@@ -40,7 +41,7 @@ export function useAdminChartTheme() {
   const mutedTextColor = computed(() => isDark.value ? '#94A3B8' : '#64748B')
   const borderColor = computed(() => isDark.value ? '#1E293B' : '#E2E8F0')
 
-  function createBarChartOption({ data, colorIndex = 0, maxItems = 6, minHeight = 0, monochrome = true }: BarChartOptions): EChartsOption {
+  function createBarChartOption({ data, colorIndex = 0, maxItems = 6, minHeight = 0, monochrome = true, valueFormatter }: BarChartOptions): EChartsOption {
     const trimmedData = [...data].slice(0, maxItems)
     const reversedData = trimmedData.reverse()
     const paletteValues = palette.value
@@ -60,6 +61,7 @@ export function useAdminChartTheme() {
       },
       tooltip: {
         trigger: 'axis',
+        valueFormatter: value => valueFormatter ? valueFormatter(Number(value)) : String(value),
         axisPointer: {
           type: 'shadow',
           shadowStyle: {
@@ -71,6 +73,7 @@ export function useAdminChartTheme() {
         type: 'value',
         axisLabel: {
           color: mutedTextColor.value,
+          formatter: value => valueFormatter ? valueFormatter(Number(value)) : String(value),
         },
         splitLine: {
           lineStyle: {
@@ -112,6 +115,7 @@ export function useAdminChartTheme() {
             position: 'right',
             color: textColor.value,
             fontWeight: 600,
+            formatter: params => valueFormatter ? valueFormatter(Number(params.value)) : String(params.value),
           },
         },
       ],

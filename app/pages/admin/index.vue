@@ -9,7 +9,8 @@ import AdminDashboardSessionCalendar from '@/components/admin/dashboard/AdminDas
 import DataTable from '@/components/DataTable.vue'
 import { createAdminDashboardColumns } from '@/components/admin/dashboard/columns'
 import { getDisplayDateLocale } from '@/lib/localizedEvents'
-import { formatCurrency, formatNumber, formatPercent } from '@/lib/utils'
+import { formatNumber, formatPercent } from '@/lib/utils'
+import { formatMoney } from '@/lib/money'
 import { apiRoutes } from '#shared/apiRoutes'
 import { adminAnalyticsTimeRangeOptions, DEFAULT_ADMIN_ANALYTICS_TIME_RANGE } from '#shared/adminAnalyticsTimeRanges'
 
@@ -32,6 +33,7 @@ const emptyDashboard: AdminDashboardResponse = {
 }
 
 const { t, locale } = useI18n()
+const { displayCurrency, formatCurrency: formatPreferredCurrency } = useCurrencyPreference()
 
 definePageMeta({
   title: 'admin.dashboard_title',
@@ -75,9 +77,10 @@ const sessionCountsByDate = computed(() => {
   }, {})
 })
 
-const occupancyLabel = computed(() => t('admin.dashboard_occupancy_badge', { percent: formatPercent(summary.value.occupancyRate) }))
+const occupancyLabel = computed(() => t('admin.dashboard_occupancy_badge', { percent: formatPercent(summary.value.occupancyRate, getDisplayDateLocale(locale.value)) }))
 
 const revenueChartOption = computed<EChartsOption>(() => {
+  const selectedDisplayCurrency = displayCurrency.value
   const isDark = colorMode.value === 'dark'
   const axisColor = isDark ? '#94A3B8' : '#64748B'
   const gridColor = isDark ? '#1E293B' : '#E2E8F0'
@@ -123,7 +126,10 @@ const revenueChartOption = computed<EChartsOption>(() => {
         type: 'value',
         axisLabel: {
           color: axisColor,
-          formatter: (value: string | number) => formatCompactCurrency(Number(value) * 100),
+          formatter: (value: string | number) => formatMoney(Number(value) * 100, 'VND', selectedDisplayCurrency, getDisplayDateLocale(locale.value), {
+            notation: 'compact',
+            maximumFractionDigits: 1,
+          }),
         },
         splitLine: {
           lineStyle: {
@@ -149,6 +155,12 @@ const revenueChartOption = computed<EChartsOption>(() => {
         smooth: true,
         symbolSize: 7,
         data: dashboard.value.chart.map(point => Math.round(point.revenueCents / 100)),
+        tooltip: {
+          valueFormatter: (value: string | number) => formatMoney(Number(value) * 100, 'VND', selectedDisplayCurrency, getDisplayDateLocale(locale.value), {
+            notation: 'compact',
+            maximumFractionDigits: 1,
+          }),
+        },
         lineStyle: {
           width: 3,
         },
@@ -178,7 +190,7 @@ const seatMixOption = computed(() => {
       { label: t('admin.dashboard_sold'), value: summary.value.soldSeatsCount },
       { label: t('admin.dashboard_available'), value: Math.max(summary.value.totalSeatsListed - summary.value.soldSeatsCount, 0) },
     ],
-    centerValue: formatPercent(summary.value.occupancyRate),
+    centerValue: formatPercent(summary.value.occupancyRate, getDisplayDateLocale(locale.value)),
     centerLabel: t('admin.dashboard_occupancy'),
   })
 })
@@ -206,13 +218,6 @@ function getIsoDate(date: Date) {
   const month = String(date.getMonth() + 1).padStart(2, '0')
   const day = String(date.getDate()).padStart(2, '0')
   return `${year}-${month}-${day}`
-}
-
-function formatCompactCurrency(cents: number) {
-  return formatCurrency(cents, 'USD', getDisplayDateLocale(locale.value), {
-    notation: 'compact',
-    maximumFractionDigits: 1,
-  })
 }
 
 function formatCompactNumber(value: number) {
@@ -263,7 +268,7 @@ function formatCompactNumber(value: number) {
     <section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
       <AdminDashboardKpiCard
         :label="$t('admin.dashboard_total_revenue')"
-        :value="formatCurrency(summary.totalRevenueCents, 'USD', getDisplayDateLocale(locale))"
+        :value="formatPreferredCurrency(summary.totalRevenueCents, 'VND', getDisplayDateLocale(locale))"
         :description="$t('admin.dashboard_total_revenue_desc')"
         :trend-label="$t('admin.dashboard_confirmed')"
         trend-direction="up"
@@ -318,7 +323,7 @@ function formatCompactNumber(value: number) {
             :description="$t('admin.dashboard_performance_desc')"
             :option="revenueChartOption"
             :height="320"
-            :stat="formatCurrency(summary.totalRevenueCents, 'USD', getDisplayDateLocale(locale))"
+            :stat="formatPreferredCurrency(summary.totalRevenueCents, 'VND', getDisplayDateLocale(locale))"
             :stat-label="$t('admin.dashboard_total_revenue')"
             tone="emerald"
           />
@@ -328,7 +333,7 @@ function formatCompactNumber(value: number) {
             :description="$t('admin.dashboard_seat_mix_desc')"
             :option="seatMixOption"
             :height="320"
-            :stat="formatPercent(summary.occupancyRate)"
+            :stat="formatPercent(summary.occupancyRate, getDisplayDateLocale(locale))"
             :stat-label="$t('admin.dashboard_occupancy')"
             tone="slate"
           />
