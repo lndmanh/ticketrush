@@ -24,6 +24,7 @@
       :search-placeholder="$t('admin.users.search_users')"
       :empty-title="$t('admin.users.no_match')"
       :empty-description="$t('admin.users.no_match_desc')"
+      :column-labels="columnLabels"
       @update:data="fetchUsers"
     />
 
@@ -282,13 +283,13 @@
               :disabled="loading"
               @click="closeDialog"
             >
-              Cancel
+              {{ $t('common.cancel') }}
             </Button>
             <Button
               type="submit"
               :is-loading="loading"
             >
-              {{ isEditing ? 'Save changes' : 'Create user' }}
+              {{ isEditing ? $t('admin.users.save_changes') : $t('admin.users.create_user') }}
             </Button>
           </DialogFooter>
         </form>
@@ -428,6 +429,17 @@ const defaultFormData: UserFormValues = {
 
 const isEditing = computed(() => editingUserId.value !== null)
 const validationSchema = computed(() => isEditing.value ? adminUserEditFormSchema : adminUserCreateFormSchema)
+const { t } = useI18n()
+
+const columnLabels = computed(() => ({
+  id: t('admin.columns.id'),
+  username: t('admin.columns.username'),
+  name: t('admin.columns.name'),
+  email: t('admin.columns.email'),
+  isAdmin: t('admin.columns.roles'),
+  createdAt: t('admin.columns.created_at'),
+  lastLoginAt: t('admin.columns.last_login'),
+}))
 
 const {
   handleSubmit,
@@ -475,12 +487,12 @@ const onSubmit = handleSubmit(
         if (!response.success) throw response
       }
 
-      toast.success(isEditing.value ? 'User updated successfully' : 'User created successfully')
+      toast.success(isEditing.value ? t('admin.users.user_updated') : t('admin.users.user_created'))
       closeDialog()
       await fetchUsers()
     }
     catch (error) {
-      const message = parseApiError(error, 'Failed to save the user record').message
+      const message = parseApiError(error, 'admin.users.save_failed').message
       const structuredIssue = getIssueFieldAndMessage(error)
       if (structuredIssue) {
         setFieldError(structuredIssue.field, structuredIssue.message)
@@ -491,7 +503,7 @@ const onSubmit = handleSubmit(
           setFieldError(mappedField, message)
         }
         else {
-          toast.error(message)
+          toast.error(t(message))
         }
       }
     }
@@ -500,8 +512,8 @@ const onSubmit = handleSubmit(
     }
   },
   ({ errors }) => {
-    const firstError = Object.values(errors).flat().filter(Boolean)[0] || 'Please fix the highlighted fields'
-    toast.error(firstError)
+    const firstError = Object.values(errors).flat().filter(Boolean)[0] || 'admin.users.fix_fields'
+    toast.error(t(firstError))
   },
 )
 
@@ -542,7 +554,7 @@ async function fetchUsers() {
     users.value = res.data
   }
   catch (error) {
-    toast.error(parseApiError(error, 'Failed to load the user records').message)
+    toast.error(parseApiError(error, t('admin.users.load_failed')).message)
   }
   finally {
     loading.value = false
@@ -612,11 +624,11 @@ async function handleDelete(userId: number) {
       method: 'DELETE',
     })
     if (!response.success) throw response
-    toast.success('User deleted successfully')
+    toast.success(t('admin.users.user_deleted'))
     await fetchUsers()
   }
   catch (error) {
-    toast.error(parseApiError(error, 'Failed to delete the user record').message)
+    toast.error(parseApiError(error, t('admin.users.delete_failed')).message)
   }
   finally {
     loading.value = false
@@ -636,13 +648,13 @@ async function handleBatchDelete() {
       body: { userIds: selectedUserIds.value },
     })
     if (!response.success) throw response
-    toast.success(`Successfully deleted ${count} user(s)`)
+    toast.success(t('admin.users.batch_deleted', { count }))
 
     dataTableRef.value?.table?.resetRowSelection()
     await fetchUsers()
   }
   catch (error) {
-    toast.error(parseApiError(error, 'Failed to delete the selected users').message)
+    toast.error(parseApiError(error, t('admin.users.batch_delete_failed')).message)
   }
   finally {
     loading.value = false
@@ -694,11 +706,11 @@ async function confirmLockToggle() {
       body: { isLocked: nextLocked },
     })
     if (!response.success) throw response
-    toast.success(nextLocked ? 'User locked successfully' : 'User unlocked successfully')
+    toast.success(nextLocked ? t('admin.users.user_locked') : t('admin.users.user_unlocked'))
     await fetchUsers()
   }
   catch (error) {
-    toast.error(parseApiError(error, 'Failed to update the user lock status').message)
+    toast.error(parseApiError(error, t('admin.users.lock_failed')).message)
   }
   finally {
     loading.value = false

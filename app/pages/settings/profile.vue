@@ -107,21 +107,21 @@ const onSaveProfile = handleProfileSubmit(async (formValues) => {
     await refreshProfile()
   }
   catch (error) {
-    const message = parseApiError(error, t('account_page.save_error')).message
+    const message = parseApiError(error, 'account_page.save_error').message
 
     if (message.toLowerCase().includes('email')) {
       setProfileFieldError('email', message)
       return
     }
 
-    toast.error(message)
+    toast.error(t(message))
   }
   finally {
     isSaving.value = false
   }
 }, ({ errors }) => {
-  const message = Object.values(errors).flat().filter(Boolean)[0] || t('account_page.save_error')
-  toast.error(message)
+  const message = Object.values(errors).flat().filter(Boolean)[0] || 'account_page.save_error'
+  toast.error(t(message))
 })
 </script>
 
