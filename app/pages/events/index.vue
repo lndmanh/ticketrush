@@ -7,7 +7,7 @@ import type { EventCatalogItem } from '~~/types/events'
 import { EventCatalogSort } from '#shared/commonEnums'
 import { getLocationLabelByValue, getVietnamProvinceCityOptions, VIETNAM_PROVINCE_CITY_OPTIONS } from '#shared/constants/location'
 
-const EVENTS_PAGE_SIZE = 9
+const EVENTS_PAGE_SIZE = 6
 
 const { t, locale } = useI18n()
 
@@ -218,7 +218,6 @@ const resultSummary = computed(() => {
 const pageSummary = computed(() => {
   return t('events.page_info', { page: pagination.value.page, total: pagination.value.totalPages || 1 })
 })
-
 </script>
 
 <template>

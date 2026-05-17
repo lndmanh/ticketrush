@@ -453,8 +453,8 @@ watch(upcomingEvents, async () => {
               <div
                 v-if="upcomingEvents.length > 0"
                 ref="carouselRef"
-                class="-mx-4 flex snap-x gap-4 overflow-x-auto px-4 pb-4 [scrollbar-width:none] sm:mx-0 sm:px-0"
-                data-lenis-prevent
+                class="-mx-4 flex snap-x gap-4 overflow-x-auto overscroll-x-contain px-4 pb-4 [scrollbar-width:none] sm:mx-0 sm:px-0"
+                data-lenis-prevent-horizontal
                 @scroll="updateCarouselState"
               >
                 <Motion
