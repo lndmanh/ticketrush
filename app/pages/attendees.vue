@@ -78,7 +78,7 @@ async function refresh() {
     attendeesResponse.value = response
   }
   catch (error) {
-    fetchError.value = parseApiError(error, 'Failed to load attendees. Please try again.').message
+    fetchError.value = parseApiError(error, t('saved_attendees.loading_failed_desc')).message
   }
   finally {
     loading.value = false
@@ -277,11 +277,11 @@ function getMissingSelfFields(attendee: AttendeeItem) {
 
 function getMissingSelfFieldLabel(field: SelfAttendeeRequirement) {
   const labels: Record<SelfAttendeeRequirement, string> = {
-    [SelfAttendeeRequirement.LegalName]: 'legal name',
-    [SelfAttendeeRequirement.Email]: 'email',
-    [SelfAttendeeRequirement.Phone]: 'phone',
-    [SelfAttendeeRequirement.BirthDate]: 'birth date',
-    [SelfAttendeeRequirement.Gender]: 'gender',
+    [SelfAttendeeRequirement.LegalName]: t('saved_attendees.missing_legal_name'),
+    [SelfAttendeeRequirement.Email]: t('saved_attendees.missing_email'),
+    [SelfAttendeeRequirement.Phone]: t('saved_attendees.missing_phone'),
+    [SelfAttendeeRequirement.BirthDate]: t('saved_attendees.missing_birth_date'),
+    [SelfAttendeeRequirement.Gender]: t('saved_attendees.missing_gender'),
   }
 
   return labels[field]
@@ -318,7 +318,7 @@ definePageMeta({
           @click="openCreateDialog"
         >
           <PlusIcon class="size-4" />
-          Add Attendee
+          {{ $t('saved_attendees.add_attendee') }}
         </Button>
       </div>
     </div>
@@ -329,7 +329,7 @@ definePageMeta({
       variant="destructive"
     >
       <AlertDescription>
-        Complete required profile fields before booking: {{ selfAttendeeMissingFields.join(', ') }}.
+        {{ $t('saved_attendees.complete_required_profile', { fields: selfAttendeeMissingFields.join(', ') }) }}
       </AlertDescription>
     </Alert>
 
@@ -418,12 +418,12 @@ definePageMeta({
               v-if="attendee.isSelf"
               variant="secondary"
             >
-              Self
+              {{ $t('saved_attendees.self_badge') }}
             </Badge>
           </div>
 
           <ItemDescription v-if="attendee.preferredName">
-            Legal: {{ attendee.legalName }}
+            {{ $t('saved_attendees.legal_label', { name: attendee.legalName }) }}
           </ItemDescription>
           <ItemDescription v-if="attendee.email">
             {{ attendee.email }}
@@ -432,17 +432,17 @@ definePageMeta({
             {{ attendee.phone }}
           </ItemDescription>
           <ItemDescription v-if="!attendee.email && !attendee.phone">
-            No direct contact info
+            {{ $t('saved_attendees.no_contact') }}
           </ItemDescription>
           <ItemDescription v-if="attendee.guardianName">
-            Guardian: {{ attendee.guardianName }}
+            {{ $t('saved_attendees.guardian_prefix', { name: attendee.guardianName }) }}
           </ItemDescription>
 
           <Badge
             v-if="isMinor(attendee.birthDate)"
             variant="outline"
           >
-            Minor
+            {{ $t('saved_attendees.minor_badge') }}
           </Badge>
         </ItemContent>
 
@@ -453,7 +453,7 @@ definePageMeta({
             @click="openEditDialog(attendee)"
           >
             <Edit2Icon class="w-4 h-4 mr-1.5" />
-            Edit
+            {{ $t('saved_attendees.edit') }}
           </Button>
           <Button
             v-if="!attendee.isSelf"
@@ -463,7 +463,7 @@ definePageMeta({
             @click="deleteAttendee(attendee.id)"
           >
             <Trash2Icon class="w-4 h-4 mr-1.5" />
-            Delete
+            {{ $t('saved_attendees.delete') }}
           </Button>
         </ItemActions>
       </Item>

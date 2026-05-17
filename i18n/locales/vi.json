@@ -1553,7 +1553,13 @@
     "delete_confirm": "Bạn có chắc muốn xóa người tham dự này? Hành động này không thể hoàn tác.",
     "legal_name_required": "Vui lòng nhập họ tên pháp lý",
     "birth_date_future": "Ngày sinh không được ở tương lai",
-    "contact_required": "Cần ít nhất một phương thức liên hệ"
+    "contact_required": "Cần ít nhất một phương thức liên hệ",
+    "complete_required_profile": "Hoàn tất các trường hồ sơ bắt buộc trước khi đặt vé: {fields}.",
+    "missing_legal_name": "họ tên pháp lý",
+    "missing_email": "email",
+    "missing_phone": "điện thoại",
+    "missing_birth_date": "ngày sinh",
+    "missing_gender": "giới tính"
   },
   "dashboard": {
     "page_title": "Bảng điều khiển",
