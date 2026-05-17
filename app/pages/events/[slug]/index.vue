@@ -18,7 +18,7 @@ import {
 } from 'reka-ui'
 import { Motion } from 'motion-v'
 import { getDisplayDateLocale } from '@/lib/localizedEvents'
-import { cn, formatCurrency, formatDate, formatTime } from '@/lib/utils'
+import { cn, formatDate, formatTime } from '@/lib/utils'
 import { getEventFallbackImage } from '@/utils/fallbackImages'
 import { apiRoutes } from '#shared/apiRoutes'
 import { EventCatalogSort, EventStatus } from '#shared/commonEnums'
@@ -33,6 +33,7 @@ const slug = computed(() => {
   return ''
 })
 const { locale, t } = useI18n()
+const { formatCurrency: formatPreferredCurrency } = useCurrencyPreference()
 const sessionsListRef = ref<HTMLElement | null>(null)
 type SessionViewMode = 'list' | 'calendar'
 
@@ -189,7 +190,7 @@ const startingPriceLabel = computed(() => {
     return 'Pricing to be announced'
   }
 
-  return formatCurrency(price.priceCents, price.currency, dateLocale.value)
+  return formatPreferredCurrency(price.priceCents, price.currency, dateLocale.value)
 })
 
 const dateRangeLabel = computed(() => {
@@ -346,7 +347,7 @@ function getSessionPriceLabel(session: PublicEventSessionSummary) {
     return t('event_card.section_pricing_coming_soon')
   }
 
-  return formatCurrency(lowestPrice.priceCents, lowestPrice.currency, dateLocale.value)
+  return formatPreferredCurrency(lowestPrice.priceCents, lowestPrice.currency, dateLocale.value)
 }
 
 function isSessionBookable(session: PublicEventSessionSummary) {

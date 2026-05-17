@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { ArrowRight, Clock3, LucideSparkles, Ticket } from '@lucide/vue'
 import { getDisplayDateLocale } from '@/lib/localizedEvents'
-import { formatCurrency, formatDate, formatTime } from '@/lib/utils'
+import { formatDate, formatTime } from '@/lib/utils'
 import type { PublicEventSessionSummary, PublicSessionSectionPriceSummary } from '~~/types/events'
 import { EventStatus } from '#shared/commonEnums'
 
 const { locale, t } = useI18n()
+const { formatCurrency: formatPreferredCurrency } = useCurrencyPreference()
 
 const props = defineProps<{
   session: PublicEventSessionSummary
@@ -128,7 +129,7 @@ const lowestTicket = computed(() => {
             {{ lowestTicket ? t('event_card.from_label') : t('event_card.pricing_label') }}
           </p>
           <p class="mt-1 text-sm font-semibold text-foreground">
-            {{ lowestTicket ? formatCurrency(lowestTicket.priceCents, lowestTicket.currency, dateLocale) : t('event_card.section_pricing_coming_soon') }}
+            {{ lowestTicket ? formatPreferredCurrency(lowestTicket.priceCents, lowestTicket.currency, dateLocale) : t('event_card.section_pricing_coming_soon') }}
           </p>
         </div>
       </div>
@@ -151,7 +152,7 @@ const lowestTicket = computed(() => {
                 {{ sectionPrice.sectionNameSnapshot }}
               </p>
               <p class="mt-1 font-mono text-xs text-muted-foreground">
-                {{ formatCurrency(sectionPrice.priceCents, sectionPrice.currency, dateLocale) }}
+                {{ formatPreferredCurrency(sectionPrice.priceCents, sectionPrice.currency, dateLocale) }}
               </p>
             </div>
           </div>
