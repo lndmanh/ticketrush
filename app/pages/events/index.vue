@@ -4,6 +4,7 @@ import { DateFormatter, getLocalTimeZone, parseDate } from '@internationalized/d
 import type { DateValue } from '@internationalized/date'
 import type { PaginatedApiResponse } from '~~/types/api'
 import type { EventCatalogItem } from '~~/types/events'
+import { apiRoutes } from '#shared/apiRoutes'
 import { EventCatalogSort } from '#shared/commonEnums'
 import { getLocationLabelByValue, getVietnamProvinceCityOptions, VIETNAM_PROVINCE_CITY_OPTIONS } from '#shared/constants/location'
 
@@ -150,7 +151,7 @@ const catalogQuery = computed(() => ({
   pageSize: EVENTS_PAGE_SIZE,
 }))
 
-const { data: catalogResponse, pending, error: catalogFetchError } = await useAPI<PaginatedApiResponse<EventCatalogItem[]>>(() => '/api/events', {
+const { data: catalogResponse, pending, error: catalogFetchError } = await useAPI<PaginatedApiResponse<EventCatalogItem[]>>(() => apiRoutes.EVENTS, {
   query: catalogQuery,
 })
 

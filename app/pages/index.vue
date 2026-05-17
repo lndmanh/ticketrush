@@ -13,6 +13,7 @@ import {
 import { Motion, motion } from 'motion-v'
 import type { PaginatedApiResponse } from '~~/types/api'
 import type { EventCatalogItem, EventCatalogQueryOptions } from '~~/types/events'
+import { apiRoutes } from '#shared/apiRoutes'
 import { formatDateTime } from '@/lib/utils'
 import { EventCatalogSort } from '#shared/commonEnums'
 
@@ -48,7 +49,7 @@ const {
   data: featuredEventsResponse,
   pending: featuredEventsPending,
   error: featuredEventsFetchError,
-} = await useAPI<PaginatedApiResponse<EventCatalogItem[]>>(() => '/api/events', {
+} = await useAPI<PaginatedApiResponse<EventCatalogItem[]>>(() => apiRoutes.EVENTS, {
   query: featuredEventsQuery,
 })
 

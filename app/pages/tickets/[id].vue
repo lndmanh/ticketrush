@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import QRCode from 'qrcode.vue'
 import { CalendarRange, Mail, MapPin, Ticket, UserRound } from '@lucide/vue'
+import { apiRoutes } from '#shared/apiRoutes'
 import type { ApiResponse } from '~~/types/api'
 import type { TicketDetailData } from '~~/types/ticketing'
 import { getDisplayDateLocale } from '@/lib/localizedEvents'
@@ -11,7 +12,7 @@ const ticketId = computed(() => route.params.id.toString())
 const { locale, t } = useI18n()
 const { formatCurrency: formatPreferredCurrency } = useCurrencyPreference()
 const localePath = useLocalePath()
-const { data: ticketResponse } = await useAPI<ApiResponse<TicketDetailData>>(() => `/api/tickets/${ticketId.value}`, {
+const { data: ticketResponse } = await useAPI<ApiResponse<TicketDetailData>>(() => apiRoutes.ticket(ticketId.value), {
   query: computed(() => ({ locale: locale.value })),
 })
 

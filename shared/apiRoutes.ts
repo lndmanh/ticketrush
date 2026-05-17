@@ -1,6 +1,9 @@
 import type { NuxtSecurityRouteRules } from 'nuxt-security'
 
 export const apiRoutes = {
+  API_PREFIX: '/api/',
+  ADMIN_API_PREFIX: '/api/admin',
+
   ADMIN_DASHBOARD: '/api/admin/dashboard',
   ADMIN_EVENTS: '/api/admin/events',
   ADMIN_EVENT_AUTOSAVE: '/api/admin/events/autosave',
@@ -13,15 +16,24 @@ export const apiRoutes = {
   ADMIN_WAITING_ROOM_SETTINGS: '/api/admin/waiting-room-settings',
   FLAGS_EVALUATE: '/api/flags',
 
+  EVENTS: '/api/events',
+
+  TICKETS: '/api/tickets',
+
+  CHECKOUT_ACTIVE: '/api/checkout/active',
   CHECKOUT_CONFIRM: '/api/checkout/confirm',
   CHECKOUT_START: '/api/checkout/start',
 
   EVENT_SEARCH: '/api/events/search',
 
   AUTH_LOGIN: '/auth/login',
+  AUTH_LOGIN_PASSWORD: '/api/auth/login-password',
   AUTH_REGISTER: '/auth/register',
+  AUTH_REGISTER_PASSWORD: '/api/auth/register-password',
   AUTH_VERIFY_EMAIL: '/auth/verify-email',
   AUTH_FORGOT_PASSWORD: '/auth/forgot-password',
+  AUTH_FORGOT_PASSWORD_REQUEST: '/api/auth/forgot-password',
+  AUTH_RESEND_VERIFICATION: '/api/auth/resend-verification',
   AUTH_RESET_PASSWORD: '/auth/reset-password',
   AUTH_GOOGLE: '/api/auth/google',
   AUTH_GOOGLE_ONE_TAP: '/api/auth/google-one-tap',
@@ -29,11 +41,16 @@ export const apiRoutes = {
   AUTH_OAUTH_UNLINK: '/api/auth/oauth/unlink',
   AUTH_ACCOUNT_STATUS: '/api/auth/account-status',
   MY_PASSKEYS: '/api/users/me/passkeys',
+  MY_PASSWORD: '/api/users/me/password',
 
   MY_PROFILE: '/api/users/me',
   SAVED_ATTENDEES: '/api/saved-attendees',
   SAVED_ATTENDEE_SELF_STATUS: '/api/saved-attendees/self-status',
+  ADMIN_TASKS_RELEASE_HOLDS: '/api/admin/tasks/release-holds',
+  ADMIN_TASKS_ADMIT_QUEUE: '/api/admin/tasks/admit-queue',
+  ADMIN_TASKS_SEED_ADMIN: '/api/admin/tasks/seed-admin',
 
+  checkout: (orderId: string | number) => `/api/checkout/${orderId}`,
   adminEvent: (eventId: string | number) => `/api/admin/events/${eventId}`,
   adminEventDashboard: (eventId: string | number) => `/api/admin/events/${eventId}/dashboard`,
   adminEventOps: (eventId: string | number) => `/api/admin/events/${eventId}/ops`,
@@ -58,12 +75,15 @@ export const apiRoutes = {
   eventSessionGate: (sessionId: string | number) => `/api/event-sessions/${sessionId}/gate`,
   eventSessionCaptchaPass: (sessionId: string | number) => `/api/event-sessions/${sessionId}/captcha-pass`,
   eventSessionSeatmap: (sessionId: string | number) => `/api/event-sessions/${sessionId}/seatmap`,
+  eventSessionSeatmapVersion: (sessionId: string | number) => `/api/event-sessions/${sessionId}/seatmap-version`,
   eventSessionSeatmapSocket: (sessionId: string) => `/ws/event-sessions/${sessionId}/seats`,
   eventSessionQueueSocket: (sessionId: string | number) => `/ws/event-sessions/${sessionId}/queue`,
   eventSessionHolds: (sessionId: string | number) => `/api/event-sessions/${sessionId}/holds`,
   eventSessionQueueStatus: (sessionId: string | number) => `/api/event-sessions/${sessionId}/queue/status`,
   eventSessionQueueJoin: (sessionId: string | number) => `/api/event-sessions/${sessionId}/queue/join`,
   eventSessionQueueLeave: (sessionId: string | number) => `/api/event-sessions/${sessionId}/queue/leave`,
+  ticket: (ticketId: string | number) => `/api/tickets/${ticketId}`,
+  userProfile: (userId: string | number) => `/api/users/${userId}/profile`,
   savedAttendee: (attendeeId: string | number) => `/api/saved-attendees/${attendeeId}`,
 } as const
 

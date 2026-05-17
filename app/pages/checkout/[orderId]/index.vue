@@ -27,7 +27,7 @@ let holdClockIntervalId: number | null = null
 let checkoutRefreshIntervalId: number | null = null
 const accountHolderOptionValue = 'account-holder'
 
-const { data: checkoutResponse, refresh } = await useAPI<ApiResponse<CheckoutDetailData>>(() => `/api/checkout/${orderId.value}`, {
+const { data: checkoutResponse, refresh } = await useAPI<ApiResponse<CheckoutDetailData>>(() => apiRoutes.checkout(orderId.value), {
   query: computed(() => ({ locale: locale.value })),
 })
 const checkout = computed(() => checkoutResponse.value?.success ? checkoutResponse.value.data : null)
@@ -64,7 +64,7 @@ if (checkout.value?.order.status === OrderStatus.Confirmed) {
   await navigateTo(getCheckoutSuccessPath(orderId.value), { replace: true })
 }
 
-const { data: savedAttendeesResponse } = await useAPI<ApiResponse<SavedAttendeeModel[]>>(() => '/api/saved-attendees')
+const { data: savedAttendeesResponse } = await useAPI<ApiResponse<SavedAttendeeModel[]>>(() => apiRoutes.SAVED_ATTENDEES)
 const savedAttendees = computed(() => savedAttendeesResponse.value?.success ? savedAttendeesResponse.value.data : [])
 
 interface TicketHolderDraft {
@@ -911,7 +911,7 @@ async function cancelCheckout() {
   isCancelling.value = true
 
   try {
-    const response = await apiRequest<ApiResponse<CheckoutCancelData>>(`/api/checkout/${orderId.value}`, {
+    const response = await apiRequest<ApiResponse<CheckoutCancelData>>(apiRoutes.checkout(orderId.value), {
       method: 'DELETE',
     })
 
@@ -1059,7 +1059,7 @@ definePageMeta({
           </div>
         </div>
 
-        <div class="space-y-4 pb-4">
+        <div class="space-y-4 py-4">
           <article
             v-for="draft in ticketHolderDrafts"
             :key="draft.eventSeatId"
@@ -1555,8 +1555,13 @@ definePageMeta({
         v-if="checkout.order.status !== OrderStatus.Confirmed"
         class="flex flex-col lg:sticky lg:top-4 lg:h-[calc(100dvh-2rem)] lg:overflow-hidden"
       >
+        <CardHeader>
+          <CardTitle class="text-base font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+            {{ $t('checkout.order_total') }}
+          </CardTitle>
+        </CardHeader>
         <CardContent class="flex min-h-0 flex-1 flex-col p-0">
-          <ScrollArea class="min-h-0 flex-1 px-4 py-4 md:px-5">
+          <ScrollArea class="min-h-0 flex-1">
             <ItemGroup class="gap-2.5 p-4">
               <Item
                 v-for="section in checkoutSectionSummaries"
@@ -1612,7 +1617,7 @@ definePageMeta({
 
           <CardFooter
             v-if="checkout.order.status !== OrderStatus.Confirmed"
-            class="flex shrink-0 flex-col gap-3 border-t bg-background/95 px-4 pb-4 pt-3 md:px-5"
+            class="flex shrink-0 flex-col gap-3"
           >
             <div class="w-full rounded-[1.5rem] bg-muted/50 px-5 py-4">
               <p class="text-sm text-muted-foreground">

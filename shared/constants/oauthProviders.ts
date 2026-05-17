@@ -1,3 +1,5 @@
+import { apiRoutes } from '../apiRoutes'
+
 export interface OAuthProviderConfig {
   id: string
   name: string
@@ -8,7 +10,7 @@ export const OAUTH_PROVIDERS: Record<string, OAuthProviderConfig> = {
   google: {
     id: 'google',
     name: 'Google',
-    route: '/api/auth/google',
+    route: apiRoutes.AUTH_GOOGLE,
   },
 }
 

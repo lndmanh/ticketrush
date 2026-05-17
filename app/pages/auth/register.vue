@@ -120,7 +120,7 @@ useSeo({
 })
 
 const onSubmit = handleSubmit(async () => {
-  const formEl = document.querySelector('form[action="/api/auth/register-password"]')
+  const formEl = document.querySelector(`form[action="${apiRoutes.AUTH_REGISTER_PASSWORD}"]`)
   if (formEl instanceof HTMLFormElement) formEl.submit()
 })
 
@@ -275,7 +275,7 @@ onBeforeUnmount(() => {
     </div>
 
     <form
-      action="/api/auth/register-password"
+      :action="apiRoutes.AUTH_REGISTER_PASSWORD"
       method="POST"
       class="space-y-4"
       @submit.prevent="onSubmit"

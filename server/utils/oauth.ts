@@ -1,5 +1,6 @@
 import type { H3Event } from 'h3'
 import type { GoogleOneTapStatus } from '~~/types/auth'
+import { apiRoutes } from '#shared/apiRoutes'
 import userService from '~~/server/utils/database/user'
 import oauthAccountService from '~~/server/utils/database/oauthAccount'
 
@@ -183,7 +184,7 @@ export async function handleOAuthSuccess(event: H3Event, provider: string, profi
 
   const completion = await completeOAuthLogin(event, provider, profile)
   if (completion.status === 'missing-user') {
-    return sendOAuthRedirect(event, '/auth/login?error=unknown')
+    return sendOAuthRedirect(event, `${apiRoutes.AUTH_LOGIN}?error=unknown`)
   }
 
   return sendOAuthRedirect(event, '/')

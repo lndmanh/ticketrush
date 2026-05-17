@@ -795,7 +795,7 @@ async function addPasskey() {
 
 async function deletePasskey(passkey: PasskeyModel) {
   try {
-    await apiRequest('/api/users/me/passkeys', {
+    await apiRequest(apiRoutes.MY_PASSKEYS, {
       method: 'DELETE',
       body: { credentialId: passkey.id },
     })
@@ -820,7 +820,7 @@ const onChangePassword = handlePasswordSubmit(async (formValues) => {
   savingPassword.value = true
   generalPasswordError.value = ''
   try {
-    await apiRequest('/api/users/me/password', {
+    await apiRequest(apiRoutes.MY_PASSWORD, {
       method: 'PATCH',
       body: {
         currentPassword: formValues.currentPassword,
