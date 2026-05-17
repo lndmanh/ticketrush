@@ -88,10 +88,10 @@ export async function refreshQueueStatusForSession(eventSessionId: number, custo
     // Coordinate refresh/admission across workers and instances.
     await queueService.expireAdmittedEntries(eventSessionId)
 
-    const currentStatus = await queueService.getStatus(eventSessionId, customerKey)
+    const currentStatus = await queueService.getStatus(eventSessionId, customerKey, { skipExpire: true })
     if (currentStatus && currentStatus.waitingCount > 0 && currentStatus.admittedCount === 0) {
       await queueService.admitNextBatch(eventSessionId)
-      return queueService.getStatus(eventSessionId, customerKey)
+      return queueService.getStatus(eventSessionId, customerKey, { skipExpire: true })
     }
 
     return currentStatus

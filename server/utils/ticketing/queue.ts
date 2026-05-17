@@ -1,4 +1,4 @@
-import { and, asc, eq } from 'drizzle-orm'
+import { and, asc, eq, gt, isNotNull, isNull, lte, or, sql } from 'drizzle-orm'
 import { createQueuePassToken } from '~~/server/utils/ticketing/ids'
 import { isActiveQueueAdmission, shouldExpireQueueAdmission } from '~~/server/utils/ticketing/queue-admission-state'
 import waitingRoomSettingsService from '~~/server/utils/ticketing/waiting-room-settings'
@@ -29,13 +29,15 @@ class QueueService {
       throw createError({ statusCode: 404, statusMessage: 'Event session not found.' })
     }
 
-    const existing = await this.db
+    const current = await this.db
       .select()
       .from(tables.queueEntries)
-      .where(eq(tables.queueEntries.eventSessionId, eventSessionId))
-      .all()
+      .where(and(
+        eq(tables.queueEntries.eventSessionId, eventSessionId),
+        eq(tables.queueEntries.customerKey, customerKey),
+      ))
+      .get()
 
-    const current = existing.find(entry => entry.customerKey === customerKey)
     if (current) {
       if (current.status === QueueStatus.Expired || current.status === QueueStatus.Completed) {
         await this.db
@@ -91,40 +93,76 @@ class QueueService {
     return this.getStatus(eventSessionId, customerKey)
   }
 
-  async getStatus(eventSessionId: number, customerKey: string): Promise<QueueState | null> {
-    await this.expireAdmittedEntries(eventSessionId)
+  async getStatus(eventSessionId: number, customerKey: string, options: { skipExpire?: boolean } = {}): Promise<QueueState | null> {
+    if (!options.skipExpire) {
+      await this.expireAdmittedEntries(eventSessionId)
+    }
 
-    const session = await this.db
-      .select()
-      .from(tables.eventSessions)
-      .where(eq(tables.eventSessions.id, eventSessionId))
-      .get()
+    const [session, current] = await Promise.all([
+      this.db
+        .select()
+        .from(tables.eventSessions)
+        .where(eq(tables.eventSessions.id, eventSessionId))
+        .get(),
+      this.db
+        .select()
+        .from(tables.queueEntries)
+        .where(and(
+          eq(tables.queueEntries.eventSessionId, eventSessionId),
+          eq(tables.queueEntries.customerKey, customerKey),
+        ))
+        .get(),
+    ])
 
     if (!session) {
       return null
     }
 
-    const entries = await this.db
-      .select()
-      .from(tables.queueEntries)
-      .where(eq(tables.queueEntries.eventSessionId, eventSessionId))
-      .orderBy(asc(tables.queueEntries.id))
-      .all()
-
-    const current = entries.find(entry => entry.customerKey === customerKey)
     if (!current) {
       return null
     }
 
     const now = new Date()
 
-    const position = current.status === QueueStatus.Waiting
-      ? entries.filter(entry => entry.status === QueueStatus.Waiting && entry.id <= current.id).length
-      : 0
+    const [positionRow, waitingCountRow, admittedCountRow, settings] = await Promise.all([
+      current.status === QueueStatus.Waiting
+        ? this.db
+            .select({ count: sql<number>`count(*)` })
+            .from(tables.queueEntries)
+            .where(and(
+              eq(tables.queueEntries.eventSessionId, eventSessionId),
+              eq(tables.queueEntries.status, QueueStatus.Waiting),
+              lte(tables.queueEntries.id, current.id),
+            ))
+            .get()
+        : Promise.resolve({ count: 0 }),
+      this.db
+        .select({ count: sql<number>`count(*)` })
+        .from(tables.queueEntries)
+        .where(and(
+          eq(tables.queueEntries.eventSessionId, eventSessionId),
+          eq(tables.queueEntries.status, QueueStatus.Waiting),
+        ))
+        .get(),
+      this.db
+        .select({ count: sql<number>`count(*)` })
+        .from(tables.queueEntries)
+        .where(and(
+          eq(tables.queueEntries.eventSessionId, eventSessionId),
+          eq(tables.queueEntries.status, QueueStatus.Admitted),
+          isNotNull(tables.queueEntries.passToken),
+          gt(tables.queueEntries.expiresAt, now),
+        ))
+        .get(),
+      waitingRoomSettingsService.getSettings(),
+    ])
+
+    const position = positionRow?.count ?? 0
+    const waitingCount = waitingCountRow?.count ?? 0
+    const admittedCount = admittedCountRow?.count ?? 0
 
     const redirectPath = await this.getEntryRedirectPath(session, current)
 
-    const settings = await waitingRoomSettingsService.getSettings()
     const estimatedWaitSeconds = current.status === QueueStatus.Waiting
       ? Math.max(0, Math.ceil(position / Math.max(settings.queueBatchSize, 1)) * settings.queueWindowSeconds)
       : 0
@@ -137,8 +175,8 @@ class QueueService {
     return {
       entry,
       position,
-      waitingCount: entries.filter(entry => entry.status === QueueStatus.Waiting).length,
-      admittedCount: entries.filter(entry => isActiveQueueAdmission(entry, now)).length,
+      waitingCount,
+      admittedCount,
       queueBatchSize: settings.queueBatchSize,
       queueWindowSeconds: settings.queueWindowSeconds,
       estimatedWaitSeconds,
@@ -185,18 +223,21 @@ class QueueService {
       return []
     }
 
-    const waitingEntries = await this.db
+    const settings = await waitingRoomSettingsService.getSettings()
+    if (settings.queueBatchSize <= 0) {
+      return []
+    }
+
+    const candidates = await this.db
       .select()
       .from(tables.queueEntries)
-      .where(eq(tables.queueEntries.eventSessionId, eventSessionId))
+      .where(and(
+        eq(tables.queueEntries.eventSessionId, eventSessionId),
+        eq(tables.queueEntries.status, QueueStatus.Waiting),
+      ))
       .orderBy(asc(tables.queueEntries.id))
+      .limit(settings.queueBatchSize)
       .all()
-
-    const settings = await waitingRoomSettingsService.getSettings()
-
-    const candidates = waitingEntries
-      .filter(entry => entry.status === QueueStatus.Waiting)
-      .slice(0, settings.queueBatchSize)
 
     const admittedEntries: typeof tables.queueEntries.$inferSelect[] = []
     const expiresAt = new Date(Date.now() + settings.queueWindowSeconds * 1000)
@@ -236,11 +277,14 @@ class QueueService {
     const entry = await this.db
       .select()
       .from(tables.queueEntries)
-      .where(eq(tables.queueEntries.eventSessionId, eventSessionId))
-      .all()
-      .then(entries => entries.find(candidate => candidate.customerKey === customerKey))
+      .where(and(
+        eq(tables.queueEntries.eventSessionId, eventSessionId),
+        eq(tables.queueEntries.customerKey, customerKey),
+        eq(tables.queueEntries.passToken, passToken),
+      ))
+      .get()
 
-    if (!entry || entry.passToken !== passToken) {
+    if (!entry) {
       return false
     }
 
@@ -318,22 +362,45 @@ class QueueService {
       return false
     }
 
-    const [queueEntries, activeHolds] = await Promise.all([
-      this.db.select().from(tables.queueEntries).where(eq(tables.queueEntries.eventSessionId, eventSessionId)).all(),
-      this.db.select().from(tables.seatHolds).where(eq(tables.seatHolds.eventSessionId, eventSessionId)).all(),
-    ])
-
     const now = new Date()
 
-    const current = queueEntries.find(entry => entry.customerKey === customerKey)
+    const current = await this.db
+      .select()
+      .from(tables.queueEntries)
+      .where(and(
+        eq(tables.queueEntries.eventSessionId, eventSessionId),
+        eq(tables.queueEntries.customerKey, customerKey),
+      ))
+      .get()
+
     if (current && isActiveQueueAdmission(current, now)) {
       return false
     }
 
-    const activeQueueCount = queueEntries.filter(entry => isActiveQueueAdmission(entry, now)).length
-    const activeHoldCount = activeHolds.filter(hold => hold.status === HoldStatus.Active).length
+    const [activeQueueCountRow, activeHoldCountRow, settings] = await Promise.all([
+      this.db
+        .select({ count: sql<number>`count(*)` })
+        .from(tables.queueEntries)
+        .where(and(
+          eq(tables.queueEntries.eventSessionId, eventSessionId),
+          eq(tables.queueEntries.status, QueueStatus.Admitted),
+          isNotNull(tables.queueEntries.passToken),
+          gt(tables.queueEntries.expiresAt, now),
+        ))
+        .get(),
+      this.db
+        .select({ count: sql<number>`count(*)` })
+        .from(tables.seatHolds)
+        .where(and(
+          eq(tables.seatHolds.eventSessionId, eventSessionId),
+          eq(tables.seatHolds.status, HoldStatus.Active),
+        ))
+        .get(),
+      waitingRoomSettingsService.getSettings(),
+    ])
 
-    const settings = await waitingRoomSettingsService.getSettings()
+    const activeQueueCount = activeQueueCountRow?.count ?? 0
+    const activeHoldCount = activeHoldCountRow?.count ?? 0
     return activeQueueCount + activeHoldCount >= settings.queueActivationThreshold
   }
 
@@ -342,11 +409,25 @@ class QueueService {
       .select()
       .from(tables.queueEntries)
 
-    const entries = eventSessionId
-      ? await query.where(eq(tables.queueEntries.eventSessionId, eventSessionId)).all()
-      : await query.all()
-
     const now = new Date()
+    const entries = eventSessionId
+      ? await query.where(and(
+          eq(tables.queueEntries.eventSessionId, eventSessionId),
+          eq(tables.queueEntries.status, QueueStatus.Admitted),
+          or(
+            isNull(tables.queueEntries.passToken),
+            isNull(tables.queueEntries.expiresAt),
+            lte(tables.queueEntries.expiresAt, now),
+          ),
+        )).all()
+      : await query.where(and(
+          eq(tables.queueEntries.status, QueueStatus.Admitted),
+          or(
+            isNull(tables.queueEntries.passToken),
+            isNull(tables.queueEntries.expiresAt),
+            lte(tables.queueEntries.expiresAt, now),
+          ),
+        )).all()
     const expired = entries.filter(entry => shouldExpireQueueAdmission(entry, now))
 
     for (const entry of expired) {
