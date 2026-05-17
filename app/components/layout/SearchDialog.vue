@@ -22,7 +22,7 @@
         >
           <CommandGroup
             v-if="item.children"
-            :heading="item.title"
+            :heading="$t(item.title)"
             class="p-1.5"
           >
             <NuxtLink
@@ -32,15 +32,23 @@
               @click="handleClose"
             >
               <CommandItem :value="child.path">
-                <FileIcon class="mr-2 size-4" />
-                <span>{{ child.title }}</span>
+                <component
+                  :is="child.icon"
+                  v-if="child.icon"
+                  class="mr-2 size-4"
+                />
+                <FileIcon
+                  v-else
+                  class="mr-2 size-4"
+                />
+                <span>{{ $t(child.title) }}</span>
               </CommandItem>
             </NuxtLink>
           </CommandGroup>
           <CommandSeparator v-if="item.children" />
         </template>
         <CommandGroup
-          heading="Theme"
+          :heading="$t('common.theme')"
           class="p-1.5"
         >
           <CommandItem
@@ -171,7 +179,7 @@ const open = computed({
 })
 const { setOpen } = store
 const colorMode = useColorMode()
-const { locale } = useI18n()
+const { locale, t } = useI18n()
 const { placeholderDetailed } = useConfig().value.search
 
 const input = ref('')
@@ -198,7 +206,7 @@ function resetState() {
 }
 
 function toSearchTitles(item: EventSearchApiItem) {
-  const titles = ['Events']
+  const titles = [t('nav.events')]
   if (item.venueName) {
     titles.push(item.venueName)
   }
@@ -299,6 +307,7 @@ const navigation = computed(() => {
           stem: item.url,
           path: item.url,
           title: item.title,
+          icon: item.icon,
         })),
     }))
     .filter(section => section.children.length > 0)

@@ -71,7 +71,7 @@ async function updateLocale(code: string) {
         </DropdownMenuItem>
         <DropdownMenuItem
           v-if="loggedIn"
-          @click="navigateTo('/settings/account')"
+          @click="navigateTo('/settings/profile')"
         >
           <UserIcon />
           {{ $t('common.account') }}
@@ -83,7 +83,7 @@ async function updateLocale(code: string) {
           <LogIn />
           {{ $t('common.sign_in') }}
         </DropdownMenuItem>
-        <DropdownMenuItem @click="navigateTo('/settings/account')">
+        <DropdownMenuItem @click="navigateTo('/settings/profile')">
           <Settings />
           {{ $t('common.settings') }}
         </DropdownMenuItem>
