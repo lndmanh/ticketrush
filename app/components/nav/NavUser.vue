@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ChevronsUpDown, LogOut, SunMoon, Settings, LogIn, UserIcon, UsersIcon, LanguagesIcon } from '@lucide/vue'
+import { BanknoteIcon, ChevronsUpDown, LogOut, SunMoon, Settings, LogIn, UsersIcon, LanguagesIcon } from '@lucide/vue'
 import { useLocalStorage } from '@vueuse/core'
 import ThemeSwitcher from '@/components/ThemeSwitcher.vue'
 
@@ -84,6 +84,17 @@ async function updateLocale(code: string) {
 
       <DropdownMenuSeparator />
       <DropdownMenuGroup>
+        <DropdownMenuSub>
+          <DropdownMenuSubTrigger>
+            <BanknoteIcon />
+            {{ $t('common.currency') }}
+          </DropdownMenuSubTrigger>
+          <DropdownMenuPortal>
+            <DropdownMenuSubContent class="w-72 p-3">
+              <CurrencyPreferenceContent />
+            </DropdownMenuSubContent>
+          </DropdownMenuPortal>
+        </DropdownMenuSub>
         <DropdownMenuSub>
           <DropdownMenuSubTrigger>
             <SunMoon />

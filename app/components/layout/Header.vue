@@ -37,6 +37,7 @@
             :trigger-type="triggerType"
             :dropdown-type="dropdownType"
           />
+          <CurrencyPreferencePopover />
           <ThemePopover v-if="config.theme.customizable" />
           <DropdownMenu>
             <DropdownMenuTrigger as-child>
