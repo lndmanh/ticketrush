@@ -203,6 +203,19 @@ class EventService extends IDatabaseService<Event> {
     return localizeEvent(event, translation)
   }
 
+  async localizeEventsForLocale(events: Event[], locale: string) {
+    const translations = await this.listEventTranslationsByIds(
+      [...new Set(events.map(event => event.id))],
+      locale,
+    )
+    const translationByEventId = mapEventTranslationsByEventId(translations)
+
+    return events.map(event => localizeEvent(
+      event,
+      translationByEventId.get(event.id),
+    ))
+  }
+
   async localizeTicketTypesForLocale<TicketTypeRow extends typeof tables.ticketTypes.$inferSelect>(ticketTypes: TicketTypeRow[], locale: string) {
     const translations = await this.listTicketTypeTranslationsByIds(
       ticketTypes.map(ticketType => ticketType.id),

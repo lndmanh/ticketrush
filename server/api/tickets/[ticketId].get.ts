@@ -22,15 +22,15 @@ export default defineEventHandler(async (event) => {
     throw apiError({ status: 404, statusText: 'Not Found', code: 'TICKET_NOT_FOUND', message: 'Ticket not found.' })
   }
 
-  const localizedEvent = ticket.event
-    ? await eventService.getLocalizedById(ticket.event.id, query.locale)
-    : undefined
-  const localizedOrderItems = ticket.orderItem
+  const localizedEvents = ticket.event && query.locale !== sourceLocale
+    ? await eventService.localizeEventsForLocale([ticket.event], query.locale)
+    : []
+  const localizedOrderItems = ticket.orderItem && query.locale !== sourceLocale
     ? await eventService.localizeOrderItemsForLocale([ticket.orderItem], query.locale)
     : []
   const response: Awaited<ReturnType<typeof checkoutService.getTicketByPublicId>> = {
     ...ticket,
-    event: localizedEvent ?? ticket.event,
+    event: localizedEvents[0] ?? ticket.event,
     orderItem: localizedOrderItems[0] ?? ticket.orderItem,
   }
   return success(response)
