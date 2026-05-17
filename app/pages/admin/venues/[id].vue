@@ -49,6 +49,20 @@ const { data: venueResponse, refresh: refreshVenue } = await useAPI<ApiResponse<
 const { data: eventsResponse } = await useAPI<ApiResponse<Event[]>>(() => apiRoutes.ADMIN_EVENTS)
 
 const venueDetail = computed<VenueDetail | null>(() => venueResponse.value?.success ? venueResponse.value.data : null)
+const pageTitle = computed(() => venueDetail.value?.venue.name ? `${venueDetail.value.venue.name} · ${t('admin_venue_detail.page_title')}` : t('admin_venue_detail.page_title'))
+const pageDescription = computed(() => t('admin_venue_detail.page_description'))
+
+useSeo({ title: pageTitle, description: pageDescription, type: 'website' })
+
+usePageBreadcrumbs(computed(() => {
+  if (!venueDetail.value || venueDetail.value.venue.id !== venueId.value) return undefined
+  return [
+    { title: t('home.breadcrumb'), href: '/' },
+    { title: t('admin.dashboard_breadcrumb'), href: '/admin' },
+    { title: t('nav.venues'), href: '/admin/venues' },
+    { title: venueDetail.value.venue.name, href: route.path },
+  ]
+}))
 const linkedEvents = computed<AdminEventListItem[]>(() => {
   const items = eventsResponse.value?.success ? eventsResponse.value.data : []
   return items.filter(event => event.venueId === venueId.value)

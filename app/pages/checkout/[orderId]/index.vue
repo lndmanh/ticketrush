@@ -29,7 +29,35 @@ const accountHolderOptionValue = 'account-holder'
 const { data: checkoutResponse, refresh } = await useAPI<ApiResponse<CheckoutDetailData>>(() => `/api/checkout/${orderId.value}`, {
   query: computed(() => ({ locale: locale.value })),
 })
-const checkout = computed(() => checkoutResponse.value?.data ?? null)
+const checkout = computed(() => checkoutResponse.value?.success ? checkoutResponse.value.data : null)
+const pageTitle = computed(() => checkout.value?.event?.title ? `${checkout.value.event.title} · ${t('checkout.page_title')}` : t('checkout.page_title'))
+const pageDescription = computed(() => t('checkout.page_description'))
+
+useSeo({
+  title: pageTitle,
+  description: pageDescription,
+  type: 'website',
+})
+
+usePageBreadcrumbs(computed(() => {
+  if (!checkout.value || checkout.value.order.publicId !== orderId.value) {
+    return undefined
+  }
+
+  const items = [
+    { title: t('home.breadcrumb'), href: '/' },
+  ]
+
+  if (checkout.value.event?.slug && checkout.value.event.title) {
+    items.push(
+      { title: t('events.breadcrumb'), href: '/events' },
+      { title: checkout.value.event.title, href: `/events/${checkout.value.event.slug}` },
+    )
+  }
+
+  items.push({ title: t('checkout.breadcrumb'), href: route.path })
+  return items
+}))
 
 if (checkout.value?.order.status === OrderStatus.Confirmed) {
   await navigateTo(getCheckoutSuccessPath(orderId.value), { replace: true })

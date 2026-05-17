@@ -26,6 +26,7 @@ const oauthLoadingProvider = ref<string | null>(null)
 const oauthPopup = ref<Window | null>(null)
 const oauthPopupTimeout = ref<ReturnType<typeof setTimeout> | null>(null)
 const oauthPopupCloseMonitor = ref<ReturnType<typeof setInterval> | null>(null)
+const { t } = useI18n()
 
 function getQueryString(value: string | string[] | null | undefined) {
   if (typeof value === 'string') {
@@ -86,6 +87,18 @@ function onOAuthPopupComplete(message: { url: string }) {
 }
 
 const oauthPopupListener = useOAuthPopupListener(onOAuthPopupComplete)
+
+definePageMeta({
+  title: 'auth.login_title',
+  breadcrumb: 'auth.login_breadcrumb',
+  layout: 'empty',
+})
+
+useSeo({
+  title: computed(() => t('auth.login_title')),
+  description: computed(() => t('auth.login_description')),
+  type: 'website',
+})
 
 const { handleSubmit, values } = useForm({
   initialValues: {
@@ -223,11 +236,6 @@ onBeforeUnmount(() => {
   oauthPopupListener.stop()
 })
 
-definePageMeta({
-  layout: 'empty',
-  title: 'Login',
-  breadcrumb: 'Login',
-})
 </script>
 
 <template>

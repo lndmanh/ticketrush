@@ -16,7 +16,7 @@ const hasCelebrated = ref(false)
 const { data: checkoutResponse } = await useAPI<ApiResponse<CheckoutDetailData>>(() => `/api/checkout/${orderId.value}`, {
   query: computed(() => ({ locale: locale.value })),
 })
-const checkout = computed(() => checkoutResponse.value?.data ?? null)
+const checkout = computed(() => checkoutResponse.value?.success ? checkoutResponse.value.data : null)
 const routeState = computed(() => getCheckoutSuccessRouteState(checkout.value?.order.status))
 
 if (checkout.value && routeState.value === 'checkout') {
@@ -50,7 +50,34 @@ const eventPath = computed(() => getCheckoutEventPath(checkout.value?.event?.slu
 const eventTimeLabel = computed(() => checkout.value?.eventSession?.startsAt ? formatDateTime(checkout.value.eventSession.startsAt) : t('checkout.session_time_tba'))
 const pageTitle = computed(() => isConfirmed.value ? t('checkout.success_title') : t('checkout.success_cancelled_title'))
 const pageDescription = computed(() => isConfirmed.value ? t('checkout.success_desc') : t('checkout.success_cancelled_desc'))
+const seoTitle = computed(() => checkout.value?.event?.title ? `${checkout.value.event.title} · ${pageTitle.value}` : pageTitle.value)
 const pageBadge = computed(() => isConfirmed.value ? t('checkout.success_eyebrow') : t('checkout.success_cancelled_badge'))
+
+useSeo({
+  title: seoTitle,
+  description: pageDescription,
+  type: 'website',
+})
+
+usePageBreadcrumbs(computed(() => {
+  if (!checkout.value || checkout.value.order.publicId !== orderId.value) {
+    return undefined
+  }
+
+  const items = [
+    { title: t('home.breadcrumb'), href: '/' },
+  ]
+
+  if (checkout.value.event?.slug && checkout.value.event.title) {
+    items.push(
+      { title: t('events.breadcrumb'), href: '/events' },
+      { title: checkout.value.event.title, href: getCheckoutEventPath(checkout.value.event.slug) },
+    )
+  }
+
+  items.push({ title: t('checkout.success_breadcrumb'), href: route.path })
+  return items
+}))
 
 function fireConfetti() {
   if (hasCelebrated.value || !isConfirmed.value || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
@@ -72,8 +99,8 @@ onMounted(() => {
 })
 
 definePageMeta({
-  title: 'checkout.order_confirmed',
-  breadcrumb: 'checkout.breadcrumb',
+  title: 'checkout.success_page_title',
+  breadcrumb: 'checkout.success_breadcrumb',
   layout: 'default',
   middleware: ['auth'],
 })
@@ -85,7 +112,7 @@ definePageMeta({
     class="relative flex min-h-[100dvh] items-center justify-center overflow-hidden bg-background px-4 py-10 text-foreground sm:px-6 lg:px-8"
   >
     <Card class="overflow-hidden rounded-[2rem] border-border/70 bg-card py-0 shadow-2xl shadow-primary/5">
-      <CardHeader class="flex flex-col gap-6 p-6 text-center sm:p-8">
+      <CardHeader class="flex flex-col gap-6 p-6 text-center pb-0">
         <div
           class="mx-auto flex size-12 items-center justify-center rounded-2xl"
           :class="isConfirmed ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'"
@@ -189,7 +216,7 @@ definePageMeta({
         </section>
       </CardContent>
 
-      <CardFooter class="flex flex-col gap-3 border-t p-6 sm:flex-row sm:items-center sm:justify-between sm:p-8">
+      <CardFooter class="flex flex-col gap-3 border-t p-6 sm:flex-row sm:items-center sm:justify-between">
         <Button
           v-if="isConfirmed"
           as-child

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { BarChart3, LayoutGrid, Settings2, ShoppingCart, Tickets } from '@lucide/vue'
+import { BarChart3, LayoutGrid, Settings2, ShoppingCart } from '@lucide/vue'
 
 const props = defineProps<{
   eventId: number
@@ -15,12 +15,7 @@ const links = computed(() => [
     icon: LayoutGrid,
   },
   {
-    label: t('admin.event_nav_seat_map'),
-    to: `/admin/events/${props.eventId}/seatmap`,
-    icon: Tickets,
-  },
-  {
-    label: t('admin.event_nav_pricing'),
+    label: 'Pricing',
     to: `/admin/events/${props.eventId}/pricing`,
     icon: Settings2,
   },
@@ -56,7 +51,7 @@ function isActive(target: string) {
             {{ $t('admin.event_workspace') }}
           </p>
           <p class="text-sm font-semibold leading-tight text-foreground">
-            {{ $t('admin.event_workspace_title') }}
+            Overview, pricing, sales, and ops
           </p>
           <p class="text-xs text-muted-foreground">
             {{ $t('admin.event_workspace_desc') }}

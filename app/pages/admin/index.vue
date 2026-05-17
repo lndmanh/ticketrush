@@ -32,6 +32,19 @@ const emptyDashboard: AdminDashboardResponse = {
 }
 
 const { t, locale } = useI18n()
+
+definePageMeta({
+  title: 'admin.dashboard_title',
+  breadcrumb: 'admin.dashboard_breadcrumb',
+  middleware: ['auth', 'admin'],
+  layout: 'dashboard',
+})
+
+useSeo({
+  title: computed(() => t('admin.dashboard_title')),
+  description: computed(() => t('admin.dashboard_desc')),
+  type: 'website',
+})
 const selectedRange = ref(DEFAULT_ADMIN_ANALYTICS_TIME_RANGE)
 const { data: dashboardResponse, refresh } = await useAPI<ApiResponse<AdminDashboardResponse>>(() => apiRoutes.ADMIN_DASHBOARD, {
   query: computed(() => ({ locale: locale.value, range: selectedRange.value })),
@@ -209,12 +222,6 @@ function formatCompactNumber(value: number) {
   })
 }
 
-definePageMeta({
-  title: 'admin.dashboard_title',
-  breadcrumb: 'admin.dashboard_breadcrumb',
-  middleware: ['auth', 'admin'],
-  layout: 'dashboard',
-})
 </script>
 
 <template>

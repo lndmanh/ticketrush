@@ -9,6 +9,7 @@ import type { BreadcrumbItemType } from '~~/types/common'
 const router = useRouter()
 const route = useRoute()
 const { t } = useI18n()
+const pageBreadcrumbs = useCurrentPageBreadcrumbs()
 
 function resolveTitle(title: string) {
   return title.includes('.') ? t(title) : title
@@ -31,6 +32,11 @@ function getRouteTitle(meta: { breadcrumb?: unknown, title?: unknown } | undefin
 }
 
 const breadcrumbs = computed<BreadcrumbItemType[]>(() => {
+  const pageBreadcrumbOverride = pageBreadcrumbs.value
+  if (pageBreadcrumbOverride && pageBreadcrumbOverride.path === route.path && pageBreadcrumbOverride.items.length > 0) {
+    return pageBreadcrumbOverride.items
+  }
+
   const path = route.path
   const crumbs: BreadcrumbItemType[] = [{ title: t('common.home'), href: '/' }]
 

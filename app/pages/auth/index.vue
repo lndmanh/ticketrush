@@ -1,13 +1,11 @@
-<template>
-  <div>
-    Navigating...
-  </div>
-</template>
-
 <script lang="ts" setup>
 // auto redirect to /auth/login
-useHead({
-  title: 'Login',
+const { t } = useI18n()
+
+useSeo({
+  title: computed(() => t('auth.login_title')),
+  description: computed(() => t('auth.login_description')),
+  type: 'website',
 })
 
 onMounted(() => {
@@ -15,7 +13,13 @@ onMounted(() => {
 })
 
 definePageMeta({
-  title: 'Login',
-  breadcrumb: 'Login',
+  title: 'auth.login_title',
+  breadcrumb: 'auth.login_breadcrumb',
 })
 </script>
+
+<template>
+  <div>
+    Navigating...
+  </div>
+</template>

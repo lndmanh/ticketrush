@@ -26,6 +26,7 @@ const oauthLoadingProvider = ref<string | null>(null)
 const oauthPopup = ref<Window | null>(null)
 const oauthPopupTimeout = ref<ReturnType<typeof setTimeout> | null>(null)
 const oauthPopupCloseMonitor = ref<ReturnType<typeof setInterval> | null>(null)
+const { t } = useI18n()
 
 function getQueryString(value: string | string[] | null | undefined) {
   if (typeof value === 'string') {
@@ -105,6 +106,18 @@ const form = useForm({
 })
 
 const { handleSubmit, values, meta, setFieldValue } = form
+
+definePageMeta({
+  title: 'auth.register_title',
+  breadcrumb: 'auth.register_breadcrumb',
+  layout: 'empty',
+})
+
+useSeo({
+  title: computed(() => t('auth.register_title')),
+  description: computed(() => t('auth.register_description')),
+  type: 'website',
+})
 
 const onSubmit = handleSubmit(async () => {
   const formEl = document.querySelector('form[action="/api/auth/register-password"]')
@@ -214,11 +227,6 @@ onBeforeUnmount(() => {
   oauthPopupListener.stop()
 })
 
-definePageMeta({
-  layout: 'empty',
-  title: 'Sign Up',
-  breadcrumb: 'Register',
-})
 </script>
 
 <template>

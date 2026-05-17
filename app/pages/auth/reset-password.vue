@@ -28,6 +28,7 @@ const showConfirmPassword = ref(false)
 const isSubmitting = ref(false)
 const error = ref('')
 const success = ref(false)
+const { t } = useI18n()
 
 const { handleSubmit, values, meta } = useForm({
   initialValues: { password: '', confirmPassword: '' },
@@ -70,9 +71,15 @@ const onSubmit = handleSubmit(async (formValues) => {
 })
 
 definePageMeta({
+  title: 'auth.reset_password_title',
+  breadcrumb: 'auth.reset_password_breadcrumb',
   layout: 'empty',
-  title: 'Reset Password',
-  breadcrumb: 'Reset Password',
+})
+
+useSeo({
+  title: computed(() => t('auth.reset_password_title')),
+  description: computed(() => t('auth.reset_password_description')),
+  type: 'website',
 })
 </script>
 

@@ -18,6 +18,17 @@ import { EventCatalogSort } from '#shared/commonEnums'
 
 const { t, locale } = useI18n()
 
+definePageMeta({
+  title: 'home.page_title',
+  breadcrumb: 'home.breadcrumb',
+})
+
+useSeo({
+  title: computed(() => t('home.page_title')),
+  description: computed(() => t('home.page_description')),
+  type: 'website',
+})
+
 const FEATURED_EVENT_LIMIT = 8
 const STADIUM_IMAGE = 'https://images.pexels.com/photos/31007653/pexels-photo-31007653.jpeg'
 

@@ -94,10 +94,16 @@ async function runTask(task: TaskDefinition) {
 }
 
 definePageMeta({
-  title: 'Tasks',
-  breadcrumb: 'Tasks',
+  title: 'admin.tasks_title',
+  breadcrumb: 'admin.tasks_breadcrumb',
   middleware: ['auth', 'admin'],
   layout: 'dashboard',
+})
+
+useSeo({
+  title: computed(() => t('admin.tasks.title')),
+  description: computed(() => t('admin.tasks.desc')),
+  type: 'website',
 })
 </script>
 

@@ -13,6 +13,7 @@ const turnstileToken = ref('')
 const isSubmitting = ref(false)
 const isSubmitted = ref(false)
 const error = ref('')
+const { t } = useI18n()
 
 const { handleSubmit } = useForm({
   initialValues: { email: '' },
@@ -45,9 +46,15 @@ const onSubmit = handleSubmit(async (values) => {
 })
 
 definePageMeta({
+  title: 'auth.forgot_password_title',
+  breadcrumb: 'auth.forgot_password_breadcrumb',
   layout: 'empty',
-  title: 'Forgot Password',
-  breadcrumb: 'Forgot Password',
+})
+
+useSeo({
+  title: computed(() => t('auth.forgot_password_title')),
+  description: computed(() => t('auth.forgot_password_description')),
+  type: 'website',
 })
 </script>
 

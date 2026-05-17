@@ -37,6 +37,27 @@ const { data: detailResponse, error: detailFetchError } = await useAPI<ApiRespon
 const detail = computed(() => detailResponse.value?.success ? detailResponse.value.data : null)
 const event = computed(() => detail.value?.event ?? null)
 const session = computed(() => detail.value?.session ?? null)
+const pageTitle = computed(() => event.value?.title ? `${event.value.title} · ${t('seats.page_title')}` : t('seats.page_title'))
+const pageDescription = computed(() => t('seats.page_description'))
+
+useSeo({
+  title: pageTitle,
+  description: pageDescription,
+  type: 'website',
+})
+
+usePageBreadcrumbs(computed(() => {
+  if (!event.value || event.value.slug !== slug.value || !session.value || session.value.publicId !== sessionPublicId.value) {
+    return undefined
+  }
+
+  return [
+    { title: t('home.breadcrumb'), href: '/' },
+    { title: t('events.breadcrumb'), href: '/events' },
+    { title: event.value.title, href: `/events/${slug.value}` },
+    { title: session.value.label || t('seats.breadcrumb'), href: route.path },
+  ]
+}))
 
 const { data: gateResponse, error: gateFetchError } = await useAPI<ApiResponse<EventSessionGateResponse>>(() => apiRoutes.eventSessionGate(sessionPublicId.value), {
   key: gateFetchKey,
