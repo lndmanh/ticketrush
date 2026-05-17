@@ -11,6 +11,9 @@
             class="flex flex-1 min-w-0 flex-col overflow-hidden transition-[padding-right] duration-200 ease-out"
           >
             <AppLayout>
+              <template #title-controls>
+                <DashboardSettingsPopover />
+              </template>
               <slot />
             </AppLayout>
             <HotSearch />
@@ -26,6 +29,7 @@ import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar'
 import HotSearch from '@/components/HotSearch.vue'
 import AppLayout from '@/components/AppLayout.vue'
 import AppSidebar from '@/components/AppSidebar.vue'
+import DashboardSettingsPopover from '@/components/DashboardSettingsPopover.vue'
 import LockedAccountBanner from '@/components/LockedAccountBanner.vue'
 
 const { sidebarVariant: contextVariant } = useSidebarContext()

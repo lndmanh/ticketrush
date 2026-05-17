@@ -240,6 +240,7 @@ const { loggedIn, user } = useUserSession()
             :is="titleControls"
             v-if="titleControls"
           />
+          <slot name="title-controls" />
         </div>
       </div>
     </header>
