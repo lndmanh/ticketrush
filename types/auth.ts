@@ -24,3 +24,10 @@ export interface OAuthProfile {
   name: string
   avatarUrl?: string
 }
+
+export type GoogleOneTapStatus = 'signed-in' | 'created'
+
+export interface GoogleOneTapPayload {
+  authenticated: true
+  status: GoogleOneTapStatus
+}

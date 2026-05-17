@@ -214,12 +214,14 @@
                 <FieldLabel for="venue-dialog-cover-image">
                   {{ $t('admin.venues.cover_image') }}
                 </FieldLabel>
-                <Input
+                <ImageUpload
                   id="venue-dialog-cover-image"
-                  :model-value="field.value"
-                  :placeholder="$t('admin.venues.cover_image_placeholder')"
+                  :model-value="field.value ?? ''"
+                  :upload-kind="ImageUploadKind.Venue"
                   :aria-invalid="!!errors.length"
+                  :disabled="dialogLoading"
                   @update:model-value="field.onChange"
+                  @blur="field.onBlur"
                 />
                 <FieldDescription>{{ $t('common.optional') }}</FieldDescription>
                 <FieldError
@@ -257,11 +259,13 @@ import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Field as VeeField, useForm } from 'vee-validate'
 import { toast } from 'vue-sonner'
+import { ImageUploadKind } from '#shared/constants/imageUpload'
 import type { Venue } from '#shared/db'
 import { venueBuilderSchema } from '#shared/schemas/ticketingSchema'
 import type { VenueBuilderInput } from '#shared/schemas/ticketingSchema'
 import { Rows3 } from '@lucide/vue'
 import { getCountryOptions, getVietnamProvinceCityOptions, VIETNAM_COUNTRY_VALUE } from '#shared/constants/location'
+import ImageUpload from '@/components/ui/image-upload/ImageUpload.vue'
 import DataTable from '@/components/DataTable.vue'
 import { getVenueLayoutPresetSections, venueLayoutPresets } from '@/lib/venueLayoutPresets'
 import { apiRequest } from '@/utils/apiRequest'

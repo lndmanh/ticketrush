@@ -2,6 +2,7 @@
 import { BanknoteIcon, ChevronsUpDown, LogOut, SunMoon, Settings, LogIn, UsersIcon, LanguagesIcon } from '@lucide/vue'
 import { useLocalStorage } from '@vueuse/core'
 import ThemeSwitcher from '@/components/ThemeSwitcher.vue'
+import { disableGoogleOneTapAutoSelect } from '@/utils/googleOneTap'
 
 const { user, clear, loggedIn } = useUserSession()
 const { locale: i18nLocale, locales, setLocale } = useI18n()
@@ -12,7 +13,8 @@ function getInitials(name: string) {
   return name.split(' ').map(n => n[0]).join('').toUpperCase()
 }
 
-function logout() {
+async function logout() {
+  await disableGoogleOneTapAutoSelect()
   clear().then(() => {
     location.reload()
   })

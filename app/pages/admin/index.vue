@@ -226,7 +226,6 @@ function formatCompactNumber(value: number) {
     maximumFractionDigits: 1,
   })
 }
-
 </script>
 
 <template>

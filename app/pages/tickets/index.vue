@@ -275,7 +275,6 @@ function formatEventTime(value: string | Date | null | undefined) {
 function getShortTicketId(value: string) {
   return value.length > 10 ? value.slice(-10) : value
 }
-
 </script>
 
 <template>

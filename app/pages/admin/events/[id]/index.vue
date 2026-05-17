@@ -310,8 +310,12 @@ definePageMeta({
             variant="outline"
           >
             <ItemContent class="min-w-0">
-              <ItemTitle class="break-words">{{ item.label }}</ItemTitle>
-              <ItemDescription class="break-words">{{ item.hint }}</ItemDescription>
+              <ItemTitle class="break-words">
+                {{ item.label }}
+              </ItemTitle>
+              <ItemDescription class="break-words">
+                {{ item.hint }}
+              </ItemDescription>
             </ItemContent>
             <div class="flex items-start justify-between gap-3">
               <Badge variant="outline">

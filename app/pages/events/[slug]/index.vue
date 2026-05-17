@@ -849,8 +849,8 @@ definePageMeta({
 
       <div
         ref="recommendedCarouselRef"
-        class="-mx-4 flex snap-x gap-4 overflow-x-auto px-4 pb-4 [scrollbar-width:none] sm:mx-0 sm:px-0 [&::-webkit-scrollbar]:hidden"
-        data-lenis-prevent
+        class="-mx-4 flex snap-x gap-4 overflow-x-auto overscroll-x-contain px-4 pb-4 [scrollbar-width:none] sm:mx-0 sm:px-0 [&::-webkit-scrollbar]:hidden"
+        data-lenis-prevent-horizontal
         @scroll="updateRecommendedCarouselState"
       >
         <div

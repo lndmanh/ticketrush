@@ -2,6 +2,7 @@
 import type { z } from 'zod'
 import { Field as VeeField, useForm } from 'vee-validate'
 import { toast } from 'vue-sonner'
+import { ImageUploadKind } from '#shared/constants/imageUpload'
 import { createVenueSchema } from '#shared/schemas/ticketingSchema'
 import type { Event } from '#shared/db'
 import type { VenueSectionDraftInput } from '#shared/schemas/ticketingSchema'
@@ -9,6 +10,7 @@ import type { ApiResponse } from '~~/types/api'
 import type { SeatMapSeatClickPayload } from '~~/types/seatmap'
 import type { VenueDetail } from '~~/types/venues'
 import { ArrowLeft, Building2, CalendarRange, LayoutGrid, Rows3, Save, Users, X } from '@lucide/vue'
+import ImageUpload from '@/components/ui/image-upload/ImageUpload.vue'
 import AdminVenuesVenueSeatLayoutEditor from '@/components/admin/venues/VenueSeatLayoutEditor.vue'
 import { createVenueSeatMapPreviewSeats } from '@/lib/venueSeatMapPreview'
 import {
@@ -592,12 +594,14 @@ definePageMeta({
                     <FieldLabel for="edit-venue-cover-image">
                       {{ $t('admin_venue_detail.cover_image_label') }}
                     </FieldLabel>
-                    <Input
+                    <ImageUpload
                       id="edit-venue-cover-image"
-                      :model-value="field.value"
-                      :placeholder="$t('admin.venues.cover_image_placeholder')"
+                      :model-value="field.value ?? ''"
+                      :upload-kind="ImageUploadKind.Venue"
                       :aria-invalid="!!errors.length"
+                      :disabled="isSaving"
                       @update:model-value="field.onChange"
+                      @blur="field.onBlur"
                     />
                     <FieldDescription>{{ $t('common.optional') }}</FieldDescription>
                     <FieldError
