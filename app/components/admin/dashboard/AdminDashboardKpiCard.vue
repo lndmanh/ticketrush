@@ -23,10 +23,10 @@ const trendClass = computed(() => {
   <Card class="group h-full overflow-hidden border-border/70 bg-card/80 shadow-sm">
     <CardHeader class="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3 border-b !pb-0">
       <div class="min-w-0">
-        <CardTitle class="text-sm font-bold">
+        <CardTitle class="text-lg font-bold">
           {{ label }}
         </CardTitle>
-        <CardDescription class="break-words">
+        <CardDescription class="wrap-break-word text-sm pt-2">
           {{ description }}
         </CardDescription>
       </div>
@@ -36,7 +36,7 @@ const trendClass = computed(() => {
     </CardHeader>
     <CardContent class="flex flex-col gap-3">
       <div class="flex min-w-0 flex-wrap items-end gap-2">
-        <p class="min-w-0 break-words font-mono text-2xl font-semibold leading-none tracking-[-0.06em] text-foreground sm:text-3xl xl:text-4xl">
+        <p class="min-w-0 break-words font-mono text-2xl font-semibold leading-none tracking-[-0.06em] text-foreground sm:text-2xl xl:text-3xl">
           {{ value }}
         </p>
         <Badge

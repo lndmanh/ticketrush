@@ -27,106 +27,6 @@
       </div>
     </section>
 
-    <section class="space-y-4">
-      <div class="grid gap-4 md:grid-cols-3">
-        <Card class="overflow-hidden border-0 bg-linear-to-br from-foreground/92 via-foreground/86 to-foreground/76 text-background shadow-sm">
-          <CardContent class="flex h-full flex-col justify-between gap-5">
-            <div class="flex items-center justify-between gap-3">
-              <p class="text-[11px] font-medium uppercase tracking-[0.24em] text-background/70">
-                {{ $t('admin.events.tracked') }}
-              </p>
-              <span class="rounded-full bg-background/12 px-2.5 py-1 text-xs font-medium text-background/90">
-                {{ $t('admin.events.registry') }}
-              </span>
-            </div>
-            <div class="space-y-2">
-              <p class="text-4xl font-semibold tracking-[-0.06em]">
-                {{ rows.length }}
-              </p>
-              <p class="text-sm leading-6 text-background/72">
-                {{ $t('admin.events.catalog_desc') }}
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card class="overflow-hidden border-0 bg-linear-to-br from-amber-400 via-orange-400 to-rose-400 text-white shadow-sm">
-          <CardContent class="flex h-full flex-col justify-between gap-5">
-            <div class="flex items-center justify-between gap-3">
-              <p class="text-[11px] font-medium uppercase tracking-[0.24em] text-white/70">
-                {{ $t('admin.events.drafts') }}
-              </p>
-              <span class="rounded-full bg-white/15 px-2.5 py-1 text-xs font-medium text-white/90">
-                {{ $t('admin.events.in_progress') }}
-              </span>
-            </div>
-            <div class="space-y-2">
-              <p class="text-4xl font-semibold tracking-[-0.06em]">
-                {{ draftRows.length }}
-              </p>
-              <p class="text-sm leading-6 text-white/80">
-                {{ $t('admin.events.drafts_desc') }}
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card class="overflow-hidden border-0 bg-linear-to-br from-emerald-400 via-teal-400 to-cyan-400 text-white shadow-sm">
-          <CardContent class="flex h-full flex-col justify-between gap-5">
-            <div class="flex items-center justify-between gap-3">
-              <p class="text-[11px] font-medium uppercase tracking-[0.24em] text-white/70">
-                {{ $t('admin.events.live_label') }}
-              </p>
-              <span class="rounded-full bg-white/15 px-2.5 py-1 text-xs font-medium text-white/90">
-                {{ $t('admin.events.selling_now') }}
-              </span>
-            </div>
-            <div class="space-y-2">
-              <p class="text-4xl font-semibold tracking-[-0.06em]">
-                {{ liveRows.length }}
-              </p>
-              <p class="text-sm leading-6 text-white/80">
-                {{ $t('admin.events.live_desc') }}
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      <AdminFeaturedEventCard
-        v-if="featuredPriorityEvent"
-        :eyebrow="$t('admin.events.priority_event')"
-        :title="featuredPriorityEvent.title"
-        :venue-name="featuredPriorityEvent.venueName"
-        :starts-at="featuredPriorityEvent.startsAt"
-        :status="featuredPriorityEvent.status"
-        :href="`/admin/events/${featuredPriorityEvent.id}`"
-        :open-label="$t('admin.events.open_event')"
-        :leading-icon="Rocket"
-      >
-        <template #actions>
-          <Button
-            v-if="featuredPriorityEvent.status === EventStatus.Draft"
-            size="icon-sm"
-            variant="outline"
-            :title="$t('admin.events.publish_event')"
-            @click="publishEvent(featuredPriorityEvent.id)"
-          >
-            <Rocket class="size-4" />
-          </Button>
-          <Button
-            v-else
-            size="icon-sm"
-            variant="outline"
-            :title="$t('admin.events.move_to_draft')"
-            @click="unpublishEvent(featuredPriorityEvent.id)"
-          >
-            <ArchiveIcon class="size-4" />
-          </Button>
-        </template>
-      </AdminFeaturedEventCard>
-    </section>
-
     <section
       v-if="unfinishedDraft"
       class="space-y-3"
@@ -135,13 +35,10 @@
         <h3 class="text-lg font-semibold tracking-[-0.03em] text-foreground">
           {{ $t('admin.events.unfinished_draft') }}
         </h3>
-        <p class="text-sm text-muted-foreground">
-          {{ $t('admin.events.unfinished_draft_desc') }}
-        </p>
       </div>
 
       <Card class="shadow-none">
-        <CardContent class="flex flex-col gap-4 py-4 sm:flex-row sm:items-center sm:justify-between">
+        <CardContent class="flex flex-col gap-4 py-0 sm:flex-row sm:items-center sm:justify-between">
           <div class="min-w-0 space-y-1">
             <div class="flex flex-wrap items-center gap-2">
               <p class="truncate text-sm font-medium text-foreground">

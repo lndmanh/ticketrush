@@ -3,16 +3,18 @@ import { computed, ref, watch } from 'vue'
 import { Field as VeeField, useForm } from 'vee-validate'
 import { motion } from 'motion-v'
 import { toast } from 'vue-sonner'
-import { Check, Circle, Cloud, CloudAlert, Dot, Loader2 } from '@lucide/vue'
+import { Check, Circle, Cloud, CloudAlert, Dot, Loader2, MapPin, Search, SearchX, Users } from '@lucide/vue'
 import { ImageUploadKind } from '#shared/constants/imageUpload'
 import ImageUpload from '@/components/ui/image-upload/ImageUpload.vue'
 import { apiRequest } from '@/utils/apiRequest'
 import { parseApiError } from '@/utils/apiError'
 import { getDisplayDateLocale } from '@/lib/localizedEvents'
 import { formatDateTime, formatTime } from '@/lib/utils'
+import { filterVenuePickerOptions, getVenuePageCount, getVenuePageItems } from '@/lib/venuePicker'
 import { apiRoutes } from '#shared/apiRoutes'
 import { eventComposerSchema, getEventSessionTimingIssues } from '#shared/schemas/ticketingSchema'
 import type { Venue } from '#shared/db'
+import type { VenuePickerOption } from '@/lib/venuePicker'
 import type { EventAutosaveDraftInput, EventComposerInput } from '#shared/schemas/ticketingSchema'
 import type { ApiResponse } from '~~/types/api'
 import type { AutosaveDraftDeleteData, AutosaveDraftDetail } from '~~/types/admin-events'
@@ -21,12 +23,8 @@ import type { VenueDetail, VenueDetailSection } from '~~/types/venues'
 import { EventStatus, PricingMode } from '#shared/commonEnums'
 import { createVenueSeatMapPreviewSeats } from '@/lib/venueSeatMapPreview'
 
-interface VenueOption {
-  id: number
-  name: string
-}
-
 const { locale, t } = useI18n()
+const VENUE_PAGE_SIZE = 6
 
 definePageMeta({
   title: 'admin.event_create.page_title',
@@ -73,8 +71,14 @@ const stepSchemas = {
 }
 
 const { data: venuesResponse } = await useAPI<ApiResponse<Venue[]>>(() => apiRoutes.ADMIN_VENUES)
-const venues = computed<VenueOption[]>(() => venuesResponse.value?.data ?? [])
+const venues = computed<VenuePickerOption[]>(() => venuesResponse.value?.data ?? [])
+const venueSearch = ref('')
+const venuePage = ref(1)
+const filteredVenues = computed(() => filterVenuePickerOptions(venues.value, venueSearch.value))
+const venuePageCount = computed(() => getVenuePageCount(filteredVenues.value.length, VENUE_PAGE_SIZE))
+const paginatedVenues = computed(() => getVenuePageItems(filteredVenues.value, venuePage.value, VENUE_PAGE_SIZE))
 const selectedVenueDetail = ref<VenueDetail | null>(null)
+const isLoadingVenueDetail = ref(false)
 const currentStep = ref(1)
 const highestReachedStep = ref(1)
 const isSaving = ref(false)
@@ -116,6 +120,13 @@ const {
   validationSchema: eventComposerSchema,
   keepValuesOnUnmount: true,
 })
+
+const selectedVenue = computed(() => venues.value.find(venue => venue.id === values.venueId) ?? null)
+const canContinueFromVenueStep = computed(() => Boolean(
+  values.venueId
+  && selectedVenueDetail.value?.venue.id === values.venueId
+  && !isLoadingVenueDetail.value,
+))
 
 const hasAutosavableContent = computed(() => {
   return Boolean(
@@ -475,39 +486,73 @@ function queueAutosave(delay = 900) {
   }, delay)
 }
 
+function goToPreviousVenuePage() {
+  venuePage.value = Math.max(venuePage.value - 1, 1)
+}
+
+function goToNextVenuePage() {
+  venuePage.value = Math.min(venuePage.value + 1, venuePageCount.value)
+}
+
+watch(venueSearch, () => {
+  venuePage.value = 1
+})
+
+watch(venuePageCount, (pageCount) => {
+  if (venuePage.value > pageCount) {
+    venuePage.value = pageCount
+  }
+})
+
 watch(() => values.venueId, async (venueId) => {
   venueLoadRequestId += 1
   const requestId = venueLoadRequestId
   const previousVenueId = selectedVenueDetail.value?.venue.id
+  selectedVenueDetail.value = null
 
   if (!venueId) {
-    selectedVenueDetail.value = null
+    isLoadingVenueDetail.value = false
     return
   }
 
-  const detail = await apiRequest<ApiResponse<VenueDetail>>(apiRoutes.adminVenue(venueId))
-  if (requestId !== venueLoadRequestId) {
-    return
+  isLoadingVenueDetail.value = true
+
+  try {
+    const detail = await apiRequest<ApiResponse<VenueDetail>>(apiRoutes.adminVenue(venueId))
+    if (requestId !== venueLoadRequestId) {
+      return
+    }
+
+    if (!detail.success) {
+      toast.error(parseApiError(detail).message)
+      selectedVenueDetail.value = null
+      return
+    }
+
+    selectedVenueDetail.value = detail.data
+
+    const sessions = values.sessions ?? []
+    const shouldRebuildSessions = !sessions.length
+      || sessions.some(session => session.venueId !== venueId)
+      || (previousVenueId !== undefined && previousVenueId !== venueId)
+
+    if (shouldRebuildSessions) {
+      setFieldValue('sessions', rebuildSessionsForVenue(venueId, detail.data.sections))
+      if (Object.keys(sessionValidationErrors.value).length) {
+        clearSessionValidationErrors()
+        sessionValidationErrors.value = buildSessionValidationErrors()
+      }
+    }
   }
-
-  if (!detail.success) {
-    toast.error(parseApiError(detail).message)
-    selectedVenueDetail.value = null
-    return
+  catch (error) {
+    if (requestId === venueLoadRequestId) {
+      toast.error(parseApiError(error).message)
+      selectedVenueDetail.value = null
+    }
   }
-
-  selectedVenueDetail.value = detail.data
-
-  const sessions = values.sessions ?? []
-  const shouldRebuildSessions = !sessions.length
-    || sessions.some(session => session.venueId !== venueId)
-    || (previousVenueId !== undefined && previousVenueId !== venueId)
-
-  if (shouldRebuildSessions) {
-    setFieldValue('sessions', rebuildSessionsForVenue(venueId, detail.data.sections))
-    if (Object.keys(sessionValidationErrors.value).length) {
-      clearSessionValidationErrors()
-      sessionValidationErrors.value = buildSessionValidationErrors()
+  finally {
+    if (requestId === venueLoadRequestId) {
+      isLoadingVenueDetail.value = false
     }
   }
 })
@@ -664,6 +709,11 @@ function applyStepErrors(step: number) {
   const schema = getStepSchema(step)
   const result = schema.safeParse(values)
   if (result.success) {
+    if (step === 2 && !canContinueFromVenueStep.value) {
+      toast.error(t('admin.event_create.choose_venue_prompt'))
+      return false
+    }
+
     return true
   }
 
@@ -975,14 +1025,6 @@ onUnmounted(() => {
           class="mx-auto grid max-w-6xl gap-5 xl:grid-cols-[minmax(0,42rem)_minmax(20rem,1fr)]"
         >
           <Card class="rounded-3xl shadow-sm">
-            <CardHeader>
-              <CardTitle class="text-base">
-                {{ $t('admin.event_create.identity') }}
-              </CardTitle>
-              <CardDescription>
-                {{ $t('admin.event_create.step_basics_desc') }}
-              </CardDescription>
-            </CardHeader>
             <CardContent>
               <FieldSet>
                 <FieldLegend>{{ $t('admin.event_create.event_basics') }}</FieldLegend>
@@ -1078,111 +1120,25 @@ onUnmounted(() => {
               </FieldSet>
             </CardContent>
           </Card>
-
-          <div class="flex flex-col gap-5">
-            <Card class="rounded-3xl shadow-sm">
-              <CardHeader>
-                <CardTitle class="text-base">
-                  {{ $t('admin.event_create.cover_image_label') }}
-                </CardTitle>
-                <CardDescription>{{ $t('common.optional') }}</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <VeeField
-                  v-slot="{ field, errors }"
-                  name="coverImage"
-                >
-                  <Field :data-invalid="!!errors.length">
-                    <FieldLabel for="event-create-cover-image">
-                      {{ $t('admin.event_create.cover_image_label') }}
-                    </FieldLabel>
-                    <ImageUpload
-                      id="event-create-cover-image"
-                      :model-value="field.value ?? ''"
-                      :upload-kind="ImageUploadKind.Event"
-                      :aria-invalid="!!errors.length"
-                      @update:model-value="field.onChange"
-                      @blur="field.onBlur"
-                    />
-                    <FieldDescription>{{ $t('common.optional') }}</FieldDescription>
-                    <FieldError
-                      v-if="errors.length"
-                      :errors="errors"
-                    />
-                  </Field>
-                </VeeField>
-              </CardContent>
-            </Card>
-
-            <Card class="rounded-3xl bg-muted/20 shadow-none">
-              <CardHeader>
-                <CardTitle class="text-base">
-                  {{ values.title || $t('admin.event_create.title_placeholder') }}
-                </CardTitle>
-                <CardDescription>
-                  {{ values.subtitle || $t('admin.event_create.subtitle_placeholder') }}
-                </CardDescription>
-              </CardHeader>
-              <CardContent class="flex flex-col gap-4 text-sm text-muted-foreground">
-                <p class="line-clamp-4 leading-6">
-                  {{ values.description || $t('admin.event_create.description_placeholder') }}
-                </p>
-                <div class="flex flex-wrap gap-2">
-                  <Badge variant="outline">
-                    {{ values.slug || $t('admin.event_create.slug_placeholder') }}
-                  </Badge>
-                  <Badge variant="outline">
-                    {{ values.coverImage ? $t('admin.event_create.cover_image_label') : $t('common.optional') }}
-                  </Badge>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-
-        <div
-          v-show="currentStep === 2"
-          class="mx-auto grid max-w-6xl gap-5 xl:grid-cols-[minmax(18rem,24rem)_minmax(0,1fr)]"
-        >
-          <Card class="h-fit rounded-3xl shadow-sm">
-            <CardHeader>
-              <CardTitle class="text-base">
-                {{ $t('admin.event_create.venue_label') }}
-              </CardTitle>
-              <CardDescription>
-                {{ $t('admin.event_create.step_venue_desc') }}
-              </CardDescription>
-            </CardHeader>
+          <Card class="rounded-3xl shadow-sm">
             <CardContent>
               <VeeField
                 v-slot="{ field, errors }"
-                name="venueId"
+                name="coverImage"
               >
                 <Field :data-invalid="!!errors.length">
-                  <FieldLabel for="event-create-venue">
-                    {{ $t('admin.event_create.venue_label') }}
+                  <FieldLabel for="event-create-cover-image">
+                    {{ $t('admin.event_create.cover_image_label') }}
                   </FieldLabel>
-                  <Select
-                    :model-value="field.value ? String(field.value) : undefined"
-                    @update:model-value="field.onChange(Number($event))"
-                  >
-                    <SelectTrigger
-                      id="event-create-venue"
-                      class="w-full"
-                      :aria-invalid="!!errors.length"
-                    >
-                      <SelectValue :placeholder="field.value ? undefined : $t('admin.event_create.choose_venue')" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem
-                        v-for="venue in venues"
-                        :key="venue.id"
-                        :value="String(venue.id)"
-                      >
-                        {{ venue.name }}
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <ImageUpload
+                    id="event-create-cover-image"
+                    :model-value="field.value ?? ''"
+                    :upload-kind="ImageUploadKind.Event"
+                    :aria-invalid="!!errors.length"
+                    @update:model-value="field.onChange"
+                    @blur="field.onBlur"
+                  />
+                  <FieldDescription>{{ $t('common.optional') }}</FieldDescription>
                   <FieldError
                     v-if="errors.length"
                     :errors="errors"
@@ -1191,11 +1147,144 @@ onUnmounted(() => {
               </VeeField>
             </CardContent>
           </Card>
+        </div>
+
+        <div
+          v-show="currentStep === 2"
+          class="mx-auto max-w-6xl space-y-6"
+        >
+          <Card class="h-fit rounded-3xl shadow-sm">
+            <CardContent>
+              <VeeField
+                v-slot="{ field, errors }"
+                name="venueId"
+              >
+                <Field
+                  :data-invalid="!!errors.length"
+                  class="gap-4"
+                >
+                  <FieldLabel id="event-create-venue-label">
+                    {{ $t('admin.event_create.venue_label') }}
+                  </FieldLabel>
+                  <div class="relative">
+                    <Search class="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      id="event-create-venue-search"
+                      v-model="venueSearch"
+                      :placeholder="$t('admin.venues.search_venues')"
+                      :aria-label="$t('admin.venues.search_venues')"
+                      class="pl-9"
+                    />
+                  </div>
+
+                  <ItemGroup
+                    v-if="paginatedVenues.length"
+                    aria-labelledby="event-create-venue-label"
+                    :aria-describedby="errors.length ? 'event-create-venue-error' : undefined"
+                    :aria-invalid="!!errors.length"
+                    class="grid gap-3 md:grid-cols-2 xl:grid-cols-3"
+                  >
+                    <Item
+                      v-for="venue in paginatedVenues"
+                      :key="venue.id"
+                      as="button"
+                      type="button"
+                      variant="outline"
+                      class="w-full cursor-pointer items-start rounded-2xl p-4 text-left transition-all hover:-translate-y-0.5 hover:border-primary/50 hover:bg-accent/50 active:scale-[0.98]"
+                      :class="[
+                        field.value === venue.id && 'border-primary bg-primary/5 shadow-sm ring-2 ring-primary/20',
+                      ]"
+                      :aria-pressed="field.value === venue.id"
+                      :aria-label="`${$t('admin.event_create.venue_label')}: ${venue.name}`"
+                      @click="field.onChange(venue.id)"
+                    >
+                      <ItemMedia
+                        variant="icon"
+                        class="mt-0.5"
+                      >
+                        <MapPin />
+                      </ItemMedia>
+                      <ItemContent class="min-w-0 gap-2">
+                        <div class="min-w-0">
+                          <ItemTitle class="max-w-full truncate">
+                            {{ venue.name }}
+                          </ItemTitle>
+                          <ItemDescription class="truncate">
+                            {{ venue.city }}, {{ venue.country }}
+                          </ItemDescription>
+                        </div>
+                        <ItemDescription class="truncate text-xs">
+                          {{ venue.address }}
+                        </ItemDescription>
+                      </ItemContent>
+                      <ItemActions class="ml-auto flex-col items-end gap-2">
+                        <Badge
+                          variant="secondary"
+                          class="gap-1 rounded-full"
+                        >
+                          <Users class="size-3" />
+                          {{ venue.capacity }}
+                        </Badge>
+                        <Check
+                          v-if="field.value === venue.id"
+                          class="size-4 text-primary"
+                        />
+                      </ItemActions>
+                    </Item>
+                  </ItemGroup>
+
+                  <Empty
+                    v-else
+                    class="rounded-2xl border border-dashed px-4 py-8"
+                  >
+                    <EmptyHeader>
+                      <EmptyMedia variant="icon">
+                        <SearchX />
+                      </EmptyMedia>
+                      <EmptyTitle>{{ $t('errors.no_result') }}</EmptyTitle>
+                      <EmptyDescription>{{ $t('blog.no_results_description') }}</EmptyDescription>
+                    </EmptyHeader>
+                  </Empty>
+
+                  <FieldError
+                    v-if="errors.length"
+                    id="event-create-venue-error"
+                    :errors="errors"
+                  />
+                </Field>
+              </VeeField>
+            </CardContent>
+            <CardFooter class="flex flex-col gap-3 border-t sm:flex-row sm:items-center sm:justify-between">
+              <p class="text-sm text-muted-foreground">
+                {{ filteredVenues.length }} · {{ venuePage }} / {{ venuePageCount }}
+              </p>
+              <div class="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  :disabled="venuePage <= 1"
+                  @click="goToPreviousVenuePage"
+                >
+                  {{ $t('data_table.previous') }}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  :disabled="venuePage >= venuePageCount"
+                  @click="goToNextVenuePage"
+                >
+                  {{ $t('data_table.next') }}
+                </Button>
+              </div>
+            </CardFooter>
+          </Card>
 
           <Card class="rounded-3xl shadow-sm">
             <CardHeader>
               <CardTitle class="text-base">
-                {{ selectedVenueDetail?.venue.name || $t('admin.event_create.choose_venue') }}
+                {{ selectedVenueDetail?.venue.name || selectedVenue?.name || $t('admin.event_create.choose_venue') }}
               </CardTitle>
               <CardDescription>
                 {{ $t('admin.event_create.choose_venue_prompt') }}
@@ -1203,7 +1292,19 @@ onUnmounted(() => {
             </CardHeader>
             <CardContent class="flex flex-col gap-6">
               <div
-                v-if="selectedVenueDetail"
+                v-if="isLoadingVenueDetail"
+                class="flex flex-col gap-4"
+              >
+                <div class="grid gap-3 sm:grid-cols-3">
+                  <Skeleton class="h-20 rounded-2xl" />
+                  <Skeleton class="h-20 rounded-2xl" />
+                  <Skeleton class="h-20 rounded-2xl" />
+                </div>
+                <Skeleton class="h-72 rounded-3xl" />
+              </div>
+
+              <div
+                v-else-if="selectedVenueDetail"
                 class="flex flex-col gap-4"
               >
                 <div class="grid gap-3 sm:grid-cols-3">
@@ -1447,6 +1548,7 @@ onUnmounted(() => {
             <Button
               v-if="currentStep < steps.length"
               type="button"
+              :disabled="currentStep === 2 && !canContinueFromVenueStep"
               class="active:scale-[0.96]"
               @click="goNext"
             >
