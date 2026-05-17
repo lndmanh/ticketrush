@@ -6,13 +6,12 @@ import { parseApiError } from '@/utils/apiError'
 import { getEventSessionGateFetchKey, getEventSessionSeatmapFetchKey } from '@/utils/eventSessionAccessData'
 import { getDisplayDateLocale } from '@/lib/localizedEvents'
 import { formatDateTime } from '@/lib/utils'
+import { resolveSeatSelectionAfterRefresh } from '@/lib/seatSelectionRefresh'
 import { apiRoutes } from '#shared/apiRoutes'
-import { parseSeatmapRealtimeMessage } from '~~/types/seatmap-realtime'
-import type { SeatStatusDeltaChange } from '~~/types/seatmap-realtime'
 import type { ApiResponse } from '~~/types/api'
 import type { EventSessionDetailResponse } from '~~/types/events'
 import type { HoldData, EventSessionGateResponse } from '~~/types/ticketing'
-import type { SessionSeatMapResponse } from '~~/types/seatmap'
+import type { SessionSeatMapResponse, SessionSeatMapVersionResponse } from '~~/types/seatmap'
 import type { SelfAttendeeStatusModel } from '~~/types/models/saved-attendee'
 import { SeatStatus } from '#shared/commonEnums'
 import { CashAppIcon } from 'vue3-simple-icons'
@@ -26,7 +25,6 @@ const slug = computed(() => {
 })
 const sessionPublicId = computed(() => typeof route.params.sessionId === 'string' ? route.params.sessionId : '')
 const passToken = computed(() => typeof route.query.pass === 'string' ? route.query.pass : undefined)
-const requestUrl = useRequestURL()
 const { locale, t } = useI18n()
 const { formatCurrency: formatPreferredCurrency } = useCurrencyPreference()
 const gateFetchKey = computed(() => getEventSessionGateFetchKey(sessionPublicId.value, passToken.value))
@@ -117,70 +115,15 @@ const previewSeatIds = ref<number[]>([])
 const previewTicketItems = new Map<number, HTMLElement>()
 const selectedTicketItems = new Map<number, HTMLElement>()
 const isSubmitting = ref(false)
+const isCheckoutNavigationPending = ref(false)
 const checkoutUnavailableError = ref<ReturnType<typeof parseApiError> | null>(null)
 const realtimeStatus = ref<'connecting' | 'connected' | 'disconnected'>('connecting')
 const currentSeatmapVersion = ref(0)
-let fallbackRefreshTimer: ReturnType<typeof setInterval> | undefined
+let seatMapVersionPollTimer: ReturnType<typeof setInterval> | undefined
 let seatMapRefreshPromise: Promise<void> | null = null
 let seatMapRefreshQueued = false
-const socketUrl = computed(() => {
-  const url = new URL(apiRoutes.eventSessionSeatmapSocket(sessionPublicId.value), requestUrl.origin)
-  url.protocol = requestUrl.protocol === 'https:' ? 'wss:' : 'ws:'
-  return url.toString()
-})
-const { open, close } = useWebSocket(socketUrl, {
-  autoReconnect: {
-    retries: 5,
-    delay: 1000,
-    onFailed() {
-      realtimeStatus.value = 'disconnected'
-    },
-  },
-  immediate: false,
-  async onConnected() {
-    if (isSeatSelectionBlocked.value) {
-      return
-    }
-
-    await refreshSeatMapSafely()
-    if (isSeatSelectionBlocked.value) {
-      return
-    }
-
-    currentSeatmapVersion.value = seatMap.value?.version ?? currentSeatmapVersion.value
-    realtimeStatus.value = 'connected'
-  },
-  onDisconnected() {
-    if (isSeatSelectionBlocked.value) {
-      realtimeStatus.value = 'disconnected'
-      return
-    }
-
-    realtimeStatus.value = 'connecting'
-    void refreshSeatMapSafely()
-  },
-  onError() {
-    if (isSeatSelectionBlocked.value) {
-      realtimeStatus.value = 'disconnected'
-      return
-    }
-
-    if (realtimeStatus.value !== 'connected') {
-      realtimeStatus.value = 'connecting'
-    }
-    void refreshSeatMapSafely()
-  },
-  async onMessage(_ws, event) {
-    if (typeof event.data === 'string') {
-      await handleRealtimeMessage(event.data)
-      return
-    }
-
-    if (event.data instanceof Blob) {
-      await handleRealtimeMessage(await event.data.text())
-    }
-  },
-})
+let isPollingSeatMapVersion = false
+const seatMapVersionPollIntervalMs = 1500
 
 const inventorySummary = computed(() => {
   const seats = seatMap.value?.seats ?? []
@@ -342,12 +285,14 @@ function isQueueRequiredAccessError(error: ReturnType<typeof parseApiError>) {
 }
 
 function stopSeatMapRefresh() {
-  if (fallbackRefreshTimer) {
-    clearInterval(fallbackRefreshTimer)
-    fallbackRefreshTimer = undefined
+  if (seatMapVersionPollTimer) {
+    clearInterval(seatMapVersionPollTimer)
+    seatMapVersionPollTimer = undefined
   }
 
-  close()
+  if (import.meta.client) {
+    document.removeEventListener('visibilitychange', handleSeatMapVisibilityChange)
+  }
 }
 
 async function refreshSeatMapSafely() {
@@ -367,6 +312,63 @@ async function refreshSeatMapSafely() {
       seatMapRefreshPromise = null
     }
   } while (seatMapRefreshQueued)
+}
+
+async function pollSeatMapVersion() {
+  if (!import.meta.client || isSeatSelectionBlocked.value || document.hidden || isPollingSeatMapVersion) {
+    return
+  }
+
+  isPollingSeatMapVersion = true
+  try {
+    const response = await apiRequest<ApiResponse<SessionSeatMapVersionResponse>>(apiRoutes.eventSessionSeatmapVersion(sessionPublicId.value))
+    if (!response.success) {
+      throw response
+    }
+
+    realtimeStatus.value = 'connected'
+
+    if (response.data.version === currentSeatmapVersion.value) {
+      return
+    }
+
+    if (isSubmitting.value || isCheckoutNavigationPending.value) {
+      return
+    }
+
+    await refreshSeatMapSafely()
+    currentSeatmapVersion.value = seatMap.value?.version ?? response.data.version
+  }
+  catch {
+    if (!isSeatSelectionBlocked.value) {
+      realtimeStatus.value = 'disconnected'
+    }
+  }
+  finally {
+    isPollingSeatMapVersion = false
+  }
+}
+
+function handleSeatMapVisibilityChange() {
+  if (document.hidden || isSeatSelectionBlocked.value) {
+    return
+  }
+
+  realtimeStatus.value = 'connecting'
+  void pollSeatMapVersion()
+}
+
+function startSeatMapRefresh() {
+  if (!import.meta.client || seatMapVersionPollTimer) {
+    return
+  }
+
+  realtimeStatus.value = 'connecting'
+  document.addEventListener('visibilitychange', handleSeatMapVisibilityChange)
+  void pollSeatMapVersion()
+  seatMapVersionPollTimer = setInterval(() => {
+    void pollSeatMapVersion()
+  }, seatMapVersionPollIntervalMs)
 }
 
 function formatSeatLabel(seat: { sectionNameSnapshot: string, rowLabelSnapshot: string | null, seatLabelSnapshot: string }) {
@@ -493,85 +495,6 @@ function toggleSeat(seatId: number) {
   void scrollToPreviewTicket(seatId)
 }
 
-function applySeatChanges(changes: SeatStatusDeltaChange[], version: number) {
-  if (!seatMapResponse.value?.success) {
-    return false
-  }
-
-  const seatIds = new Set(seatMapResponse.value.data.seats.map(seat => seat.id))
-  if (changes.some(change => !seatIds.has(change.seatId))) {
-    return false
-  }
-
-  const nextSeats = seatMapResponse.value.data.seats.map((seat) => {
-    const change = changes.find(item => item.seatId === seat.id)
-    if (!change) {
-      return seat
-    }
-
-    return {
-      ...seat,
-      status: change.status,
-    }
-  })
-
-  seatMapResponse.value = {
-    ...seatMapResponse.value,
-    data: {
-      ...seatMapResponse.value.data,
-      version,
-      seats: nextSeats,
-    },
-  }
-
-  return true
-}
-
-async function handleRealtimeMessage(rawValue: string) {
-  if (isSeatSelectionBlocked.value) {
-    return
-  }
-
-  const message = parseSeatmapRealtimeMessage(rawValue)
-  if (!message || message.sessionPublicId !== sessionPublicId.value) {
-    await refreshSeatMapSafely()
-    currentSeatmapVersion.value = seatMap.value?.version ?? message?.version ?? currentSeatmapVersion.value
-    return
-  }
-
-  if (message.type === 'seatmap-connected') {
-    realtimeStatus.value = 'connected'
-    if (message.version > currentSeatmapVersion.value) {
-      await refreshSeatMapSafely()
-      currentSeatmapVersion.value = seatMap.value?.version ?? message.version
-      return
-    }
-
-    currentSeatmapVersion.value = currentSeatmapVersion.value > message.version ? currentSeatmapVersion.value : message.version
-    return
-  }
-
-  if (message.version !== currentSeatmapVersion.value + 1) {
-    await refreshSeatMapSafely()
-    currentSeatmapVersion.value = seatMap.value?.version ?? message.version
-    return
-  }
-
-  if (message.type === 'seat-status-delta') {
-    if (!applySeatChanges(message.changes, message.version)) {
-      await refreshSeatMapSafely()
-      currentSeatmapVersion.value = seatMap.value?.version ?? message.version
-      return
-    }
-
-    currentSeatmapVersion.value = message.version
-    return
-  }
-
-  await refreshSeatMapSafely()
-  currentSeatmapVersion.value = seatMap.value?.version ?? message.version
-}
-
 async function reserveSeats() {
   if (!session.value || isSeatSelectionBlocked.value || selectedSeatIds.value.length === 0) {
     return
@@ -603,9 +526,12 @@ async function reserveSeats() {
       throw checkoutResponse
     }
 
+    isCheckoutNavigationPending.value = true
+    stopSeatMapRefresh()
     await navigateTo(`/checkout/${checkoutResponse.data.publicId}?hold=${holdPublicId}`)
   }
   catch (error) {
+    isCheckoutNavigationPending.value = false
     const parsedError = parseApiError(error, t('seats.checkout_error'))
 
     const statusCode = parsedError.status
@@ -660,7 +586,7 @@ async function reserveSeats() {
   }
   finally {
     isSubmitting.value = false
-    if (!hasRedirectedToWaitingRoom.value && !isSeatSelectionBlocked.value) {
+    if (!isCheckoutNavigationPending.value && !hasRedirectedToWaitingRoom.value && !isSeatSelectionBlocked.value) {
       await refreshSeatMapSafely()
     }
   }
@@ -692,20 +618,22 @@ watch(seatMap, (value) => {
       .map(seat => seat.id),
   )
 
-  const nextSelectedSeatIds = selectedSeatIds.value.filter(seatId => availableSeatIds.has(seatId))
-  const selectedSeatsChanged = nextSelectedSeatIds.length !== selectedSeatIds.value.length
-  const nextPreviewSeatIds = previewSeatIds.value.filter(seatId => availableSeatIds.has(seatId))
-  const previewSeatsChanged = nextPreviewSeatIds.length !== previewSeatIds.value.length
+  const selection = resolveSeatSelectionAfterRefresh({
+    selectedSeatIds: selectedSeatIds.value,
+    previewSeatIds: previewSeatIds.value,
+    availableSeatIds,
+    preserveUnavailableSelection: isSubmitting.value || isCheckoutNavigationPending.value,
+  })
 
-  if (selectedSeatsChanged) {
-    selectedSeatIds.value = nextSelectedSeatIds
+  if (selection.selectedSeatIds.length !== selectedSeatIds.value.length) {
+    selectedSeatIds.value = selection.selectedSeatIds
   }
 
-  if (previewSeatsChanged) {
-    previewSeatIds.value = nextPreviewSeatIds
+  if (selection.previewSeatIds.length !== previewSeatIds.value.length) {
+    previewSeatIds.value = selection.previewSeatIds
   }
 
-  if (selectedSeatsChanged || previewSeatsChanged) {
+  if (selection.changed) {
     toast.error(t('seats.seats_taken_error'))
   }
 }, { deep: true, immediate: true })
@@ -715,19 +643,11 @@ onMounted(() => {
     return
   }
 
-  fallbackRefreshTimer = setInterval(() => {
-    if (!isSeatSelectionBlocked.value) {
-      void refreshSeatMapSafely()
-    }
-  }, 15000)
-  open()
+  startSeatMapRefresh()
 })
 
 onUnmounted(() => {
-  if (fallbackRefreshTimer) {
-    clearInterval(fallbackRefreshTimer)
-  }
-  close()
+  stopSeatMapRefresh()
 })
 
 definePageMeta({
