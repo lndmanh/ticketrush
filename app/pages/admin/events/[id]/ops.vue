@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Activity, LockKeyhole, ShoppingCart, Tickets } from '@lucide/vue'
 import AdminChartCard from '@/components/admin/charts/AdminChartCard.vue'
+import AdminDashboardKpiCard from '@/components/admin/dashboard/AdminDashboardKpiCard.vue'
 import { getDisplayDateLocale } from '@/lib/localizedEvents'
 import { formatCurrency, formatDateTime, formatTime } from '@/lib/utils'
 
@@ -21,6 +22,41 @@ const tickets = computed(() => ops.value?.recentTickets ?? [])
 const holds = computed(() => ops.value?.activeHolds ?? [])
 const queueFeed = computed(() => ops.value?.queueFeed ?? [])
 
+function getStatusLabel(status: string) {
+  const labels: Record<string, string> = {
+    active: t('admin_event_ops.status_active'),
+    admitted: t('admin_event_ops.status_admitted'),
+    completed: t('admin_event_ops.status_completed'),
+    converted: t('admin_event_ops.status_converted'),
+    expired: t('admin_event_ops.status_expired'),
+    released: t('admin_event_ops.status_released'),
+    waiting: t('admin_event_ops.status_waiting'),
+  }
+
+  return labels[status] ?? t('admin_event_ops.status_unknown', { status })
+}
+
+function getSeatCountLabel(count: number) {
+  return count === 1
+    ? t('admin_event_ops.seat_count_one', { count })
+    : t('admin_event_ops.seat_count_other', { count })
+}
+
+function getTicketLocationLabel(
+  sectionLabel: string | null | undefined,
+  rowLabel: string | null | undefined,
+  seatLabel: string | null | undefined,
+) {
+  const section = sectionLabel || t('admin_event_ops.general_admission')
+  const seat = seatLabel || t('admin_event_ops.open_seating')
+
+  if (rowLabel) {
+    return t('admin_event_ops.seat_location_with_row', { section, row: rowLabel, seat })
+  }
+
+  return t('admin_event_ops.seat_location_without_row', { section, seat })
+}
+
 const operationsMixOption = computed(() => {
   if (!ops.value) {
     return createDonutChartOption({ data: [] })
@@ -31,14 +67,16 @@ const operationsMixOption = computed(() => {
       { label: t('admin_event_ops.orders_label'), value: ops.value.totals.ordersCount },
       { label: t('admin_event_ops.tickets_label'), value: ops.value.totals.ticketsCount },
       { label: t('admin_event_ops.active_holds_label'), value: ops.value.totals.activeHoldsCount },
-      { label: 'Queue', value: ops.value.totals.queueEntriesCount },
+      { label: t('admin_event_ops.queue_entries_label'), value: ops.value.totals.queueEntriesCount },
     ],
   })
 })
 
 const queueStatusOption = computed(() => {
   const statusCounts = queueFeed.value.reduce<Record<string, number>>((accumulator, entry) => {
-    accumulator[entry.status] = (accumulator[entry.status] || 0) + 1
+    const statusLabel = getStatusLabel(entry.status)
+
+    accumulator[statusLabel] = (accumulator[statusLabel] || 0) + 1
     return accumulator
   }, {})
 
@@ -75,106 +113,97 @@ definePageMeta({
     class="space-y-6"
   >
     <AdminEventsAdminEventNav :event-id="eventId" />
-
-    <section class="grid gap-4 md:grid-cols-2 xl:grid-cols-4 xl:auto-rows-fr">
-      <Card class="h-full">
-        <CardContent>
-          <div class="flex items-center gap-3 text-muted-foreground">
-            <ShoppingCart class="size-4" /><span class="text-[11px] uppercase tracking-[0.22em]">{{ $t('admin_event_ops.orders_label') }}</span>
-          </div><p class="mt-4 text-2xl font-semibold tracking-[-0.05em] text-foreground">
-            {{ ops.totals.ordersCount }}
-          </p><p class="mt-2 text-sm text-muted-foreground">
-            {{ $t('admin_event_ops.orders_desc') }}
-          </p>
-        </CardContent>
-      </Card>
-      <Card class="h-full">
-        <CardContent>
-          <div class="flex items-center gap-3 text-muted-foreground">
-            <Tickets class="size-4" /><span class="text-[11px] uppercase tracking-[0.22em]">{{ $t('admin_event_ops.tickets_label') }}</span>
-          </div><p class="mt-4 text-2xl font-semibold tracking-[-0.05em] text-foreground">
-            {{ ops.totals.ticketsCount }}
-          </p><p class="mt-2 text-sm text-muted-foreground">
-            {{ $t('admin_event_ops.tickets_desc') }}
-          </p>
-        </CardContent>
-      </Card>
-      <Card class="h-full">
-        <CardContent>
-          <div class="flex items-center gap-3 text-muted-foreground">
-            <LockKeyhole class="size-4" /><span class="text-[11px] uppercase tracking-[0.22em]">{{ $t('admin_event_ops.active_holds_label') }}</span>
-          </div><p class="mt-4 text-2xl font-semibold tracking-[-0.05em] text-foreground">
-            {{ ops.totals.activeHoldsCount }}
-          </p><p class="mt-2 text-sm text-muted-foreground">
-            {{ $t('admin_event_ops.active_holds_desc') }}
-          </p>
-        </CardContent>
-      </Card>
-      <Card class="h-full">
-        <CardContent>
-          <div class="flex items-center gap-3 text-muted-foreground">
-            <Activity class="size-4" /><span class="text-[11px] uppercase tracking-[0.22em]">{{ $t('admin_event_ops.queue_entries_label') }}</span>
-          </div><p class="mt-4 text-2xl font-semibold tracking-[-0.05em] text-foreground">
-            {{ ops.totals.queueEntriesCount }}
-          </p><p class="mt-2 text-sm text-muted-foreground">
-            {{ $t('admin_event_ops.queue_entries_desc') }}
-          </p>
-        </CardContent>
-      </Card>
+    <section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4 xl:auto-rows-fr">
+      <AdminDashboardKpiCard
+        :label="$t('admin_event_ops.orders_label')"
+        :value="ops.totals.ordersCount"
+        :description="$t('admin_event_ops.orders_desc')"
+      >
+        <template #icon>
+          <ShoppingCart class="size-4" />
+        </template>
+      </AdminDashboardKpiCard>
+      <AdminDashboardKpiCard
+        :label="$t('admin_event_ops.tickets_label')"
+        :value="ops.totals.ticketsCount"
+        :description="$t('admin_event_ops.tickets_desc')"
+      >
+        <template #icon>
+          <Tickets class="size-4" />
+        </template>
+      </AdminDashboardKpiCard>
+      <AdminDashboardKpiCard
+        :label="$t('admin_event_ops.active_holds_label')"
+        :value="ops.totals.activeHoldsCount"
+        :description="$t('admin_event_ops.active_holds_desc')"
+      >
+        <template #icon>
+          <LockKeyhole class="size-4" />
+        </template>
+      </AdminDashboardKpiCard>
+      <AdminDashboardKpiCard
+        :label="$t('admin_event_ops.queue_entries_label')"
+        :value="ops.totals.queueEntriesCount"
+        :description="$t('admin_event_ops.queue_entries_desc')"
+      >
+        <template #icon>
+          <Activity class="size-4" />
+        </template>
+      </AdminDashboardKpiCard>
     </section>
 
     <section class="grid gap-4 xl:grid-cols-12 xl:auto-rows-fr">
       <AdminChartCard
         class="xl:col-span-4"
-        eyebrow="Footprint"
+        :eyebrow="$t('admin_event_ops.footprint_eyebrow')"
         :title="$t('admin_event_ops.operations_mix')"
-        description="Current operations footprint across orders, tickets, holds, and queue entries."
+        :description="$t('admin_event_ops.operations_mix_desc')"
         :option="operationsMixOption"
         :height="320"
         tone="emerald"
         :stat="`${ops.totals.ordersCount + ops.totals.ticketsCount}`"
-        stat-label="Order + ticket volume"
+        :stat-label="$t('admin_event_ops.order_ticket_volume_label')"
       />
       <AdminChartCard
         class="xl:col-span-4"
-        eyebrow="Queue"
+        :eyebrow="$t('admin_event_ops.queue_eyebrow')"
         :title="$t('admin_event_ops.queue_status')"
-        description="Distribution of queue entry statuses in the current feed."
+        :description="$t('admin_event_ops.queue_status_desc')"
         :option="queueStatusOption"
         :height="320"
         tone="blue"
         :stat="`${queueFeed.length}`"
-        stat-label="Recent entries"
+        :stat-label="$t('admin_event_ops.recent_entries_label')"
       />
       <AdminChartCard
         class="xl:col-span-4"
-        eyebrow="Sample"
+        :eyebrow="$t('admin_event_ops.sample_eyebrow')"
         :title="$t('admin_event_ops.recent_order_sample')"
-        description="Latest order amounts shown as a recent-value sample, not a long-term trend."
+        :description="$t('admin_event_ops.recent_order_sample_desc')"
         :option="recentOrderSampleOption"
         :height="320"
         tone="rose"
         :stat="`${orders.length}`"
-        stat-label="Orders sampled"
+        :stat-label="$t('admin_event_ops.orders_sampled_label')"
       />
 
-      <Card class="h-full xl:col-span-7">
+      <Card class="h-full xl:col-span-4">
         <CardHeader><CardTitle>{{ $t('admin_event_ops.orders_title') }}</CardTitle></CardHeader>
-        <CardContent class="space-y-3">
+        <CardContent class="flex flex-col gap-3">
           <div
             v-for="order in orders"
             :key="order.id"
             class="rounded-[1.25rem] border border-border p-4"
           >
             <div class="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
-              <div>
-                <p class="text-sm font-medium text-foreground">
+              <div class="min-w-0">
+                <p class="break-words text-sm font-medium text-foreground">
                   {{ order.customerName || $t('admin_event_ops.pending_buyer') }}
-                </p><p class="text-sm text-muted-foreground">
+                </p><p class="break-words text-sm text-muted-foreground">
                   {{ order.customerEmail || $t('admin_event_ops.no_email') }}
                 </p>
               </div>
-              <p class="text-sm text-muted-foreground">
+              <p class="shrink-0 text-sm text-muted-foreground">
                 {{ formatCurrency(order.amountCents, 'VND', displayLocale) }}
               </p>
             </div>
@@ -188,24 +217,24 @@ definePageMeta({
         </CardContent>
       </Card>
 
-      <Card class="h-full xl:col-span-5">
+      <Card class="h-full xl:col-span-4">
         <CardHeader><CardTitle>{{ $t('admin_event_ops.active_holds_title') }}</CardTitle></CardHeader>
-        <CardContent class="space-y-3">
+        <CardContent class="flex flex-col gap-3">
           <div
             v-for="hold in holds"
             :key="hold.id"
             class="rounded-[1.25rem] border border-border p-4"
           >
-            <div class="flex items-start justify-between gap-3">
-              <div>
-                <p class="text-sm font-medium text-foreground">
+            <div class="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+              <div class="min-w-0">
+                <p class="break-words text-sm font-medium text-foreground">
                   {{ hold.publicId }}
-                </p><p class="text-sm text-muted-foreground">
-                  {{ hold.seatCount }} seat(s) · {{ $t('admin_event_ops.expires_label') }} {{ formatTime(hold.expiresAt, displayLocale) }}
+                </p><p class="break-words text-sm text-muted-foreground">
+                  {{ getSeatCountLabel(hold.seatCount) }} · {{ $t('admin_event_ops.expires_label') }} {{ formatTime(hold.expiresAt, displayLocale) }}
                 </p>
               </div>
-              <p class="text-xs text-muted-foreground">
-                {{ hold.status }}
+              <p class="shrink-0 text-xs text-muted-foreground">
+                {{ getStatusLabel(hold.status) }}
               </p>
             </div>
           </div>
@@ -218,48 +247,24 @@ definePageMeta({
         </CardContent>
       </Card>
 
-      <Card class="h-full xl:col-span-6">
-        <CardHeader><CardTitle>{{ $t('admin_event_ops.tickets_title') }}</CardTitle></CardHeader>
-        <CardContent class="grid gap-3 sm:grid-cols-2">
-          <div
-            v-for="ticket in tickets"
-            :key="ticket.id"
-            class="rounded-[1.25rem] border border-border p-4"
-          >
-            <p class="text-sm font-medium text-foreground">
-              {{ ticket.attendeeName }}
-            </p>
-            <p class="mt-1 text-sm text-muted-foreground">
-              {{ ticket.sectionLabel || 'GA' }} · {{ ticket.rowLabel || '' }}{{ ticket.rowLabel ? '-' : '' }}{{ ticket.seatLabel || $t('admin_event_ops.open_seating') }}
-            </p>
-          </div>
-          <p
-            v-if="tickets.length === 0"
-            class="text-sm text-muted-foreground sm:col-span-2"
-          >
-            {{ $t('admin_event_ops.no_tickets') }}
-          </p>
-        </CardContent>
-      </Card>
-
-      <Card class="h-full xl:col-span-6">
+      <Card class="h-full xl:col-span-4">
         <CardHeader><CardTitle>{{ $t('admin_event_ops.queue_feed_title') }}</CardTitle></CardHeader>
-        <CardContent class="space-y-3">
+        <CardContent class="flex flex-col gap-3">
           <div
             v-for="entry in queueFeed"
             :key="entry.id"
             class="rounded-[1.25rem] border border-border p-4"
           >
-            <div class="flex items-start justify-between gap-3">
-              <div>
-                <p class="text-sm font-medium text-foreground">
+            <div class="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+              <div class="min-w-0">
+                <p class="break-words text-sm font-medium text-foreground">
                   {{ entry.customerKey }}
-                </p><p class="text-sm text-muted-foreground">
+                </p><p class="break-words text-sm text-muted-foreground">
                   {{ $t('admin_event_ops.created_label') }} {{ formatDateTime(entry.createdAt, displayLocale) }}
                 </p>
               </div>
-              <p class="text-xs text-muted-foreground">
-                {{ entry.status }}
+              <p class="shrink-0 text-xs text-muted-foreground">
+                {{ getStatusLabel(entry.status) }}
               </p>
             </div>
           </div>

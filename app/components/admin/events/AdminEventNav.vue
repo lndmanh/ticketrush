@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { BarChart3, LayoutGrid, Settings2, ShoppingCart, Tickets } from '@lucide/vue'
+import { BarChart3, LayoutGrid, Settings2, ShoppingCart } from '@lucide/vue'
 
 const props = defineProps<{
   eventId: number
@@ -12,11 +12,6 @@ const links = computed(() => [
     label: 'Overview',
     to: `/admin/events/${props.eventId}`,
     icon: LayoutGrid,
-  },
-  {
-    label: 'Seat map',
-    to: `/admin/events/${props.eventId}/seatmap`,
-    icon: Tickets,
   },
   {
     label: 'Pricing',
@@ -55,7 +50,7 @@ function isActive(target: string) {
             Event workspace
           </p>
           <p class="text-sm font-semibold leading-tight text-foreground">
-            Overview, map, pricing, sales, and ops
+            Overview, pricing, sales, and ops
           </p>
           <p class="text-xs text-muted-foreground">
             Move across every admin surface without losing event context.
