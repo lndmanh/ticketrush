@@ -22,9 +22,14 @@ const trendClass = computed(() => {
 <template>
   <Card class="group overflow-hidden border-border/70 bg-card/80 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-md active:translate-y-0">
     <CardHeader class="grid grid-cols-[1fr_auto] items-start gap-3 border-b !pb-0">
-      <CardTitle class="text-md font-bold">
-        {{ label }}
-      </CardTitle>
+      <span>
+        <CardTitle class="text-md font-bold">
+          {{ label }}
+        </CardTitle>
+        <CardDescription>
+          {{ description }}
+        </CardDescription>
+      </span>
       <div class="flex size-8 items-center justify-center rounded-full border bg-muted/50 text-muted-foreground transition-colors duration-300 group-hover:text-primary">
         <slot name="icon" />
       </div>
@@ -37,7 +42,7 @@ const trendClass = computed(() => {
         <Badge
           v-if="trendLabel"
           variant="outline"
-          class="mb-1 gap-1 rounded-full text-xs"
+          class="mb-3 gap-1 rounded-full text-xs"
           :class="trendClass"
         >
           {{ trendLabel }}
@@ -51,9 +56,6 @@ const trendClass = computed(() => {
           />
         </Badge>
       </div>
-      <p class="text-sm leading-6 text-muted-foreground">
-        {{ description }}
-      </p>
     </CardContent>
   </Card>
 </template>
