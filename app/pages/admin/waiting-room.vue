@@ -70,8 +70,8 @@ const onSubmit = handleSubmit(
     }
   },
   ({ errors }) => {
-    const firstError = Object.values(errors).flat().filter(Boolean)[0] || t('admin.waiting_room_settings.fix_settings')
-    toast.error(firstError)
+    const firstError = Object.values(errors).flat().filter(Boolean)[0] || 'admin.waiting_room_settings.fix_settings'
+    toast.error(t(firstError))
   },
 )
 

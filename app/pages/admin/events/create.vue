@@ -822,8 +822,8 @@ const onSubmit = handleSubmit(
       }
     }
 
-    const firstError = Object.values(errors).flat().filter(Boolean)[0] || t('admin.event_create.fix_fields')
-    toast.error(firstError)
+    const firstError = Object.values(errors).flat().filter(Boolean)[0] || 'admin.event_create.fix_fields'
+    toast.error(t(firstError))
   },
 )
 

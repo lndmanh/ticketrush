@@ -135,14 +135,14 @@ function buildSessionValidationErrors(sessions: EventPricingFormInput['sessions'
 }
 
 function getFirstValidationError(errors: Record<string, string>) {
-  return Object.values(errors)[0] || 'Please fix the highlighted fields'
+  return Object.values(errors)[0] || 'admin_venue_detail.fix_highlighted_fields'
 }
 
 function validateSessions(sessions: EventPricingFormInput['sessions']) {
   const errors = buildSessionValidationErrors(sessions)
   if (Object.keys(errors).length) {
     sessionValidationErrors.value = errors
-    toast.error(getFirstValidationError(errors))
+    toast.error(t(getFirstValidationError(errors)))
     return false
   }
 
