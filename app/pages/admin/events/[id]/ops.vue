@@ -3,9 +3,11 @@ import { Activity, LockKeyhole, ShoppingCart, Tickets } from '@lucide/vue'
 import AdminChartCard from '@/components/admin/charts/AdminChartCard.vue'
 import AdminDashboardKpiCard from '@/components/admin/dashboard/AdminDashboardKpiCard.vue'
 import { getDisplayDateLocale } from '@/lib/localizedEvents'
-import { formatCurrency, formatDateTime, formatTime } from '@/lib/utils'
+import { formatDateTime, formatTime } from '@/lib/utils'
+import { formatMoney } from '@/lib/money'
 
 const { t, locale } = useI18n()
+const { displayCurrency, formatCurrency: formatPreferredCurrency } = useCurrencyPreference()
 
 const route = useRoute()
 const eventId = computed(() => Number(route.params.id))
@@ -104,11 +106,17 @@ const queueStatusOption = computed(() => {
 })
 
 const recentOrderSampleOption = computed(() => {
+  const selectedDisplayCurrency = displayCurrency.value
+
   return createBarChartOption({
     data: orders.value.map((order, index) => ({
       label: `#${index + 1}`,
       value: Math.round(order.amountCents / 100),
     })),
+    valueFormatter: value => formatMoney(value * 100, 'VND', selectedDisplayCurrency, getDisplayDateLocale(locale.value), {
+      notation: 'compact',
+      maximumFractionDigits: 1,
+    }),
     colorIndex: 5,
     maxItems: 6,
   })
@@ -221,7 +229,7 @@ definePageMeta({
                 </p>
               </div>
               <p class="shrink-0 text-sm text-muted-foreground">
-                {{ formatCurrency(order.amountCents, 'VND', displayLocale) }}
+                {{ formatPreferredCurrency(order.amountCents, 'VND', displayLocale) }}
               </p>
             </div>
           </div>
