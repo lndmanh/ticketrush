@@ -99,13 +99,13 @@ const statusBadgeClass = computed(() => {
           <div class="flex flex-wrap items-start justify-between gap-3">
             <!-- Dynamic status badge -->
             <span
-              class="inline-flex items-center rounded-full border px-3 py-1 font-mono text-[10px] uppercase tracking-[0.16em] capitalize backdrop-blur-md transition-all duration-300"
+              class="inline-flex items-center rounded-full border px-3 py-1 text-[10px] uppercase tracking-[0.16em] font-bold capitalize backdrop-blur-md transition-all duration-300"
               :class="statusBadgeClass"
             >
               {{ statusLabel }}
             </span>
 
-            <span class="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-black/35 px-3 py-1.5 font-mono text-[11px] text-white/80 backdrop-blur-md">
+            <span class="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-black/35 px-3 py-1.5 text-[11px] text-white/80 backdrop-blur-md">
               <CalendarRange class="size-3.5" />
               {{ startsAtLabel }}
             </span>

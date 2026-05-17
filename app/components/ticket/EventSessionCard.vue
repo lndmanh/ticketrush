@@ -106,7 +106,7 @@ const lowestTicket = computed(() => {
           </div>
 
           <div class="space-y-3">
-            <span class="inline-flex w-fit items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 font-mono text-[10px] uppercase tracking-[0.16em] text-primary">
+            <span class="inline-flex w-fit items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 font-semibold text-[10px] uppercase tracking-[0.16em] text-primary">
               <LucideSparkles class="size-3" />
               {{ statusLabel }}
             </span>
