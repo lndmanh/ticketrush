@@ -73,6 +73,7 @@ export default defineNuxtConfig({
         dsn: '',
       },
       url: process.env.NUXT_PUBLIC_SITE_URL || 'http://localhost:3000',
+      googleOneTapClientId: process.env.NUXT_PUBLIC_GOOGLE_ONE_TAP_CLIENT_ID || '',
       docs: DOCS_CONFIG,
     },
     turnstile: {

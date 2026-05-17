@@ -1,4 +1,5 @@
 <template>
+  <GoogleOneTapPrompt />
   <Toaster position="top-center" />
   <NuxtLoadingIndicator
     :color="false"
@@ -14,6 +15,7 @@
 <script lang="ts" setup>
 import 'vue-sonner/style.css'
 import { useOnline } from '@vueuse/core'
+import GoogleOneTapPrompt from '@/components/auth/GoogleOneTapPrompt.client.vue'
 import { Toaster } from '@/components/ui/sonner'
 import { toast } from 'vue-sonner'
 

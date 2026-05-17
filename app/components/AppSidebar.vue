@@ -6,6 +6,7 @@ import NavMain from '@/components/nav/NavMain.vue'
 import NavSecondary from '@/components/nav/NavSecondary.vue'
 import NavUser from '@/components/nav/NavUser.vue'
 import type { SidebarProps } from '@/components/ui/sidebar'
+import { disableGoogleOneTapAutoSelect } from '@/utils/googleOneTap'
 
 const props = withDefaults(defineProps<SidebarProps>(), {
   variant: 'inset',
@@ -15,7 +16,8 @@ const { toggleIsOpen } = useHotSearch()
 const { activeContext, primarySections, secondarySections, showBack, isContextView, showMainSidebar } = useSidebarContext()
 const { loggedIn, clear } = useUserSession()
 
-function logout() {
+async function logout() {
+  await disableGoogleOneTapAutoSelect()
   clear().then(() => {
     location.reload()
   })
