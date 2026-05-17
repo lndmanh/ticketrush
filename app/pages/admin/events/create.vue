@@ -24,7 +24,7 @@ interface VenueOption {
   name: string
 }
 
-const { locale } = useI18n()
+const { locale, t } = useI18n()
 const displayLocale = computed(() => getDisplayDateLocale(locale.value))
 
 interface EventCreationStep {
@@ -33,12 +33,12 @@ interface EventCreationStep {
   description: string
 }
 
-const steps: EventCreationStep[] = [
-  { step: 1, title: 'Basics', description: 'Event identity' },
-  { step: 2, title: 'Venue', description: 'Select venue' },
-  { step: 3, title: 'Sessions', description: 'Schedule and pricing' },
-  { step: 4, title: 'Review', description: 'Confirm and save' },
-]
+const steps = computed<EventCreationStep[]>(() => [
+  { step: 1, title: t('admin.event_create.step_basics'), description: t('admin.event_create.step_basics_desc') },
+  { step: 2, title: t('admin.event_create.step_venue'), description: t('admin.event_create.step_venue_desc') },
+  { step: 3, title: t('admin.event_create.step_sessions'), description: t('admin.event_create.step_sessions_desc') },
+  { step: 4, title: t('admin.event_create.step_review'), description: t('admin.event_create.step_review_desc') },
+])
 
 const stepSchemas = {
   1: eventComposerSchema.pick({
@@ -115,15 +115,17 @@ const hasAutosavableContent = computed(() => {
 
 const autosaveLabel = computed(() => {
   if (autosaveStatus.value === 'saving') {
-    return 'Saving draft…'
+    return t('admin.event_create.saving_draft')
   }
 
   if (autosaveStatus.value === 'saved') {
-    return lastAutosavedAt.value ? `Saved ${formatTime(lastAutosavedAt.value, displayLocale.value)}` : 'Draft saved'
+    return lastAutosavedAt.value
+      ? t('admin.event_create.draft_saved_at', { time: formatTime(lastAutosavedAt.value, displayLocale.value) })
+      : t('admin.event_create.draft_saved_generic')
   }
 
   if (autosaveStatus.value === 'error') {
-    return 'Autosave failed'
+    return t('admin.event_create.autosave_failed')
   }
 
   return ''
@@ -273,7 +275,7 @@ async function loadAutosaveDraft(draftKey: string, restoreImmediately: boolean) 
     return true
   }
   catch (error) {
-    toast.error(parseApiError(error, 'We could not load the autosave draft').message)
+    toast.error(parseApiError(error, t('admin.event_create.autosave_load_error')).message)
     return false
   }
   finally {
@@ -294,7 +296,7 @@ async function loadCurrentAutosaveDraftPrompt() {
     }
   }
   catch (error) {
-    toast.error(parseApiError(error, 'We could not check for autosave drafts').message)
+    toast.error(parseApiError(error, t('admin.event_create.autosave_check_error')).message)
   }
   finally {
     isCheckingAutosaveDraft.value = false
@@ -309,7 +311,7 @@ function restoreAutosaveDraft() {
 
   resetForm({ values: normalizeAutosavePayload(draft.payload) })
   autosaveDraftKey.value = draft.draftKey
-  currentStep.value = Math.min(Math.max(draft.lastSavedStep, 1), steps.length)
+  currentStep.value = Math.min(Math.max(draft.lastSavedStep, 1), steps.value.length)
   highestReachedStep.value = Math.max(currentStep.value, 1)
   pendingAutosaveDraft.value = null
   isAutosaveRestoreDialogOpen.value = false
@@ -317,7 +319,7 @@ function restoreAutosaveDraft() {
   if (import.meta.client) {
     window.localStorage.setItem('ticketrush:event-create-autosave-key', draft.draftKey)
   }
-  toast.success('Autosave draft restored')
+  toast.success(t('admin.event_create.autosave_restored'))
 }
 
 function startFreshFromAutosaveDraft() {
@@ -349,10 +351,10 @@ async function _discardAutosaveDraft() {
     }
     pendingAutosaveDraft.value = null
     isAutosaveRestoreDialogOpen.value = false
-    toast.success('Autosave draft discarded')
+    toast.success(t('admin.events.autosave_discarded'))
   }
   catch (error) {
-    toast.error(parseApiError(error, 'Failed to discard autosave draft').message)
+    toast.error(parseApiError(error, t('admin.events.discard_failed')).message)
   }
 }
 
@@ -535,30 +537,30 @@ function buildSessionValidationErrors(sessions = values.sessions ?? []) {
   const errors: Record<string, string> = {}
 
   if (!sessions.length) {
-    addSessionValidationError(errors, 'sessions', 'Add at least one session before continuing')
+    addSessionValidationError(errors, 'sessions', t('admin.event_create.session_required'))
     return errors
   }
 
   sessions.forEach((session, sessionIndex) => {
-    const sessionLabel = session.label?.trim() || `Session ${sessionIndex + 1}`
+    const sessionLabel = session.label?.trim() || t('admin.event_create.session_number', { number: sessionIndex + 1 })
 
     if (!session.label?.trim()) {
-      addSessionValidationError(errors, getSessionFieldPath(sessionIndex, 'label'), `${sessionLabel}: Session label is required`)
+      addSessionValidationError(errors, getSessionFieldPath(sessionIndex, 'label'), t('admin.event_create.session_label_required', { session: sessionLabel }))
     }
 
     for (const issue of getEventSessionTimingIssues(session, sessionLabel)) {
-      addSessionValidationError(errors, getSessionFieldPath(sessionIndex, issue.field), issue.message)
+      addSessionValidationError(errors, getSessionFieldPath(sessionIndex, issue.field), translateSessionTimingIssue(issue.field, sessionLabel))
     }
 
     if (!session.sectionPrices.length) {
-      addSessionValidationError(errors, getSessionFieldPath(sessionIndex, 'sectionPrices'), `${sessionLabel}: Add section pricing before continuing`)
+      addSessionValidationError(errors, getSessionFieldPath(sessionIndex, 'sectionPrices'), t('admin.event_create.section_pricing_required', { session: sessionLabel }))
     }
 
     session.sectionPrices.forEach((sectionPrice, sectionIndex) => {
-      const sectionLabel = `${sessionLabel}, section ${sectionIndex + 1}`
+      const sectionLabel = t('admin.event_create.session_section_label', { session: sessionLabel, number: sectionIndex + 1 })
 
       if (sectionPrice.priceCents < 0) {
-        addSessionValidationError(errors, getSectionPriceFieldPath(sessionIndex, sectionIndex, 'priceCents'), `${sectionLabel}: Price cannot be negative`)
+        addSessionValidationError(errors, getSectionPriceFieldPath(sessionIndex, sectionIndex, 'priceCents'), t('admin.event_create.price_negative', { section: sectionLabel }))
       }
     })
   })
@@ -570,8 +572,30 @@ function showSessionValidationToast(errors: Record<string, string>) {
   const messages = Object.values(errors)
   const firstMessages = messages.slice(0, 4)
   const remainingCount = Math.max(messages.length - firstMessages.length, 0)
-  const suffix = remainingCount ? ` (${remainingCount} more)` : ''
-  toast.error(`Please fix Sessions: ${firstMessages.join('; ')}${suffix}`)
+  const suffix = remainingCount ? t('admin.event_create.more_errors_suffix', { count: remainingCount }) : ''
+  toast.error(t('admin.event_create.fix_sessions', { messages: firstMessages.join('; '), suffix }))
+}
+
+function translateSessionTimingIssue(field: string, session: string) {
+  const keys: Record<string, string> = {
+    startsAt: 'admin.event_create.session_start_invalid',
+    endsAt: 'admin.event_create.session_end_invalid',
+    salesStartAt: 'admin.event_create.sales_start_invalid',
+    salesEndAt: 'admin.event_create.sales_end_invalid',
+  }
+
+  return t(keys[field] ?? 'admin.event_create.session_timing_invalid', { session })
+}
+
+function translateStepIssue(field: string, fallback: string) {
+  const keys: Record<string, string> = {
+    title: 'admin.event_create.title_required',
+    slug: 'admin.event_create.slug_required',
+    description: 'admin.event_create.description_required',
+    venueId: 'admin.event_create.venue_required',
+  }
+
+  return keys[field] ? t(keys[field]) : fallback
 }
 
 function clearSessionValidationErrors() {
@@ -631,8 +655,9 @@ function applyStepErrors(step: number) {
   for (const issue of result.error.issues) {
     const pathPart = issue.path[0]
     if (typeof pathPart === 'string') {
-      setFieldError(pathPart, issue.message)
-      messages.push(issue.message)
+      const message = translateStepIssue(pathPart, issue.message)
+      setFieldError(pathPart, message)
+      messages.push(message)
     }
   }
 
@@ -675,7 +700,7 @@ function goToStep(step: number) {
   }
 
   if (!canReachStep(step)) {
-    toast.error('Complete the current step before jumping ahead')
+    toast.error(t('admin.event_create.jump_error'))
     return
   }
 
@@ -687,7 +712,7 @@ function goToStep(step: number) {
 }
 
 function goNext() {
-  if (currentStep.value >= steps.length) {
+  if (currentStep.value >= steps.value.length) {
     return
   }
 
@@ -765,11 +790,11 @@ const onSubmit = handleSubmit(
           }
         }
         catch (error) {
-          toast.warning(parseApiError(error, 'Event saved, but the autosave draft could not be discarded').message)
+          toast.warning(parseApiError(error, t('admin.event_create.autosave_convert_warning')).message)
         }
       }
 
-      toast.success('Draft event saved')
+      toast.success(t('admin.events.draft_saved'))
       if (import.meta.client && autosaveDraftKey.value) {
         window.localStorage.removeItem('ticketrush:event-create-autosave-key')
       }
@@ -783,7 +808,7 @@ const onSubmit = handleSubmit(
     }
     catch (error) {
       autosaveDisabled.value = false
-      toast.error(parseApiError(error, 'We could not save the event draft').message)
+      toast.error(parseApiError(error, t('admin.event_create.save_error')).message)
     }
     finally {
       isSaving.value = false
@@ -797,14 +822,14 @@ const onSubmit = handleSubmit(
       }
     }
 
-    const firstError = Object.values(errors).flat().filter(Boolean)[0] || 'Please fix the highlighted fields'
+    const firstError = Object.values(errors).flat().filter(Boolean)[0] || t('admin.event_create.fix_fields')
     toast.error(firstError)
   },
 )
 
 definePageMeta({
-  title: 'Create Event',
-  breadcrumb: 'Create Event',
+  title: 'admin.event_create.page_title',
+  breadcrumb: 'admin.event_create.breadcrumb',
   middleware: ['auth', 'admin'],
   layout: 'dashboard',
 })
@@ -1070,7 +1095,7 @@ onUnmounted(() => {
         >
           <CardHeader>
             <CardTitle class="text-base">
-              Venue
+              {{ $t('admin.event_create.venue_label') }}
             </CardTitle>
           </CardHeader>
           <CardContent class="space-y-6">
@@ -1080,7 +1105,7 @@ onUnmounted(() => {
             >
               <Field :data-invalid="!!errors.length">
                 <FieldLabel for="event-create-venue">
-                  Venue
+                  {{ $t('admin.event_create.venue_label') }}
                 </FieldLabel>
                 <Select
                   :model-value="field.value ? String(field.value) : undefined"
@@ -1090,7 +1115,7 @@ onUnmounted(() => {
                     id="event-create-venue"
                     :aria-invalid="!!errors.length"
                   >
-                    <SelectValue :placeholder="field.value ? undefined : 'Choose venue blueprint'" />
+                    <SelectValue :placeholder="field.value ? undefined : $t('admin.event_create.choose_venue')" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem
@@ -1116,7 +1141,7 @@ onUnmounted(() => {
               <div class="grid gap-3 sm:grid-cols-3">
                 <div class="rounded-2xl bg-muted/50 px-4 py-3">
                   <p class="text-xs text-muted-foreground">
-                    Sections
+                    {{ $t('common.sections') }}
                   </p>
                   <p class="text-lg font-semibold tabular-nums text-foreground">
                     {{ selectedVenueDetail.sections.length }}
@@ -1124,7 +1149,7 @@ onUnmounted(() => {
                 </div>
                 <div class="rounded-2xl bg-muted/50 px-4 py-3">
                   <p class="text-xs text-muted-foreground">
-                    Rows
+                    {{ $t('common.rows') }}
                   </p>
                   <p class="text-lg font-semibold tabular-nums text-foreground">
                     {{ totalRows }}
@@ -1132,7 +1157,7 @@ onUnmounted(() => {
                 </div>
                 <div class="rounded-2xl bg-muted/50 px-4 py-3">
                   <p class="text-xs text-muted-foreground">
-                    Seats
+                    {{ $t('admin.event_create.seats_label') }}
                   </p>
                   <p class="text-lg font-semibold tabular-nums text-foreground">
                     {{ totalSeats }}
@@ -1156,7 +1181,7 @@ onUnmounted(() => {
                     </p>
                   </div>
                   <p class="shrink-0 text-sm tabular-nums text-muted-foreground">
-                    {{ section.rows.reduce((count, row) => count + row.seats.length, 0) }} seats
+                    {{ $t('admin.event_create.seat_count', { count: section.rows.reduce((count, row) => count + row.seats.length, 0) }) }}
                   </p>
                 </div>
               </div>
@@ -1175,7 +1200,7 @@ onUnmounted(() => {
               v-else
               class="rounded-3xl border border-dashed px-5 py-10 text-center text-sm text-muted-foreground"
             >
-              Choose a venue to generate section pricing and preview the layout.
+              {{ $t('admin.event_create.choose_venue_prompt') }}
             </div>
           </CardContent>
         </Card>
@@ -1195,7 +1220,7 @@ onUnmounted(() => {
         >
           <CardHeader>
             <CardTitle class="text-base">
-              Review and submit
+              {{ $t('admin.event_create.review_title') }}
             </CardTitle>
           </CardHeader>
           <CardContent class="space-y-4">
@@ -1203,7 +1228,7 @@ onUnmounted(() => {
               <Card class="rounded-2xl bg-muted/20 shadow-none">
                 <CardHeader class="flex flex-row items-center justify-between gap-3 pb-3">
                   <CardTitle class="text-sm">
-                    Sessions
+                    {{ $t('common.sessions') }}
                   </CardTitle>
                   <Button
                     type="button"
@@ -1212,14 +1237,14 @@ onUnmounted(() => {
                     class="h-8 px-2"
                     @click="currentStep = 3"
                   >
-                    Edit
+                    {{ $t('common.edit') }}
                   </Button>
                 </CardHeader>
                 <CardContent>
                   <dl class="space-y-4 text-sm">
                     <div class="space-y-1">
                       <dt class="text-muted-foreground">
-                        Number of sessions
+                        {{ $t('admin.event_create.number_of_sessions') }}
                       </dt>
                       <dd class="font-medium">
                         {{ values.sessions.length }}
@@ -1255,7 +1280,7 @@ onUnmounted(() => {
               class="active:scale-[0.96]"
               @click="goPrevious"
             >
-              Back
+              {{ $t('admin.event_create.back') }}
             </Button>
             <Button
               v-if="currentStep < steps.length"
@@ -1263,7 +1288,7 @@ onUnmounted(() => {
               class="active:scale-[0.96]"
               @click="goNext"
             >
-              Continue
+              {{ $t('common.continue') }}
             </Button>
             <Button
               v-else
@@ -1271,7 +1296,7 @@ onUnmounted(() => {
               :is-loading="isSaving"
               class="active:scale-[0.96]"
             >
-              Save draft
+              {{ $t('admin.event_create.save_draft') }}
             </Button>
           </div>
         </div>
