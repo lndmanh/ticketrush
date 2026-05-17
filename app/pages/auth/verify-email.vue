@@ -71,7 +71,6 @@ async function resendVerification() {
     isResending.value = false
   }
 }
-
 </script>
 
 <template>

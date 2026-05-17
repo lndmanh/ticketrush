@@ -87,7 +87,6 @@ const onSubmit = handleSubmit(
     toast.error(t(firstError))
   },
 )
-
 </script>
 
 <template>

@@ -426,7 +426,6 @@ const selfAttendeeMissingFields = computed(() => {
   if (!self) return []
   return getMissingSelfFields(self).map(getMissingSelfFieldLabel)
 })
-
 </script>
 
 <template>

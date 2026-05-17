@@ -131,7 +131,10 @@ async function verifyCaptcha(token: string) {
       </DialogHeader>
 
       <div class="space-y-4">
-        <Alert v-if="state === 'error'" variant="destructive">
+        <Alert
+          v-if="state === 'error'"
+          variant="destructive"
+        >
           <ShieldAlert
             aria-hidden="true"
             class="size-4"
@@ -140,7 +143,10 @@ async function verifyCaptcha(token: string) {
           <AlertDescription>{{ errorMessage }}</AlertDescription>
         </Alert>
 
-        <Alert v-if="isSuccess" variant="success">
+        <Alert
+          v-if="isSuccess"
+          variant="success"
+        >
           <CheckCircle2
             aria-hidden="true"
             class="size-4"

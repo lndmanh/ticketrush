@@ -235,7 +235,6 @@ onBeforeUnmount(() => {
   stopOAuthPopupTimeout()
   oauthPopupListener.stop()
 })
-
 </script>
 
 <template>

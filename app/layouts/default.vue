@@ -8,141 +8,141 @@
       <div
         ref="headerWrapperRef"
         class="flex justify-center"
-    >
-      <header
-        ref="headerRef"
-        class="w-full px-8"
-        style="max-width: 100%; border-radius: 0; padding-top: 4px; padding-bottom: 4px; background-color: transparent; backdrop-filter: blur(0px); border-style: solid; border-width: 0; border-bottom-width: 1px; border-color: rgba(255,255,255,0.15); box-shadow: none;"
-        :class="isHeaderScrolled ? '' : 'hero-header'"
       >
-        <div class="flex h-full items-center justify-between">
-          <!-- Logo — separated by a right border from nav -->
-          <NuxtLink
-            ref="logoRef"
-            to="/"
-            class="flex items-center gap-2.5 group pr-6 mr-6 no-hover-bg"
-            style="border-right-style: solid; border-right-width: 1px; border-right-color: rgba(255,255,255,0.2);"
-          >
-            <NuxtImg
-              src="/favicon.svg"
-              :alt="APP_MANIFEST.short_name"
-              class="h-6 w-6 transition-all duration-300"
-            />
-            <span class="text-md font-semibold tracking-tight text-foreground">
-              {{ APP_MANIFEST.short_name }}
-            </span>
-          </NuxtLink>
-
-          <!-- Desktop Navigation -->
-          <nav class="hidden md:flex items-center gap-0.5">
-            <LayoutHeaderNav />
-
-            <Separator
-              orientation="vertical"
-              class="mx-3 h-4 bg-border/60"
-            />
-
-            <LayoutSearchButton
-              :enable="headerSearch.enable"
-              :in-aside="headerSearch.inAside"
-              :style="'button'"
-              :placeholder="headerSearch.placeholder"
-            />
-
-            <!-- Language Switcher Dropdown -->
-            <LangSwitcher
-              v-if="i18nEnabled"
-              :trigger-type="triggerType"
-              :dropdown-type="dropdownType"
-            />
-
-            <!-- Theme Switcher -->
-            <DropdownMenu>
-              <DropdownMenuTrigger as-child>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                >
-                  <SunIcon class="h-3.5 w-3.5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-                  <MoonIcon class="absolute h-3.5 w-3.5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
-                  <span class="sr-only">{{ $t('common.toggle_theme') }}</span>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent
-                align="end"
-              >
-                <ThemeSwitcher />
-              </DropdownMenuContent>
-            </DropdownMenu>
-
-            <!-- CTA Button -->
-            <Separator
-              orientation="vertical"
-              class="mx-3 h-4 bg-border/60"
-            />
-
-            <Button
-              size="sm"
-              @click="handleHeaderCtaClick"
+        <header
+          ref="headerRef"
+          class="w-full px-8"
+          style="max-width: 100%; border-radius: 0; padding-top: 4px; padding-bottom: 4px; background-color: transparent; backdrop-filter: blur(0px); border-style: solid; border-width: 0; border-bottom-width: 1px; border-color: rgba(255,255,255,0.15); box-shadow: none;"
+          :class="isHeaderScrolled ? '' : 'hero-header'"
+        >
+          <div class="flex h-full items-center justify-between">
+            <!-- Logo — separated by a right border from nav -->
+            <NuxtLink
+              ref="logoRef"
+              to="/"
+              class="flex items-center gap-2.5 group pr-6 mr-6 no-hover-bg"
+              style="border-right-style: solid; border-right-width: 1px; border-right-color: rgba(255,255,255,0.2);"
             >
-              {{ headerCtaLabel }}
-              <ArrowRight />
-            </Button>
-          </nav>
+              <NuxtImg
+                src="/favicon.svg"
+                :alt="APP_MANIFEST.short_name"
+                class="h-6 w-6 transition-all duration-300"
+              />
+              <span class="text-md font-semibold tracking-tight text-foreground">
+                {{ APP_MANIFEST.short_name }}
+              </span>
+            </NuxtLink>
 
-          <!-- Mobile Controls -->
-          <div class="flex items-center gap-0.5 md:hidden">
-            <LayoutSearchButton
-              :enable="headerSearch.enable"
-              :in-aside="headerSearch.inAside"
-              :style="'button'"
-              :placeholder="headerSearch.placeholder"
-            />
+            <!-- Desktop Navigation -->
+            <nav class="hidden md:flex items-center gap-0.5">
+              <LayoutHeaderNav />
 
-            <LangSwitcher
-              v-if="i18nEnabled"
-              :trigger-type="triggerType"
-              :dropdown-type="dropdownType"
-            />
+              <Separator
+                orientation="vertical"
+                class="mx-3 h-4 bg-border/60"
+              />
 
-            <!-- Theme Switcher (mobile) -->
-            <DropdownMenu>
-              <DropdownMenuTrigger as-child>
-                <Button
-                  variant="ghost"
-                  size="icon"
+              <LayoutSearchButton
+                :enable="headerSearch.enable"
+                :in-aside="headerSearch.inAside"
+                :style="'button'"
+                :placeholder="headerSearch.placeholder"
+              />
+
+              <!-- Language Switcher Dropdown -->
+              <LangSwitcher
+                v-if="i18nEnabled"
+                :trigger-type="triggerType"
+                :dropdown-type="dropdownType"
+              />
+
+              <!-- Theme Switcher -->
+              <DropdownMenu>
+                <DropdownMenuTrigger as-child>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                  >
+                    <SunIcon class="h-3.5 w-3.5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+                    <MoonIcon class="absolute h-3.5 w-3.5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+                    <span class="sr-only">{{ $t('common.toggle_theme') }}</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent
+                  align="end"
                 >
-                  <SunIcon class="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-                  <MoonIcon class="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
-                  <span class="sr-only">{{ $t('common.toggle_theme') }}</span>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent
-                align="end"
-              >
-                <ThemeSwitcher />
-              </DropdownMenuContent>
-            </DropdownMenu>
+                  <ThemeSwitcher />
+                </DropdownMenuContent>
+              </DropdownMenu>
 
-            <!-- Mobile Menu Toggle -->
-            <Button
-              variant="ghost"
-              size="icon"
-              :aria-label="$t('common.toggle_menu')"
-              @click="isMobileMenuOpen = !isMobileMenuOpen"
-            >
-              <X
-                v-if="isMobileMenuOpen"
-                class="h-5 w-5"
+              <!-- CTA Button -->
+              <Separator
+                orientation="vertical"
+                class="mx-3 h-4 bg-border/60"
               />
-              <Menu
-                v-else
-                class="h-5 w-5"
+
+              <Button
+                size="sm"
+                @click="handleHeaderCtaClick"
+              >
+                {{ headerCtaLabel }}
+                <ArrowRight />
+              </Button>
+            </nav>
+
+            <!-- Mobile Controls -->
+            <div class="flex items-center gap-0.5 md:hidden">
+              <LayoutSearchButton
+                :enable="headerSearch.enable"
+                :in-aside="headerSearch.inAside"
+                :style="'button'"
+                :placeholder="headerSearch.placeholder"
               />
-            </Button>
+
+              <LangSwitcher
+                v-if="i18nEnabled"
+                :trigger-type="triggerType"
+                :dropdown-type="dropdownType"
+              />
+
+              <!-- Theme Switcher (mobile) -->
+              <DropdownMenu>
+                <DropdownMenuTrigger as-child>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                  >
+                    <SunIcon class="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+                    <MoonIcon class="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+                    <span class="sr-only">{{ $t('common.toggle_theme') }}</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent
+                  align="end"
+                >
+                  <ThemeSwitcher />
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              <!-- Mobile Menu Toggle -->
+              <Button
+                variant="ghost"
+                size="icon"
+                :aria-label="$t('common.toggle_menu')"
+                @click="isMobileMenuOpen = !isMobileMenuOpen"
+              >
+                <X
+                  v-if="isMobileMenuOpen"
+                  class="h-5 w-5"
+                />
+                <Menu
+                  v-else
+                  class="h-5 w-5"
+                />
+              </Button>
+            </div>
           </div>
-        </div>
-      </header>
+        </header>
       </div>
     </div>
 

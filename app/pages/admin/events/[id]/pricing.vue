@@ -507,11 +507,18 @@ definePageMeta({
           </p>
         </div>
         <Select v-model="selectedStatus">
-          <SelectTrigger id="seat-status-filter" class="h-9 w-full sm:w-[12rem]">
+          <SelectTrigger
+            id="seat-status-filter"
+            class="h-9 w-full sm:w-[12rem]"
+          >
             <SelectValue :placeholder="$t('admin_event_seatmap.filter_placeholder')" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem v-for="option in statusFilterOptions" :key="option.value" :value="option.value">
+            <SelectItem
+              v-for="option in statusFilterOptions"
+              :key="option.value"
+              :value="option.value"
+            >
               {{ option.label }}
             </SelectItem>
           </SelectContent>
@@ -541,7 +548,11 @@ definePageMeta({
         class="pointer-events-none fixed inset-x-0 bottom-4 z-40 px-4"
       >
         <div class="pointer-events-auto mx-auto flex max-w-4xl flex-col gap-3 rounded-[1.5rem] border border-border bg-background/95 p-3 shadow-lg backdrop-blur supports-[backdrop-filter]:bg-background/80">
-          <Alert v-if="areOverrideActionsDisabled && overrideDisabledMessage" variant="destructive" class="w-full self-stretch py-2">
+          <Alert
+            v-if="areOverrideActionsDisabled && overrideDisabledMessage"
+            variant="destructive"
+            class="w-full self-stretch py-2"
+          >
             <AlertDescription class="text-xs leading-5">
               {{ overrideDisabledMessage }}
             </AlertDescription>
@@ -555,17 +566,29 @@ definePageMeta({
                 </p>
               </div>
               <div class="flex min-w-0 flex-wrap gap-1.5">
-                <Badge v-for="seat in selectedSeatPreview" :key="seat.id" variant="outline" class="max-w-[12rem] truncate rounded-full font-normal">
+                <Badge
+                  v-for="seat in selectedSeatPreview"
+                  :key="seat.id"
+                  variant="outline"
+                  class="max-w-[12rem] truncate rounded-full font-normal"
+                >
                   {{ getSeatLocationLabel(seat) }}
                 </Badge>
-                <Badge v-if="selectedSeatExtraCount > 0" variant="secondary" class="rounded-full">
+                <Badge
+                  v-if="selectedSeatExtraCount > 0"
+                  variant="secondary"
+                  class="rounded-full"
+                >
                   {{ $t('admin_event_seatmap.selected_context_more', { count: selectedSeatExtraCount }) }}
                 </Badge>
               </div>
             </div>
             <div class="flex w-full flex-wrap items-end justify-center gap-2 sm:w-auto sm:shrink-0 sm:justify-end">
               <div class="flex min-w-[8rem] flex-1 flex-col gap-1 sm:w-40 sm:flex-none">
-                <Label for="custom-seat-price" class="text-xs">
+                <Label
+                  for="custom-seat-price"
+                  class="text-xs"
+                >
                   {{ $t('admin_event_seatmap.custom_price') }}
                 </Label>
                 <Input
@@ -577,13 +600,33 @@ definePageMeta({
                   :disabled="areOverrideActionsDisabled"
                 />
               </div>
-              <Button size="icon" :title="$t('admin_event_seatmap.set_custom_price')" :aria-label="$t('admin_event_seatmap.set_custom_price')" :disabled="areOverrideActionsDisabled" @click="setCustomPrice">
+              <Button
+                size="icon"
+                :title="$t('admin_event_seatmap.set_custom_price')"
+                :aria-label="$t('admin_event_seatmap.set_custom_price')"
+                :disabled="areOverrideActionsDisabled"
+                @click="setCustomPrice"
+              >
                 <SaveIcon class="size-4" />
               </Button>
-              <Button size="icon" variant="secondary" :title="$t('admin_event_seatmap.disable_seat')" :aria-label="$t('admin_event_seatmap.disable_seat')" :disabled="areOverrideActionsDisabled" @click="disableSelectedSeats">
+              <Button
+                size="icon"
+                variant="secondary"
+                :title="$t('admin_event_seatmap.disable_seat')"
+                :aria-label="$t('admin_event_seatmap.disable_seat')"
+                :disabled="areOverrideActionsDisabled"
+                @click="disableSelectedSeats"
+              >
                 <CircleSlash class="size-4" />
               </Button>
-              <Button size="icon" variant="outline" :title="$t('admin_event_seatmap.reset_override')" :aria-label="$t('admin_event_seatmap.reset_override')" :disabled="areOverrideActionsDisabled" @click="resetSelectedOverrides">
+              <Button
+                size="icon"
+                variant="outline"
+                :title="$t('admin_event_seatmap.reset_override')"
+                :aria-label="$t('admin_event_seatmap.reset_override')"
+                :disabled="areOverrideActionsDisabled"
+                @click="resetSelectedOverrides"
+              >
                 <RotateCcw class="size-4" />
               </Button>
             </div>

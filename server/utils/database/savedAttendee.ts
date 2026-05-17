@@ -116,7 +116,7 @@ class SavedAttendeeService {
       .orderBy(desc(tables.savedAttendees.isSelf), asc(tables.savedAttendees.id))
       .all()
 
-    const orderedRows = rows.filter((row) => row.id !== selfAttendee.id && !row.isSelf)
+    const orderedRows = rows.filter(row => row.id !== selfAttendee.id && !row.isSelf)
     return [selfAttendee, ...orderedRows.map(toModel)]
   }
 
@@ -131,7 +131,7 @@ class SavedAttendeeService {
     const canonical = chooseCanonicalSelfAttendee(rows)
 
     if (canonical) {
-      const duplicateIds = rows.filter((row) => row.id !== canonical.id).map((row) => row.id)
+      const duplicateIds = rows.filter(row => row.id !== canonical.id).map(row => row.id)
       if (duplicateIds.length > 0) {
         await this.db
           .update(tables.savedAttendees)
@@ -149,7 +149,7 @@ class SavedAttendeeService {
       const refreshedCanonical = chooseCanonicalSelfAttendee(refreshedRows)
 
       if (refreshedCanonical) {
-        const refreshedDuplicateIds = refreshedRows.filter((row) => row.id !== refreshedCanonical.id).map((row) => row.id)
+        const refreshedDuplicateIds = refreshedRows.filter(row => row.id !== refreshedCanonical.id).map(row => row.id)
         if (refreshedDuplicateIds.length > 0) {
           await this.db
             .update(tables.savedAttendees)
@@ -208,7 +208,7 @@ class SavedAttendeeService {
       throw new Error('Failed to create self attendee')
     }
 
-    const duplicateIds = refreshedRows.filter((savedAttendee) => savedAttendee.id !== refreshedCanonical.id).map((savedAttendee) => savedAttendee.id)
+    const duplicateIds = refreshedRows.filter(savedAttendee => savedAttendee.id !== refreshedCanonical.id).map(savedAttendee => savedAttendee.id)
     if (duplicateIds.length > 0) {
       await this.db
         .update(tables.savedAttendees)
