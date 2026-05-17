@@ -181,7 +181,7 @@ function buildSessionValidationErrors(sessions: EventPricingFormInput['sessions'
     for (const issue of result.error.issues) {
       const normalizedPath = normalizeSessionErrorPath(issue.path.join('.'))
       if (normalizedPath.startsWith('sessions')) {
-        errors[normalizedPath] = issue.message
+        errors[normalizedPath] = t(issue.message)
       }
     }
   }
@@ -189,7 +189,7 @@ function buildSessionValidationErrors(sessions: EventPricingFormInput['sessions'
   sessions.forEach((session, sessionIndex) => {
     const sessionLabel = session.label?.trim() || t('admin_event_pricing.session_fallback', { count: sessionIndex + 1 })
     for (const issue of getEventSessionTimingIssues(session, sessionLabel)) {
-      errors[`sessions.${sessionIndex}.${issue.field}`] = issue.message
+      errors[`sessions.${sessionIndex}.${issue.field}`] = t(issue.message)
     }
   })
 

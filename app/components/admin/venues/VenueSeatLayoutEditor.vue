@@ -25,16 +25,16 @@ const emit = defineEmits<{
 }>()
 
 const commonSectionColors = [
-  { name: 'Slate', value: '#334155' },
-  { name: 'Rose', value: '#E11D48' },
-  { name: 'Orange', value: '#F97316' },
-  { name: 'Amber', value: '#D97706' },
-  { name: 'Emerald', value: '#059669' },
-  { name: 'Teal', value: '#0F766E' },
-  { name: 'Blue', value: '#2563EB' },
-  { name: 'Indigo', value: '#4338CA' },
-  { name: 'Violet', value: '#7C3AED' },
-  { name: 'Fuchsia', value: '#C026D3' },
+  { nameKey: 'admin.venues.color_slate', value: '#334155' },
+  { nameKey: 'admin.venues.color_rose', value: '#E11D48' },
+  { nameKey: 'admin.venues.color_orange', value: '#F97316' },
+  { nameKey: 'admin.venues.color_amber', value: '#D97706' },
+  { nameKey: 'admin.venues.color_emerald', value: '#059669' },
+  { nameKey: 'admin.venues.color_teal', value: '#0F766E' },
+  { nameKey: 'admin.venues.color_blue', value: '#2563EB' },
+  { nameKey: 'admin.venues.color_indigo', value: '#4338CA' },
+  { nameKey: 'admin.venues.color_violet', value: '#7C3AED' },
+  { nameKey: 'admin.venues.color_fuchsia', value: '#C026D3' },
 ]
 
 function normalizeHexColor(value: string) {
@@ -776,7 +776,7 @@ function getSeatFieldId(sectionIndex: number, rowIndex: number, seatIndex: numbe
               {{ section.name }}
             </p>
             <p class="text-xs text-muted-foreground">
-              {{ section.code }} · {{ section.rows.length }} row(s)
+              {{ section.code }} · {{ $t('admin.venues.row_count', { count: section.rows.length }) }}
             </p>
           </div>
 
@@ -787,8 +787,8 @@ function getSeatFieldId(sectionIndex: number, rowIndex: number, seatIndex: numbe
                   type="button"
                   variant="ghost"
                   size="sm"
-                  :title="`Section settings for ${section.name}`"
-                  :aria-label="`Section settings for ${section.name}`"
+                  :title="$t('admin.venues.section_settings_for', { name: section.name })"
+                  :aria-label="$t('admin.venues.section_settings_for', { name: section.name })"
                 >
                   <Settings2 class="size-4" />
                 </Button>
@@ -800,10 +800,10 @@ function getSeatFieldId(sectionIndex: number, rowIndex: number, seatIndex: numbe
                 <div class="flex flex-col gap-4">
                   <div>
                     <p class="text-sm font-medium text-foreground">
-                      Section settings
+                      {{ $t('admin.venues.section_settings') }}
                     </p>
                     <p class="text-xs text-muted-foreground">
-                      Configure this section's identity, grid placement, and seat layout mode.
+                      {{ $t('admin.venues.section_settings_desc') }}
                     </p>
                   </div>
 
@@ -849,8 +849,8 @@ function getSeatFieldId(sectionIndex: number, rowIndex: number, seatIndex: numbe
                             variant="outline"
                             size="sm"
                             class="shrink-0"
-                            :title="`Choose section color for ${section.name}`"
-                            :aria-label="`Choose section color for ${section.name}`"
+                            :title="$t('admin.venues.choose_section_color_for', { name: section.name })"
+                            :aria-label="$t('admin.venues.choose_section_color_for', { name: section.name })"
                           >
                             <span
                               class="size-4 rounded-full border"
@@ -887,8 +887,8 @@ function getSeatFieldId(sectionIndex: number, rowIndex: number, seatIndex: numbe
                                 size="icon-sm"
                                 class="relative overflow-hidden rounded-full border p-0"
                                 :class="getSectionColorButtonClass(section.color, color.value)"
-                                :title="color.name"
-                                :aria-label="`Use ${color.name} section color`"
+                                :title="$t(color.nameKey)"
+                                :aria-label="$t('admin.venues.use_section_color', { color: $t(color.nameKey) })"
                                 @click="selectSectionColor(sectionIndex, section, color.value)"
                               >
                                 <span
@@ -906,7 +906,7 @@ function getSeatFieldId(sectionIndex: number, rowIndex: number, seatIndex: numbe
                               <label
                                 class="text-xs uppercase tracking-[0.18em] text-muted-foreground"
                                 :for="getSectionFieldId(sectionIndex, 'color')"
-                              >Custom hex color</label>
+                              >{{ $t('admin.venues.custom_hex_color') }}</label>
                               <Input
                                 :id="getSectionFieldId(sectionIndex, 'color')"
                                 :model-value="getSectionColorDraft(sectionIndex, section)"
@@ -918,7 +918,7 @@ function getSeatFieldId(sectionIndex: number, rowIndex: number, seatIndex: numbe
                                 v-if="isSectionColorDraftInvalid(sectionIndex, section)"
                                 class="text-xs text-destructive"
                               >
-                                Use a valid hex color like #2563EB.
+                                {{ $t('admin.venues.use_valid_hex_color') }}
                               </p>
                               <Button
                                 type="button"
@@ -926,7 +926,7 @@ function getSeatFieldId(sectionIndex: number, rowIndex: number, seatIndex: numbe
                                 :disabled="isSectionColorDraftInvalid(sectionIndex, section)"
                                 @click="applySectionColor(sectionIndex, section)"
                               >
-                                Apply color
+                                {{ $t('admin.venues.apply_color') }}
                               </Button>
                             </div>
                           </div>
@@ -940,7 +940,7 @@ function getSeatFieldId(sectionIndex: number, rowIndex: number, seatIndex: numbe
                       <label
                         class="text-xs uppercase tracking-[0.18em] text-muted-foreground"
                         :for="getSectionFieldId(sectionIndex, 'grid-x')"
-                      >Grid X</label>
+                      >{{ $t('admin.venues.grid_x') }}</label>
                       <Input
                         :id="getSectionFieldId(sectionIndex, 'grid-x')"
                         :model-value="String(section.gridX)"
@@ -954,7 +954,7 @@ function getSeatFieldId(sectionIndex: number, rowIndex: number, seatIndex: numbe
                       <label
                         class="text-xs uppercase tracking-[0.18em] text-muted-foreground"
                         :for="getSectionFieldId(sectionIndex, 'grid-y')"
-                      >Grid Y</label>
+                      >{{ $t('admin.venues.grid_y') }}</label>
                       <Input
                         :id="getSectionFieldId(sectionIndex, 'grid-y')"
                         :model-value="String(section.gridY)"
@@ -967,7 +967,7 @@ function getSeatFieldId(sectionIndex: number, rowIndex: number, seatIndex: numbe
                       <label
                         class="text-xs uppercase tracking-[0.18em] text-muted-foreground"
                         :for="getSectionFieldId(sectionIndex, 'grid-w')"
-                      >Grid W</label>
+                      >{{ $t('admin.venues.grid_w') }}</label>
                       <Input
                         :id="getSectionFieldId(sectionIndex, 'grid-w')"
                         :model-value="String(section.gridW)"
@@ -981,7 +981,7 @@ function getSeatFieldId(sectionIndex: number, rowIndex: number, seatIndex: numbe
                       <label
                         class="text-xs uppercase tracking-[0.18em] text-muted-foreground"
                         :for="getSectionFieldId(sectionIndex, 'grid-h')"
-                      >Grid H</label>
+                      >{{ $t('admin.venues.grid_h') }}</label>
                       <Input
                         :id="getSectionFieldId(sectionIndex, 'grid-h')"
                         :model-value="String(section.gridH)"
@@ -996,7 +996,7 @@ function getSeatFieldId(sectionIndex: number, rowIndex: number, seatIndex: numbe
                     <label
                       class="text-xs uppercase tracking-[0.18em] text-muted-foreground"
                       :for="`section-${sectionIndex}-layout-mode`"
-                    >Seat layout mode</label>
+                    >{{ $t('admin.venues.seat_layout_mode') }}</label>
                     <Select
                       :model-value="section.seatLayoutMode"
                       @update:model-value="updateSeatLayoutMode(sectionIndex, $event)"
@@ -1007,10 +1007,10 @@ function getSeatFieldId(sectionIndex: number, rowIndex: number, seatIndex: numbe
                       <SelectContent>
                         <SelectGroup>
                           <SelectItem :value="SeatLayoutMode.Automatic">
-                            Automatic
+                            {{ $t('admin.venues.seat_layout_mode_automatic') }}
                           </SelectItem>
                           <SelectItem :value="SeatLayoutMode.Manual">
-                            Manual
+                            {{ $t('admin.venues.seat_layout_mode_manual') }}
                           </SelectItem>
                         </SelectGroup>
                       </SelectContent>
@@ -1186,7 +1186,7 @@ function getSeatFieldId(sectionIndex: number, rowIndex: number, seatIndex: numbe
                       v-if="!isAutomaticSeatLayout(section) && isManualSeatCoordinateTakenForSeat(section, rowIndex, seatIndex)"
                       class="text-xs text-destructive"
                     >
-                      Seat coordinates must be unique within a section.
+                      {{ $t('admin.venues.manual_seat_coordinates_unique') }}
                     </p>
                     <div class="grid gap-3 rounded-[0.9rem] border border-border bg-secondary p-3 2xl:grid-cols-[auto_minmax(0,1fr)] 2xl:items-center">
                       <div class="flex items-center gap-3">

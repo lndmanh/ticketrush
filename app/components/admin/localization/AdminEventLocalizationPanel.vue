@@ -19,6 +19,7 @@ const translatableLocales = locales.filter(localeCode => localeCode !== sourceLo
 const initialLocale = translatableLocales[0] ?? sourceLocale
 const selectedLocale = ref(initialLocale)
 const isSaving = ref(false)
+const { t } = useI18n()
 
 const { data: translationResponse, refresh } = await useAPI<ApiResponse<AdminEventTranslationData>>(() => apiRoutes.adminEventTranslations(props.eventId))
 
@@ -97,10 +98,10 @@ const onSubmit = handleSubmit(async (values) => {
     }
 
     await refresh()
-    toast.success('Localized event copy saved')
+    toast.success(t('admin_localization.event_saved'))
   }
   catch (error) {
-    toast.error(parseApiError(error, 'Failed to save localized event copy').message)
+    toast.error(t(parseApiError(error, 'admin_localization.event_save_failed').message))
   }
   finally {
     isSaving.value = false
@@ -115,7 +116,7 @@ watch([translationData, selectedLocale], resetSelectedLocaleForm, { immediate: t
     <DialogTrigger as-child>
       <Button variant="outline">
         <Globe2 class="size-4" />
-        Edit localization
+        {{ $t('admin_localization.edit') }}
       </Button>
     </DialogTrigger>
 
@@ -124,10 +125,10 @@ watch([translationData, selectedLocale], resetSelectedLocaleForm, { immediate: t
         <div>
           <DialogTitle class="flex items-center gap-2">
             <Globe2 class="size-4 text-muted-foreground" />
-            Localized event information
+            {{ $t('admin_localization.event_title') }}
           </DialogTitle>
           <DialogDescription>
-            Vietnamese is the source copy. Add translated marketing copy for each public locale.
+            {{ $t('admin_localization.event_desc') }}
           </DialogDescription>
         </div>
       </DialogHeader>
@@ -141,10 +142,10 @@ watch([translationData, selectedLocale], resetSelectedLocaleForm, { immediate: t
           @update:model-value="selectLocale"
         >
           <SelectTrigger
-            aria-label="Translation locale"
+            :aria-label="$t('admin_localization.translation_locale')"
             class="w-full sm:w-48"
           >
-            <SelectValue placeholder="Choose locale" />
+            <SelectValue :placeholder="$t('admin_localization.choose_locale')" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem
@@ -162,7 +163,7 @@ watch([translationData, selectedLocale], resetSelectedLocaleForm, { immediate: t
         v-if="translatableLocales.length === 0"
         class="text-sm text-muted-foreground"
       >
-        Add another locale in i18n constants before creating translations.
+        {{ $t('admin_localization.no_locales') }}
       </div>
 
       <form
@@ -172,7 +173,7 @@ watch([translationData, selectedLocale], resetSelectedLocaleForm, { immediate: t
       >
         <div class="rounded-2xl border bg-muted/30 p-4 text-sm text-muted-foreground">
           <p class="font-medium text-foreground">
-            Source: {{ translationData?.event.title || 'Untitled event' }}
+            {{ $t('admin_localization.source', { name: translationData?.event.title || $t('admin.events.untitled_event') }) }}
           </p>
           <p class="mt-2 line-clamp-3">
             {{ translationData?.event.description }}
@@ -186,13 +187,13 @@ watch([translationData, selectedLocale], resetSelectedLocaleForm, { immediate: t
           >
             <Field :data-invalid="!!errors.length">
               <FieldLabel for="event-translation-title">
-                Title
+                {{ $t('admin_localization.field_title') }}
               </FieldLabel>
               <Input
                 id="event-translation-title"
                 :model-value="field.value ?? ''"
                 :aria-invalid="!!errors.length"
-                placeholder="Localized event title"
+                :placeholder="$t('admin_localization.event_title_placeholder')"
                 @update:model-value="field.onChange"
                 @blur="field.onBlur"
               />
@@ -210,13 +211,13 @@ watch([translationData, selectedLocale], resetSelectedLocaleForm, { immediate: t
           >
             <Field :data-invalid="!!errors.length">
               <FieldLabel for="event-translation-subtitle">
-                Subtitle
+                {{ $t('admin_localization.field_subtitle') }}
               </FieldLabel>
               <Input
                 id="event-translation-subtitle"
                 :model-value="field.value ?? ''"
                 :aria-invalid="!!errors.length"
-                placeholder="Localized event subtitle"
+                :placeholder="$t('admin_localization.event_subtitle_placeholder')"
                 @update:model-value="field.onChange"
                 @blur="field.onBlur"
               />
@@ -234,13 +235,13 @@ watch([translationData, selectedLocale], resetSelectedLocaleForm, { immediate: t
           >
             <Field :data-invalid="!!errors.length">
               <FieldLabel for="event-translation-description">
-                Description
+                {{ $t('admin_localization.field_description') }}
               </FieldLabel>
               <Textarea
                 id="event-translation-description"
                 :model-value="field.value ?? ''"
                 :aria-invalid="!!errors.length"
-                placeholder="Localized event description"
+                :placeholder="$t('admin_localization.event_description_placeholder')"
                 class="min-h-32"
                 @update:model-value="field.onChange"
                 @blur="field.onBlur"
@@ -256,10 +257,10 @@ watch([translationData, selectedLocale], resetSelectedLocaleForm, { immediate: t
 
         <FieldSet v-if="sourceTicketTypes.length > 0">
           <FieldLegend variant="label">
-            Ticket release copy
+            {{ $t('admin_localization.ticket_release_copy') }}
           </FieldLegend>
           <FieldDescription>
-            Localize release names and descriptions shown during purchase.
+            {{ $t('admin_localization.ticket_release_copy_desc') }}
           </FieldDescription>
           <FieldGroup class="mt-4">
             <div
@@ -293,13 +294,13 @@ watch([translationData, selectedLocale], resetSelectedLocaleForm, { immediate: t
                 >
                   <Field :data-invalid="!!errors.length">
                     <FieldLabel :for="`ticket-type-${ticketType.id}-name`">
-                      Release name
+                      {{ $t('admin_localization.release_name') }}
                     </FieldLabel>
                     <Input
                       :id="`ticket-type-${ticketType.id}-name`"
                       :model-value="field.value ?? ''"
                       :aria-invalid="!!errors.length"
-                      placeholder="Localized release name"
+                      :placeholder="$t('admin_localization.release_name_placeholder')"
                       @update:model-value="field.onChange"
                       @blur="field.onBlur"
                     />
@@ -316,13 +317,13 @@ watch([translationData, selectedLocale], resetSelectedLocaleForm, { immediate: t
                 >
                   <Field :data-invalid="!!errors.length">
                     <FieldLabel :for="`ticket-type-${ticketType.id}-description`">
-                      Release description
+                      {{ $t('admin_localization.release_description') }}
                     </FieldLabel>
                     <Input
                       :id="`ticket-type-${ticketType.id}-description`"
                       :model-value="field.value ?? ''"
                       :aria-invalid="!!errors.length"
-                      placeholder="Localized release description"
+                      :placeholder="$t('admin_localization.release_description_placeholder')"
                       @update:model-value="field.onChange"
                       @blur="field.onBlur"
                     />
@@ -343,13 +344,13 @@ watch([translationData, selectedLocale], resetSelectedLocaleForm, { immediate: t
             variant="outline"
             @click="resetSelectedLocaleForm"
           >
-            Reset
+            {{ $t('common.reset') }}
           </Button>
           <Button
             type="submit"
             :is-loading="isSaving"
           >
-            Save {{ languageNames[selectedLocale] }} copy
+            {{ $t('admin_localization.save_locale_copy', { locale: languageNames[selectedLocale] }) }}
           </Button>
         </DialogFooter>
       </form>

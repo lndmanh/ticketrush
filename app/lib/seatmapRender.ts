@@ -7,6 +7,8 @@ export interface SeatMapRenderOptions {
   seatSpacing: number
   rowSpacing: number
   sectionGap: number
+  stageLabel: string
+  availabilityLabel: (available: number, total: number) => string
 }
 
 export interface SeatMapRenderBounds {
@@ -76,6 +78,8 @@ const defaultRenderOptions: SeatMapRenderOptions = {
   seatSpacing: 56,
   rowSpacing: 48,
   sectionGap: 84,
+  stageLabel: 'Stage',
+  availabilityLabel: (available, total) => `${available} / ${total} available`,
 }
 
 const seatIconWidth = 48
@@ -139,7 +143,7 @@ export function createSeatMapRenderModel(layout: SeatMapLayout, selectedSeatIds:
   const sections: SeatMapRenderSection[] = []
   const seats: SeatMapRenderSeat[] = []
   const stage: SeatMapRenderStage = {
-    label: 'Stage',
+    label: options.stageLabel,
     bounds: { minX: 0, minY: 0, maxX: 0, maxY: stageBandHeight, width: 0, height: stageBandHeight },
   }
 
@@ -235,7 +239,7 @@ export function createSeatMapRenderModel(layout: SeatMapLayout, selectedSeatIds:
       : createEmptyBounds()
     const contentBounds = mergeBounds(mergeBounds(sectionGridBounds, sectionSeatBounds), labelBounds)
     const availability = {
-      label: `${section.metrics.available} / ${section.metrics.total} available`,
+      label: options.availabilityLabel(section.metrics.available, section.metrics.total),
       x: contentBounds.maxX,
       y: contentBounds.minY - 10,
     }

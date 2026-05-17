@@ -149,7 +149,7 @@ const primarySessionTimeLabel = computed(() => {
   const session = primarySession.value
 
   if (!session) {
-    return 'Time to be announced'
+    return t('event_detail.time_tba')
   }
 
   const startsAt = formatTime(session.startsAt, dateLocale.value, {
@@ -187,7 +187,7 @@ const startingPriceLabel = computed(() => {
   const price = startingPrice.value
 
   if (!price) {
-    return 'Pricing to be announced'
+    return t('event_detail.pricing_not_announced')
   }
 
   return formatPreferredCurrency(price.priceCents, price.currency, dateLocale.value)
@@ -195,7 +195,7 @@ const startingPriceLabel = computed(() => {
 
 const dateRangeLabel = computed(() => {
   if (sortedSessions.value.length === 0) {
-    return 'Dates to be announced'
+    return t('common.dates_tba')
   }
 
   const firstSession = sortedSessions.value[0]
@@ -217,7 +217,7 @@ const dateRangeLabel = computed(() => {
 
 const venueLabel = computed(() => {
   if (!venue.value) {
-    return 'Venue to be announced'
+    return t('common.venue_tba')
   }
 
   return `${venue.value.name}, ${venue.value.city}`
@@ -367,6 +367,12 @@ function getSessionStatusLabel(session: PublicEventSessionSummary) {
   return translated === key ? session.status.replaceAll('_', ' ') : translated
 }
 
+function getEventStatusLabel(status: EventStatus) {
+  const key = `event_card.status_${status}`
+  const translated = t(key)
+  return translated === key ? status.replaceAll('_', ' ') : translated
+}
+
 function openBookingCaptchaDialog(session: PublicEventSessionSummary) {
   selectedBookingSession.value = session
   isBookingCaptchaDialogOpen.value = true
@@ -415,7 +421,7 @@ definePageMeta({
               variant="outline"
               class="w-fit border-primary/20 bg-primary/10 font-mono text-[10px] uppercase tracking-[0.18em] text-primary"
             >
-              {{ event.status.replaceAll('_', ' ') }}
+              {{ getEventStatusLabel(event.status) }}
             </Badge>
 
             <div class="space-y-4">
@@ -444,7 +450,7 @@ definePageMeta({
                     v-if="sortedSessions.length > 1"
                     class="inline-flex w-fit items-center rounded-md border border-border/70 px-2 py-1 text-xs font-medium text-muted-foreground"
                   >
-                    + {{ sortedSessions.length - 1 }} more date{{ sortedSessions.length - 1 === 1 ? '' : 's' }}
+                    {{ $t('event_detail.more_dates', { count: sortedSessions.length - 1 }) }}
                   </span>
                 </div>
               </div>
@@ -456,7 +462,7 @@ definePageMeta({
                 />
                 <div class="space-y-1">
                   <p class="font-semibold leading-none text-foreground">
-                    {{ venue?.name || 'Venue to be announced' }}
+                    {{ venue?.name || $t('common.venue_tba') }}
                   </p>
                   <p class="text-muted-foreground">
                     {{ venue?.address || venueLabel }}
@@ -468,7 +474,7 @@ definePageMeta({
 
           <div class="border-t border-border/70 pt-5">
             <p class="text-sm font-semibold text-foreground whitespace-nowrap">
-              Price starts from <span class="text-3xl ml-2 font-bold tracking-[-0.04em] text-primary inline-flex items-center gap-2">{{ startingPriceLabel }}
+              {{ $t('event_detail.price_starts_from') }} <span class="text-3xl ml-2 font-bold tracking-[-0.04em] text-primary inline-flex items-center gap-2">{{ startingPriceLabel }}
                 <Motion
                   as="div"
                   :initial="{ x: 0 }"

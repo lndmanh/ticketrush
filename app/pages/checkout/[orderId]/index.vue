@@ -958,7 +958,7 @@ const onSubmit = handleSubmit(
       }
       const payloadResult = confirmCheckoutSchema.safeParse(payload)
       if (!payloadResult.success) {
-        toast.error(payloadResult.error.issues[0]?.message ?? t('checkout.fix_highlighted'))
+        toast.error(t(payloadResult.error.issues[0]?.message ?? 'checkout.fix_highlighted'))
         return
       }
 
@@ -979,8 +979,8 @@ const onSubmit = handleSubmit(
     }
   },
   ({ errors }) => {
-    const firstError = Object.values(errors).flat().filter(Boolean)[0] || t('checkout.fix_highlighted')
-    toast.error(firstError)
+    const firstError = Object.values(errors).flat().filter(Boolean)[0] || 'checkout.fix_highlighted'
+    toast.error(t(firstError))
   },
 )
 

@@ -5,14 +5,13 @@ export const DEFAULT_ADMIN_ANALYTICS_TIME_RANGE = AdminAnalyticsTimeRange.Last7D
 
 export interface AdminAnalyticsTimeRangeOption {
   value: AdminAnalyticsTimeRange
-  label: string
 }
 
 export const adminAnalyticsTimeRangeOptions: AdminAnalyticsTimeRangeOption[] = [
-  { value: AdminAnalyticsTimeRange.Last24Hours, label: 'Last 24 hours' },
-  { value: AdminAnalyticsTimeRange.Last3Days, label: 'Last 3 days' },
-  { value: AdminAnalyticsTimeRange.Last7Days, label: 'Last 7 days' },
-  { value: AdminAnalyticsTimeRange.Last30Days, label: 'Last 30 days' },
+  { value: AdminAnalyticsTimeRange.Last24Hours },
+  { value: AdminAnalyticsTimeRange.Last3Days },
+  { value: AdminAnalyticsTimeRange.Last7Days },
+  { value: AdminAnalyticsTimeRange.Last30Days },
 ]
 
 const adminAnalyticsTimeRangeDurations: Record<AdminAnalyticsTimeRange, number> = {
