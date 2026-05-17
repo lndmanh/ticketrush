@@ -287,8 +287,20 @@ class HoldService {
         throw createError({ statusCode: 409, statusMessage: 'One or more selected seats are no longer available.' })
       }
 
-      const pricingBundle = await eventSessionService.getSeatMap(session.id)
-      const overrideByVenueSeatId = new Map(pricingBundle.seatOverrides.map(override => [override.venueSeatId, override]))
+      const selectedVenueSeatIds = [...new Set(sellableSeats.flatMap((seat) => {
+        return typeof seat.venueSeatId === 'number' ? [seat.venueSeatId] : []
+      }))]
+      const seatOverrides = selectedVenueSeatIds.length > 0
+        ? await db
+            .select()
+            .from(tables.sessionSeatOverrides)
+            .where(and(
+              eq(tables.sessionSeatOverrides.eventSessionId, session.id),
+              inArray(tables.sessionSeatOverrides.venueSeatId, selectedVenueSeatIds),
+            ))
+            .all()
+        : []
+      const overrideByVenueSeatId = new Map(seatOverrides.map(override => [override.venueSeatId, override]))
 
       for (const seat of sellableSeats) {
         const seatOverride = seat.venueSeatId === null ? undefined : overrideByVenueSeatId.get(seat.venueSeatId)
