@@ -11,19 +11,19 @@ type TicketTimeFilter = '24h' | '7d' | '30d' | 'all'
 
 const { locale, t } = useI18n()
 
-const rangeOptions: Array<{ value: TicketTimeFilter, label: string }> = [
+const rangeOptions = computed<Array<{ value: TicketTimeFilter, label: string }>>(() => [
   { value: '24h', label: t('tickets.last_24h') },
   { value: '7d', label: t('tickets.last_7_days') },
   { value: '30d', label: t('tickets.last_30_days') },
   { value: 'all', label: t('tickets.all_time') },
-]
+])
 
-const statusTabs: Array<{ value: TicketStatusFilter, label: string }> = [
+const statusTabs = computed<Array<{ value: TicketStatusFilter, label: string }>>(() => [
   { value: 'all', label: t('tickets.status_all') },
   { value: 'success', label: t('tickets.status_success') },
   { value: 'processing', label: t('tickets.status_processing') },
   { value: 'cancelled', label: t('tickets.status_cancelled') },
-]
+])
 const selectedRange = ref<TicketTimeFilter>('7d')
 const selectedStatus = ref<TicketStatusFilter>('all')
 
@@ -134,7 +134,7 @@ definePageMeta({
       <Card>
         <CardContent class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <p class="text-sm text-muted-foreground">
-            Đang hiển thị {{ filteredTickets.length }}/{{ tickets.length }} vé
+            {{ $t('tickets.showing_count', { filtered: filteredTickets.length, total: tickets.length }) }}
           </p>
 
           <div class="ml-auto flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center sm:justify-end sm:gap-4">
@@ -142,14 +142,14 @@ definePageMeta({
               for="ticket-time-range"
               class="shrink-0 text-sm font-semibold text-muted-foreground"
             >
-              Lọc theo ngày
+              {{ $t('tickets.filter_by_date') }}
             </Label>
             <div class="w-full">
               <Select v-model="selectedRange">
                 <SelectTrigger
                   id="ticket-time-range"
                 >
-                  <SelectValue placeholder="Select range" />
+                  <SelectValue :placeholder="$t('tickets.select_range')" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem
