@@ -27,7 +27,7 @@ const slug = computed(() => {
 const sessionPublicId = computed(() => typeof route.params.sessionId === 'string' ? route.params.sessionId : '')
 const passToken = computed(() => typeof route.query.pass === 'string' ? route.query.pass : undefined)
 const requestUrl = useRequestURL()
-const { locale } = useI18n()
+const { locale, t } = useI18n()
 const gateFetchKey = computed(() => getEventSessionGateFetchKey(sessionPublicId.value, passToken.value))
 const seatMapFetchKey = computed(() => getEventSessionSeatmapFetchKey(sessionPublicId.value, locale.value))
 
@@ -37,6 +37,27 @@ const { data: detailResponse, error: detailFetchError } = await useAPI<ApiRespon
 const detail = computed(() => detailResponse.value?.success ? detailResponse.value.data : null)
 const event = computed(() => detail.value?.event ?? null)
 const session = computed(() => detail.value?.session ?? null)
+const pageTitle = computed(() => event.value?.title ? `${event.value.title} · ${t('seats.page_title')}` : t('seats.page_title'))
+const pageDescription = computed(() => t('seats.page_description'))
+
+useSeo({
+  title: pageTitle,
+  description: pageDescription,
+  type: 'website',
+})
+
+usePageBreadcrumbs(computed(() => {
+  if (!event.value || event.value.slug !== slug.value || !session.value || session.value.publicId !== sessionPublicId.value) {
+    return undefined
+  }
+
+  return [
+    { title: t('home.breadcrumb'), href: '/' },
+    { title: t('events.breadcrumb'), href: '/events' },
+    { title: event.value.title, href: `/events/${slug.value}` },
+    { title: session.value.label || t('seats.breadcrumb'), href: route.path },
+  ]
+}))
 
 const { data: gateResponse, error: gateFetchError } = await useAPI<ApiResponse<EventSessionGateResponse>>(() => apiRoutes.eventSessionGate(sessionPublicId.value), {
   key: gateFetchKey,
@@ -709,8 +730,8 @@ onUnmounted(() => {
 })
 
 definePageMeta({
-  title: 'Choose seats',
-  breadcrumb: 'Seat selection',
+  title: 'seats.page_title',
+  breadcrumb: 'seats.breadcrumb',
   layout: 'empty',
   middleware: ['auth'],
 })

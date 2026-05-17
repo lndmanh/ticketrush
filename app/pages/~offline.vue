@@ -2,7 +2,15 @@
 import { WifiOff, RefreshCw } from '@lucide/vue'
 import { Button } from '@/components/ui/button'
 
-definePageMeta({ title: 'Offline', layout: 'empty' })
+definePageMeta({ title: 'errors.offline_title', layout: 'empty' })
+
+const { t } = useI18n()
+
+useSeo({
+  title: computed(() => t('errors.offline_title')),
+  description: computed(() => t('errors.offline_description')),
+  type: 'website',
+})
 
 function reload() {
   window.location.reload()

@@ -5,6 +5,8 @@
 <script setup lang="ts">
 import AdminTransactionsManager from '@/components/admin/transactions/AdminTransactionsManager.vue'
 
+const { t } = useI18n()
+
 definePageMeta({
   title: 'admin.transactions.title',
   breadcrumb: 'admin.transactions.breadcrumb',
@@ -13,7 +15,8 @@ definePageMeta({
 })
 
 useSeo({
-  title: $t('admin.transactions.title'),
-  description: $t('admin.transactions.desc'),
+  title: computed(() => t('admin.transactions.title')),
+  description: computed(() => t('admin.transactions.desc')),
+  type: 'website',
 })
 </script>

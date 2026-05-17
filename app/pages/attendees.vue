@@ -35,6 +35,19 @@ const isSubmitting = ref(false)
 const editingId = ref<number | null>(null)
 const { t, locale } = useI18n()
 
+definePageMeta({
+  title: 'saved_attendees.page_title',
+  breadcrumb: 'saved_attendees.breadcrumb',
+  layout: 'dashboard',
+  middleware: ['auth'],
+})
+
+useSeo({
+  title: computed(() => t('saved_attendees.page_title')),
+  description: computed(() => t('saved_attendees.page_description')),
+  type: 'website',
+})
+
 type AttendeeFormValues = {
   legalName: string
   preferredName?: string
@@ -293,12 +306,6 @@ const selfAttendeeMissingFields = computed(() => {
   return getMissingSelfFields(self).map(getMissingSelfFieldLabel)
 })
 
-definePageMeta({
-  title: 'saved_attendees.page_title',
-  breadcrumb: 'saved_attendees.breadcrumb',
-  layout: 'dashboard',
-  middleware: ['auth'],
-})
 </script>
 
 <template>

@@ -25,6 +25,20 @@ interface VenueOption {
 }
 
 const { locale, t } = useI18n()
+
+definePageMeta({
+  title: 'admin.event_create.page_title',
+  breadcrumb: 'admin.event_create.breadcrumb',
+  middleware: ['auth', 'admin'],
+  layout: 'dashboard',
+})
+
+useSeo({
+  title: computed(() => t('admin.event_create.page_title')),
+  description: computed(() => t('admin.event_create.step_review_desc')),
+  type: 'website',
+})
+
 const displayLocale = computed(() => getDisplayDateLocale(locale.value))
 
 interface EventCreationStep {
@@ -826,13 +840,6 @@ const onSubmit = handleSubmit(
     toast.error(firstError)
   },
 )
-
-definePageMeta({
-  title: 'admin.event_create.page_title',
-  breadcrumb: 'admin.event_create.breadcrumb',
-  middleware: ['auth', 'admin'],
-  layout: 'dashboard',
-})
 
 watch(values, () => {
   queueAutosave()

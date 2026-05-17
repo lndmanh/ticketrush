@@ -14,6 +14,13 @@ const DEFAULT_TICKET_SORT: TicketSortOption = 'issued_desc'
 
 const { locale, t } = useI18n()
 
+definePageMeta({
+  title: 'tickets.page_title',
+  breadcrumb: 'nav.my_tickets',
+  layout: 'dashboard',
+  middleware: ['auth'],
+})
+
 const sortOptions = computed<Array<{ value: TicketSortOption, label: string }>>(() => [
   { value: 'issued_desc', label: t('tickets.sort_issued_newest') },
   { value: 'issued_asc', label: t('tickets.sort_issued_oldest') },
@@ -33,7 +40,7 @@ const activePage = ref(1)
 
 useSeo({
   title: computed(() => t('tickets.page_title')),
-  description: computed(() => t('tickets.empty_subtitle')),
+  description: computed(() => t('tickets.page_description')),
   type: 'website',
 })
 
@@ -269,11 +276,6 @@ function getShortTicketId(value: string) {
   return value.length > 10 ? value.slice(-10) : value
 }
 
-definePageMeta({
-  breadcrumb: 'nav.my_tickets',
-  layout: 'dashboard',
-  middleware: ['auth'],
-})
 </script>
 
 <template>

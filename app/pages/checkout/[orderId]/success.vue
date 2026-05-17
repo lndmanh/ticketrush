@@ -16,7 +16,7 @@ const hasCelebrated = ref(false)
 const { data: checkoutResponse } = await useAPI<ApiResponse<CheckoutDetailData>>(() => `/api/checkout/${orderId.value}`, {
   query: computed(() => ({ locale: locale.value })),
 })
-const checkout = computed(() => checkoutResponse.value?.data ?? null)
+const checkout = computed(() => checkoutResponse.value?.success ? checkoutResponse.value.data : null)
 const routeState = computed(() => getCheckoutSuccessRouteState(checkout.value?.order.status))
 
 if (checkout.value && routeState.value === 'checkout') {
@@ -50,7 +50,34 @@ const eventPath = computed(() => getCheckoutEventPath(checkout.value?.event?.slu
 const eventTimeLabel = computed(() => checkout.value?.eventSession?.startsAt ? formatDateTime(checkout.value.eventSession.startsAt) : t('checkout.session_time_tba'))
 const pageTitle = computed(() => isConfirmed.value ? t('checkout.success_title') : t('checkout.success_cancelled_title'))
 const pageDescription = computed(() => isConfirmed.value ? t('checkout.success_desc') : t('checkout.success_cancelled_desc'))
+const seoTitle = computed(() => checkout.value?.event?.title ? `${checkout.value.event.title} · ${pageTitle.value}` : pageTitle.value)
 const pageBadge = computed(() => isConfirmed.value ? t('checkout.success_eyebrow') : t('checkout.success_cancelled_badge'))
+
+useSeo({
+  title: seoTitle,
+  description: pageDescription,
+  type: 'website',
+})
+
+usePageBreadcrumbs(computed(() => {
+  if (!checkout.value || checkout.value.order.publicId !== orderId.value) {
+    return undefined
+  }
+
+  const items = [
+    { title: t('home.breadcrumb'), href: '/' },
+  ]
+
+  if (checkout.value.event?.slug && checkout.value.event.title) {
+    items.push(
+      { title: t('events.breadcrumb'), href: '/events' },
+      { title: checkout.value.event.title, href: getCheckoutEventPath(checkout.value.event.slug) },
+    )
+  }
+
+  items.push({ title: t('checkout.success_breadcrumb'), href: route.path })
+  return items
+}))
 
 function fireConfetti() {
   if (hasCelebrated.value || !isConfirmed.value || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
@@ -72,8 +99,8 @@ onMounted(() => {
 })
 
 definePageMeta({
-  title: 'checkout.order_confirmed',
-  breadcrumb: 'checkout.breadcrumb',
+  title: 'checkout.success_page_title',
+  breadcrumb: 'checkout.success_breadcrumb',
   layout: 'default',
   middleware: ['auth'],
 })

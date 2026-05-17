@@ -17,6 +17,14 @@ const { t } = useI18n()
 const sessionPublicId = computed(() => route.params.eventId.toString())
 const slug = computed(() => typeof route.query.slug === 'string' ? route.query.slug : '')
 const requestUrl = useRequestURL()
+const pageTitle = computed(() => t('waiting_room.page_title'))
+const pageDescription = computed(() => t('waiting_room.page_description'))
+
+useSeo({
+  title: pageTitle,
+  description: pageDescription,
+  type: 'website',
+})
 
 const queueState = ref<QueueState | null>(null)
 const isJoining = ref(true)
@@ -30,6 +38,25 @@ let queueClockIntervalId: number | null = null
 const hasRedirected = ref(false)
 let refreshQueuePromise: Promise<void> | null = null
 let refreshQueueQueued = false
+
+usePageBreadcrumbs(computed(() => {
+  if (!queueState.value && !accessBlockedError.value) {
+    return undefined
+  }
+
+  const items = [
+    { title: t('home.breadcrumb'), href: '/' },
+    { title: t('events.breadcrumb'), href: '/events' },
+  ]
+
+  if (slug.value) {
+    items.push({ title: t('event_detail.breadcrumb'), href: `/events/${slug.value}` })
+  }
+
+  items.push({ title: t('waiting_room.breadcrumb'), href: route.path })
+  return items
+}))
+
 const socketUrl = computed(() => {
   const url = new URL(apiRoutes.eventSessionQueueSocket(sessionPublicId.value), requestUrl.origin)
   url.protocol = requestUrl.protocol === 'https:' ? 'wss:' : 'ws:'
@@ -354,8 +381,8 @@ function isCaptchaAccessError(error: ReturnType<typeof parseApiError>) {
 }
 
 definePageMeta({
-  title: 'Waiting room',
-  breadcrumb: 'Queue',
+  title: 'waiting_room.page_title',
+  breadcrumb: 'waiting_room.breadcrumb',
   middleware: ['auth'],
 })
 </script>

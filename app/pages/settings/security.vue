@@ -498,16 +498,22 @@ import type { UserProfileModel } from '~~/types/models/profile'
 import { apiRoutes } from '#shared/apiRoutes'
 import { parseApiError } from '@/utils/apiError'
 
+const route = useRoute()
+const { locale, t } = useI18n()
+
 definePageMeta({
-  title: 'Security',
-  breadcrumb: 'Security',
+  title: 'settings.security_page_title',
+  breadcrumb: 'settings.security_breadcrumb',
   middleware: 'auth',
   layout: 'dashboard',
   fullWidth: false,
 })
 
-const route = useRoute()
-const { locale, t } = useI18n()
+useSeo({
+  title: computed(() => t('settings.security_page_title')),
+  description: computed(() => t('settings.security_page_description')),
+  type: 'website',
+})
 
 function getQueryString(value: string | string[] | null | undefined) {
   if (typeof value === 'string') {

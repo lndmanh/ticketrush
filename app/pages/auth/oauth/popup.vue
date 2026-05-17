@@ -5,9 +5,17 @@ import {
   type OAuthPopupCompleteMessage,
 } from '~~/types/auth'
 
+const { t } = useI18n()
+
 definePageMeta({
   layout: 'empty',
-  title: 'Completing sign in',
+  title: 'auth.oauth_popup_title',
+})
+
+useSeo({
+  title: computed(() => t('auth.oauth_popup_title')),
+  description: computed(() => t('auth.oauth_popup_description')),
+  type: 'website',
 })
 
 const route = useRoute()

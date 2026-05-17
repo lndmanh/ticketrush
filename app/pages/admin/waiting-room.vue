@@ -11,6 +11,19 @@ import type { WaitingRoomSettingsInput } from '#shared/schemas/ticketingSchema'
 const isSaving = ref(false)
 const { t } = useI18n()
 
+definePageMeta({
+  title: 'admin.waiting_room_title',
+  breadcrumb: 'admin.waiting_room_breadcrumb',
+  middleware: ['auth', 'admin'],
+  layout: 'dashboard',
+})
+
+useSeo({
+  title: computed(() => t('admin.waiting_room_title')),
+  description: computed(() => t('admin.waiting_room_settings.desc')),
+  type: 'website',
+})
+
 const { data: settingsResponse, refresh } = await useAPI<ApiResponse<WaitingRoomSettingsInput>>(() => apiRoutes.ADMIN_WAITING_ROOM_SETTINGS)
 
 const defaultValues: WaitingRoomSettingsInput = {
@@ -75,12 +88,6 @@ const onSubmit = handleSubmit(
   },
 )
 
-definePageMeta({
-  title: 'admin.waiting_room_settings.title',
-  breadcrumb: 'admin.waiting_room_settings.title',
-  middleware: ['auth', 'admin'],
-  layout: 'dashboard',
-})
 </script>
 
 <template>

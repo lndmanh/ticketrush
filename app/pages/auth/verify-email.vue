@@ -33,6 +33,19 @@ const loginLink = computed(() => {
 const isResending = ref(false)
 const resendSuccess = ref(false)
 const resendError = ref('')
+const { t } = useI18n()
+
+definePageMeta({
+  title: 'auth.verify_email_title',
+  breadcrumb: 'auth.verify_email_breadcrumb',
+  layout: 'empty',
+})
+
+useSeo({
+  title: computed(() => t('auth.verify_email_title')),
+  description: computed(() => t('auth.verify_email_description')),
+  type: 'website',
+})
 
 async function resendVerification() {
   if (!email.value || isResending.value) return
@@ -59,11 +72,6 @@ async function resendVerification() {
   }
 }
 
-definePageMeta({
-  layout: 'empty',
-  title: 'Verify Email',
-  breadcrumb: 'Verify Email',
-})
 </script>
 
 <template>

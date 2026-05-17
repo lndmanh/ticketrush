@@ -64,6 +64,26 @@ const { data: recommendedEventsResponse } = await useAPI<PaginatedApiResponse<Ev
 const detail = computed(() => detailResponse.value?.success ? detailResponse.value.data : null)
 const event = computed(() => detail.value?.event ?? null)
 const venue = computed(() => detail.value?.venue?.venue ?? null)
+const pageTitle = computed(() => event.value?.title ?? t('event_detail.page_title'))
+const pageDescription = computed(() => t('event_detail.page_description'))
+
+useSeo({
+  title: pageTitle,
+  description: pageDescription,
+  type: 'website',
+})
+
+usePageBreadcrumbs(computed(() => {
+  if (!event.value || event.value.slug !== slug.value) {
+    return undefined
+  }
+
+  return [
+    { title: t('home.breadcrumb'), href: '/' },
+    { title: t('events.breadcrumb'), href: '/events' },
+    { title: event.value.title, href: route.path },
+  ]
+}))
 const recommendationSeed = computed(() => event.value?.slug ?? slug.value)
 const recommendedEvents = computed(() => {
   const response = recommendedEventsResponse.value
@@ -370,8 +390,8 @@ if (!event.value) {
 }
 
 definePageMeta({
-  title: 'Event detail',
-  breadcrumb: 'Event',
+  title: 'event_detail.page_title',
+  breadcrumb: 'event_detail.breadcrumb',
 })
 </script>
 
