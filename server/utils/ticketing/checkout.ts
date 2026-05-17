@@ -264,39 +264,20 @@ class CheckoutService {
 
   async getActiveCheckoutForUser(userId: number) {
     const now = new Date()
-    const pendingOrders = await this.db
-      .select()
+    const activeCheckout = await this.db
+      .select({ order: tables.orders })
       .from(tables.orders)
+      .innerJoin(tables.seatHolds, eq(tables.seatHolds.id, tables.orders.holdId))
       .where(and(
         eq(tables.orders.userId, userId),
         eq(tables.orders.status, 'pending'),
+        eq(tables.seatHolds.status, 'active'),
+        gt(tables.seatHolds.expiresAt, now),
       ))
       .orderBy(desc(tables.orders.updatedAt))
-      .all()
+      .get()
 
-    for (const order of pendingOrders) {
-      if (!order.holdId) {
-        continue
-      }
-
-      const hold = await this.db
-        .select()
-        .from(tables.seatHolds)
-        .where(and(
-          eq(tables.seatHolds.id, order.holdId),
-          eq(tables.seatHolds.status, 'active'),
-          gt(tables.seatHolds.expiresAt, now),
-        ))
-        .get()
-
-      if (!hold) {
-        continue
-      }
-
-      return this.getCheckoutByPublicId(order.publicId)
-    }
-
-    return null
+    return activeCheckout ? this.getCheckoutByPublicId(activeCheckout.order.publicId) : null
   }
 
   async cancelPendingCheckout(orderPublicId: string, userId: number, sessionKey: string, realtimeNamespace?: SeatmapRealtimeNamespace): Promise<CheckoutCancelData> {
@@ -770,101 +751,66 @@ class CheckoutService {
   }
 
   async listTicketsForUser(userId: number) {
-    const tickets = await this.db
-      .select()
+    const rows = await this.db
+      .select({
+        ticket: tables.tickets,
+        event: tables.events,
+        eventSession: tables.eventSessions,
+        orderItem: tables.orderItems,
+        order: tables.orders,
+      })
       .from(tables.tickets)
+      .leftJoin(tables.events, eq(tables.events.id, tables.tickets.eventId))
+      .leftJoin(tables.eventSessions, eq(tables.eventSessions.id, tables.tickets.eventSessionId))
+      .leftJoin(tables.orderItems, eq(tables.orderItems.id, tables.tickets.orderItemId))
+      .leftJoin(tables.orders, eq(tables.orders.id, tables.tickets.orderId))
       .where(eq(tables.tickets.userId, userId))
       .all()
 
-    const enrichedTickets: Array<typeof tables.tickets.$inferSelect & {
+    return rows.map(row => ({
+      ...row.ticket,
+      event: row.event,
+      eventSession: row.eventSession,
+      orderItem: row.orderItem,
+      order: row.order,
+    })) satisfies Array<typeof tables.tickets.$inferSelect & {
       event: typeof tables.events.$inferSelect | null
       eventSession: typeof tables.eventSessions.$inferSelect | null
       orderItem: typeof tables.orderItems.$inferSelect | null
       order: typeof tables.orders.$inferSelect | null
-    }> = []
-
-    for (const ticket of tickets) {
-      const event = await this.db
-        .select()
-        .from(tables.events)
-        .where(eq(tables.events.id, ticket.eventId))
-        .get()
-
-      const eventSession = ticket.eventSessionId
-        ? await this.db
-            .select()
-            .from(tables.eventSessions)
-            .where(eq(tables.eventSessions.id, ticket.eventSessionId))
-            .get()
-        : null
-
-      const orderItem = await this.db
-        .select()
-        .from(tables.orderItems)
-        .where(eq(tables.orderItems.id, ticket.orderItemId))
-        .get()
-
-      const order = await this.db
-        .select()
-        .from(tables.orders)
-        .where(eq(tables.orders.id, ticket.orderId))
-        .get()
-
-      enrichedTickets.push({
-        ...ticket,
-        event: event ?? null,
-        eventSession,
-        orderItem: orderItem ?? null,
-        order: order ?? null,
-      })
-    }
-
-    return enrichedTickets
+    }>
   }
 
   async getTicketByPublicId(ticketPublicId: string, userId: number) {
-    const ticket = await this.db
-      .select()
+    const row = await this.db
+      .select({
+        ticket: tables.tickets,
+        order: tables.orders,
+        event: tables.events,
+        eventSession: tables.eventSessions,
+        orderItem: tables.orderItems,
+      })
       .from(tables.tickets)
-      .where(eq(tables.tickets.publicId, ticketPublicId))
+      .leftJoin(tables.orders, eq(tables.orders.id, tables.tickets.orderId))
+      .leftJoin(tables.events, eq(tables.events.id, tables.tickets.eventId))
+      .leftJoin(tables.eventSessions, eq(tables.eventSessions.id, tables.tickets.eventSessionId))
+      .leftJoin(tables.orderItems, eq(tables.orderItems.id, tables.tickets.orderItemId))
+      .where(and(
+        eq(tables.tickets.publicId, ticketPublicId),
+        eq(tables.tickets.userId, userId),
+      ))
       .get()
 
-    if (!ticket || ticket.userId !== userId) {
+    if (!row) {
       return null
     }
 
-    const order = await this.db
-      .select()
-      .from(tables.orders)
-      .where(eq(tables.orders.id, ticket.orderId))
-      .get()
-
-    const event = await this.db
-      .select()
-      .from(tables.events)
-      .where(eq(tables.events.id, ticket.eventId))
-      .get()
-
-    const eventSession = ticket.eventSessionId
-      ? await this.db
-          .select()
-          .from(tables.eventSessions)
-          .where(eq(tables.eventSessions.id, ticket.eventSessionId))
-          .get()
-      : null
-
-    const orderItem = await this.db
-      .select()
-      .from(tables.orderItems)
-      .where(eq(tables.orderItems.id, ticket.orderItemId))
-      .get()
-
     return {
-      ticket,
-      order,
-      event,
-      eventSession,
-      orderItem,
+      ticket: row.ticket,
+      order: row.order,
+      event: row.event,
+      eventSession: row.eventSession,
+      orderItem: row.orderItem,
     }
   }
 }
