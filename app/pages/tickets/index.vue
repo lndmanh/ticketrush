@@ -11,6 +11,13 @@ type TicketTimeFilter = '24h' | '7d' | '30d' | 'all'
 
 const { locale, t } = useI18n()
 
+definePageMeta({
+  title: 'tickets.page_title',
+  breadcrumb: 'nav.my_tickets',
+  layout: 'dashboard',
+  middleware: ['auth'],
+})
+
 const rangeOptions: Array<{ value: TicketTimeFilter, label: string }> = [
   { value: '24h', label: t('tickets.last_24h') },
   { value: '7d', label: t('tickets.last_7_days') },
@@ -29,7 +36,7 @@ const selectedStatus = ref<TicketStatusFilter>('all')
 
 useSeo({
   title: computed(() => t('tickets.page_title')),
-  description: computed(() => t('tickets.empty_subtitle')),
+  description: computed(() => t('tickets.page_description')),
   type: 'website',
 })
 
@@ -121,11 +128,6 @@ function getShortTicketId(value: string) {
   return value.length > 10 ? value.slice(-10) : value
 }
 
-definePageMeta({
-  breadcrumb: 'nav.my_tickets',
-  layout: 'dashboard',
-  middleware: ['auth'],
-})
 </script>
 
 <template>

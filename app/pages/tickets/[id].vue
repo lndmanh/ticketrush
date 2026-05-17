@@ -14,12 +14,12 @@ const { data: ticketResponse } = await useAPI<ApiResponse<TicketDetailData>>(() 
   query: computed(() => ({ locale: locale.value })),
 })
 
-const ticketBundle = computed(() => ticketResponse.value?.data ?? null)
+const ticketBundle = computed(() => ticketResponse.value?.success ? ticketResponse.value.data : null)
 
 const ticketSessionStartsAt = computed(() => ticketBundle.value?.eventSession?.startsAt ?? null)
 const eventTitle = computed(() => {
   const event = ticketBundle.value?.event
-  return event ? event.title : ticketBundle.value?.ticket.publicId || t('tickets.ticket_label')
+  return event ? event.title : t('tickets.detail_breadcrumb')
 })
 const seatLabel = computed(() => ticketBundle.value?.orderItem?.seatLabel || t('tickets.ga'))
 const sectionLabel = computed(() => {
@@ -63,9 +63,30 @@ const statusLabel = computed(() => {
   return translated === key ? status.replaceAll('_', ' ') : translated
 })
 
+const pageTitle = computed(() => eventTitle.value ? `${eventTitle.value} · ${t('tickets.detail_page_title')}` : t('tickets.detail_page_title'))
+const pageDescription = computed(() => t('tickets.detail_page_description'))
+
+useSeo({
+  title: pageTitle,
+  description: pageDescription,
+  type: 'website',
+})
+
+usePageBreadcrumbs(computed(() => {
+  if (!ticketBundle.value || ticketBundle.value.ticket.publicId !== ticketId.value) {
+    return undefined
+  }
+
+  return [
+    { title: t('home.breadcrumb'), href: '/' },
+    { title: t('tickets.breadcrumb'), href: '/tickets' },
+    { title: eventTitle.value, href: route.path },
+  ]
+}))
+
 definePageMeta({
-  title: 'Ticket detail',
-  breadcrumb: 'Ticket',
+  title: 'tickets.detail_page_title',
+  breadcrumb: 'tickets.detail_breadcrumb',
   layout: 'dashboard',
   middleware: ['auth'],
 })

@@ -8,9 +8,17 @@
 import AdminUsersManager from '@/components/admin/users/AdminUsersManager.vue'
 
 definePageMeta({
-  title: 'Users Management',
-  breadcrumb: 'Users',
+  title: 'admin.users.title',
+  breadcrumb: 'admin.users_breadcrumb',
   middleware: ['auth', 'admin'],
   layout: 'dashboard',
+})
+
+const { t } = useI18n()
+
+useSeo({
+  title: computed(() => t('admin.users.title')),
+  description: computed(() => t('admin.users.desc')),
+  type: 'website',
 })
 </script>

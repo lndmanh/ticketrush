@@ -14,6 +14,23 @@ const { detail, ops } = await useAdminEventWorkspace(eventId, {
   includeOps: true,
 })
 
+const eventTitle = computed(() => detail.value?.event.title ?? null)
+const pageTitle = computed(() => eventTitle.value ? `${eventTitle.value} · ${t('admin.event_ops_title')}` : t('admin.event_ops_title'))
+const pageDescription = computed(() => t('admin.event_ops_description'))
+
+useSeo({ title: pageTitle, description: pageDescription, type: 'website' })
+
+usePageBreadcrumbs(computed(() => {
+  if (!detail.value || detail.value.event.id !== eventId.value) return undefined
+  return [
+    { title: t('home.breadcrumb'), href: '/' },
+    { title: t('admin.dashboard_breadcrumb'), href: '/admin' },
+    { title: t('nav.events'), href: '/admin/events' },
+    { title: eventTitle.value ?? t('admin.event_dashboard_breadcrumb'), href: `/admin/events/${eventId.value}` },
+    { title: t('admin.event_ops_breadcrumb'), href: route.path },
+  ]
+}))
+
 const { createBarChartOption, createDonutChartOption } = useAdminChartTheme()
 
 const orders = computed(() => ops.value?.recentOrders ?? [])
@@ -62,8 +79,8 @@ const recentOrderSampleOption = computed(() => {
 const displayLocale = computed(() => getDisplayDateLocale(locale.value))
 
 definePageMeta({
-  title: 'Event operations',
-  breadcrumb: 'Ops',
+  title: 'admin.event_ops_title',
+  breadcrumb: 'admin.event_ops_breadcrumb',
   middleware: ['auth', 'admin'],
   layout: 'dashboard',
 })

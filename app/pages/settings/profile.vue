@@ -20,6 +20,12 @@ definePageMeta({
 
 const { t } = useI18n()
 
+useSeo({
+  title: computed(() => t('account_page.title')),
+  description: computed(() => t('account_page.description')),
+  type: 'website',
+})
+
 const { data: profileResponse, refresh: refreshProfile } = await useAPI<ApiResponse<UserProfileModel>>(() => apiRoutes.MY_PROFILE)
 
 const showDeleteAccountDialog = ref(false)

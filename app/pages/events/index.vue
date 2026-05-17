@@ -51,6 +51,17 @@ const activePage = ref(getPositiveQueryNumber(route.query.page, 1))
 
 const dateFormatter = computed(() => new DateFormatter(locale.value, { dateStyle: 'long' }))
 
+definePageMeta({
+  title: 'events.page_title',
+  breadcrumb: 'events.breadcrumb',
+})
+
+useSeo({
+  title: computed(() => t('events.page_title')),
+  description: computed(() => t('events.page_description')),
+  type: 'website',
+})
+
 const calendarValue = computed({
   get: () => {
     if (!selectedDate.value) return undefined
@@ -207,10 +218,6 @@ const pageSummary = computed(() => {
   return t('events.page_info', { page: pagination.value.page, total: pagination.value.totalPages || 1 })
 })
 
-definePageMeta({
-  title: 'Events',
-  breadcrumb: 'Events',
-})
 </script>
 
 <template>

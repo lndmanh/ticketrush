@@ -28,6 +28,23 @@ const { detail, dashboard, refreshAll, fetchVenueLayoutSyncPreview, applyVenueLa
   includeOps: false,
 })
 
+const eventTitle = computed(() => detail.value?.event.title ?? null)
+const pageTitle = computed(() => eventTitle.value ? `${eventTitle.value} · ${t('admin.event_seatmap_title')}` : t('admin.event_seatmap_title'))
+const pageDescription = computed(() => t('admin.event_seatmap_description'))
+
+useSeo({ title: pageTitle, description: pageDescription, type: 'website' })
+
+usePageBreadcrumbs(computed(() => {
+  if (!detail.value || detail.value.event.id !== eventId.value) return undefined
+  return [
+    { title: t('home.breadcrumb'), href: '/' },
+    { title: t('admin.dashboard_breadcrumb'), href: '/admin' },
+    { title: t('nav.events'), href: '/admin/events' },
+    { title: eventTitle.value ?? t('admin.event_dashboard_breadcrumb'), href: `/admin/events/${eventId.value}` },
+    { title: t('admin.event_seatmap_breadcrumb'), href: route.path },
+  ]
+}))
+
 const currentSession = computed(() => {
   const currentDetail = detail.value
   if (!currentDetail) {
@@ -229,8 +246,8 @@ async function resetSelectedOverrides() {
 }
 
 definePageMeta({
-  title: 'Event seat map',
-  breadcrumb: 'Seat map',
+  title: 'admin.event_seatmap_title',
+  breadcrumb: 'admin.event_seatmap_breadcrumb',
   middleware: ['auth', 'admin'],
   layout: 'dashboard',
 })
