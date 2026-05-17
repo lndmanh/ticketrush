@@ -5,6 +5,7 @@ export const apiRoutes = {
   ADMIN_EVENTS: '/api/admin/events',
   ADMIN_EVENT_AUTOSAVE: '/api/admin/events/autosave',
   ADMIN_EVENT_AUTOSAVES: '/api/admin/events/autosaves',
+  ADMIN_IMAGE_UPLOAD: '/api/admin/uploads/images',
   ADMIN_TRANSACTIONS: '/api/admin/transactions',
   ADMIN_USERS: '/api/admin/users',
   ADMIN_USERS_DELETE: '/api/admin/users/delete',

@@ -142,7 +142,7 @@ export default defineNuxtConfig({
     // Cache KV namespace (binding defaults to 'CACHE')
     cache: true,
     // R2 bucket (binding defaults to 'BLOB')
-    blob: false,
+    blob: true,
   },
 
   vite: {
@@ -198,6 +198,10 @@ export default defineNuxtConfig({
       code: locale,
       file: `${locale}.json`,
     })),
+  },
+
+  image: {
+    provider: 'none',
   },
 
   ogImage: false, // currently we are disabling this since it makes server build file size very large due to the sharp dependency. You can re-enable it if you need dynamic OG image generation.

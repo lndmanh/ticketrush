@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { commonSchemaFragments } from './index'
+import { imageUploadAppPathPattern } from '../constants/imageUpload'
 import { optionalPhoneSchema, savedAttendeeFormSchema } from './savedAttendeeSchema'
 import {
   AgeBracket,
@@ -33,6 +34,15 @@ export const ageBracketSchema = z.enum(AgeBracket)
 export const genderSchema = z.enum(SavedAttendeeGender)
 export const seatLayoutModeSchema = z.enum(SeatLayoutMode)
 const sectionColorSchema = z.string().trim().regex(/^#(?:[0-9A-Fa-f]{3}){1,2}$/, 'admin.venues.section_color_invalid')
+
+const appServedCoverImagePathSchema = z.string().regex(imageUploadAppPathPattern, 'validation.cover_image_invalid')
+
+const coverImageSchema = z.union([
+  z.string().url(),
+  appServedCoverImagePathSchema,
+  z.literal(''),
+  z.null(),
+]).optional().transform(value => value === null ? '' : value ?? '')
 
 const requiredDateSchema = z.union([
   z.date(),
@@ -192,7 +202,7 @@ export const createVenueSchema = z.object({
   city: z.string().trim().min(1, 'admin.venues.city_required'),
   country: venueCountrySchema.default('Vietnam'),
   address: z.string().trim().min(1, 'admin.venues.address_required'),
-  coverImage: z.string().url().optional().or(z.literal('')),
+  coverImage: coverImageSchema,
   sections: z.array(venueSectionDraftSchema).min(1).superRefine((sections, ctx) => {
     addDuplicateSectionCodeIssues(sections, ctx)
     addVenueSectionGridIssues(sections, ctx)
@@ -401,10 +411,6 @@ export const waitingRoomSettingsSchema = z.object({
   queueWindowSeconds: z.coerce.number().int().positive('validation.queue_window_seconds_min').default(180),
 })
 
-const eventCoverImageSchema = z.union([z.string().url(), z.literal(''), z.null()])
-  .optional()
-  .transform(value => value === null ? '' : value)
-
 const eventSessionEditorBaseSchema = eventSessionDraftBaseSchema.extend({
   startsAt: z.string().min(1, 'validation.session_start_required'),
   endsAt: z.string().optional(),
@@ -480,7 +486,7 @@ export const createEventSchema = z.object({
   subtitle: z.string().trim().optional(),
   description: z.string().trim().min(1, 'validation.event_description_required'),
   venueId: commonSchemaFragments.positiveId,
-  coverImage: eventCoverImageSchema,
+  coverImage: coverImageSchema,
   sessions: z.array(eventSessionDraftSchema).min(1, 'validation.session_required'),
 })
 

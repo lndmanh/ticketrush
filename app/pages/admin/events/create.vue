@@ -4,6 +4,8 @@ import { Field as VeeField, useForm } from 'vee-validate'
 import { motion } from 'motion-v'
 import { toast } from 'vue-sonner'
 import { Check, Circle, Cloud, CloudAlert, Dot, Loader2 } from '@lucide/vue'
+import { ImageUploadKind } from '#shared/constants/imageUpload'
+import ImageUpload from '@/components/ui/image-upload/ImageUpload.vue'
 import { apiRequest } from '@/utils/apiRequest'
 import { parseApiError } from '@/utils/apiError'
 import { getDisplayDateLocale } from '@/lib/localizedEvents'
@@ -968,107 +970,124 @@ onUnmounted(() => {
         :animate="{ opacity: 1, y: 0 }"
         :transition="{ duration: 0.22, ease: 'easeOut' }"
       >
-        <Card
+        <div
           v-show="currentStep === 1"
-          class="rounded-3xl shadow-sm"
+          class="mx-auto grid max-w-6xl gap-5 xl:grid-cols-[minmax(0,42rem)_minmax(20rem,1fr)]"
         >
-          <CardHeader>
-            <CardTitle class="text-base">
-              {{ $t('admin.event_create.identity') }}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <FieldSet>
-              <FieldLegend>{{ $t('admin.event_create.event_basics') }}</FieldLegend>
-              <FieldGroup>
-                <VeeField
-                  v-slot="{ field, errors }"
-                  name="title"
-                >
-                  <Field :data-invalid="!!errors.length">
-                    <FieldLabel for="event-create-title">
-                      {{ $t('admin.event_create.title_label') }}
-                    </FieldLabel>
-                    <Input
-                      id="event-create-title"
-                      :model-value="field.value"
-                      :placeholder="$t('admin.event_create.title_placeholder')"
-                      :aria-invalid="!!errors.length"
-                      @update:model-value="field.onChange"
-                    />
-                    <FieldError
-                      v-if="errors.length"
-                      :errors="errors"
-                    />
-                  </Field>
-                </VeeField>
+          <Card class="rounded-3xl shadow-sm">
+            <CardHeader>
+              <CardTitle class="text-base">
+                {{ $t('admin.event_create.identity') }}
+              </CardTitle>
+              <CardDescription>
+                {{ $t('admin.event_create.step_basics_desc') }}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <FieldSet>
+                <FieldLegend>{{ $t('admin.event_create.event_basics') }}</FieldLegend>
+                <FieldGroup>
+                  <VeeField
+                    v-slot="{ field, errors }"
+                    name="title"
+                  >
+                    <Field :data-invalid="!!errors.length">
+                      <FieldLabel for="event-create-title">
+                        {{ $t('admin.event_create.title_label') }}
+                      </FieldLabel>
+                      <Input
+                        id="event-create-title"
+                        :model-value="field.value"
+                        :placeholder="$t('admin.event_create.title_placeholder')"
+                        :aria-invalid="!!errors.length"
+                        @update:model-value="field.onChange"
+                      />
+                      <FieldError
+                        v-if="errors.length"
+                        :errors="errors"
+                      />
+                    </Field>
+                  </VeeField>
 
-                <VeeField
-                  v-slot="{ field, errors }"
-                  name="slug"
-                >
-                  <Field :data-invalid="!!errors.length">
-                    <FieldLabel for="event-create-slug">
-                      {{ $t('admin.event_create.slug_label') }}
-                    </FieldLabel>
-                    <Input
-                      id="event-create-slug"
-                      :model-value="field.value"
-                      :placeholder="$t('admin.event_create.slug_placeholder')"
-                      :aria-invalid="!!errors.length"
-                      @update:model-value="field.onChange"
-                    />
-                    <FieldError
-                      v-if="errors.length"
-                      :errors="errors"
-                    />
-                  </Field>
-                </VeeField>
+                  <VeeField
+                    v-slot="{ field, errors }"
+                    name="slug"
+                  >
+                    <Field :data-invalid="!!errors.length">
+                      <FieldLabel for="event-create-slug">
+                        {{ $t('admin.event_create.slug_label') }}
+                      </FieldLabel>
+                      <Input
+                        id="event-create-slug"
+                        :model-value="field.value"
+                        :placeholder="$t('admin.event_create.slug_placeholder')"
+                        :aria-invalid="!!errors.length"
+                        @update:model-value="field.onChange"
+                      />
+                      <FieldError
+                        v-if="errors.length"
+                        :errors="errors"
+                      />
+                    </Field>
+                  </VeeField>
 
-                <VeeField
-                  v-slot="{ field, errors }"
-                  name="subtitle"
-                >
-                  <Field :data-invalid="!!errors.length">
-                    <FieldLabel for="event-create-subtitle">
-                      {{ $t('admin.event_create.subtitle_label') }}
-                    </FieldLabel>
-                    <Input
-                      id="event-create-subtitle"
-                      :model-value="field.value"
-                      :placeholder="$t('admin.event_create.subtitle_placeholder')"
-                      :aria-invalid="!!errors.length"
-                      @update:model-value="field.onChange"
-                    />
-                    <FieldError
-                      v-if="errors.length"
-                      :errors="errors"
-                    />
-                  </Field>
-                </VeeField>
+                  <VeeField
+                    v-slot="{ field, errors }"
+                    name="subtitle"
+                  >
+                    <Field :data-invalid="!!errors.length">
+                      <FieldLabel for="event-create-subtitle">
+                        {{ $t('admin.event_create.subtitle_label') }}
+                      </FieldLabel>
+                      <Input
+                        id="event-create-subtitle"
+                        :model-value="field.value"
+                        :placeholder="$t('admin.event_create.subtitle_placeholder')"
+                        :aria-invalid="!!errors.length"
+                        @update:model-value="field.onChange"
+                      />
+                      <FieldError
+                        v-if="errors.length"
+                        :errors="errors"
+                      />
+                    </Field>
+                  </VeeField>
 
-                <VeeField
-                  v-slot="{ field, errors }"
-                  name="description"
-                >
-                  <Field :data-invalid="!!errors.length">
-                    <FieldLabel for="event-create-description">
-                      {{ $t('admin.event_create.description_label') }}
-                    </FieldLabel>
-                    <Textarea
-                      id="event-create-description"
-                      :model-value="field.value"
-                      :placeholder="$t('admin.event_create.description_placeholder')"
-                      :aria-invalid="!!errors.length"
-                      @update:model-value="field.onChange"
-                    />
-                    <FieldError
-                      v-if="errors.length"
-                      :errors="errors"
-                    />
-                  </Field>
-                </VeeField>
+                  <VeeField
+                    v-slot="{ field, errors }"
+                    name="description"
+                  >
+                    <Field :data-invalid="!!errors.length">
+                      <FieldLabel for="event-create-description">
+                        {{ $t('admin.event_create.description_label') }}
+                      </FieldLabel>
+                      <Textarea
+                        id="event-create-description"
+                        :model-value="field.value"
+                        :placeholder="$t('admin.event_create.description_placeholder')"
+                        :aria-invalid="!!errors.length"
+                        @update:model-value="field.onChange"
+                      />
+                      <FieldError
+                        v-if="errors.length"
+                        :errors="errors"
+                      />
+                    </Field>
+                  </VeeField>
+                </FieldGroup>
+              </FieldSet>
+            </CardContent>
+          </Card>
 
+          <div class="flex flex-col gap-5">
+            <Card class="rounded-3xl shadow-sm">
+              <CardHeader>
+                <CardTitle class="text-base">
+                  {{ $t('admin.event_create.cover_image_label') }}
+                </CardTitle>
+                <CardDescription>{{ $t('common.optional') }}</CardDescription>
+              </CardHeader>
+              <CardContent>
                 <VeeField
                   v-slot="{ field, errors }"
                   name="coverImage"
@@ -1077,12 +1096,13 @@ onUnmounted(() => {
                     <FieldLabel for="event-create-cover-image">
                       {{ $t('admin.event_create.cover_image_label') }}
                     </FieldLabel>
-                    <Input
+                    <ImageUpload
                       id="event-create-cover-image"
-                      :model-value="field.value"
-                      :placeholder="$t('admin.event_create.cover_image_placeholder')"
+                      :model-value="field.value ?? ''"
+                      :upload-kind="ImageUploadKind.Event"
                       :aria-invalid="!!errors.length"
                       @update:model-value="field.onChange"
+                      @blur="field.onBlur"
                     />
                     <FieldDescription>{{ $t('common.optional') }}</FieldDescription>
                     <FieldError
@@ -1091,129 +1111,172 @@ onUnmounted(() => {
                     />
                   </Field>
                 </VeeField>
-              </FieldGroup>
-            </FieldSet>
-          </CardContent>
-        </Card>
+              </CardContent>
+            </Card>
 
-        <Card
+            <Card class="rounded-3xl bg-muted/20 shadow-none">
+              <CardHeader>
+                <CardTitle class="text-base">
+                  {{ values.title || $t('admin.event_create.title_placeholder') }}
+                </CardTitle>
+                <CardDescription>
+                  {{ values.subtitle || $t('admin.event_create.subtitle_placeholder') }}
+                </CardDescription>
+              </CardHeader>
+              <CardContent class="flex flex-col gap-4 text-sm text-muted-foreground">
+                <p class="line-clamp-4 leading-6">
+                  {{ values.description || $t('admin.event_create.description_placeholder') }}
+                </p>
+                <div class="flex flex-wrap gap-2">
+                  <Badge variant="outline">
+                    {{ values.slug || $t('admin.event_create.slug_placeholder') }}
+                  </Badge>
+                  <Badge variant="outline">
+                    {{ values.coverImage ? $t('admin.event_create.cover_image_label') : $t('common.optional') }}
+                  </Badge>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+
+        <div
           v-show="currentStep === 2"
-          class="rounded-3xl shadow-sm"
+          class="mx-auto grid max-w-6xl gap-5 xl:grid-cols-[minmax(18rem,24rem)_minmax(0,1fr)]"
         >
-          <CardHeader>
-            <CardTitle class="text-base">
-              {{ $t('admin.event_create.venue_label') }}
-            </CardTitle>
-          </CardHeader>
-          <CardContent class="space-y-6">
-            <VeeField
-              v-slot="{ field, errors }"
-              name="venueId"
-            >
-              <Field :data-invalid="!!errors.length">
-                <FieldLabel for="event-create-venue">
-                  {{ $t('admin.event_create.venue_label') }}
-                </FieldLabel>
-                <Select
-                  :model-value="field.value ? String(field.value) : undefined"
-                  @update:model-value="field.onChange(Number($event))"
-                >
-                  <SelectTrigger
-                    id="event-create-venue"
-                    :aria-invalid="!!errors.length"
+          <Card class="h-fit rounded-3xl shadow-sm">
+            <CardHeader>
+              <CardTitle class="text-base">
+                {{ $t('admin.event_create.venue_label') }}
+              </CardTitle>
+              <CardDescription>
+                {{ $t('admin.event_create.step_venue_desc') }}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <VeeField
+                v-slot="{ field, errors }"
+                name="venueId"
+              >
+                <Field :data-invalid="!!errors.length">
+                  <FieldLabel for="event-create-venue">
+                    {{ $t('admin.event_create.venue_label') }}
+                  </FieldLabel>
+                  <Select
+                    :model-value="field.value ? String(field.value) : undefined"
+                    @update:model-value="field.onChange(Number($event))"
                   >
-                    <SelectValue :placeholder="field.value ? undefined : $t('admin.event_create.choose_venue')" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem
-                      v-for="venue in venues"
-                      :key="venue.id"
-                      :value="String(venue.id)"
+                    <SelectTrigger
+                      id="event-create-venue"
+                      class="w-full"
+                      :aria-invalid="!!errors.length"
                     >
-                      {{ venue.name }}
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-                <FieldError
-                  v-if="errors.length"
-                  :errors="errors"
-                />
-              </Field>
-            </VeeField>
+                      <SelectValue :placeholder="field.value ? undefined : $t('admin.event_create.choose_venue')" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem
+                        v-for="venue in venues"
+                        :key="venue.id"
+                        :value="String(venue.id)"
+                      >
+                        {{ venue.name }}
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FieldError
+                    v-if="errors.length"
+                    :errors="errors"
+                  />
+                </Field>
+              </VeeField>
+            </CardContent>
+          </Card>
 
-            <div
-              v-if="selectedVenueDetail"
-              class="space-y-4"
-            >
-              <div class="grid gap-3 sm:grid-cols-3">
-                <div class="rounded-2xl bg-muted/50 px-4 py-3">
-                  <p class="text-xs text-muted-foreground">
-                    {{ $t('common.sections') }}
-                  </p>
-                  <p class="text-lg font-semibold tabular-nums text-foreground">
-                    {{ selectedVenueDetail.sections.length }}
-                  </p>
-                </div>
-                <div class="rounded-2xl bg-muted/50 px-4 py-3">
-                  <p class="text-xs text-muted-foreground">
-                    {{ $t('common.rows') }}
-                  </p>
-                  <p class="text-lg font-semibold tabular-nums text-foreground">
-                    {{ totalRows }}
-                  </p>
-                </div>
-                <div class="rounded-2xl bg-muted/50 px-4 py-3">
-                  <p class="text-xs text-muted-foreground">
-                    {{ $t('admin.event_create.seats_label') }}
-                  </p>
-                  <p class="text-lg font-semibold tabular-nums text-foreground">
-                    {{ totalSeats }}
-                  </p>
-                </div>
-              </div>
-
-              <div class="space-y-2">
-                <div
-                  v-for="section in selectedVenueDetail.sections"
-                  :key="section.id"
-                  class="flex items-center justify-between gap-3 rounded-2xl border bg-background px-4 py-3"
-                >
-                  <div class="flex min-w-0 items-center gap-3">
-                    <span
-                      class="h-3 w-3 shrink-0 rounded-full"
-                      :style="{ backgroundColor: section.color }"
-                    />
-                    <p class="truncate text-sm font-medium text-foreground">
-                      {{ section.name }}
+          <Card class="rounded-3xl shadow-sm">
+            <CardHeader>
+              <CardTitle class="text-base">
+                {{ selectedVenueDetail?.venue.name || $t('admin.event_create.choose_venue') }}
+              </CardTitle>
+              <CardDescription>
+                {{ $t('admin.event_create.choose_venue_prompt') }}
+              </CardDescription>
+            </CardHeader>
+            <CardContent class="flex flex-col gap-6">
+              <div
+                v-if="selectedVenueDetail"
+                class="flex flex-col gap-4"
+              >
+                <div class="grid gap-3 sm:grid-cols-3">
+                  <div class="rounded-2xl bg-muted/50 px-4 py-3">
+                    <p class="text-xs text-muted-foreground">
+                      {{ $t('common.sections') }}
+                    </p>
+                    <p class="text-lg font-semibold tabular-nums text-foreground">
+                      {{ selectedVenueDetail.sections.length }}
                     </p>
                   </div>
-                  <p class="shrink-0 text-sm tabular-nums text-muted-foreground">
-                    {{ $t('admin.event_create.seat_count', { count: section.rows.reduce((count, row) => count + row.seats.length, 0) }) }}
-                  </p>
+                  <div class="rounded-2xl bg-muted/50 px-4 py-3">
+                    <p class="text-xs text-muted-foreground">
+                      {{ $t('common.rows') }}
+                    </p>
+                    <p class="text-lg font-semibold tabular-nums text-foreground">
+                      {{ totalRows }}
+                    </p>
+                  </div>
+                  <div class="rounded-2xl bg-muted/50 px-4 py-3">
+                    <p class="text-xs text-muted-foreground">
+                      {{ $t('admin.event_create.seats_label') }}
+                    </p>
+                    <p class="text-lg font-semibold tabular-nums text-foreground">
+                      {{ totalSeats }}
+                    </p>
+                  </div>
+                </div>
+
+                <div class="grid gap-2 lg:max-h-72 lg:grid-cols-2 lg:overflow-y-auto lg:pr-1">
+                  <div
+                    v-for="section in selectedVenueDetail.sections"
+                    :key="section.id"
+                    class="flex items-center justify-between gap-3 rounded-2xl border bg-background px-4 py-3"
+                  >
+                    <div class="flex min-w-0 items-center gap-3">
+                      <span
+                        class="h-3 w-3 shrink-0 rounded-full"
+                        :style="{ backgroundColor: section.color }"
+                      />
+                      <p class="truncate text-sm font-medium text-foreground">
+                        {{ section.name }}
+                      </p>
+                    </div>
+                    <p class="shrink-0 text-sm tabular-nums text-muted-foreground">
+                      {{ $t('admin.event_create.seat_count', { count: section.rows.reduce((count, row) => count + row.seats.length, 0) }) }}
+                    </p>
+                  </div>
+                </div>
+
+                <div class="rounded-3xl border bg-muted/20 p-4">
+                  <TicketEventSeatMapExperience
+                    :seats="previewSeats"
+                    :ticket-types="[]"
+                    :action-label="null"
+                    mode="admin"
+                  />
                 </div>
               </div>
 
-              <div class="rounded-3xl border bg-muted/20 p-4">
-                <TicketEventSeatMapExperience
-                  :seats="previewSeats"
-                  :ticket-types="[]"
-                  :action-label="null"
-                  mode="admin"
-                />
+              <div
+                v-else
+                class="rounded-3xl border border-dashed px-5 py-10 text-center text-sm text-muted-foreground"
+              >
+                {{ $t('admin.event_create.choose_venue_prompt') }}
               </div>
-            </div>
-
-            <div
-              v-else
-              class="rounded-3xl border border-dashed px-5 py-10 text-center text-sm text-muted-foreground"
-            >
-              {{ $t('admin.event_create.choose_venue_prompt') }}
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        </div>
 
         <AdminEventsAdminEventSessionEditor
           v-show="currentStep === 3"
+          class="mx-auto max-w-7xl"
           :model-value="values.sessions"
           :venue-sections="selectedVenueDetail?.sections ?? []"
           :default-venue-id="values.venueId"
@@ -1221,52 +1284,144 @@ onUnmounted(() => {
           @update:model-value="updateSessions"
         />
 
-        <Card
+        <div
           v-show="currentStep === 4"
-          class="rounded-3xl shadow-sm"
+          class="mx-auto grid max-w-6xl gap-4 lg:grid-cols-3"
         >
-          <CardHeader>
-            <CardTitle class="text-base">
-              {{ $t('admin.event_create.review_title') }}
-            </CardTitle>
-          </CardHeader>
-          <CardContent class="space-y-4">
-            <div class="grid gap-4 md:grid-cols-2">
-              <Card class="rounded-2xl bg-muted/20 shadow-none">
-                <CardHeader class="flex flex-row items-center justify-between gap-3 pb-3">
-                  <CardTitle class="text-sm">
-                    {{ $t('common.sessions') }}
-                  </CardTitle>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    class="h-8 px-2"
-                    @click="currentStep = 3"
-                  >
-                    {{ $t('common.edit') }}
-                  </Button>
-                </CardHeader>
-                <CardContent>
-                  <dl class="space-y-4 text-sm">
-                    <div class="space-y-1">
-                      <dt class="text-muted-foreground">
-                        {{ $t('admin.event_create.number_of_sessions') }}
-                      </dt>
-                      <dd class="font-medium">
-                        {{ values.sessions.length }}
-                      </dd>
-                    </div>
-                  </dl>
-                </CardContent>
-              </Card>
-            </div>
-          </CardContent>
-        </Card>
+          <Card class="rounded-3xl shadow-sm">
+            <CardHeader>
+              <div>
+                <CardTitle class="text-base">
+                  {{ $t('admin.event_create.identity') }}
+                </CardTitle>
+                <CardDescription>{{ values.slug || $t('admin.event_create.slug_placeholder') }}</CardDescription>
+              </div>
+              <CardAction>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  class="h-8 px-2"
+                  :aria-label="$t('common.edit') + ' ' + $t('admin.event_create.identity')"
+                  @click="currentStep = 1"
+                >
+                  {{ $t('common.edit') }}
+                </Button>
+              </CardAction>
+            </CardHeader>
+            <CardContent class="flex flex-col gap-3 text-sm">
+              <div>
+                <p class="text-muted-foreground">
+                  {{ $t('admin.event_create.title_label') }}
+                </p>
+                <p class="font-medium text-foreground">
+                  {{ values.title || $t('admin.event_create.title_placeholder') }}
+                </p>
+              </div>
+              <div>
+                <p class="text-muted-foreground">
+                  {{ $t('admin.event_create.subtitle_label') }}
+                </p>
+                <p class="font-medium text-foreground">
+                  {{ values.subtitle || $t('admin.event_create.subtitle_placeholder') }}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card class="rounded-3xl shadow-sm">
+            <CardHeader>
+              <div>
+                <CardTitle class="text-base">
+                  {{ $t('admin.event_create.venue_label') }}
+                </CardTitle>
+                <CardDescription>
+                  {{ selectedVenueDetail?.venue.name || $t('admin.event_create.choose_venue') }}
+                </CardDescription>
+              </div>
+              <CardAction>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  class="h-8 px-2"
+                  :aria-label="$t('common.edit') + ' ' + $t('admin.event_create.venue_label')"
+                  @click="currentStep = 2"
+                >
+                  {{ $t('common.edit') }}
+                </Button>
+              </CardAction>
+            </CardHeader>
+            <CardContent class="grid gap-3 text-sm sm:grid-cols-3 lg:grid-cols-1 xl:grid-cols-3">
+              <div class="rounded-2xl bg-muted/50 px-4 py-3">
+                <p class="text-xs text-muted-foreground">
+                  {{ $t('common.sections') }}
+                </p>
+                <p class="font-semibold tabular-nums text-foreground">
+                  {{ selectedVenueDetail?.sections.length ?? 0 }}
+                </p>
+              </div>
+              <div class="rounded-2xl bg-muted/50 px-4 py-3">
+                <p class="text-xs text-muted-foreground">
+                  {{ $t('common.rows') }}
+                </p>
+                <p class="font-semibold tabular-nums text-foreground">
+                  {{ totalRows }}
+                </p>
+              </div>
+              <div class="rounded-2xl bg-muted/50 px-4 py-3">
+                <p class="text-xs text-muted-foreground">
+                  {{ $t('admin.event_create.seats_label') }}
+                </p>
+                <p class="font-semibold tabular-nums text-foreground">
+                  {{ totalSeats }}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card class="rounded-3xl shadow-sm">
+            <CardHeader>
+              <div>
+                <CardTitle class="text-base">
+                  {{ $t('common.sessions') }}
+                </CardTitle>
+                <CardDescription>{{ $t('admin.event_create.step_sessions_desc') }}</CardDescription>
+              </div>
+              <CardAction>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  class="h-8 px-2"
+                  :aria-label="$t('common.edit') + ' ' + $t('common.sessions')"
+                  @click="currentStep = 3"
+                >
+                  {{ $t('common.edit') }}
+                </Button>
+              </CardAction>
+            </CardHeader>
+            <CardContent>
+              <dl class="flex flex-col gap-3 text-sm">
+                <div class="rounded-2xl bg-muted/50 px-4 py-3">
+                  <dt class="text-xs text-muted-foreground">
+                    {{ $t('admin.event_create.number_of_sessions') }}
+                  </dt>
+                  <dd class="font-semibold tabular-nums text-foreground">
+                    {{ values.sessions.length }}
+                  </dd>
+                </div>
+              </dl>
+            </CardContent>
+          </Card>
+        </div>
       </motion.div>
 
       <div class="fixed inset-x-4 bottom-[calc(1rem+env(safe-area-inset-bottom,0px))] z-30 rounded-3xl border bg-background/95 p-3 shadow-lg backdrop-blur supports-[backdrop-filter]:bg-background/80 md:left-[calc(var(--sidebar-width)+1rem)] md:right-4 md:group-has-data-[collapsible=icon]/sidebar-wrapper:left-[calc(var(--sidebar-width-icon)+2rem)] md:group-has-data-[collapsible=offcanvas]/sidebar-wrapper:left-4">
-        <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <div
+          class="mx-auto flex flex-col gap-3 md:flex-row md:items-center md:justify-between"
+          :class="currentStep === 3 ? 'max-w-7xl' : 'max-w-6xl'"
+        >
           <div class="text-sm text-muted-foreground">
             <span class="font-medium text-foreground">{{ steps[currentStep - 1]?.title }}</span>
             <span class="hidden sm:inline"> · {{ steps[currentStep - 1]?.description }}</span>
