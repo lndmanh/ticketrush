@@ -22,7 +22,6 @@ function safeRedirectPath(value: string | undefined, origin: string): string {
 
 export default defineEventHandler(async (event) => {
   const result = await readValidatedBody(event, body => loginSchema.safeParse(body))
-  console.log(result)
   if (!result.success) {
     return sendRedirect(event, apiRoutes.AUTH_LOGIN + '?error=validation')
   }
@@ -55,6 +54,11 @@ export default defineEventHandler(async (event) => {
   // Check email verification
   if (!user.emailVerified) {
     return sendRedirect(event, apiRoutes.AUTH_VERIFY_EMAIL + '?email=' + encodeURIComponent(user.email) + '&redirectTo=' + encodeURIComponent(redirectToStr))
+  }
+
+  // Check if the account is locked
+  if (user.isLocked) {
+    return sendRedirect(event, apiRoutes.AUTH_LOGIN + '?error=account-locked')
   }
 
   // Update last login

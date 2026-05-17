@@ -1,5 +1,6 @@
 <template>
   <div>
+    <LockedAccountBanner />
     <SidebarProvider>
       <AppSidebar :variant="sidebarVariant" />
       <SidebarInset>
@@ -25,6 +26,7 @@ import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar'
 import HotSearch from '@/components/HotSearch.vue'
 import AppLayout from '@/components/AppLayout.vue'
 import AppSidebar from '@/components/AppSidebar.vue'
+import LockedAccountBanner from '@/components/LockedAccountBanner.vue'
 
 const { sidebarVariant: contextVariant } = useSidebarContext()
 

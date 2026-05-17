@@ -8,6 +8,11 @@ export interface EventSessionGateResponse {
   eventId: number
 }
 
+export interface BookingCaptchaPassResponse {
+  sessionPublicId: string
+  expiresInSeconds: number
+}
+
 export interface QueueStateEntry {
   status: QueueStatus
   expiresAt?: DateLike | null
@@ -32,6 +37,11 @@ export interface HoldData {
 
 export interface CheckoutStartData {
   publicId: string
+}
+
+export interface CheckoutCancelData {
+  order: Order
+  hold: SeatHold | null | undefined
 }
 
 export interface CheckoutDetailData {

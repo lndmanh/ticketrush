@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import type { CheckoutCancelData } from '~~/types/ticketing'
 import checkoutService from '~~/server/utils/ticketing/checkout'
 import { apiError, success, zodErrorToFieldErrors } from '~~/server/utils/apiResponse'
 import { getSeatmapRealtimeEnv } from '~~/server/utils/ticketing/seatmap-realtime'
@@ -30,5 +31,5 @@ export default defineEventHandler(async (event) => {
     realtimeNamespace,
   )
 
-  return success(cancelled)
+  return success<CheckoutCancelData>(cancelled)
 })

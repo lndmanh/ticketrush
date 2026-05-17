@@ -47,6 +47,7 @@ export default defineEventHandler(async (event) => {
     name: updatedUser.name,
     email: updatedUser.email,
     isAdmin: updatedUser.isAdmin,
+    isLocked: updatedUser.isLocked,
   }
 
   return success({ user })

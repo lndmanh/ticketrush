@@ -13,7 +13,10 @@ const props = defineProps<{
   eventSlug: string
 }>()
 
-const bookingPath = computed(() => `/events/${props.eventSlug}/sessions/${props.session.publicId}/seats`)
+const emit = defineEmits<{
+  book: [session: PublicEventSessionSummary]
+}>()
+
 const dateLocale = computed(() => getDisplayDateLocale(locale.value))
 
 const monthLabel = computed(() => formatDate(props.session.startsAt, dateLocale.value, {
@@ -175,13 +178,12 @@ const lowestTicket = computed(() => {
 
         <Button
           v-if="isBookable"
-          as-child
+          type="button"
           class="rounded-full"
+          @click="emit('book', session)"
         >
-          <NuxtLink :to="bookingPath">
-            {{ t('event_card.book_tickets') }}
-            <ArrowRight class="size-4" />
-          </NuxtLink>
+          {{ t('event_card.book_tickets') }}
+          <ArrowRight class="size-4" />
         </Button>
         <Button
           v-else

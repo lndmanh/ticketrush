@@ -18,9 +18,6 @@ export interface UserProfileModel {
   hasPassword: boolean
   passkeyCount: number
   isAdmin: boolean
-  phone: string | null
-  birthDate: Date | null
-  gender: string | null
   linkedAccounts: LinkedAccount[]
 }
 
@@ -30,6 +27,7 @@ export interface AdminUserModel {
   name: string
   email: string
   isAdmin: boolean
+  isLocked: boolean
 }
 
 export type ProfileUpdateData = Pick<UserProfileModel, 'id' | 'username' | keyof UpdateProfileInput>

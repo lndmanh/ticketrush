@@ -36,6 +36,7 @@ useSeo({
 const { data: ticketsResponse } = await useAPI<ApiResponse<TicketListItem[]>>(() => '/api/tickets', {
   query: computed(() => ({ locale: locale.value })),
 })
+
 const tickets = computed(() => ticketsResponse.value?.data ?? [])
 
 const filteredTickets = computed(() => {
@@ -131,38 +132,38 @@ definePageMeta({
   <main class="space-y-6">
     <div class="space-y-4">
       <Card>
-<CardContent class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <CardContent class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <p class="text-sm text-muted-foreground">
-          Đang hiển thị {{ filteredTickets.length }}/{{ tickets.length }} vé
-        </p>
+            Đang hiển thị {{ filteredTickets.length }}/{{ tickets.length }} vé
+          </p>
 
-        <div class="ml-auto flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center sm:justify-end sm:gap-4">
-          <Label
-            for="ticket-time-range"
-            class="shrink-0 text-sm font-semibold text-muted-foreground"
-          >
-            Lọc theo ngày
-          </Label>
-          <div class="w-full">
-            <Select v-model="selectedRange">
-              <SelectTrigger
-                id="ticket-time-range"
-              >
-                <SelectValue placeholder="Select range" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem
-                  v-for="option in rangeOptions"
-                  :key="option.value"
-                  :value="option.value"
+          <div class="ml-auto flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center sm:justify-end sm:gap-4">
+            <Label
+              for="ticket-time-range"
+              class="shrink-0 text-sm font-semibold text-muted-foreground"
+            >
+              Lọc theo ngày
+            </Label>
+            <div class="w-full">
+              <Select v-model="selectedRange">
+                <SelectTrigger
+                  id="ticket-time-range"
                 >
-                  {{ option.label }}
-                </SelectItem>
-              </SelectContent>
-            </Select>
+                  <SelectValue placeholder="Select range" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem
+                    v-for="option in rangeOptions"
+                    :key="option.value"
+                    :value="option.value"
+                  >
+                    {{ option.label }}
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
-        </div>
-</CardContent>
+        </CardContent>
       </Card>
 
       <Tabs

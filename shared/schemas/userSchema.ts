@@ -1,6 +1,5 @@
 import { z } from 'zod'
 import { createInsertSchema, createSelectSchema, createUpdateSchema } from 'drizzle-zod'
-import { SavedAttendeeGender } from '#shared/commonEnums'
 import { users } from '~~/server/db/schema.sqlite'
 
 /**
@@ -79,7 +78,16 @@ export const userUpdateSchema = createUpdateSchema(users, {
   password: z.string().min(1).optional(),
   emailVerified: z.boolean().optional(),
   isAdmin: z.boolean().optional(),
+  isLocked: z.boolean().optional(),
 })
+
+/**
+ * Schema for the dedicated lock/unlock endpoint.
+ */
+export const adminUserLockSchema = z.object({
+  isLocked: z.boolean(),
+})
+export type AdminUserLockInput = z.infer<typeof adminUserLockSchema>
 
 export const adminUserCreateFormSchema = createUserSchema.pick({
   username: true,
@@ -120,23 +128,9 @@ export const changePasswordSchema = z.object({
 
 export type ChangePasswordInput = z.infer<typeof changePasswordSchema>
 
-export const profilePhoneSchema = z.string()
-  .trim()
-  .max(32, 'Phone number is too long')
-  .nullable()
-
-export const profileBirthDateSchema = z.string()
-  .regex(/^\d{4}-\d{2}-\d{2}$/, 'Birth date must use YYYY-MM-DD format')
-  .nullable()
-
-export const profileGenderSchema = z.enum(SavedAttendeeGender).nullable()
-
 export const updateProfileSchema = z.object({
-  name: z.string().trim().min(1, 'account_page.name_required'),
-  email: z.email({ error: 'account_page.email_required' }),
-  phone: profilePhoneSchema,
-  birthDate: profileBirthDateSchema,
-  gender: profileGenderSchema,
+  name: z.string().trim().min(1, 'Name is required'),
+  email: emailSchema,
 })
 
 export const loginSchema = z.object({

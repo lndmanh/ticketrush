@@ -2,6 +2,20 @@
 import type { DateValue } from '@internationalized/date'
 import { CalendarDate, getLocalTimeZone, today } from '@internationalized/date'
 import { CalendarClock, CalendarDays, CalendarRange, ChevronLeft, ChevronRight, Clock3, List, MapPin, Ticket, ArrowRight } from '@lucide/vue'
+import {
+  CalendarCell,
+  CalendarCellTrigger,
+  CalendarGrid,
+  CalendarGridBody,
+  CalendarGridHead,
+  CalendarGridRow,
+  CalendarHeadCell,
+  CalendarHeader,
+  CalendarHeading,
+  CalendarNext,
+  CalendarPrev,
+  CalendarRoot,
+} from 'reka-ui'
 import { Motion } from 'motion-v'
 import { getDisplayDateLocale } from '@/lib/localizedEvents'
 import { cn, formatCurrency, formatDate, formatTime } from '@/lib/utils'
@@ -29,6 +43,8 @@ const RECOMMENDED_EVENT_DISPLAY_LIMIT = 6
 const recommendedCarouselRef = ref<HTMLElement | null>(null)
 const canScrollRecommendationsLeft = ref(false)
 const canScrollRecommendationsRight = ref(false)
+const selectedBookingSession = ref<PublicEventSessionSummary | null>(null)
+const isBookingCaptchaDialogOpen = ref(false)
 
 const { data: detailResponse } = await useAPI<ApiResponse<EventDetailResponse>>(() => apiRoutes.event(slug.value), {
   query: computed(() => ({ locale: locale.value })),
@@ -335,12 +351,9 @@ function getSessionStatusLabel(session: PublicEventSessionSummary) {
   return translated === key ? session.status.replaceAll('_', ' ') : translated
 }
 
-function getSessionBookingPath(session: PublicEventSessionSummary) {
-  if (!event.value) {
-    return '#'
-  }
-
-  return `/events/${event.value.slug}/sessions/${session.publicId}/seats`
+function openBookingCaptchaDialog(session: PublicEventSessionSummary) {
+  selectedBookingSession.value = session
+  isBookingCaptchaDialogOpen.value = true
 }
 
 function scrollToSessions() {
@@ -368,9 +381,10 @@ definePageMeta({
 </script>
 
 <template>
-  <main
+  <AppLayout
     v-if="event"
-    class-name="relative gap-8 overflow-hidden px-4 py-16 md:-mx-6 md:px-6 md:py-24 lg:-mx-10 lg:px-10"
+    :hide-header="true"
+    class-name="relative gap-8 overflow-hidden max-w-screen-2xl px-4 mt-8 sm:px-6 lg:px-10"
   >
     <!-- Start of Event Info -->
     <section class="relative overflow-hidden rounded-[2rem] bg-card shadow-2xl shadow-black/20">
@@ -460,7 +474,7 @@ definePageMeta({
                 aria-hidden="true"
                 class="size-4"
               />
-              Mua vé ngay
+              {{ $t('event_card.book_tickets') }}
             </Button>
           </div>
         </div>
@@ -533,6 +547,7 @@ definePageMeta({
           :session="session"
           :section-prices="session.sectionPrices"
           :event-slug="event.slug"
+          @book="openBookingCaptchaDialog"
         />
       </div>
 
@@ -701,12 +716,11 @@ definePageMeta({
 
                   <Button
                     v-if="isSessionBookable(session)"
-                    as-child
+                    type="button"
                     class="w-full rounded-full md:w-auto"
+                    @click="openBookingCaptchaDialog(session)"
                   >
-                    <NuxtLink :to="getSessionBookingPath(session)">
-                      {{ $t('event_card.book_tickets') }}
-                    </NuxtLink>
+                    {{ $t('event_card.book_tickets') }}
                   </Button>
                   <Button
                     v-else
@@ -829,5 +843,11 @@ definePageMeta({
         </div>
       </div>
     </section>
-  </main>
+
+    <TicketBookingCaptchaDialog
+      v-model:open="isBookingCaptchaDialogOpen"
+      :session="selectedBookingSession"
+      :event-slug="event.slug"
+    />
+  </AppLayout>
 </template>

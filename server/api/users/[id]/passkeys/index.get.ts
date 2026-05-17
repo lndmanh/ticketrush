@@ -4,7 +4,6 @@ import type { PasskeyModel } from '~~/types/models/passkey'
 export default defineEventHandler(async (event) => {
   const session = await requireUserSession(event)
   const sessionUser = session.user
-  console.log(sessionUser)
   const db = useDB()
 
   const userCredentials = await db

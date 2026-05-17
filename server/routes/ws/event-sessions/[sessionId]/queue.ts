@@ -1,6 +1,7 @@
 import eventSessionService from '~~/server/utils/database/event-session'
 import { readTicketingSessionKeyFromCookieHeader } from '~~/server/utils/ticketing/session'
 import { refreshQueueStatusForSession } from '~~/server/utils/ticketing/queue-status'
+import { hasBookingSessionOrQueueEntry } from '~~/server/utils/ticketing/captcha-pass'
 import { serializeQueueRealtimeMessage } from '~~/types/queue-realtime'
 import { EventStatus } from '#shared/commonEnums'
 
@@ -67,6 +68,11 @@ export default defineWebSocketHandler({
     const session = await eventSessionService.getByPublicId(sessionPublicId)
     if (!session || session.status === EventStatus.Draft || session.status === EventStatus.Cancelled) {
       throw new Response('Session not found.', { status: 404 })
+    }
+
+    const hasAccess = await hasBookingSessionOrQueueEntry(session.id, customerKey)
+    if (!hasAccess) {
+      throw new Response('Complete the captcha check before joining the waiting room.', { status: 403 })
     }
 
     return {

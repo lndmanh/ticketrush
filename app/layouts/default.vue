@@ -1,29 +1,34 @@
 <template>
   <div class="min-h-screen bg-background text-foreground">
-    <!-- Floating Island Header -->
-    <div class="fixed top-0 left-0 right-0 z-50 flex justify-center px-4 pt-4 transition-all duration-500 ease-out">
+    <!-- Locked account banner + header stacked in a fixed column -->
+    <div class="fixed top-0 left-0 right-0 z-[60] flex flex-col">
+      <LockedAccountBanner />
+
+      <!-- Header — full-width at top, floats to pill on scroll -->
+      <div
+        ref="headerWrapperRef"
+        class="flex justify-center"
+    >
       <header
-        class="w-full max-w-5xl transition-all duration-500 ease-out"
-        :class="cn(
-          'rounded-full border px-4 transition-all sm:px-6 lg:px-8',
-          isScrolled
-            ? 'border-border/40 bg-background/30 shadow-[0_8px_30px_rgb(0,0,0,0.12)] backdrop-blur-md py-3'
-            : 'border-border/10 bg-background/40 py-4 backdrop-blur-sm',
-        )"
+        ref="headerRef"
+        class="w-full px-8"
+        style="max-width: 100%; border-radius: 0; padding-top: 4px; padding-bottom: 4px; background-color: transparent; backdrop-filter: blur(0px); border-style: solid; border-width: 0; border-bottom-width: 1px; border-color: rgba(255,255,255,0.15); box-shadow: none;"
+        :class="isHeaderScrolled ? '' : 'hero-header'"
       >
         <div class="flex h-full items-center justify-between">
-          <!-- Logo -->
+          <!-- Logo — separated by a right border from nav -->
           <NuxtLink
+            ref="logoRef"
             to="/"
-            class="flex items-center gap-2.5 group transition-all duration-300"
-            :class="isScrolled ? 'scale-[0.97]' : 'scale-100'"
+            class="flex items-center gap-2.5 group pr-6 mr-6 no-hover-bg"
+            style="border-right-style: solid; border-right-width: 1px; border-right-color: rgba(255,255,255,0.2);"
           >
             <NuxtImg
               src="/favicon.svg"
               :alt="APP_MANIFEST.short_name"
               class="h-6 w-6 transition-all duration-300"
             />
-            <span class="text-md font-semibold tracking-tight text-primary hover:text-foreground">
+            <span class="text-md font-semibold tracking-tight text-foreground">
               {{ APP_MANIFEST.short_name }}
             </span>
           </NuxtLink>
@@ -75,12 +80,13 @@
               orientation="vertical"
               class="mx-3 h-4 bg-border/60"
             />
+
             <Button
               size="sm"
               @click="handleHeaderCtaClick"
             >
               {{ headerCtaLabel }}
-              <ArrowRight class="ml-1.5 h-3.5 w-3.5 transition-transform duration-300 group-hover:translate-x-0.5" />
+              <ArrowRight />
             </Button>
           </nav>
 
@@ -137,6 +143,7 @@
           </div>
         </div>
       </header>
+      </div>
     </div>
 
     <!-- Full-Page Mobile Menu -->
@@ -270,13 +277,7 @@
 
     <!-- Main Content -->
     <main class="min-h-dvh">
-      <div
-        v-if="isDefaultLayoutContained"
-        class="mx-auto w-full max-w-[90rem] px-4 pb-16 pt-28 sm:px-6 md:pt-32 lg:px-10"
-      >
-        <slot />
-      </div>
-      <slot v-else />
+      <slot />
     </main>
 
     <footer class="border-t border-border/40 bg-background">
@@ -458,16 +459,14 @@
 import { computed, ref, watch, onMounted, onUnmounted } from 'vue'
 import { useWindowScroll } from '@vueuse/core'
 import { Menu, X, ChevronLeft, ChevronRight, ArrowRight, SunIcon, MoonIcon, MailIcon } from '@lucide/vue'
-import { cn } from '@/lib/utils'
 import { APP_MANIFEST } from '#shared/constants/manifest'
+import gsap from 'gsap'
+import LockedAccountBanner from '@/components/LockedAccountBanner.vue'
 
 const config = useConfig()
 
 const headerNav = computed(() => config.value.header.nav)
 const headerSearch = computed(() => config.value.search)
-const route = useRoute()
-
-const isDefaultLayoutContained = computed(() => route.meta.defaultLayoutContained !== false)
 
 const activeSubmenu = ref<number | null>(null)
 
@@ -487,7 +486,111 @@ const headerCtaLabel = computed(() => loggedIn.value ? $t('header.my_tickets') :
 const headerCtaTarget = computed(() => loggedIn.value ? '/tickets' : '/auth/login')
 
 const { y: scrollY } = useWindowScroll()
-const isScrolled = computed(() => scrollY.value > 300)
+const isScrolled = computed(() => scrollY.value > 150)
+const isHeaderScrolled = ref(false)
+const isHeaderStateInitialized = ref(false)
+const lastAppliedHeaderState = ref<boolean | null>(null)
+
+// Template refs for GSAP animation
+const headerWrapperRef = ref<HTMLElement | null>(null)
+const headerRef = ref<HTMLElement | null>(null)
+const logoRef = ref<{ $el: HTMLElement } | null>(null)
+
+function applyHeaderState(scrolled: boolean, animate: boolean) {
+  isHeaderScrolled.value = scrolled
+  lastAppliedHeaderState.value = scrolled
+  const duration = 0.8
+  const ease = 'power2.inOut'
+
+  if (headerWrapperRef.value) {
+    gsap.killTweensOf(headerWrapperRef.value)
+    const headerWrapperStyles = {
+      paddingLeft: scrolled ? 16 : 0,
+      paddingRight: scrolled ? 16 : 0,
+      paddingTop: scrolled ? 16 : 0,
+    }
+
+    if (animate) {
+      gsap.to(headerWrapperRef.value, {
+        ...headerWrapperStyles,
+        duration,
+        ease,
+      })
+    }
+    else {
+      gsap.set(headerWrapperRef.value, headerWrapperStyles)
+    }
+  }
+
+  if (headerRef.value) {
+    gsap.killTweensOf(headerRef.value)
+    const headerStyles = {
+      maxWidth: scrolled ? '64rem' : '100%',
+      borderRadius: scrolled ? 9999 : 0,
+      paddingTop: scrolled ? 12 : 4,
+      paddingBottom: scrolled ? 12 : 4,
+      backgroundColor: scrolled ? 'rgba(255,255,255,0.4)' : 'rgba(255,255,255,0)',
+      backdropFilter: scrolled ? 'blur(4px)' : 'blur(0px)',
+      borderWidth: scrolled ? 1 : 0,
+      borderBottomWidth: 1,
+      borderColor: scrolled ? 'rgba(200,200,200,0.3)' : 'rgba(255,255,255,0.15)',
+      boxShadow: scrolled ? '0 10px 15px -3px rgba(0,0,0,0.08)' : '0 0 0 0 rgba(0,0,0,0)',
+    }
+
+    if (animate) {
+      gsap.to(headerRef.value, {
+        ...headerStyles,
+        duration,
+        ease,
+      })
+    }
+    else {
+      gsap.set(headerRef.value, headerStyles)
+    }
+  }
+
+  if (logoRef.value?.$el) {
+    gsap.killTweensOf(logoRef.value.$el)
+    const logoStyles = {
+      borderRightStyle: 'solid',
+      borderRightWidth: scrolled ? 0 : 1,
+      borderRightColor: scrolled ? 'rgba(255,255,255,0)' : 'rgba(255,255,255,0.2)',
+      scale: scrolled ? 0.97 : 1,
+    }
+
+    if (animate) {
+      gsap.to(logoRef.value.$el, {
+        ...logoStyles,
+        duration,
+        ease,
+      })
+    }
+    else {
+      gsap.set(logoRef.value.$el, logoStyles)
+    }
+  }
+}
+
+// Set initial styles on mount using the browser's actual restored scroll position.
+onMounted(() => {
+  nextTick(() => {
+    applyHeaderState(window.scrollY > 150, false)
+    isHeaderStateInitialized.value = true
+  })
+})
+
+// Animate header on scroll state change.
+watch(isScrolled, (scrolled) => {
+  if (!isHeaderStateInitialized.value) {
+    return
+  }
+
+  if (scrolled === lastAppliedHeaderState.value) {
+    return
+  }
+
+  applyHeaderState(scrolled, true)
+}, { flush: 'post' })
 
 // Close mobile menu on escape key
 onMounted(() => {

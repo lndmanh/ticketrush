@@ -3,6 +3,7 @@ import eventSessionService from '~~/server/utils/database/event-session'
 import queueService from '~~/server/utils/ticketing/queue'
 import { apiError, success, zodErrorToFieldErrors } from '~~/server/utils/apiResponse'
 import { getTicketingSessionKey } from '~~/server/utils/ticketing/session'
+import { requireBookingSessionOrQueueEntry } from '~~/server/utils/ticketing/captcha-pass'
 
 export default defineEventHandler(async (event) => {
   const sessionPublicId = getRouterParam(event, 'sessionId')
@@ -21,7 +22,9 @@ export default defineEventHandler(async (event) => {
     throw apiError({ status: 400, statusText: 'Bad Request', code: 'VALIDATION_ERROR', message: 'Invalid request.', fieldErrors: zodErrorToFieldErrors(result.error), cause: result.error })
   }
 
-  const joined = await queueService.joinQueue(session.id, getTicketingSessionKey(event), userSession.user?.id)
+  const customerKey = getTicketingSessionKey(event)
+  await requireBookingSessionOrQueueEntry(session.id, customerKey)
+  const joined = await queueService.joinQueue(session.id, customerKey, userSession.user?.id)
   const response: Awaited<ReturnType<typeof queueService.joinQueue>> = joined
   return success(response)
 })

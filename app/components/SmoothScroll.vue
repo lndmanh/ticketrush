@@ -5,6 +5,10 @@ import { VueLenis } from 'lenis/vue'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 
+defineOptions({
+  inheritAttrs: false,
+})
+
 const lenisRef = ref()
 
 // GSAP integration

@@ -26,10 +26,12 @@ export const apiRoutes = {
   AUTH_GOOGLE: '/api/auth/google',
   AUTH_OAUTH_URL: '/api/auth/oauth/url',
   AUTH_OAUTH_UNLINK: '/api/auth/oauth/unlink',
+  AUTH_ACCOUNT_STATUS: '/api/auth/account-status',
   MY_PASSKEYS: '/api/users/me/passkeys',
 
   MY_PROFILE: '/api/users/me',
   SAVED_ATTENDEES: '/api/saved-attendees',
+  SAVED_ATTENDEE_SELF_STATUS: '/api/saved-attendees/self-status',
 
   adminEvent: (eventId: string | number) => `/api/admin/events/${eventId}`,
   adminEventDashboard: (eventId: string | number) => `/api/admin/events/${eventId}/dashboard`,
@@ -49,9 +51,11 @@ export const apiRoutes = {
   adminVenueTranslations: (venueId: string | number) => `/api/admin/venues/${venueId}/translations`,
   adminVenueTranslation: (venueId: string | number, locale: string) => `/api/admin/venues/${venueId}/translations/${locale}`,
   adminUser: (userId: string | number) => `/api/admin/users/${userId}`,
+  adminUserLock: (userId: string | number) => `/api/admin/users/${userId}/lock`,
   event: (slug: string) => `/api/events/${slug}`,
   eventSession: (sessionId: string | number) => `/api/event-sessions/${sessionId}`,
   eventSessionGate: (sessionId: string | number) => `/api/event-sessions/${sessionId}/gate`,
+  eventSessionCaptchaPass: (sessionId: string | number) => `/api/event-sessions/${sessionId}/captcha-pass`,
   eventSessionSeatmap: (sessionId: string | number) => `/api/event-sessions/${sessionId}/seatmap`,
   eventSessionSeatmapSocket: (sessionId: string) => `/ws/event-sessions/${sessionId}/seats`,
   eventSessionQueueSocket: (sessionId: string | number) => `/ws/event-sessions/${sessionId}/queue`,
@@ -83,14 +87,6 @@ export const routeRules = {
   '/settings/**': {
     ssr: false,
     prerender: false,
-  },
-  '/admin/studio/login': {
-    ssr: true,
-    index: false,
-  },
-  '/admin/studio/login/**': {
-    ssr: true,
-    index: false,
   },
   // Directory-level redirects are auto-generated from .navigation.yml files
   // by the ~/modules/navigation-redirects module at build time

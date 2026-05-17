@@ -1070,31 +1070,31 @@ function getSeatFieldId(sectionIndex: number, rowIndex: number, seatIndex: numbe
                 <Button
                   type="button"
                   variant="outline"
-                  size="sm"
+                  size="icon-sm"
+                  :title="$t('admin.venues.add_seat')"
                   @click="addSeat(sectionIndex, rowIndex)"
                 >
                   <Plus class="size-4" />
-                  {{ $t('admin.venues.add_seat') }}
                 </Button>
                 <Button
                   type="button"
                   variant="ghost"
-                  size="sm"
+                  size="icon-sm"
                   :aria-label="$t('admin.venues.duplicate_row')"
+                  :title="$t('admin.venues.duplicate_row')"
                   @click="duplicateRow(sectionIndex, rowIndex)"
                 >
                   <CopyPlus class="size-4" />
-                  {{ $t('admin.venues.duplicate_row') }}
                 </Button>
                 <Button
                   type="button"
                   variant="ghost"
                   size="sm"
                   :aria-label="$t('admin.venues.remove_row')"
+                  :title="$t('admin.venues.remove_row')"
                   @click="removeRow(sectionIndex, rowIndex)"
                 >
                   <Trash2 class="size-4" />
-                  {{ $t('admin.venues.remove_row') }}
                 </Button>
                 <CollapsibleTrigger as-child>
                   <Button
@@ -1115,7 +1115,7 @@ function getSeatFieldId(sectionIndex: number, rowIndex: number, seatIndex: numbe
             </div>
 
             <CollapsibleContent>
-              <div class="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+              <div class="mt-4 grid gap-3 lg:grid-cols-2">
                 <div
                   v-for="(seat, seatIndex) in row.seats"
                   :key="`${section.code}-${row.label}-${seat.label}-${seatIndex}`"
@@ -1188,13 +1188,6 @@ function getSeatFieldId(sectionIndex: number, rowIndex: number, seatIndex: numbe
                     >
                       Seat coordinates must be unique within a section.
                     </p>
-                    <p
-                      v-if="isAutomaticSeatLayout(section)"
-                      class="text-xs text-muted-foreground"
-                    >
-                      Seat coordinates are generated automatically in this mode.
-                    </p>
-
                     <div class="grid gap-3 rounded-[0.9rem] border border-border bg-secondary p-3 2xl:grid-cols-[auto_minmax(0,1fr)] 2xl:items-center">
                       <div class="flex items-center gap-3">
                         <label
@@ -1215,13 +1208,10 @@ function getSeatFieldId(sectionIndex: number, rowIndex: number, seatIndex: numbe
                         v-if="seat.isAccessible"
                         class="min-w-0 space-y-2"
                       >
-                        <label
-                          class="text-[11px] uppercase tracking-[0.18em] text-muted-foreground"
-                          :for="getSeatFieldId(sectionIndex, rowIndex, seatIndex, 'accessibility-label')"
-                        >{{ $t('admin.venues.accessibility_label') }}</label>
                         <Input
                           :id="getSeatFieldId(sectionIndex, rowIndex, seatIndex, 'accessibility-label')"
                           :model-value="seat.accessibilityLabel || ''"
+                          :placeholder="$t('admin.venues.accessibility_label')"
                           @update:model-value="updateSeat(sectionIndex, rowIndex, seatIndex, 'accessibilityLabel', $event)"
                         />
                       </div>

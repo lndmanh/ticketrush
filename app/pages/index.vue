@@ -167,10 +167,6 @@ watch(upcomingEvents, async () => {
   await nextTick()
   updateCarouselState()
 })
-
-definePageMeta({
-  defaultLayoutContained: false,
-})
 </script>
 
 <template>

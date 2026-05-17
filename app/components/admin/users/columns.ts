@@ -7,9 +7,10 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { ArrowUpDown, MoreHorizontal, Pencil, Trash2 } from '@lucide/vue'
+import { ArrowUpDown, Lock, MoreHorizontal, Pencil, Trash2, Unlock } from '@lucide/vue'
 import type { User } from '~~/shared/db'
 import { getDisplayDateLocale } from '@/lib/localizedEvents'
 import { formatDateTime, formatRelativeTime } from '@/lib/utils'
@@ -17,6 +18,7 @@ import { formatDateTime, formatRelativeTime } from '@/lib/utils'
 export function createColumns(
   onEdit: (user: User) => void,
   onDelete: (userId: number) => void,
+  onLockToggle: (user: User) => void,
 ): ColumnDef<User>[] {
   const { locale } = useI18n()
 
@@ -95,6 +97,11 @@ export function createColumns(
             { variant: 'destructive', class: 'text-xs' },
             () => 'Admin',
           ),
+          user.isLocked && h(
+            Badge,
+            { variant: 'outline', class: 'text-xs text-muted-foreground' },
+            () => 'Locked',
+          ),
         ])
       },
     },
@@ -169,6 +176,21 @@ export function createColumns(
                         ]),
                       },
                     ),
+                    h(
+                      DropdownMenuItem,
+                      {
+                        onClick: () => onLockToggle(user),
+                      },
+                      {
+                        default: () => h('div', { class: 'flex items-center gap-2' }, [
+                          user.isLocked
+                            ? h(Unlock, { class: 'h-4 w-4' })
+                            : h(Lock, { class: 'h-4 w-4' }),
+                          h('span', {}, user.isLocked ? 'Unlock' : 'Lock'),
+                        ]),
+                      },
+                    ),
+                    h(DropdownMenuSeparator),
                     h(
                       DropdownMenuItem,
                       {

@@ -1,23 +1,22 @@
 <script setup lang="ts">
 import { apiRoutes } from '#shared/apiRoutes'
 import { Field as VeeField, useForm } from 'vee-validate'
-import { ArrowLeft, ChevronDown, CreditCard, Landmark, UserRound, UsersRound, PencilLine, Ticket, WalletCards } from '@lucide/vue'
+import { ArrowLeft, ChevronDown, CreditCard, Landmark, UserRound, UsersRound, PencilLine, WalletCards } from '@lucide/vue'
 import type { SavedAttendeeFormInput, SavedAttendeeGender as SavedAttendeeGenderInput } from '#shared/schemas/savedAttendeeSchema'
-import { checkoutCustomerSchema } from '#shared/schemas/ticketingSchema'
+import { checkoutCustomerSchema, confirmCheckoutSchema } from '#shared/schemas/ticketingSchema'
 import type { CheckoutCustomerInput, CheckoutTicketHolderInput } from '#shared/schemas/ticketingSchema'
 import type { ApiResponse } from '~~/types/api'
 import type { CheckoutCancelData, CheckoutDetailData } from '~~/types/ticketing'
 import type { SavedAttendeeModel } from '~~/types/models/saved-attendee'
-import type { UserProfileModel } from '~~/types/models/profile'
 import { toast } from 'vue-sonner'
 import { apiRequest } from '@/utils/apiRequest'
 import { parseApiError } from '@/utils/apiError'
 import { getDisplayDateLocale } from '@/lib/localizedEvents'
+import { getCheckoutSuccessPath } from '@/utils/checkoutSuccess'
 import { AgeBracket, OrderPaymentMethod, OrderStatus, SavedAttendeeGender, SeatPricingSource, TicketHolderSource } from '#shared/commonEnums'
 
 const route = useRoute()
 const { locale, t } = useI18n()
-const { user } = useUserSession()
 const orderId = computed(() => route.params.orderId.toString())
 const holdPublicId = computed(() => typeof route.query.hold === 'string' ? route.query.hold : '')
 const isSubmitting = ref(false)
@@ -32,11 +31,12 @@ const { data: checkoutResponse, refresh } = await useAPI<ApiResponse<CheckoutDet
 })
 const checkout = computed(() => checkoutResponse.value?.data ?? null)
 
-const { data: savedAttendeesResponse } = await useAPI<ApiResponse<SavedAttendeeModel[]>>(() => '/api/saved-attendees')
-const savedAttendees = computed(() => savedAttendeesResponse.value?.data ?? [])
+if (checkout.value?.order.status === OrderStatus.Confirmed) {
+  await navigateTo(getCheckoutSuccessPath(orderId.value), { replace: true })
+}
 
-const { data: profileResponse } = await useAPI<ApiResponse<UserProfileModel>>(() => apiRoutes.MY_PROFILE)
-const profile = computed(() => profileResponse.value?.data ?? null)
+const { data: savedAttendeesResponse } = await useAPI<ApiResponse<SavedAttendeeModel[]>>(() => '/api/saved-attendees')
+const savedAttendees = computed(() => savedAttendeesResponse.value?.success ? savedAttendeesResponse.value.data : [])
 
 interface TicketHolderDraft {
   eventSeatId: number
@@ -112,19 +112,16 @@ const defaultValues: CheckoutCustomerInput = {
   customerGender: SavedAttendeeGender.PreferNotToSay,
 }
 
-const { handleSubmit, resetForm, setFieldValue, values: formValues, meta: formMeta } = useForm({
+const selfAttendee = computed(() => savedAttendees.value.find(attendee => attendee.isSelf) ?? null)
+
+const { handleSubmit, resetForm, values: formValues, meta: formMeta } = useForm({
   initialValues: { ...defaultValues },
   validationSchema: checkoutCustomerSchema,
 })
 
 const formInitializedOrderId = ref<number | null>(null)
 const paymentInitializedOrderId = ref<number | null>(null)
-
-const userProfile = computed(() => ({
-  name: profile.value?.name ?? user.value?.name ?? '',
-  email: profile.value?.email ?? '',
-  phone: profile.value?.phone ?? '',
-}))
+const billingDefaultedFromSelfOrderId = ref<number | null>(null)
 
 function formatCurrency(cents: number) {
   return `${Intl.NumberFormat(getDisplayDateLocale(locale.value)).format(cents / 100)} VND`
@@ -138,24 +135,27 @@ function getCheckoutSectionLabel(value: string | null | undefined) {
   return value && value.length > 0 ? value : t('tickets.detail_unknown')
 }
 
+function getDraftModeBadgeLabel(draft: TicketHolderDraft) {
+  const name = draft.holder.preferredName?.trim() || draft.holder.legalName?.trim()
+  if (name) {
+    return name
+  }
+
+  if (draft.source === TicketHolderSource.Account) {
+    return t('checkout.use_buyer_details')
+  }
+  if (draft.source === TicketHolderSource.SavedAttendee) {
+    return t('checkout.select_saved_attendee')
+  }
+  return t('checkout.enter_manually')
+}
+
 function formatDateTime(value: string | Date) {
   return new Date(value).toLocaleString(getDisplayDateLocale(locale.value))
 }
 
 function getSavedAttendeeOptionLabel(attendee: SavedAttendeeModel) {
   return attendee.email ? `${attendee.legalName} · ${attendee.email}` : attendee.legalName
-}
-
-function getAccountHolderOptionLabel() {
-  const name = formValues.customerName || userProfile.value.name || t('checkout.account_holder_option')
-  const email = formValues.customerEmail || userProfile.value.email
-  const accountLabel = t('checkout.account_holder_option')
-  const profileLabel = email ? `${name} · ${email}` : name
-  return `${accountLabel} · ${profileLabel}`
-}
-
-function getPaymentMethodLabel(payment: OrderPaymentMethod | null | undefined) {
-  return paymentMethodOptions.value.find(option => option.value === payment)?.label ?? t('tickets.detail_unknown')
 }
 
 function isAccountHolderSelection(draft: TicketHolderDraft) {
@@ -246,6 +246,17 @@ function refreshAccountHolderDraft(draft: TicketHolderDraft) {
   restoreOptionalHolderFields(draft.holder, preserved)
 }
 
+function refreshAccountHolderDraftFromSelfAttendee(draft: TicketHolderDraft) {
+  const preserved = preserveOptionalHolderFields(draft.holder)
+  draft.holder = createAccountHolderDraft()
+
+  if (draft.guardianSource === TicketHolderSource.Manual) {
+    draft.holder.guardianName = preserved.guardianName
+    draft.holder.guardianEmail = preserved.guardianEmail
+    draft.holder.guardianPhone = preserved.guardianPhone
+  }
+}
+
 function getValidGender(value: string | undefined | null): SavedAttendeeGenderInput {
   if (value === SavedAttendeeGender.Female || value === SavedAttendeeGender.Male || value === SavedAttendeeGender.NonBinary || value === SavedAttendeeGender.PreferNotToSay) {
     return value
@@ -254,20 +265,50 @@ function getValidGender(value: string | undefined | null): SavedAttendeeGenderIn
   return SavedAttendeeGender.PreferNotToSay
 }
 
+const selfAttendeeProfile = computed(() => ({
+  name: selfAttendee.value?.preferredName || selfAttendee.value?.legalName || '',
+  email: selfAttendee.value?.email ?? '',
+  phone: selfAttendee.value?.phone ?? '',
+  gender: getValidGender(selfAttendee.value?.gender),
+}))
+
+const selfAttendeeDraftSignature = computed(() => {
+  const attendee = selfAttendee.value
+
+  if (!attendee) {
+    return ''
+  }
+
+  return [
+    attendee.id,
+    attendee.legalName,
+    attendee.preferredName ?? '',
+    attendee.email ?? '',
+    attendee.phone ?? '',
+    attendee.birthDate ? String(attendee.birthDate) : '',
+    attendee.gender ?? '',
+    attendee.guardianName ?? '',
+    attendee.guardianEmail ?? '',
+    attendee.guardianPhone ?? '',
+    attendee.notes ?? '',
+    attendee.accessibilityNeeds ?? '',
+  ].join('|')
+})
+
 function createAccountHolderDraft(): DraftTicketHolder {
   return {
-    legalName: formValues.customerName ?? userProfile.value.name,
-    preferredName: undefined,
-    email: formValues.customerEmail ?? userProfile.value.email,
-    phone: formValues.customerPhone ?? userProfile.value.phone,
-    birthDate: undefined,
-    gender: getValidGender(formValues.customerGender),
-    guardianName: undefined,
-    guardianEmail: undefined,
-    guardianPhone: undefined,
-    notes: undefined,
-    accessibilityNeeds: undefined,
-    isSelf: false,
+    legalName: selfAttendee.value?.legalName ?? selfAttendeeProfile.value.name,
+    preferredName: selfAttendee.value?.preferredName ?? undefined,
+    email: selfAttendeeProfile.value.email,
+    phone: selfAttendeeProfile.value.phone,
+    birthDate: getSavedAttendeeDraftBirthDate(selfAttendee.value?.birthDate ?? null),
+    gender: selfAttendeeProfile.value.gender,
+    guardianName: selfAttendee.value?.guardianName ?? undefined,
+    guardianEmail: selfAttendee.value?.guardianEmail ?? undefined,
+    guardianPhone: selfAttendee.value?.guardianPhone ?? undefined,
+    notes: selfAttendee.value?.notes ?? undefined,
+    accessibilityNeeds: selfAttendee.value?.accessibilityNeeds ?? undefined,
+    isSelf: true,
   }
 }
 
@@ -479,6 +520,16 @@ function getSavedAttendeePayloadBirthDate(value: SavedAttendeeModel['birthDate']
   return parseSavedAttendeeBirthDate(value) ?? undefined
 }
 
+function getSavedAttendeeDraftBirthDate(value: SavedAttendeeModel['birthDate']) {
+  const birthDate = parseSavedAttendeeBirthDate(value)
+  if (!birthDate) {
+    return undefined
+  }
+
+  const [datePart] = birthDate.toISOString().split('T')
+  return datePart ?? undefined
+}
+
 function applyGuardianDetails(draft: TicketHolderDraft, name: string, email: string | null | undefined, phone: string | null | undefined) {
   draft.holder.guardianName = name
   draft.holder.guardianEmail = email ?? undefined
@@ -495,9 +546,9 @@ function applyGuardianSource(draft: TicketHolderDraft) {
   if (draft.guardianSource === TicketHolderSource.Account) {
     applyGuardianDetails(
       draft,
-      formValues.customerName || userProfile.value.name,
-      formValues.customerEmail || userProfile.value.email,
-      formValues.customerPhone || userProfile.value.phone,
+      formValues.customerName,
+      formValues.customerEmail,
+      formValues.customerPhone,
     )
     return
   }
@@ -576,27 +627,54 @@ function setDraftSource(draft: TicketHolderDraft, source: TicketHolderSource) {
   }
 }
 
-watch(checkout, (value) => {
+watch([checkout, selfAttendeeProfile], ([value]) => {
   if (!value?.order) {
     return
   }
 
-  if (formInitializedOrderId.value === value.order.id && formMeta.value.dirty) {
+  const hasSelfDefaults = Boolean(
+    selfAttendeeProfile.value.name
+    || selfAttendeeProfile.value.email
+    || selfAttendeeProfile.value.phone,
+  )
+
+  const isNewOrder = formInitializedOrderId.value !== value.order.id
+  const canApplyLateSelfDefaults = !isNewOrder
+    && billingDefaultedFromSelfOrderId.value !== value.order.id
+    && hasSelfDefaults
+    && !formMeta.value.dirty
+
+  if (!isNewOrder && !canApplyLateSelfDefaults) {
+    return
+  }
+
+  if (formMeta.value.dirty) {
     return
   }
 
   formInitializedOrderId.value = value.order.id
+  if (hasSelfDefaults) {
+    billingDefaultedFromSelfOrderId.value = value.order.id
+  }
 
   resetForm({
     values: {
-      customerName: value.order.customerName || userProfile.value.name,
-      customerEmail: value.order.customerEmail || userProfile.value.email,
-      customerPhone: value.order.customerPhone || userProfile.value.phone,
-      customerAgeBracket: value.order.customerAgeBracket ?? AgeBracket.TwentyFiveToThirtyFour,
-      customerGender: value.order.customerGender ?? SavedAttendeeGender.PreferNotToSay,
+      customerName: value.order.customerName || selfAttendeeProfile.value.name,
+      customerEmail: value.order.customerEmail || selfAttendeeProfile.value.email,
+      customerPhone: value.order.customerPhone || selfAttendeeProfile.value.phone,
+      customerAgeBracket: value.order.customerAgeBracket || defaultValues.customerAgeBracket,
+      customerGender: getValidGender(value.order.customerGender || selfAttendeeProfile.value.gender),
     },
   })
 }, { immediate: true })
+
+watch(selfAttendeeDraftSignature, () => {
+  for (const draft of ticketHolderDrafts.value) {
+    if (isAccountHolderSelection(draft)) {
+      refreshAccountHolderDraftFromSelfAttendee(draft)
+    }
+  }
+})
 
 watch(checkout, (value) => {
   if (!value?.order || paymentInitializedOrderId.value === value.order.id) {
@@ -615,10 +693,6 @@ watch(formValues, () => {
   for (const draft of ticketHolderDrafts.value) {
     const shouldSyncAccountGuardian = isUnderEighteen(draft) && draft.guardianSource === TicketHolderSource.Account
 
-    if (isAccountHolderSelection(draft)) {
-      refreshAccountHolderDraft(draft)
-    }
-
     if (shouldSyncAccountGuardian) {
       applyGuardianSource(draft)
     }
@@ -634,7 +708,13 @@ watch(
     formValues.customerName,
     formValues.customerEmail,
     formValues.customerPhone,
-    savedAttendees.value.map(attendee => attendee.id).join(','),
+    savedAttendees.value.map(attendee => [
+      attendee.id,
+      attendee.legalName,
+      attendee.email ?? '',
+      attendee.phone ?? '',
+      attendee.birthDate ? String(attendee.birthDate) : '',
+    ].join('|')).join(','),
   ].join(':')),
   () => {
     for (const draft of ticketHolderDrafts.value) {
@@ -756,34 +836,6 @@ function toPayloadHolder(draft: TicketHolderDraft): CheckoutTicketHolderInput {
 }
 
 const checkoutSessionStartsAt = computed(() => checkout.value?.eventSession?.startsAt ?? null)
-const primaryCheckoutItem = computed(() => checkout.value?.items[0] ?? null)
-const confirmedTicketLabels = computed(() => {
-  if (!checkout.value) {
-    return []
-  }
-
-  return checkout.value.items.map(item => `${item.ticketLabel} · ${item.sectionLabel} ${item.seatLabel}`)
-})
-const orderConfirmedAtLabel = computed(() => {
-  const confirmedAt = checkout.value?.order.confirmedAt ?? checkout.value?.order.updatedAt ?? null
-  return confirmedAt ? formatDateTime(confirmedAt) : t('tickets.detail_unknown')
-})
-const orderStatusLabel = computed(() => {
-  const status = checkout.value?.order.status
-  if (status === OrderStatus.Confirmed) {
-    return t('checkout.status_confirmed')
-  }
-
-  if (status === OrderStatus.Pending) {
-    return t('checkout.status_pending')
-  }
-
-  if (status === OrderStatus.Cancelled) {
-    return t('checkout.status_cancelled')
-  }
-
-  return status ? status.replaceAll('_', ' ') : t('tickets.detail_unknown')
-})
 
 const holdTimeRemainingMs = computed(() => {
   const expiresAt = checkout.value?.hold?.expiresAt
@@ -813,8 +865,13 @@ async function navigateBackToEvent() {
   await navigateTo(checkout.value?.event?.slug ? `/events/${checkout.value.event.slug}` : '/events')
 }
 
-async function openTicketWallet() {
-  await navigateTo('/tickets')
+async function createAttendee() {
+  // redirect to attendee in a new tab to preserve checkout state in case of accidental navigation
+  await navigateTo('/attendees', {
+    open: {
+      target: '_blank',
+    },
+  })
 }
 
 async function cancelCheckout() {
@@ -863,21 +920,27 @@ const onSubmit = handleSubmit(
     isSubmitting.value = true
 
     try {
+      const payload = {
+        checkoutSessionId: checkout.value.order.checkoutSessionId,
+        holdPublicId: holdPublicId.value,
+        ...values,
+        payment: selectedPaymentMethod.value,
+        ticketHolders: ticketHolderDrafts.value.map(toPayloadHolder),
+      }
+      const payloadResult = confirmCheckoutSchema.safeParse(payload)
+      if (!payloadResult.success) {
+        toast.error(payloadResult.error.issues[0]?.message ?? t('checkout.fix_highlighted'))
+        return
+      }
+
       const response = await apiRequest(apiRoutes.CHECKOUT_CONFIRM, {
         method: 'POST',
-        body: {
-          checkoutSessionId: checkout.value.order.checkoutSessionId,
-          holdPublicId: holdPublicId.value,
-          userId: checkout.value.order.userId,
-          ...values,
-          payment: selectedPaymentMethod.value,
-          ticketHolders: ticketHolderDrafts.value.map(toPayloadHolder),
-        },
+        body: payloadResult.data,
       })
       if (!response.success) throw response
 
       toast.success(t('checkout.order_confirmed_toast'))
-      await refresh()
+      await navigateTo(getCheckoutSuccessPath(orderId.value))
     }
     catch (error) {
       toast.error(parseApiError(error, t('checkout.order_confirm_error')).message)
@@ -931,7 +994,7 @@ definePageMeta({
         id="checkout-information-form"
         @submit.prevent="onSubmit"
       >
-        <div class="border-b px-4 py-4 md:px-5">
+        <div class="px-4 md:px-5">
           <div class="flex items-start justify-between gap-3">
             <Button
               variant="outline"
@@ -1003,7 +1066,7 @@ definePageMeta({
                     v-else
                     class="size-3.5"
                   />
-                  {{ draft.source === TicketHolderSource.Account ? $t('checkout.use_buyer_details') : draft.source === TicketHolderSource.SavedAttendee ? $t('checkout.select_saved_attendee') : $t('checkout.enter_manually') }}
+                  {{ getDraftModeBadgeLabel(draft) }}
                 </span>
                 <ChevronDown
                   class="size-4 transition-transform"
@@ -1060,40 +1123,52 @@ definePageMeta({
                 v-if="draft.source === TicketHolderSource.SavedAttendee"
                 class="space-y-2"
               >
-                <FieldLabel :for="`attendee-${draft.eventSeatId}`">
-                  {{ $t('checkout.saved_attendee_label') }}
-                </FieldLabel>
-                <Select
-                  :model-value="getHolderSelectValue(draft)"
-                  @update:model-value="value => updateHolderSelection(draft, typeof value === 'string' ? value : undefined)"
-                >
-                  <SelectTrigger
-                    :id="`attendee-${draft.eventSeatId}`"
-                    class="w-full bg-background/60"
+                <template v-if="savedAttendees.length > 0">
+                  <FieldLabel :for="`attendee-${draft.eventSeatId}`">
+                    {{ $t('checkout.saved_attendee_label') }}
+                  </FieldLabel>
+                  <Select
+                    :model-value="getHolderSelectValue(draft)"
+                    @update:model-value="value => updateHolderSelection(draft, typeof value === 'string' ? value : undefined)"
                   >
-                    <SelectValue :placeholder="$t('checkout.attendee_placeholder')" />
-                  </SelectTrigger>
-                  <SelectContent
-                    position="item-aligned"
-                    class="max-w-[calc(100vw-2rem)]"
-                  >
-                    <SelectItem
-                      :value="accountHolderOptionValue"
-                      class="min-h-10 max-w-full"
+                    <SelectTrigger
+                      :id="`attendee-${draft.eventSeatId}`"
+                      class="w-full bg-background/60"
                     >
-                      {{ getAccountHolderOptionLabel() }}
-                    </SelectItem>
-                    <SelectSeparator v-if="savedAttendees.length > 0" />
-                    <SelectItem
-                      v-for="attendee in savedAttendees"
-                      :key="attendee.id"
-                      :value="String(attendee.id)"
-                      class="min-h-10 max-w-full"
+                      <SelectValue :placeholder="$t('checkout.attendee_placeholder')" />
+                    </SelectTrigger>
+                    <SelectContent
+                      position="item-aligned"
+                      class="max-w-[calc(100vw-2rem)]"
                     >
-                      {{ getSavedAttendeeOptionLabel(attendee) }}
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
+                      <SelectItem
+                        v-for="attendee in savedAttendees"
+                        :key="attendee.id"
+                        :value="String(attendee.id)"
+                        class="min-h-10 max-w-full"
+                      >
+                        {{ getSavedAttendeeOptionLabel(attendee) }}
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </template>
+                <template v-else>
+                  <Empty>
+                    <EmptyHeader>
+                      <EmptyMedia variant="icon">
+                        <UsersRound />
+                      </EmptyMedia>
+                      <EmptyTitle>{{ $t('checkout.no_saved_attendees') }}</EmptyTitle>
+                    </EmptyHeader>
+                    <EmptyContent>
+                      <div class="flex gap-2">
+                        <Button @click="createAttendee">
+                          {{ $t('checkout.create_attendee') }}
+                        </Button>
+                      </div>
+                    </EmptyContent>
+                  </Empty>
+                </template>
               </div>
 
               <div
@@ -1332,40 +1407,73 @@ definePageMeta({
 
               <FieldGroup>
                 <div class="grid gap-3 md:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
-                  <Field>
-                    <FieldLabel for="checkout-billing-name">
-                      {{ $t('checkout.full_name') }}
-                    </FieldLabel>
-                    <Input
-                      id="checkout-billing-name"
-                      :model-value="formValues.customerName"
-                      :placeholder="$t('checkout.full_name')"
-                      @update:model-value="value => setFieldValue('customerName', String(value))"
-                    />
-                  </Field>
-                  <Field>
-                    <FieldLabel for="checkout-billing-email">
-                      {{ $t('checkout.email') }}
-                    </FieldLabel>
-                    <Input
-                      id="checkout-billing-email"
-                      :model-value="formValues.customerEmail"
-                      type="email"
-                      placeholder="you@example.com"
-                      @update:model-value="value => setFieldValue('customerEmail', String(value))"
-                    />
-                  </Field>
-                  <Field class="md:col-span-2 lg:col-span-1 xl:col-span-2">
-                    <FieldLabel for="checkout-billing-phone">
-                      {{ $t('checkout.phone') }}
-                    </FieldLabel>
-                    <Input
-                      id="checkout-billing-phone"
-                      :model-value="formValues.customerPhone"
-                      placeholder="+84 90 000 0000"
-                      @update:model-value="value => setFieldValue('customerPhone', String(value))"
-                    />
-                  </Field>
+                  <VeeField
+                    v-slot="{ field, errors }"
+                    name="customerName"
+                  >
+                    <Field :data-invalid="!!errors.length">
+                      <FieldLabel for="checkout-billing-name">
+                        {{ $t('checkout.full_name') }}
+                      </FieldLabel>
+                      <Input
+                        id="checkout-billing-name"
+                        v-bind="field"
+                        :placeholder="$t('checkout.full_name')"
+                        :aria-invalid="!!errors.length"
+                      />
+                      <FieldError
+                        v-if="errors.length"
+                        :errors="errors"
+                      />
+                    </Field>
+                  </VeeField>
+                  <VeeField
+                    v-slot="{ field, errors }"
+                    name="customerEmail"
+                    :validate-on-input="true"
+                  >
+                    <Field :data-invalid="!!errors.length">
+                      <FieldLabel for="checkout-billing-email">
+                        {{ $t('checkout.email') }}
+                      </FieldLabel>
+                      <Input
+                        id="checkout-billing-email"
+                        v-bind="field"
+                        type="email"
+                        placeholder="you@example.com"
+                        :aria-invalid="!!errors.length"
+                      />
+                      <FieldError
+                        v-if="errors.length"
+                        :errors="errors"
+                      />
+                    </Field>
+                  </VeeField>
+                  <VeeField
+                    v-slot="{ field, errors }"
+                    name="customerPhone"
+                    :validate-on-input="true"
+                  >
+                    <Field
+                      class="md:col-span-2 lg:col-span-1 xl:col-span-2"
+                      :data-invalid="!!errors.length"
+                    >
+                      <FieldLabel for="checkout-billing-phone">
+                        {{ $t('checkout.phone') }}
+                      </FieldLabel>
+                      <Input
+                        id="checkout-billing-phone"
+                        v-bind="field"
+                        type="tel"
+                        placeholder="+84 90 000 0000"
+                        :aria-invalid="!!errors.length"
+                      />
+                      <FieldError
+                        v-if="errors.length"
+                        :errors="errors"
+                      />
+                    </Field>
+                  </VeeField>
                 </div>
               </FieldGroup>
             </div>
@@ -1414,168 +1522,8 @@ definePageMeta({
         </div>
       </form>
 
-      <section
-        v-else
-        class="overflow-hidden"
-      >
-        <div class="border-b border-white/10 px-5 py-5 md:px-6">
-          <p class="text-xs font-semibold uppercase tracking-[0.24em] text-violet-300">
-            {{ $t('checkout.order_confirmed') }}
-          </p>
-          <h2 class="mt-2 text-3xl font-semibold tracking-[-0.04em] text-white">
-            {{ $t('checkout.tickets_in_wallet') }}
-          </h2>
-          <p class="mt-2 max-w-xl text-sm leading-6 text-white/60">
-            {{ $t('checkout.qr_ready_checkout_desc') }}
-          </p>
-          <Button
-            type="button"
-            class="mt-5 rounded-full px-5"
-            @click="openTicketWallet"
-          >
-            {{ $t('checkout.open_my_tickets') }}
-          </Button>
-        </div>
-
-        <div class="px-5 py-5 md:px-6">
-          <div class="grid items-start gap-5 xl:grid-cols-[minmax(17rem,21rem)_minmax(0,1fr)]">
-            <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-1">
-              <TicketQrCard
-                v-for="(ticket, ticketIndex) in checkout.tickets"
-                :key="ticket.id"
-                class="h-full min-w-0"
-                :payload="ticket.qrToken"
-                :title="$t('tickets.digital_entry_pass')"
-                :subtitle="ticket.attendeeEmail"
-                :ticket-label="confirmedTicketLabels[ticketIndex] ?? null"
-                :instruction="null"
-                :show-payload="false"
-              />
-            </div>
-
-            <div class="space-y-4">
-              <div class="rounded-[1.5rem] border border-white/10 bg-white/[0.04] p-5 shadow-xl shadow-black/20">
-                <p class="text-sm font-semibold text-white">
-                  {{ $t('checkout.qr_gate_title') }}
-                </p>
-                <p class="mt-2 text-sm leading-7 text-white/60">
-                  {{ $t('checkout.qr_gate_desc') }}
-                </p>
-              </div>
-
-              <div class="grid gap-3 sm:grid-cols-3 xl:grid-cols-1">
-                <div class="rounded-2xl border border-emerald-400/20 bg-emerald-500/10 p-4">
-                  <p class="text-xs uppercase tracking-[0.18em] text-emerald-300">
-                    {{ $t('common.status') }}
-                  </p>
-                  <p class="mt-2 text-base font-semibold text-emerald-100">
-                    {{ orderStatusLabel }}
-                  </p>
-                </div>
-                <div class="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
-                  <p class="text-xs uppercase tracking-[0.18em] text-white/45">
-                    {{ $t('checkout.ticket_assignments_title') }}
-                  </p>
-                  <p class="mt-2 text-base font-semibold text-white">
-                    {{ checkout.tickets.length }}
-                  </p>
-                </div>
-                <div class="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
-                  <p class="text-xs uppercase tracking-[0.18em] text-white/45">
-                    Email
-                  </p>
-                  <p class="mt-2 truncate text-base font-semibold text-white">
-                    {{ checkout.tickets[0]?.attendeeEmail ?? checkout.order.customerEmail }}
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
       <Card
-        v-if="checkout.order.status === OrderStatus.Confirmed"
-        class="overflow-hidden"
-      >
-        <CardHeader class="border-b border-white/10 px-6 py-6">
-          <div class="flex items-center justify-between gap-4">
-            <div class="flex items-center gap-3">
-              <div class="flex size-10 shrink-0 items-center justify-center rounded-2xl border border-violet-400/25 bg-violet-500/10 text-violet-300">
-                <Ticket class="size-5" />
-              </div>
-              <div>
-                <p class="text-xs font-semibold uppercase tracking-[0.22em] text-violet-300">
-                  {{ $t('checkout.summary_label') }}
-                </p>
-                <CardTitle class="mt-1 text-2xl tracking-[-0.04em] text-white">
-                  {{ $t('checkout.order_total') }}
-                </CardTitle>
-              </div>
-            </div>
-            <span class="rounded-full border border-emerald-400/20 bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-200">
-              {{ orderStatusLabel }}
-            </span>
-          </div>
-        </CardHeader>
-
-        <CardContent class="space-y-4 p-6">
-          <div
-            v-if="primaryCheckoutItem"
-            class="rounded-[1.5rem] border border-white/10 bg-black/25 p-5"
-          >
-            <div class="flex items-start justify-between gap-4">
-              <div class="min-w-0">
-                <p class="text-lg font-semibold text-white">
-                  {{ primaryCheckoutItem.ticketLabel }}
-                </p>
-                <p class="mt-1 text-sm text-white/55">
-                  {{ primaryCheckoutItem.sectionLabel }} · {{ primaryCheckoutItem.rowLabel }} · {{ primaryCheckoutItem.seatLabel }}
-                </p>
-              </div>
-              <p class="shrink-0 font-mono text-sm font-semibold text-white">
-                {{ formatCurrency(primaryCheckoutItem.unitPriceCents) }}
-              </p>
-            </div>
-          </div>
-
-          <div class="rounded-[1.5rem] bg-[#1b1d15] p-5 shadow-inner shadow-white/5">
-            <p class="text-sm text-white/55">
-              {{ $t('checkout.order_total') }}
-            </p>
-            <p class="mt-2 text-4xl font-semibold tracking-[-0.06em] text-white">
-              {{ formatCurrency(checkout.order.amountCents) }}
-            </p>
-          </div>
-
-          <div
-            v-if="checkout.order.payment"
-            class="rounded-[1.5rem] border border-white/10 bg-black/25 p-5"
-          >
-            <p class="text-sm text-white/55">
-              {{ $t('checkout.payment_method') }}
-            </p>
-            <p class="mt-2 text-lg font-semibold text-white">
-              {{ getPaymentMethodLabel(checkout.order.payment) }}
-            </p>
-          </div>
-
-          <div class="rounded-[1.5rem] border border-white/10 bg-black/25 p-5">
-            <p class="text-sm font-semibold text-white">
-              {{ checkout.event?.title ?? $t('checkout.page_title') }}
-            </p>
-            <p class="mt-1 text-sm text-white/55">
-              {{ orderConfirmedAtLabel }}
-            </p>
-            <p class="mt-2 text-xs text-white/40">
-              {{ $t('checkout.order_confirmed') }}
-            </p>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card
-        v-else
+        v-if="checkout.order.status !== OrderStatus.Confirmed"
         class="flex flex-col lg:sticky lg:top-4 lg:h-[calc(100dvh-2rem)] lg:overflow-hidden"
       >
         <CardContent class="flex min-h-0 flex-1 flex-col p-0">

@@ -426,10 +426,6 @@ definePageMeta({
               />
             </Button>
           </div>
-          <FieldError
-            v-if="errors.length"
-            :errors="errors"
-          />
           <!-- Password Strength Indicator -->
           <PasswordStrengthIndicator
             :password="values.password || ''"

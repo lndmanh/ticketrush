@@ -4,15 +4,6 @@ import { getAuthorizedUserId } from '~~/server/utils/authorization'
 import { apiError, success, zodErrorToFieldErrors } from '~~/server/utils/apiResponse'
 import type { ProfileUpdateData } from '~~/types/models/profile'
 
-function parseBirthDate(value: string | null) {
-  if (!value) {
-    return null
-  }
-
-  const date = new Date(`${value}T00:00:00.000Z`)
-  return Number.isNaN(date.getTime()) ? null : date
-}
-
 export default defineEventHandler(async (event) => {
   const userId = await getAuthorizedUserId(event)
 
@@ -31,9 +22,6 @@ export default defineEventHandler(async (event) => {
     id: userId,
     name: result.data.name,
     email: result.data.email,
-    phone: result.data.phone,
-    birthDate: parseBirthDate(result.data.birthDate),
-    gender: result.data.gender,
   })
 
   if (!updatedUser) {
@@ -45,9 +33,6 @@ export default defineEventHandler(async (event) => {
     username: updatedUser.username,
     name: updatedUser.name,
     email: updatedUser.email,
-    phone: updatedUser.phone,
-    birthDate: updatedUser.birthDate,
-    gender: updatedUser.gender,
   }
 
   return success(response)

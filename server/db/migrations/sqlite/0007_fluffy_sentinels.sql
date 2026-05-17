@@ -1,0 +1,1 @@
+ALTER TABLE `users` ADD `is_locked` integer DEFAULT false NOT NULL;
