@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm'
+import { and, eq, inArray, isNull } from 'drizzle-orm'
 import { AgeBracket, HoldStatus, OrderStatus, QueueStatus, SavedAttendeeGender, SeatStatus } from '#shared/commonEnums'
 
 class AnalyticsService {
@@ -155,15 +155,11 @@ class AnalyticsService {
       throw createError({ statusCode: 404, statusMessage: 'Event not found.' })
     }
 
-    const [orders, orderItems, tickets, queueEntries, holds, seats] = await Promise.all([
+    const [orders, tickets, queueEntries, holds, seats] = await Promise.all([
       this.db
         .select()
         .from(tables.orders)
         .where(eq(tables.orders.eventId, eventId))
-        .all(),
-      this.db
-        .select()
-        .from(tables.orderItems)
         .all(),
       this.db
         .select()
@@ -187,8 +183,17 @@ class AnalyticsService {
         .all(),
     ])
 
+    const orderIds = orders.map(order => order.id)
+    const orderItems = orderIds.length > 0
+      ? await this.db
+          .select()
+          .from(tables.orderItems)
+          .where(inArray(tables.orderItems.orderId, orderIds))
+          .all()
+      : []
+
     const itemsByOrderId = new Map<number, typeof orderItems>()
-    for (const item of orderItems.filter(orderItem => orders.some(order => order.id === orderItem.orderId))) {
+    for (const item of orderItems) {
       const existingItems = itemsByOrderId.get(item.orderId) ?? []
       existingItems.push(item)
       itemsByOrderId.set(item.orderId, existingItems)
@@ -291,9 +296,14 @@ class AnalyticsService {
     const existing = await this.db
       .select()
       .from(tables.eventMetricBuckets)
-      .where(eq(tables.eventMetricBuckets.eventId, eventId))
-      .all()
-      .then(rows => rows.find(row => row.bucketDate === bucketDate && row.eventSessionId === eventSessionId))
+      .where(and(
+        eq(tables.eventMetricBuckets.eventId, eventId),
+        eq(tables.eventMetricBuckets.bucketDate, bucketDate),
+        eventSessionId === null
+          ? isNull(tables.eventMetricBuckets.eventSessionId)
+          : eq(tables.eventMetricBuckets.eventSessionId, eventSessionId),
+      ))
+      .get()
 
     const payload = {
       eventId,
