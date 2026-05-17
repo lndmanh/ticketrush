@@ -24,6 +24,7 @@
       :search-placeholder="$t('admin.venues.search_venues')"
       :empty-title="$t('admin.venues.no_match')"
       :empty-description="$t('admin.venues.no_match_desc')"
+      :column-labels="columnLabels"
       @update:data="fetchVenues"
     />
 
@@ -351,9 +352,16 @@ const venues = ref<Venue[]>([])
 const tableLoading = ref(false)
 const dialogLoading = ref(false)
 const showDialog = ref(false)
-const { locale } = useI18n()
+const { locale, t } = useI18n()
 const countryOptions = computed(() => getCountryOptions(locale.value))
 const cityOptions = computed(() => getVietnamProvinceCityOptions(locale.value))
+const columnLabels = computed(() => ({
+  name: t('admin.columns.venue'),
+  city: t('admin.venues.city'),
+  address: t('admin.columns.address'),
+  capacity: t('admin.columns.capacity'),
+  updatedAt: t('admin.columns.updated'),
+}))
 
 function getDefaultVenueValues(): VenueBuilderInput {
   const firstPreset = venueLayoutPresets[0]
@@ -393,12 +401,12 @@ const onSubmit = handleSubmit(
       })
       if (!response.success) throw response
 
-      toast.success('Venue created successfully')
+      toast.success(t('admin.venues.created'))
       closeDialog()
       await fetchVenues()
     }
     catch (error) {
-      const message = parseApiError(error, 'Failed to save the venue blueprint').message
+      const message = parseApiError(error, 'admin.venues.create_failed').message
       const structuredIssue = getIssueFieldAndMessage(error)
       if (structuredIssue) {
         setFieldError(structuredIssue.field, structuredIssue.message)
@@ -409,7 +417,7 @@ const onSubmit = handleSubmit(
           setFieldError(mappedField, message)
         }
         else {
-          toast.error(message)
+          toast.error(t(message))
         }
       }
     }
@@ -418,8 +426,8 @@ const onSubmit = handleSubmit(
     }
   },
   ({ errors }) => {
-    const firstError = Object.values(errors).flat().filter(Boolean)[0] || 'Please fix the errors above'
-    toast.error(firstError)
+    const firstError = Object.values(errors).flat().filter(Boolean)[0] || 'admin.venues.fix_errors'
+    toast.error(t(firstError))
   },
 )
 
@@ -433,7 +441,7 @@ async function fetchVenues() {
     venues.value = response.data
   }
   catch (error) {
-    toast.error(parseApiError(error).message)
+    toast.error(t(parseApiError(error, 'admin.venues.load_failed').message))
   }
   finally {
     tableLoading.value = false

@@ -32,7 +32,7 @@ export const queueStatusSchema = z.enum(QueueStatus)
 export const ageBracketSchema = z.enum(AgeBracket)
 export const genderSchema = z.enum(SavedAttendeeGender)
 export const seatLayoutModeSchema = z.enum(SeatLayoutMode)
-const sectionColorSchema = z.string().trim().regex(/^#(?:[0-9A-Fa-f]{3}){1,2}$/, 'Section color must be a valid hex color')
+const sectionColorSchema = z.string().trim().regex(/^#(?:[0-9A-Fa-f]{3}){1,2}$/, 'admin.venues.section_color_invalid')
 
 const requiredDateSchema = z.union([
   z.date(),
@@ -43,7 +43,7 @@ const optionalDateSchema = requiredDateSchema.optional()
 
 export const venueSeatDraftSchema = z.object({
   id: commonSchemaFragments.positiveId.optional(),
-  label: commonSchemaFragments.nonEmptyString('Seat label'),
+  label: z.string().trim().min(1, 'admin.venues.seat_label_required'),
   seatNumber: z.coerce.number().int().positive(),
   x: z.coerce.number().int().min(0),
   y: z.coerce.number().int().min(0),
@@ -53,11 +53,11 @@ export const venueSeatDraftSchema = z.object({
 })
 
 export const sectionBlueprintSchema = z.object({
-  code: commonSchemaFragments.nonEmptyString('Section code'),
-  name: commonSchemaFragments.nonEmptyString('Section name'),
+  code: z.string().trim().min(1, 'admin.venues.section_code_required'),
+  name: z.string().trim().min(1, 'admin.venues.section_name_required'),
   color: sectionColorSchema,
-  rowCount: z.coerce.number().int().positive('Row count is required'),
-  seatsPerRow: z.coerce.number().int().positive('Seats per row is required'),
+  rowCount: z.coerce.number().int().positive('admin.venues.row_count_required'),
+  seatsPerRow: z.coerce.number().int().positive('admin.venues.seats_per_row_required'),
 })
 
 function addDuplicateSectionCodeIssues(sections: { code: string }[], ctx: z.RefinementCtx) {
@@ -77,7 +77,7 @@ function addDuplicateSectionCodeIssues(sections: { code: string }[], ctx: z.Refi
 
     ctx.addIssue({
       code: 'custom',
-      message: `Section code must be unique. "${section.code}" is already used by section ${firstSectionIndex + 1}.`,
+      message: 'admin.venues.section_code_unique',
       path: [index, 'code'],
     })
   })
@@ -85,15 +85,15 @@ function addDuplicateSectionCodeIssues(sections: { code: string }[], ctx: z.Refi
 
 export const venueRowDraftSchema = z.object({
   id: commonSchemaFragments.positiveId.optional(),
-  label: commonSchemaFragments.nonEmptyString('Row label'),
+  label: z.string().trim().min(1, 'admin.venues.row_label_required'),
   sortOrder: z.coerce.number().int().min(0).default(0),
   seats: z.array(venueSeatDraftSchema).min(1),
 })
 
 export const venueSectionDraftSchema = z.object({
   id: commonSchemaFragments.positiveId.optional(),
-  code: commonSchemaFragments.nonEmptyString('Section code'),
-  name: commonSchemaFragments.nonEmptyString('Section name'),
+  code: z.string().trim().min(1, 'admin.venues.section_code_required'),
+  name: z.string().trim().min(1, 'admin.venues.section_name_required'),
   color: sectionColorSchema,
   sortOrder: z.coerce.number().int().min(0).default(0),
   gridX: z.coerce.number().int().min(0).max(24),
@@ -112,7 +112,7 @@ function addVenueSectionGridIssues(sections: { gridX: number, gridY: number, gri
       ctx.addIssue({
         code: 'custom',
         path: [sectionIndex],
-        message: 'Section grid bounds must be positive',
+        message: 'admin.venues.section_grid_bounds_positive',
       })
       return
     }
@@ -121,7 +121,7 @@ function addVenueSectionGridIssues(sections: { gridX: number, gridY: number, gri
       ctx.addIssue({
         code: 'custom',
         path: [sectionIndex],
-        message: 'Section grid bounds are out of range',
+        message: 'admin.venues.section_grid_bounds_range',
       })
       return
     }
@@ -130,7 +130,7 @@ function addVenueSectionGridIssues(sections: { gridX: number, gridY: number, gri
       ctx.addIssue({
         code: 'custom',
         path: [sectionIndex, 'gridW'],
-        message: 'Section grid width must not exceed 25 columns',
+        message: 'admin.venues.section_grid_width_max',
       })
       return
     }
@@ -139,7 +139,7 @@ function addVenueSectionGridIssues(sections: { gridX: number, gridY: number, gri
       ctx.addIssue({
         code: 'custom',
         path: [sectionIndex, 'gridW'],
-        message: 'Section grid must fit within 25 columns',
+        message: 'admin.venues.section_grid_fit',
       })
       return
     }
@@ -154,7 +154,7 @@ function addVenueSectionGridIssues(sections: { gridX: number, gridY: number, gri
         ctx.addIssue({
           code: 'custom',
           path: [sectionIndex, 'gridX'],
-          message: `Section grid overlaps with section ${firstSectionIndex + 1}`,
+          message: 'admin.venues.section_grid_overlap',
         })
         continue
       }
@@ -175,7 +175,7 @@ function addVenueSectionGridIssues(sections: { gridX: number, gridY: number, gri
           ctx.addIssue({
             code: 'custom',
             path: [sectionIndex, 'rows'],
-            message: 'Manual seat coordinates must be unique within a section',
+            message: 'admin.venues.manual_seat_coordinates_unique',
           })
           break
         }
@@ -186,12 +186,12 @@ function addVenueSectionGridIssues(sections: { gridX: number, gridY: number, gri
 }
 
 export const createVenueSchema = z.object({
-  slug: commonSchemaFragments.nonEmptyString('Venue slug'),
-  name: commonSchemaFragments.nonEmptyString('Venue name'),
+  slug: z.string().trim().min(1, 'admin.venues.venue_slug_required'),
+  name: z.string().trim().min(1, 'admin.venues.venue_name_required'),
   description: z.string().trim().optional(),
-  city: commonSchemaFragments.nonEmptyString('City'),
+  city: z.string().trim().min(1, 'admin.venues.city_required'),
   country: venueCountrySchema.default('Vietnam'),
-  address: commonSchemaFragments.nonEmptyString('Address'),
+  address: z.string().trim().min(1, 'admin.venues.address_required'),
   coverImage: z.string().url().optional().or(z.literal('')),
   sections: z.array(venueSectionDraftSchema).min(1).superRefine((sections, ctx) => {
     addDuplicateSectionCodeIssues(sections, ctx)

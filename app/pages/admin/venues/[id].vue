@@ -32,7 +32,7 @@ interface AdminEventListItem {
   startsAt: string | Date
 }
 
-const { locale } = useI18n()
+const { locale, t } = useI18n()
 const displayLocale = computed(() => getDisplayDateLocale(locale.value))
 const countryOptions = computed(() => getCountryOptions(locale.value))
 const cityOptions = computed(() => getVietnamProvinceCityOptions(locale.value))
@@ -228,7 +228,7 @@ const onSubmit = handleSubmit(
 
     const validation = createVenueSchema.safeParse(payload)
     if (!validation.success) {
-      toast.error(validation.error.issues[0]?.message || 'Please fix the venue blueprint before saving')
+      toast.error(t(validation.error.issues[0]?.message || 'admin_venue_detail.fix_blueprint'))
       return
     }
 
@@ -240,26 +240,26 @@ const onSubmit = handleSubmit(
       })
       if (!response.success) throw response
 
-      toast.success('Venue updated')
+      toast.success(t('admin_venue_detail.updated'))
       savedVenueSnapshot.value = currentVenueSnapshot.value
       await refreshVenue()
     }
     catch (error) {
-      toast.error(parseApiError(error, 'We could not update the venue blueprint').message)
+      toast.error(t(parseApiError(error, 'admin_venue_detail.update_failed').message))
     }
     finally {
       isSaving.value = false
     }
   },
   ({ errors }) => {
-    const firstError = Object.values(errors).flat().filter(Boolean)[0] || 'Please fix the highlighted fields'
-    toast.error(firstError)
+    const firstError = Object.values(errors).flat().filter(Boolean)[0] || 'admin_venue_detail.fix_highlighted_fields'
+    toast.error(t(firstError))
   },
 )
 
 definePageMeta({
-  title: 'Venue detail',
-  breadcrumb: 'Venue detail',
+  title: 'admin_venue_detail.page_title',
+  breadcrumb: 'admin_venue_detail.breadcrumb',
   middleware: ['auth', 'admin'],
   layout: 'empty',
 })
@@ -386,7 +386,7 @@ definePageMeta({
               class="relative mb-4 pr-12"
             >
               <AlertTitle>
-                {{ inspectedVenueSeat.section.name }} · Row {{ inspectedVenueSeat.row.label }} · Seat {{ inspectedVenueSeat.seat.seatLabelSnapshot }}
+                {{ $t('admin_venue_detail.inspected_seat_title', { section: inspectedVenueSeat.section.name, row: inspectedVenueSeat.row.label, seat: inspectedVenueSeat.seat.seatLabelSnapshot }) }}
               </AlertTitle>
               <AlertDescription>
                 X {{ inspectedVenueSeat.seat.displayX ?? 0 }} · Y {{ inspectedVenueSeat.seat.displayY ?? 0 }}
@@ -396,7 +396,7 @@ definePageMeta({
                 variant="ghost"
                 size="icon-sm"
                 class="absolute right-2 top-2"
-                aria-label="Dismiss inspected seat"
+                :aria-label="$t('admin_venue_detail.dismiss_inspected_seat')"
                 @click="inspectedVenueSeat = null"
               >
                 <X />
@@ -609,16 +609,16 @@ definePageMeta({
                         type="button"
                         variant="outline"
                       >
-                        Presets
+                        {{ $t('admin_venue_detail.presets') }}
                       </Button>
                     </DialogTrigger>
                   </template>
                 </AdminVenuesVenueSeatLayoutEditor>
                 <DialogScrollContent class="max-w-5xl">
                   <DialogHeader>
-                    <DialogTitle>Venue layout presets</DialogTitle>
+                    <DialogTitle>{{ $t('admin_venue_detail.presets_title') }}</DialogTitle>
                     <DialogDescription>
-                      Pick a starting layout for the section editor. Applying one replaces the current layout.
+                      {{ $t('admin_venue_detail.presets_desc') }}
                     </DialogDescription>
                   </DialogHeader>
                   <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
@@ -644,7 +644,7 @@ definePageMeta({
                           size="sm"
                           @click="applyBlueprintPreset(preset)"
                         >
-                          Apply preset
+                          {{ $t('admin_venue_detail.apply_preset') }}
                         </Button>
                       </CardFooter>
                     </Card>
@@ -661,20 +661,20 @@ definePageMeta({
                 <Card class="gap-2 py-3">
                   <CardContent class="px-4">
                     <p class="text-xs text-muted-foreground">
-                      Dependencies
+                      {{ $t('admin_venue_detail.dependencies_label') }}
                     </p>
                     <p class="text-sm font-medium">
-                      {{ linkedEvents.length }} linked events
+                      {{ $t('admin_venue_detail.linked_events_count', { count: linkedEvents.length }) }}
                     </p>
                   </CardContent>
                 </Card>
                 <Card class="gap-2 py-3">
                   <CardContent class="px-4">
                     <p class="text-xs text-muted-foreground">
-                      Rule
+                      {{ $t('admin_venue_detail.rule_label') }}
                     </p>
                     <p class="text-sm font-medium">
-                      Future launches only
+                      {{ $t('admin_venue_detail.future_launches_only') }}
                     </p>
                   </CardContent>
                 </Card>
@@ -684,26 +684,26 @@ definePageMeta({
                 <CardContent class="grid gap-3 px-4 md:grid-cols-3">
                   <div>
                     <p class="text-xs text-muted-foreground">
-                      Capacity
+                      {{ $t('admin_venue_detail.capacity_label') }}
                     </p>
                     <p class="text-sm font-medium">
-                      {{ totalCapacity }} seats
+                      {{ $t('admin_venue_detail.capacity_seats', { count: totalCapacity }) }}
                     </p>
                   </div>
                   <div>
                     <p class="text-xs text-muted-foreground">
-                      Largest
+                      {{ $t('admin_venue_detail.largest_label') }}
                     </p>
                     <p class="text-sm font-medium">
-                      {{ largestSection?.name ?? 'Not set' }}
+                      {{ largestSection?.name ?? $t('admin_venue_detail.not_set') }}
                     </p>
                   </div>
                   <div>
                     <p class="text-xs text-muted-foreground">
-                      Snapshot
+                      {{ $t('admin_venue_detail.snapshot_label') }}
                     </p>
                     <p class="text-sm font-medium">
-                      Existing seats stay frozen
+                      {{ $t('admin_venue_detail.snapshot_desc') }}
                     </p>
                   </div>
                 </CardContent>
@@ -713,7 +713,7 @@ definePageMeta({
 
               <div class="space-y-3">
                 <p class="text-sm font-medium">
-                  Linked events
+                  {{ $t('admin_venue_detail.linked_events_title') }}
                 </p>
 
                 <div
@@ -745,7 +745,7 @@ definePageMeta({
                   class="py-6"
                 >
                   <CardContent class="px-4 text-sm text-muted-foreground">
-                    No linked events.
+                    {{ $t('admin_venue_detail.no_linked_events') }}
                   </CardContent>
                 </Card>
               </div>
