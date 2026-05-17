@@ -25,6 +25,7 @@ interface DataTableProps<TData, TValue> {
   searchPlaceholder?: string
   emptyTitle?: string
   emptyDescription?: string
+  columnLabels?: Record<string, string>
 }
 
 const props = defineProps<DataTableProps<TData, TValue>>()
@@ -129,7 +130,7 @@ defineExpose({
               column.toggleVisibility(!!value)
             }"
           >
-            {{ column.id }}
+            {{ props.columnLabels?.[column.id] ?? column.id }}
           </DropdownMenuCheckboxItem>
         </DropdownMenuContent>
       </DropdownMenu>

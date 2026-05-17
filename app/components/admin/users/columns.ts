@@ -20,7 +20,7 @@ export function createColumns(
   onDelete: (userId: number) => void,
   onLockToggle: (user: User) => void,
 ): ColumnDef<User>[] {
-  const { locale } = useI18n()
+  const { locale, t } = useI18n()
 
   function getDisplayLocale() {
     return getDisplayDateLocale(locale.value)
@@ -34,13 +34,13 @@ export function createColumns(
           'modelValue': table.getIsAllPageRowsSelected() || (table.getIsSomePageRowsSelected() && 'indeterminate'),
           'onUpdate:modelValue': (value: boolean | string) =>
             table.toggleAllPageRowsSelected(!!value),
-          'ariaLabel': 'Select all',
+          'ariaLabel': t('admin.columns.select_all'),
         }),
       cell: ({ row }) =>
         h(Checkbox, {
           'modelValue': row.getIsSelected(),
           'onUpdate:modelValue': (value: boolean | string) => row.toggleSelected(!!value),
-          'ariaLabel': 'Select row',
+          'ariaLabel': t('admin.columns.select_row'),
         }),
       enableSorting: false,
       enableHiding: false,
@@ -59,7 +59,7 @@ export function createColumns(
         return h(Button, {
           variant: 'ghost',
           onClick: () => column.toggleSorting(column.getIsSorted() === 'asc'),
-        }, () => ['Username', h(ArrowUpDown, { class: 'ml-2 h-4 w-4' })])
+        }, () => [t('admin.columns.username'), h(ArrowUpDown, { class: 'ml-2 h-4 w-4' })])
       },
       cell: ({ row }) =>
         h('div', { class: 'font-medium' }, row.getValue('username')),
@@ -70,7 +70,7 @@ export function createColumns(
         return h(Button, {
           variant: 'ghost',
           onClick: () => column.toggleSorting(column.getIsSorted() === 'asc'),
-        }, () => ['Name', h(ArrowUpDown, { class: 'ml-2 h-4 w-4' })])
+        }, () => [t('admin.columns.name'), h(ArrowUpDown, { class: 'ml-2 h-4 w-4' })])
       },
       cell: ({ row }) =>
         h('div', { class: 'text-sm' }, row.getValue('name')),
@@ -81,26 +81,26 @@ export function createColumns(
         return h(Button, {
           variant: 'ghost',
           onClick: () => column.toggleSorting(column.getIsSorted() === 'asc'),
-        }, () => ['Email', h(ArrowUpDown, { class: 'ml-2 h-4 w-4' })])
+        }, () => [t('admin.columns.email'), h(ArrowUpDown, { class: 'ml-2 h-4 w-4' })])
       },
       cell: ({ row }) =>
         h('div', { class: 'text-sm text-muted-foreground' }, row.getValue('email')),
     },
     {
       accessorKey: 'isAdmin',
-      header: 'Roles',
+      header: t('admin.columns.roles'),
       cell: ({ row }) => {
         const user = row.original
         return h('div', { class: 'flex gap-2' }, [
           user.isAdmin && h(
             Badge,
             { variant: 'destructive', class: 'text-xs' },
-            () => 'Admin',
+            () => t('admin.users.admin_badge'),
           ),
           user.isLocked && h(
             Badge,
             { variant: 'outline', class: 'text-xs text-muted-foreground' },
-            () => 'Locked',
+            () => t('admin.users.locked_badge'),
           ),
         ])
       },
@@ -111,7 +111,7 @@ export function createColumns(
         return h(Button, {
           variant: 'ghost',
           onClick: () => column.toggleSorting(column.getIsSorted() === 'asc'),
-        }, () => ['Created at', h(ArrowUpDown, { class: 'ml-2 h-4 w-4' })])
+        }, () => [t('admin.columns.created_at'), h(ArrowUpDown, { class: 'ml-2 h-4 w-4' })])
       },
       cell: ({ row }) =>
         h('div', {
@@ -125,7 +125,7 @@ export function createColumns(
         return h(Button, {
           variant: 'ghost',
           onClick: () => column.toggleSorting(column.getIsSorted() === 'asc'),
-        }, () => ['Last Login', h(ArrowUpDown, { class: 'ml-2 h-4 w-4' })])
+        }, () => [t('admin.columns.last_login'), h(ArrowUpDown, { class: 'ml-2 h-4 w-4' })])
       },
       cell: ({ row }) =>
         h('div', {
@@ -135,7 +135,7 @@ export function createColumns(
     },
     {
       id: 'actions',
-      header: 'Actions',
+      header: t('admin.columns.actions'),
       cell: ({ row }) => {
         const user = row.original
         return h(
@@ -152,7 +152,7 @@ export function createColumns(
                     { variant: 'ghost', class: 'h-8 w-8 p-0' },
                     {
                       default: () => [
-                        h('span', { class: 'sr-only' }, 'Open menu'),
+                        h('span', { class: 'sr-only' }, t('common.open_menu')),
                         h(MoreHorizontal, { class: 'h-4 w-4' }),
                       ],
                     },
@@ -172,7 +172,7 @@ export function createColumns(
                       {
                         default: () => h('div', { class: 'flex items-center gap-2' }, [
                           h(Pencil, { class: 'h-4 w-4' }),
-                          h('span', {}, 'Edit'),
+                          h('span', {}, t('common.edit')),
                         ]),
                       },
                     ),
@@ -186,7 +186,7 @@ export function createColumns(
                           user.isLocked
                             ? h(Unlock, { class: 'h-4 w-4' })
                             : h(Lock, { class: 'h-4 w-4' }),
-                          h('span', {}, user.isLocked ? 'Unlock' : 'Lock'),
+                          h('span', {}, user.isLocked ? t('admin.users.unlock_action') : t('admin.users.lock_action')),
                         ]),
                       },
                     ),
@@ -200,7 +200,7 @@ export function createColumns(
                       {
                         default: () => h('div', { class: 'flex items-center gap-2' }, [
                           h(Trash2, { class: 'h-4 w-4' }),
-                          h('span', {}, 'Delete'),
+                          h('span', {}, t('common.delete')),
                         ]),
                       },
                     ),

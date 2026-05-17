@@ -8,8 +8,8 @@
 import AdminUsersManager from '@/components/admin/users/AdminUsersManager.vue'
 
 definePageMeta({
-  title: 'Users Management',
-  breadcrumb: 'Users',
+  title: 'admin.users.title',
+  breadcrumb: 'admin.users.title',
   middleware: ['auth', 'admin'],
   layout: 'dashboard',
 })
