@@ -30,10 +30,29 @@ export function createColumns(
   onPublish: (eventId: number) => void,
   onUnpublish: (eventId: number) => void,
 ): ColumnDef<EventTableRow>[] {
-  const { locale } = useI18n()
+  const { locale, t } = useI18n()
 
   function getDisplayLocale() {
     return getDisplayDateLocale(locale.value)
+  }
+
+  function getStatusLabel(status: string) {
+    switch (status) {
+      case EventStatus.Draft:
+        return t('event_card.status_draft')
+      case EventStatus.Published:
+        return t('event_card.status_published')
+      case EventStatus.OnSale:
+        return t('event_card.status_on_sale')
+      case EventStatus.SoldOut:
+        return t('event_card.status_sold_out')
+      case EventStatus.Ended:
+        return t('event_card.status_ended')
+      case EventStatus.Cancelled:
+        return t('event_card.status_cancelled')
+      default:
+        return status
+    }
   }
 
   return [
@@ -42,7 +61,7 @@ export function createColumns(
       header: ({ column }) => h(Button, {
         variant: 'ghost',
         onClick: () => column.toggleSorting(column.getIsSorted() === 'asc'),
-      }, () => ['Event', h(ArrowUpDown, { class: 'ml-2 h-4 w-4' })]),
+      }, () => [t('admin.columns.event'), h(ArrowUpDown, { class: 'ml-2 h-4 w-4' })]),
       cell: ({ row }) => h('div', { class: 'space-y-1' }, [
         h('p', { class: 'font-medium text-foreground' }, row.original.title),
         h('p', { class: 'text-sm text-muted-foreground' }, row.original.subtitle ?? row.original.venueName),
@@ -50,15 +69,14 @@ export function createColumns(
     },
     {
       accessorKey: 'status',
-      header: 'Status',
+      header: t('admin.columns.status'),
       cell: ({ row }) => h(Badge, {
         variant: row.original.status === EventStatus.Draft ? 'outline' : 'default',
-        class: 'capitalize',
-      }, () => row.original.status.replaceAll('_', ' ')),
+      }, () => getStatusLabel(row.original.status)),
     },
     {
       accessorKey: 'venueName',
-      header: 'Venue',
+      header: t('admin.columns.venue'),
       cell: ({ row }) => h('div', { class: 'text-sm text-muted-foreground' }, row.original.venueName),
     },
     {
@@ -66,17 +84,17 @@ export function createColumns(
       header: ({ column }) => h(Button, {
         variant: 'ghost',
         onClick: () => column.toggleSorting(column.getIsSorted() === 'asc'),
-      }, () => ['Starts', h(ArrowUpDown, { class: 'ml-2 h-4 w-4' })]),
+      }, () => [t('admin.columns.starts'), h(ArrowUpDown, { class: 'ml-2 h-4 w-4' })]),
       cell: ({ row }) => h('div', { class: 'text-sm whitespace-nowrap text-muted-foreground' }, formatDateTime(row.original.startsAt, getDisplayLocale())),
     },
     {
       accessorKey: 'salesStartAt',
-      header: 'Sales window',
+      header: t('admin.columns.sales_window'),
       cell: ({ row }) => h('div', { class: 'text-sm text-muted-foreground whitespace-nowrap' }, formatDateTime(row.original.salesStartAt, getDisplayLocale())),
     },
     {
       accessorKey: 'updatedAt',
-      header: 'Updated',
+      header: t('admin.columns.updated'),
       cell: ({ row }) => h(
         'div',
         {
@@ -88,13 +106,13 @@ export function createColumns(
     },
     {
       id: 'actions',
-      header: 'Actions',
+      header: t('admin.columns.actions'),
       cell: ({ row }) => h(DropdownMenu, {}, {
         default: () => [
           h(DropdownMenuTrigger, { asChild: true }, {
             default: () => h(Button, { variant: 'ghost', class: 'h-8 w-8 p-0' }, {
               default: () => [
-                h('span', { class: 'sr-only' }, 'Open menu'),
+                h('span', { class: 'sr-only' }, t('common.open_menu')),
                 h(MoreHorizontal, { class: 'h-4 w-4' }),
               ],
             }),
@@ -104,20 +122,20 @@ export function createColumns(
               h(DropdownMenuItem, { onClick: () => onOpen(row.original.id) }, {
                 default: () => h('div', { class: 'flex items-center gap-2' }, [
                   h(Eye, { class: 'h-4 w-4' }),
-                  h('span', {}, 'Open'),
+                  h('span', {}, t('common.open')),
                 ]),
               }),
               row.original.status === EventStatus.Draft
                 ? h(DropdownMenuItem, { onClick: () => onPublish(row.original.id) }, {
                     default: () => h('div', { class: 'flex items-center gap-2' }, [
                       h(Rocket, { class: 'h-4 w-4' }),
-                      h('span', {}, 'Publish'),
+                      h('span', {}, t('admin.columns.publish')),
                     ]),
                   })
                 : h(DropdownMenuItem, { onClick: () => onUnpublish(row.original.id) }, {
                     default: () => h('div', { class: 'flex items-center gap-2' }, [
                       h(RotateCcw, { class: 'h-4 w-4' }),
-                      h('span', {}, 'Unpublish'),
+                      h('span', {}, t('admin.columns.unpublish')),
                     ]),
                   }),
             ],

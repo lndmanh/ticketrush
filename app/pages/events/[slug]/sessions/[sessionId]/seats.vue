@@ -27,7 +27,7 @@ const slug = computed(() => {
 const sessionPublicId = computed(() => typeof route.params.sessionId === 'string' ? route.params.sessionId : '')
 const passToken = computed(() => typeof route.query.pass === 'string' ? route.query.pass : undefined)
 const requestUrl = useRequestURL()
-const { locale } = useI18n()
+const { locale, t } = useI18n()
 const gateFetchKey = computed(() => getEventSessionGateFetchKey(sessionPublicId.value, passToken.value))
 const seatMapFetchKey = computed(() => getEventSessionSeatmapFetchKey(sessionPublicId.value, locale.value))
 
@@ -170,11 +170,11 @@ const inventorySummary = computed(() => {
   }
 })
 
-const venueName = computed(() => detail.value?.venue?.venue.name || 'Venue pending')
-const venueCity = computed(() => detail.value?.venue?.venue.city || 'Location incoming')
+const venueName = computed(() => detail.value?.venue?.venue.name || t('seats.venue_pending'))
+const venueCity = computed(() => detail.value?.venue?.venue.city || t('seats.location_incoming'))
 const sessionTimeLabel = computed(() => {
   if (!session.value) {
-    return 'Session time pending'
+    return t('seats.session_time_pending')
   }
 
   return formatDateTime(session.value.startsAt, getDisplayDateLocale(locale.value), {
@@ -235,14 +235,14 @@ const previewTotalCurrency = computed(() => {
 
 const inventoryStatusLabel = computed(() => {
   if (realtimeStatus.value === 'connected') {
-    return 'Connected'
+    return t('seats.realtime_connected')
   }
 
   if (realtimeStatus.value === 'connecting') {
-    return 'Connecting'
+    return t('seats.realtime_connecting')
   }
 
-  return 'Disconnected'
+  return t('seats.realtime_disconnected')
 })
 
 const sessionUnavailableError = computed(() => {
@@ -408,7 +408,7 @@ function confirmPreviewSeat(seatId: number) {
   }
 
   if (selectedSeatIds.value.length >= 10) {
-    toast.error('You can select up to 10 seats.')
+    toast.error(t('seats.max_selection_error'))
     return
   }
 
@@ -427,7 +427,7 @@ function confirmAllPreviewSeats() {
   }
 
   if (selectedSeatIds.value.length + previewSeatIdsToConfirm.length > 10) {
-    toast.error('You can select up to 10 seats.')
+    toast.error(t('seats.max_selection_error'))
     return
   }
 
@@ -463,7 +463,7 @@ function toggleSeat(seatId: number) {
   }
 
   if (selectedSeatIds.value.length + previewSeatIds.value.length >= 10) {
-    toast.error('You can select up to 10 seats.')
+    toast.error(t('seats.max_selection_error'))
     return
   }
 
@@ -584,14 +584,14 @@ async function reserveSeats() {
     await navigateTo(`/checkout/${checkoutResponse.data.publicId}?hold=${holdPublicId}`)
   }
   catch (error) {
-    const parsedError = parseApiError(error, 'We could not open checkout. Please try again.')
+    const parsedError = parseApiError(error, t('seats.checkout_error'))
 
     const statusCode = parsedError.status
     const message = parsedError.message
 
     if (isSessionUnavailableError(parsedError)) {
       checkoutUnavailableError.value = parsedError
-      toast.error('This session is no longer available for booking.')
+      toast.error(t('seats.session_unavailable_title'))
       return
     }
 
@@ -608,7 +608,7 @@ async function reserveSeats() {
     }
 
     if (statusCode === 409) {
-      toast.error('Some of the selected seats are no longer available. We refreshed the map for you.')
+      toast.error(t('seats.seats_conflict_error'))
       return
     }
 
@@ -684,7 +684,7 @@ watch(seatMap, (value) => {
   }
 
   if (selectedSeatsChanged || previewSeatsChanged) {
-    toast.error('One or more selected seats were taken by another customer.')
+    toast.error(t('seats.seats_taken_error'))
   }
 }, { deep: true, immediate: true })
 
@@ -709,8 +709,8 @@ onUnmounted(() => {
 })
 
 definePageMeta({
-  title: 'Choose seats',
-  breadcrumb: 'Seat selection',
+  title: 'seats.page_title',
+  breadcrumb: 'seats.breadcrumb',
   layout: 'empty',
   middleware: ['auth'],
 })
@@ -732,15 +732,15 @@ definePageMeta({
         >
           <XCircle class="size-7" />
         </EmptyMedia>
-        <EmptyTitle>{{ captchaAccessError ? $t('booking_captcha.blocked_title') : 'This session is no longer available' }}</EmptyTitle>
+        <EmptyTitle>{{ captchaAccessError ? $t('booking_captcha.blocked_title') : $t('seats.session_unavailable_title') }}</EmptyTitle>
         <EmptyDescription>
-          {{ captchaAccessError ? $t('booking_captcha.blocked_desc') : 'The organizer has made this session unavailable while you were choosing seats. Your selection has been cleared and checkout is closed for this session.' }}
+          {{ captchaAccessError ? $t('booking_captcha.blocked_desc') : $t('seats.session_unavailable_desc') }}
         </EmptyDescription>
       </EmptyHeader>
 
       <EmptyContent class="space-y-5">
         <div class="rounded-2xl border bg-muted/30 px-4 py-3 text-sm text-muted-foreground">
-          {{ captchaAccessError ? $t('booking_captcha.blocked_hint') : 'You can browse other available events, or check again later if the organizer republishes this event.' }}
+          {{ captchaAccessError ? $t('booking_captcha.blocked_hint') : $t('seats.session_unavailable_hint') }}
         </div>
 
         <div class="flex flex-col gap-2 sm:flex-row sm:justify-center">
@@ -861,7 +861,7 @@ definePageMeta({
                 <div class="mb-2 flex items-center justify-between gap-3">
                   <div>
                     <p class="text-xs font-medium uppercase tracking-[0.22em] text-primary">
-                      Preview tickets
+                      {{ $t('seats.preview_tickets') }}
                     </p>
                   </div>
                   <div class="flex items-center gap-1">
@@ -870,8 +870,8 @@ definePageMeta({
                       size="icon-sm"
                       variant="ghost"
                       class="text-muted-foreground hover:text-destructive"
-                      title="Cancel preview"
-                      :aria-label="'Cancel all preview seats'"
+                      :title="$t('seats.cancel_preview')"
+                      :aria-label="$t('seats.cancel_all_preview_seats')"
                       @click="clearAllPreviewSeats"
                     >
                       <XCircle class="size-4" />
@@ -881,15 +881,15 @@ definePageMeta({
                       size="icon-sm"
                       variant="ghost"
                       class="text-primary"
-                      title="Confirm preview seat"
-                      :aria-label="'Confirm all preview seats'"
+                      :title="$t('seats.confirm_preview_seats')"
+                      :aria-label="$t('seats.confirm_all_preview_seats')"
                       @click="confirmAllPreviewSeats"
                     >
                       <CheckCircle2 class="size-4" />
                     </Button>
                     <span class="ml-1 inline-flex items-center gap-1 rounded-full border border-primary/20 bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
                       <Sparkles class="size-3.5" />
-                      {{ previewSeats.length }} new
+                      {{ $t('seats.new_preview_count', { count: previewSeats.length }) }}
                     </span>
                   </div>
                 </div>
@@ -918,7 +918,7 @@ definePageMeta({
                           {{ formatCurrency(previewSeat.priceCents, previewSeat.currency, getDisplayDateLocale(locale)) }}
                         </p>
                         <p class="text-xs text-muted-foreground">
-                          Expected add-on
+                          {{ $t('seats.expected_add_on') }}
                         </p>
                       </div>
                       <ItemActions class="relative w-full justify-end sm:w-auto">
@@ -928,7 +928,7 @@ definePageMeta({
                           variant="outline"
                           @click="clearPreviewSeat(previewSeat.id)"
                         >
-                          Cancel
+                          {{ $t('common.cancel') }}
                         </Button>
                         <Button
                           type="button"
@@ -936,7 +936,7 @@ definePageMeta({
                           @click="confirmPreviewSeat(previewSeat.id)"
                         >
                           <CheckCircle2 class="size-4" />
-                          Confirm
+                          {{ $t('seats.confirm') }}
                         </Button>
                       </ItemActions>
                     </Item>
@@ -948,7 +948,7 @@ definePageMeta({
                 <div class="mb-2 flex items-center justify-between gap-3">
                   <div>
                     <p class="text-xs font-medium uppercase tracking-[0.22em] text-muted-foreground">
-                      Confirmed tickets
+                      {{ $t('seats.confirmed_tickets') }}
                     </p>
                   </div>
                   <Button
@@ -956,8 +956,8 @@ definePageMeta({
                     size="icon-sm"
                     variant="ghost"
                     class="text-muted-foreground hover:text-destructive"
-                    title="Remove all confirmed seats"
-                    :aria-label="'Remove all confirmed seats'"
+                    :title="$t('seats.remove_all_confirmed_seats')"
+                    :aria-label="$t('seats.remove_all_confirmed_seats')"
                     @click="removeAllSelectedSeats"
                   >
                     <Trash2 class="size-4" />
@@ -979,8 +979,8 @@ definePageMeta({
                         size="icon-sm"
                         variant="ghost"
                         class="size-6 text-muted-foreground hover:text-destructive"
-                        :title="`Remove all seats in ${group.name}`"
-                        :aria-label="`Remove all seats in ${group.name}`"
+                        :title="$t('seats.remove_all_seats_in_section', { section: group.name })"
+                        :aria-label="$t('seats.remove_all_seats_in_section', { section: group.name })"
                         @click="removeSectionSeats(group.seats.map(s => s.id))"
                       >
                         <Trash2 class="size-3.5" />
@@ -1014,7 +1014,7 @@ definePageMeta({
                               size="icon-sm"
                               variant="ghost"
                               class="text-muted-foreground hover:text-destructive"
-                              :aria-label="`Remove ${formatSeatLabel(seat)}`"
+                              :aria-label="$t('seats.remove_seat', { seat: formatSeatLabel(seat) })"
                               @click="removeSelectedSeat(seat.id)"
                             >
                               <Trash2 class="size-4" />
@@ -1036,7 +1036,7 @@ definePageMeta({
                   </EmptyMedia>
                   <EmptyTitle>{{ $t('seats.pick_seats_prompt') }}</EmptyTitle>
                   <EmptyDescription>
-                    Click a seat on the map to create a preview ticket here.
+                    {{ $t('seats.preview_ticket_prompt') }}
                   </EmptyDescription>
                 </EmptyHeader>
                 <EmptyContent />

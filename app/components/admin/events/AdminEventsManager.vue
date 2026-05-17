@@ -185,6 +185,7 @@
       :search-placeholder="$t('admin.events.search_events')"
       :empty-title="$t('admin.events.no_match')"
       :empty-description="$t('admin.events.no_match_desc')"
+      :column-labels="columnLabels"
       @update:data="fetchEvents"
     />
   </div>
@@ -254,6 +255,14 @@ const priorityRows = computed(() => {
 const featuredPriorityEvent = computed(() => priorityRows.value[0] ?? null)
 
 const firstDraftEventId = computed(() => draftRows.value[0]?.id ?? null)
+const columnLabels = computed(() => ({
+  title: t('admin.columns.event'),
+  status: t('admin.columns.status'),
+  venueName: t('admin.columns.venue'),
+  startsAt: t('admin.columns.starts'),
+  salesStartAt: t('admin.columns.sales_window'),
+  updatedAt: t('admin.columns.updated'),
+}))
 
 async function fetchEvents() {
   try {

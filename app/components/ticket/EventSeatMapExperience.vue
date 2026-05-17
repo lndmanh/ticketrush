@@ -18,7 +18,7 @@ const props = withDefaults(defineProps<{
   interactive?: boolean
   mode?: 'public' | 'admin'
 }>(), {
-  actionLabel: 'Open live seat selection',
+  actionLabel: null,
   ticketTypes: () => [],
   sectionPrices: () => [],
   seatOverrides: () => [],
@@ -55,7 +55,10 @@ const visibleLayout = computed<SeatMapLayout>(() => {
     sections: layout.value.sections.filter(section => section.key === selectedSection.value),
   }
 })
-const renderModel = computed(() => createSeatMapRenderModel(visibleLayout.value, props.selectedSeatIds))
+const renderModel = computed(() => createSeatMapRenderModel(visibleLayout.value, props.selectedSeatIds, {
+  stageLabel: t('seatmap.stage_short'),
+  availabilityLabel: (available, total) => t('seatmap.availability_label', { available, total }),
+}))
 const legendItems = computed(() => [
   seatMapStatusPalette[SeatStatus.Available],
   seatMapStatusPalette.selected,
