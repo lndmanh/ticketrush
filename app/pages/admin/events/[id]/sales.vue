@@ -3,10 +3,11 @@ import { CircleDollarSign, PieChart, Ticket, TrendingUp } from '@lucide/vue'
 import AdminChartCard from '@/components/admin/charts/AdminChartCard.vue'
 import AdminDashboardKpiCard from '@/components/admin/dashboard/AdminDashboardKpiCard.vue'
 import { getDisplayDateLocale } from '@/lib/localizedEvents'
-import { formatCurrency } from '@/lib/utils'
+import { formatMoney } from '@/lib/money'
 import { AgeBracket, SavedAttendeeGender } from '#shared/commonEnums'
 
 const { t, locale } = useI18n()
+const { displayCurrency, formatCurrency: formatPreferredCurrency } = useCurrencyPreference()
 
 const route = useRoute()
 const eventId = computed(() => Number(route.params.id))
@@ -74,11 +75,17 @@ const genderAudienceMix = computed(() => [
 const genderMappedBuyers = computed(() => genderAudienceMix.value.reduce((total, bucket) => total + bucket.value, 0))
 
 const sectionRevenueOption = computed(() => {
+  const selectedDisplayCurrency = displayCurrency.value
+
   return createBarChartOption({
     data: topSections.value.map(([section, totals]) => ({
       label: section,
       value: Math.round(totals.revenueCents / 100),
     })),
+    valueFormatter: value => formatMoney(value * 100, 'VND', selectedDisplayCurrency, getDisplayDateLocale(locale.value), {
+      notation: 'compact',
+      maximumFractionDigits: 1,
+    }),
   })
 })
 
@@ -101,11 +108,17 @@ const genderAudienceMixOption = computed(() => {
 })
 
 const recentOrderSampleOption = computed(() => {
+  const selectedDisplayCurrency = displayCurrency.value
+
   return createBarChartOption({
     data: (dashboard.value?.recentOrders ?? []).map((order, index) => ({
       label: `#${index + 1}`,
       value: Math.round(order.amountCents / 100),
     })),
+    valueFormatter: value => formatMoney(value * 100, 'VND', selectedDisplayCurrency, getDisplayDateLocale(locale.value), {
+      notation: 'compact',
+      maximumFractionDigits: 1,
+    }),
     colorIndex: 4,
     maxItems: 6,
   })
@@ -129,7 +142,7 @@ definePageMeta({
     <section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4 xl:auto-rows-fr">
       <AdminDashboardKpiCard
         :label="$t('admin_event_sales.revenue_label')"
-        :value="formatCurrency(dashboard.revenueCents || 0, 'VND', getDisplayDateLocale(locale))"
+        :value="formatPreferredCurrency(dashboard.revenueCents || 0, 'VND', getDisplayDateLocale(locale))"
         :description="$t('admin_event_sales.revenue_desc')"
       >
         <template #icon>
@@ -147,7 +160,7 @@ definePageMeta({
       </AdminDashboardKpiCard>
       <AdminDashboardKpiCard
         :label="$t('admin_event_sales.revenue_per_seat_label')"
-        :value="formatCurrency(revenuePerSeat, 'VND', getDisplayDateLocale(locale))"
+        :value="formatPreferredCurrency(revenuePerSeat, 'VND', getDisplayDateLocale(locale))"
         :description="$t('admin_event_sales.revenue_per_seat_desc')"
       >
         <template #icon>
@@ -228,7 +241,7 @@ definePageMeta({
                 </p>
               </div>
               <p class="shrink-0 text-sm text-muted-foreground">
-                {{ formatCurrency(order.amountCents, 'VND', getDisplayDateLocale(locale)) }}
+                {{ formatPreferredCurrency(order.amountCents, 'VND', getDisplayDateLocale(locale)) }}
               </p>
             </div>
           </div>
