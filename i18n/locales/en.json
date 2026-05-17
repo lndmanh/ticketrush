@@ -1237,6 +1237,8 @@
     "event_workspace": "Event workspace",
     "event_workspace_title": "Overview, map, pricing, sales, and ops",
     "event_workspace_desc": "Move across every admin surface without losing event context.",
+    "event_workspace_note_title": "Workspace note",
+    "event_workspace_note_desc": "This view stays live against the current event snapshot so launch, pricing, map, sales, and ops can be reviewed from one visual system.",
     "event_nav_overview": "Overview",
     "event_nav_seat_map": "Seat map",
     "event_nav_pricing": "Pricing",

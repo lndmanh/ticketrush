@@ -1177,6 +1177,8 @@
     "event_workspace": "Không gian sự kiện",
     "event_workspace_title": "Tổng quan, sơ đồ, định giá, bán hàng và vận hành",
     "event_workspace_desc": "Di chuyển giữa các màn hình quản trị mà không mất ngữ cảnh sự kiện.",
+    "event_workspace_note_title": "Ghi chú không gian quản trị",
+    "event_workspace_note_desc": "Màn hình này luôn bám theo bản chụp hiện tại của sự kiện để bạn rà soát mức độ sẵn sàng, định giá, sơ đồ, bán hàng và vận hành trong cùng một nơi.",
     "event_nav_overview": "Tổng quan",
     "event_nav_seat_map": "Sơ đồ ghế",
     "event_nav_pricing": "Định giá",
