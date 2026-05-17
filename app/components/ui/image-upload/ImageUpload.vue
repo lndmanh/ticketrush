@@ -135,7 +135,6 @@ async function uploadFile(file: File) {
 
     emit('update:modelValue', response.data.url)
     uploadError.value = ''
-    toast.success(t('admin.image_upload.uploaded'))
   }
   catch (error: unknown) {
     if (requestId !== uploadRequestId) {
