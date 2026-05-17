@@ -146,7 +146,6 @@ async function verifyCaptcha(token: string) {
             class="size-4"
           />
           <AlertTitle>{{ $t('booking_captcha.success') }}</AlertTitle>
-          <AlertDescription>{{ $t('booking_captcha.success') }}</AlertDescription>
         </Alert>
 
         <div

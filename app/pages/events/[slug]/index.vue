@@ -131,8 +131,7 @@ const primarySessionTimeLabel = computed(() => {
     return 'Time to be announced'
   }
 
-  const displayLocale = getDisplayDateLocale(locale.value)
-  const startsAt = formatTime(session.startsAt, displayLocale, {
+  const startsAt = formatTime(session.startsAt, dateLocale.value, {
     hour: 'numeric',
     minute: '2-digit',
   })
@@ -141,7 +140,7 @@ const primarySessionTimeLabel = computed(() => {
     return startsAt
   }
 
-  const endsAt = formatTime(session.endsAt, displayLocale, {
+  const endsAt = formatTime(session.endsAt, dateLocale.value, {
     hour: 'numeric',
     minute: '2-digit',
   })
@@ -150,21 +149,17 @@ const primarySessionTimeLabel = computed(() => {
 })
 
 const startingPrice = computed(() => {
-  const firstSession = primarySession.value
+  let globalLowest: PublicSessionSectionPriceSummary | null = null
 
-  if (!firstSession) {
-    return null
+  for (const session of sortedSessions.value) {
+    const sessionLowest = getLowestSectionPrice(session.sectionPrices)
+
+    if (sessionLowest && (!globalLowest || sessionLowest.priceCents < globalLowest.priceCents)) {
+      globalLowest = sessionLowest
+    }
   }
 
-  const firstSectionPrice = firstSession.sectionPrices[0]
-
-  if (!firstSectionPrice) {
-    return null
-  }
-
-  return firstSession.sectionPrices.reduce((lowest, sectionPrice) => {
-    return sectionPrice.priceCents < lowest.priceCents ? sectionPrice : lowest
-  }, firstSectionPrice)
+  return globalLowest
 })
 
 const startingPriceLabel = computed(() => {
@@ -174,7 +169,7 @@ const startingPriceLabel = computed(() => {
     return 'Pricing to be announced'
   }
 
-  return formatCurrency(price.priceCents, price.currency, getDisplayDateLocale(locale.value))
+  return formatCurrency(price.priceCents, price.currency, dateLocale.value)
 })
 
 const dateRangeLabel = computed(() => {
@@ -186,7 +181,7 @@ const dateRangeLabel = computed(() => {
   const lastSession = sortedSessions.value[sortedSessions.value.length - 1]
   const firstDate = new Date(firstSession.startsAt)
   const lastDate = new Date(lastSession.startsAt)
-  const displayLocale = getDisplayDateLocale(locale.value)
+  const displayLocale = dateLocale.value
 
   if (firstDate.toDateString() === lastDate.toDateString()) {
     return formatDate(firstDate, displayLocale, {
@@ -232,7 +227,7 @@ function getSessionCount(day: DateValue) {
 }
 
 function getDayNumber(day: DateValue) {
-  return new Date(`${day.toString()}T00:00:00`).getDate()
+  return day.day
 }
 
 function formatSelectedDate(value: string) {
@@ -555,200 +550,197 @@ definePageMeta({
         v-else
         class="overflow-hidden border-border/70 bg-card/90 shadow-sm"
       >
-        <CardHeader class="space-y-2 border-b pb-4">
-          <div>
-            <CardTitle class="text-base">
-              {{ $t('event_detail.session_calendar') }}
-            </CardTitle>
-            <p class="mt-1 text-sm text-muted-foreground">
-              {{ $t('event_detail.session_calendar_desc') }}
-            </p>
-          </div>
-        </CardHeader>
-
-        <CardContent class="space-y-5 pt-5">
-          <CalendarRoot
-            v-slot="{ grid, weekDays }"
-            v-model="selectedDateValue"
-            :week-starts-on="1"
-            fixed-weeks
-            prevent-deselect
-            :locale="dateLocale"
-            class="w-full"
-          >
-            <CalendarHeader class="mb-4 flex items-center justify-between gap-3">
-              <CalendarPrev
-                class="inline-flex size-8 items-center justify-center rounded-md border bg-background text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                :aria-label="$t('event_detail.previous_month')"
+        <CardContent class="lg:p-0">
+          <div class="lg:grid lg:grid-cols-[1fr_1fr]">
+            <!-- Calendar grid (left on desktop) -->
+            <div class="lg:p-6">
+              <CalendarRoot
+                v-slot="{ grid, weekDays }"
+                v-model="selectedDateValue"
+                :week-starts-on="1"
+                fixed-weeks
+                prevent-deselect
+                :locale="dateLocale"
+                class="w-full"
               >
-                <ChevronLeft
-                  aria-hidden="true"
-                  class="size-4"
-                />
-              </CalendarPrev>
-              <CalendarHeading class="text-sm font-semibold text-foreground" />
-              <CalendarNext
-                class="inline-flex size-8 items-center justify-center rounded-md border bg-background text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                :aria-label="$t('event_detail.next_month')"
-              >
-                <ChevronRight
-                  aria-hidden="true"
-                  class="size-4"
-                />
-              </CalendarNext>
-            </CalendarHeader>
-
-            <CalendarGrid
-              v-for="month in grid"
-              :key="month.value.toString()"
-              class="w-full border-separate border-spacing-y-1"
-            >
-              <CalendarGridHead>
-                <CalendarGridRow class="grid grid-cols-7 gap-1">
-                  <CalendarHeadCell
-                    v-for="day in weekDays"
-                    :key="day"
-                    class="py-2 text-center text-[11px] font-medium text-muted-foreground"
+                <CalendarHeader class="mb-4 flex items-center justify-between gap-3">
+                  <CalendarPrev
+                    class="inline-flex size-8 items-center justify-center rounded-md border bg-background text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    :aria-label="$t('event_detail.previous_month')"
                   >
-                    {{ day }}
-                  </CalendarHeadCell>
-                </CalendarGridRow>
-              </CalendarGridHead>
-              <CalendarGridBody>
-                <CalendarGridRow
-                  v-for="(weekDates, index) in month.rows"
-                  :key="`${month.value.toString()}-${index}`"
-                  class="grid grid-cols-7 gap-1"
+                    <ChevronLeft
+                      aria-hidden="true"
+                      class="size-4"
+                    />
+                  </CalendarPrev>
+                  <CalendarHeading class="text-sm font-semibold text-foreground" />
+                  <CalendarNext
+                    class="inline-flex size-8 items-center justify-center rounded-md border bg-background text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    :aria-label="$t('event_detail.next_month')"
+                  >
+                    <ChevronRight
+                      aria-hidden="true"
+                      class="size-4"
+                    />
+                  </CalendarNext>
+                </CalendarHeader>
+
+                <CalendarGrid
+                  v-for="month in grid"
+                  :key="month.value.toString()"
+                  class="w-full border-separate border-spacing-y-1"
                 >
-                  <CalendarCell
-                    v-for="day in weekDates"
-                    :key="day.toString()"
-                    :date="day"
-                  >
-                    <CalendarCellTrigger
-                      v-slot="{ selected, today: isToday, outsideView }"
-                      :day="day"
-                      :month="month.value"
-                      :class="cn(
-                        'relative flex aspect-square min-h-10 w-full flex-col items-center justify-center rounded-xl text-sm transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-                        outsideView ? 'text-muted-foreground/35' : 'text-foreground hover:bg-muted',
-                        isToday && !selected ? 'bg-primary/10 text-primary' : '',
-                        selected ? 'bg-primary text-primary-foreground shadow-sm' : '',
-                      )"
+                  <CalendarGridHead>
+                    <CalendarGridRow class="grid grid-cols-7 gap-1">
+                      <CalendarHeadCell
+                        v-for="day in weekDays"
+                        :key="day"
+                        class="py-2 text-center text-[11px] font-medium text-muted-foreground"
+                      >
+                        {{ day }}
+                      </CalendarHeadCell>
+                    </CalendarGridRow>
+                  </CalendarGridHead>
+                  <CalendarGridBody>
+                    <CalendarGridRow
+                      v-for="(weekDates, index) in month.rows"
+                      :key="`${month.value.toString()}-${index}`"
+                      class="grid grid-cols-7 gap-1"
                     >
-                      <span class="leading-none">{{ getDayNumber(day) }}</span>
-                      <span
-                        v-if="getSessionCount(day) > 0"
-                        class="sr-only"
+                      <CalendarCell
+                        v-for="day in weekDates"
+                        :key="day.toString()"
+                        :date="day"
                       >
-                        {{ $t('event_detail.sessions_on_date', { count: getSessionCount(day), date: formatSelectedDate(day.toString()) }) }}
-                      </span>
-                      <span
-                        v-if="getSessionCount(day) > 0"
-                        :class="cn(
-                          'mt-1 h-1.5 min-w-1.5 rounded-full px-1 text-[9px] leading-[0.375rem]',
-                          selected ? 'bg-primary-foreground/80 text-primary' : 'bg-primary/75 text-primary-foreground',
-                        )"
-                      >
-                        {{ getSessionCount(day) > 1 ? getSessionCount(day) : '' }}
-                      </span>
-                    </CalendarCellTrigger>
-                  </CalendarCell>
-                </CalendarGridRow>
-              </CalendarGridBody>
-            </CalendarGrid>
-          </CalendarRoot>
-
-          <div class="border-t pt-5">
-            <div class="mb-4 flex items-start justify-between gap-3">
-              <div>
-                <h3 class="text-base font-semibold tracking-[-0.02em] text-foreground">
-                  {{ $t('event_detail.daily_sessions') }}
-                </h3>
-                <p class="mt-1 text-sm text-muted-foreground">
-                  {{ formatSelectedDate(selectedDate) }}
-                </p>
-              </div>
-              <Badge
-                variant="outline"
-                class="rounded-full"
-              >
-                {{ $t('event_detail.session_count', { count: selectedDaySessions.length }) }}
-              </Badge>
+                        <CalendarCellTrigger
+                          v-slot="{ selected, today: isToday, outsideView }"
+                          :day="day"
+                          :month="month.value"
+                          :class="cn(
+                            'relative flex aspect-square min-h-10 w-full flex-col items-center justify-center rounded-xl text-sm transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                            outsideView ? 'text-muted-foreground/35' : 'text-foreground hover:bg-muted',
+                            isToday && !selected ? 'bg-primary/10 text-primary' : '',
+                            selected ? 'bg-primary text-primary-foreground shadow-sm' : '',
+                          )"
+                        >
+                          <span class="leading-none">{{ getDayNumber(day) }}</span>
+                          <span
+                            v-if="getSessionCount(day) > 0"
+                            class="sr-only"
+                          >
+                            {{ $t('event_detail.sessions_on_date', { count: getSessionCount(day), date: formatSelectedDate(day.toString()) }) }}
+                          </span>
+                          <span
+                            v-if="getSessionCount(day) > 0"
+                            :class="cn(
+                              'mt-1 h-1.5 min-w-1.5 rounded-full px-1 text-[9px] leading-[0.375rem]',
+                              selected ? 'bg-primary-foreground/80 text-primary' : 'bg-primary/75 text-primary-foreground',
+                            )"
+                          >
+                            {{ getSessionCount(day) > 1 ? getSessionCount(day) : '' }}
+                          </span>
+                        </CalendarCellTrigger>
+                      </CalendarCell>
+                    </CalendarGridRow>
+                  </CalendarGridBody>
+                </CalendarGrid>
+              </CalendarRoot>
             </div>
 
-            <div class="space-y-3">
-              <div
-                v-for="session in selectedDaySessions"
-                :key="session.publicId"
-                class="rounded-2xl border bg-muted/25 p-4 transition-colors hover:border-primary/30 hover:bg-muted/40"
-              >
-                <div class="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-                  <div class="min-w-0 space-y-2">
-                    <div class="flex flex-wrap items-center gap-2">
-                      <p class="font-medium text-foreground">
-                        {{ session.label }}
-                      </p>
-                      <Badge
-                        variant="outline"
-                        class="rounded-full"
+            <!-- Session list (right on desktop, below on mobile) -->
+            <div class="border-t pt-5 lg:border-l lg:border-t-0 lg:pt-0">
+              <div class="lg:p-6">
+                <div class="mb-4 flex items-start justify-between gap-3">
+                  <div>
+                    <h3 class="text-base font-semibold tracking-[-0.02em] text-foreground">
+                      {{ $t('event_detail.daily_sessions') }}
+                    </h3>
+                    <p class="mt-1 text-sm text-muted-foreground">
+                      {{ formatSelectedDate(selectedDate) }}
+                    </p>
+                  </div>
+                  <Badge
+                    variant="outline"
+                    class="rounded-full"
+                  >
+                    {{ $t('event_detail.session_count', { count: selectedDaySessions.length }) }}
+                  </Badge>
+                </div>
+
+                <div class="space-y-3 lg:max-h-[26rem] lg:overflow-y-auto lg:pr-1 lg:[scrollbar-width:thin]">
+                  <div
+                    v-for="session in selectedDaySessions"
+                    :key="session.publicId"
+                    class="rounded-2xl border bg-muted/25 p-4 transition-colors hover:border-primary/30 hover:bg-muted/40"
+                  >
+                    <div class="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                      <div class="min-w-0 space-y-2">
+                        <div class="flex flex-wrap items-center gap-2">
+                          <p class="font-medium text-foreground">
+                            {{ session.label }}
+                          </p>
+                          <Badge
+                            variant="outline"
+                            class="rounded-full"
+                          >
+                            {{ getSessionStatusLabel(session) }}
+                          </Badge>
+                        </div>
+                        <div class="flex flex-wrap gap-3 text-sm text-muted-foreground">
+                          <span class="inline-flex items-center gap-2">
+                            <Clock3
+                              aria-hidden="true"
+                              class="size-4"
+                            />
+                            {{ getSessionTimeRangeLabel(session) }}
+                          </span>
+                          <span class="inline-flex items-center gap-2">
+                            <Ticket
+                              aria-hidden="true"
+                              class="size-4"
+                            />
+                            {{ getSessionPriceLabel(session) }}
+                          </span>
+                        </div>
+                      </div>
+
+                      <Button
+                        v-if="isSessionBookable(session)"
+                        type="button"
+                        class="w-full rounded-full md:w-auto"
+                        @click="openBookingCaptchaDialog(session)"
                       >
-                        {{ getSessionStatusLabel(session) }}
-                      </Badge>
-                    </div>
-                    <div class="flex flex-wrap gap-3 text-sm text-muted-foreground">
-                      <span class="inline-flex items-center gap-2">
-                        <Clock3
-                          aria-hidden="true"
-                          class="size-4"
-                        />
-                        {{ getSessionTimeRangeLabel(session) }}
-                      </span>
-                      <span class="inline-flex items-center gap-2">
-                        <Ticket
-                          aria-hidden="true"
-                          class="size-4"
-                        />
-                        {{ getSessionPriceLabel(session) }}
-                      </span>
+                        {{ $t('event_card.book_tickets') }}
+                      </Button>
+                      <Button
+                        v-else
+                        class="w-full rounded-full md:w-auto"
+                        disabled
+                      >
+                        {{ $t('event_card.unavailable') }}
+                      </Button>
                     </div>
                   </div>
 
-                  <Button
-                    v-if="isSessionBookable(session)"
-                    type="button"
-                    class="w-full rounded-full md:w-auto"
-                    @click="openBookingCaptchaDialog(session)"
+                  <Empty
+                    v-if="selectedDaySessions.length === 0"
+                    class="border bg-muted/20 py-10"
                   >
-                    {{ $t('event_card.book_tickets') }}
-                  </Button>
-                  <Button
-                    v-else
-                    class="w-full rounded-full md:w-auto"
-                    disabled
-                  >
-                    {{ $t('event_card.unavailable') }}
-                  </Button>
+                    <EmptyHeader>
+                      <EmptyMedia variant="icon">
+                        <CalendarClock
+                          aria-hidden="true"
+                          class="size-5"
+                        />
+                      </EmptyMedia>
+                      <EmptyTitle>{{ $t('event_detail.no_sessions_day') }}</EmptyTitle>
+                      <EmptyDescription>
+                        {{ $t('event_detail.no_sessions_day_desc') }}
+                      </EmptyDescription>
+                    </EmptyHeader>
+                  </Empty>
                 </div>
               </div>
-
-              <Empty
-                v-if="selectedDaySessions.length === 0"
-                class="border bg-muted/20 py-10"
-              >
-                <EmptyHeader>
-                  <EmptyMedia variant="icon">
-                    <CalendarClock
-                      aria-hidden="true"
-                      class="size-5"
-                    />
-                  </EmptyMedia>
-                  <EmptyTitle>{{ $t('event_detail.no_sessions_day') }}</EmptyTitle>
-                  <EmptyDescription>
-                    {{ $t('event_detail.no_sessions_day_desc') }}
-                  </EmptyDescription>
-                </EmptyHeader>
-              </Empty>
             </div>
           </div>
         </CardContent>
