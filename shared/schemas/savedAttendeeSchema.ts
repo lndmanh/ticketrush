@@ -12,12 +12,12 @@ function optionalTextSchema() {
 function optionalEmailSchema() {
   return z.union([
     z.string().trim().max(0),
-    z.string().trim().email('Email is invalid'),
+    z.string().trim().email('saved_attendees.email_invalid'),
   ]).optional()
 }
 
 function requiredEmailSchema() {
-  return z.string().trim().min(1, 'saved_attendees.email_required').email('Email is invalid')
+  return z.string().trim().min(1, 'saved_attendees.email_required').email('saved_attendees.email_invalid')
 }
 
 export function optionalPhoneSchema() {

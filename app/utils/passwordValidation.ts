@@ -50,14 +50,14 @@ export function calculatePasswordStrength(password: string): PasswordStrength {
     }
   }
   else {
-    // Parse validation errors to determine which checks failed
+    // Parse validation error keys to determine which checks failed
     const errorMessages = result.error.issues.map(issue => issue.message)
     checks = {
-      length: !errorMessages.some(msg => msg.includes('at least 8 characters')),
-      uppercase: !errorMessages.some(msg => msg.includes('uppercase letter')),
-      lowercase: !errorMessages.some(msg => msg.includes('lowercase letter')),
-      number: !errorMessages.some(msg => msg.includes('number')),
-      special: !errorMessages.some(msg => msg.includes('special character')),
+      length: !errorMessages.includes('validation.password_min'),
+      uppercase: !errorMessages.includes('validation.password_uppercase'),
+      lowercase: !errorMessages.includes('validation.password_lowercase'),
+      number: !errorMessages.includes('validation.password_number'),
+      special: !errorMessages.includes('validation.password_special'),
     }
   }
 

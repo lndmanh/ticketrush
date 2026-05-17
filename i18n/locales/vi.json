@@ -77,6 +77,28 @@
     "previous": "Trước",
     "next": "Sau"
   },
+  "validation": {
+    "password_min": "Mật khẩu phải có ít nhất 8 ký tự",
+    "password_lowercase": "Mật khẩu phải có ít nhất một chữ cái thường",
+    "password_uppercase": "Mật khẩu phải có ít nhất một chữ cái hoa",
+    "password_number": "Mật khẩu phải có ít nhất một chữ số",
+    "password_special": "Mật khẩu phải có ít nhất một ký tự đặc biệt",
+    "password_required": "Vui lòng nhập mật khẩu",
+    "password_hash_required": "Vui lòng nhập mã băm mật khẩu",
+    "password_confirm_required": "Vui lòng xác nhận mật khẩu",
+    "new_password_confirm_required": "Vui lòng xác nhận mật khẩu mới",
+    "current_password_required": "Vui lòng nhập mật khẩu hiện tại",
+    "current_password_incorrect": "Mật khẩu hiện tại không đúng.",
+    "passwords_mismatch": "Mật khẩu không khớp",
+    "username_required": "Vui lòng nhập tên người dùng",
+    "username_min": "Tên người dùng phải có ít nhất 3 ký tự",
+    "username_max": "Tên người dùng quá dài",
+    "username_format": "Tên người dùng chỉ được gồm chữ thường, số, dấu gạch nối và dấu gạch dưới",
+    "email_required": "Vui lòng nhập email hợp lệ",
+    "name_required": "Vui lòng nhập họ và tên",
+    "token_required": "Vui lòng nhập mã xác thực",
+    "user_id_required": "Vui lòng chọn người dùng"
+  },
   "admin_event_sync": {
     "title": "Đồng bộ sơ đồ địa điểm",
     "description": "Xử lý giá khu vực cho {session} trước khi áp dụng sơ đồ địa điểm hiện tại.",
@@ -897,7 +919,8 @@
     "uppercase": "Một chữ hoa (A-Z)",
     "lowercase": "Một chữ thường (a-z)",
     "number": "Một chữ số (0-9)",
-    "special": "Một ký tự đặc biệt (ví dụ: !, #, $...)"
+    "special": "Một ký tự đặc biệt (ví dụ: !, #, $...)",
+    "change_failed": "Không thể đổi mật khẩu. Vui lòng thử lại."
   },
   "admin": {
     "dashboard_title": "Quản trị",
@@ -1574,6 +1597,11 @@
     "delete_failed": "Không thể xóa người tham dự. Vui lòng thử lại.",
     "delete_confirm": "Bạn có chắc muốn xóa người tham dự này? Hành động này không thể hoàn tác.",
     "legal_name_required": "Vui lòng nhập họ tên pháp lý",
+    "email_required": "Vui lòng nhập email",
+    "email_invalid": "Email không hợp lệ",
+    "phone_required": "Vui lòng nhập số điện thoại",
+    "phone_invalid": "Số điện thoại không hợp lệ",
+    "birth_date_required": "Vui lòng nhập ngày sinh",
     "birth_date_future": "Ngày sinh không được ở tương lai",
     "contact_required": "Cần ít nhất một phương thức liên hệ",
     "complete_required_profile": "Hoàn tất các trường hồ sơ bắt buộc trước khi đặt vé: {fields}.",

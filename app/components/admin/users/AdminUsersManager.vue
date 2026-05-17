@@ -492,7 +492,7 @@ const onSubmit = handleSubmit(
       await fetchUsers()
     }
     catch (error) {
-      const message = parseApiError(error, t('admin.users.save_failed')).message
+      const message = parseApiError(error, 'admin.users.save_failed').message
       const structuredIssue = getIssueFieldAndMessage(error)
       if (structuredIssue) {
         setFieldError(structuredIssue.field, structuredIssue.message)
@@ -503,7 +503,7 @@ const onSubmit = handleSubmit(
           setFieldError(mappedField, message)
         }
         else {
-          toast.error(message)
+          toast.error(t(message))
         }
       }
     }
@@ -512,8 +512,8 @@ const onSubmit = handleSubmit(
     }
   },
   ({ errors }) => {
-    const firstError = Object.values(errors).flat().filter(Boolean)[0] || t('admin.users.fix_fields')
-    toast.error(firstError)
+    const firstError = Object.values(errors).flat().filter(Boolean)[0] || 'admin.users.fix_fields'
+    toast.error(t(firstError))
   },
 )
 

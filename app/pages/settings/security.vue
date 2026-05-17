@@ -272,7 +272,7 @@
           variant="destructive"
         >
           <AlertTriangle class="w-4 h-4" />
-          <AlertDescription>{{ generalPasswordError }}</AlertDescription>
+          <AlertDescription>{{ $t(generalPasswordError) }}</AlertDescription>
         </Alert>
 
         <VeeField
@@ -507,7 +507,7 @@ definePageMeta({
 })
 
 const route = useRoute()
-const { locale } = useI18n()
+const { locale, t } = useI18n()
 
 function getQueryString(value: string | string[] | null | undefined) {
   if (typeof value === 'string') {
@@ -828,9 +828,9 @@ const onChangePassword = handlePasswordSubmit(async (formValues) => {
     resetPasswordForm()
   }
   catch (error: unknown) {
-    const message = parseApiError(error, 'Failed to change password. Please try again.').message
+    const message = parseApiError(error, 'password.change_failed').message
 
-    if (message.toLowerCase().includes('current password')) {
+    if (message === 'validation.current_password_required' || message === 'validation.current_password_incorrect') {
       setPasswordFieldError('currentPassword', message)
     }
     else {
