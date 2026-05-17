@@ -9,7 +9,6 @@ import {
   Clock3,
   MapPin,
   Ticket,
-  UsersRound,
 } from '@lucide/vue'
 import { Motion, motion } from 'motion-v'
 import type { PaginatedApiResponse } from '~~/types/api'
@@ -101,12 +100,6 @@ const quickStatItems = computed(() => [
     icon: Clock3,
     value: featuredSessionCount.value,
     title: t('home.quick_stat_sessions_title'),
-  },
-  {
-    key: 'active-cities',
-    icon: UsersRound,
-    value: featuredUniqueCities.value,
-    title: t('home.quick_stat_cities_title'),
   },
 ])
 
@@ -251,6 +244,7 @@ watch(upcomingEvents, async () => {
               :while-hover="{ y: 4, scale: 1.15 }"
               :transition="{ type: 'spring', stiffness: 300 }"
               class="cursor-pointer text-primary/40 transition-colors hover:text-primary/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
+              :aria-label="$t('home.scroll_to_featured')"
               @click="scrollToFeatured"
             >
               <ChevronDown class="h-5 w-5" />
@@ -318,83 +312,94 @@ watch(upcomingEvents, async () => {
               :while-in-view="{ opacity: 1, y: 0 }"
               :viewport="{ once: true, margin: '-120px' }"
               :transition="{ duration: 0.68, ease: 'easeOut' }"
-              class="grid overflow-hidden rounded-[2.5rem] border bg-card shadow-[0_28px_80px_-42px_rgba(24,24,27,0.42)] lg:grid-cols-[minmax(0,1.05fr)_minmax(22rem,0.78fr)]"
+              class="group relative min-h-[36rem] overflow-hidden rounded-[2.75rem] border border-white/10 bg-zinc-950 text-white shadow-[0_34px_90px_-42px_rgba(2,6,23,0.9)]"
             >
-              <div class="relative min-h-[28rem] overflow-hidden lg:min-h-[36rem]">
-                <img
-                  :src="heroPreviewEvent.coverImage || STADIUM_IMAGE"
-                  :alt="heroPreviewEvent.title"
-                  class="absolute inset-0 h-full w-full object-cover transition-transform duration-700 hover:scale-[1.02]"
-                >
-                <div class="absolute inset-0 bg-gradient-to-t from-zinc-950/76 via-zinc-950/18 to-transparent" />
-                <div class="absolute bottom-5 left-5 right-5 flex flex-wrap items-center gap-2 text-[11px] font-medium uppercase tracking-[0.18em] text-white/80">
-                  <span class="rounded-full border border-white/14 bg-white/10 px-3 py-1.5 backdrop-blur-xl">
+              <NuxtImg
+                :src="heroPreviewEvent.coverImage || getEventFallbackImage(heroPreviewEvent.id.toString(), 1920, 1080)"
+                alt=""
+                aria-hidden="true"
+                class="absolute inset-0 h-full w-full object-cover opacity-90 transition-transform duration-700 group-hover:scale-[1.035]"
+              />
+              <div class="absolute inset-0 bg-[radial-gradient(circle_at_76%_18%,rgba(56,189,248,0.22),transparent_28%),linear-gradient(110deg,rgba(9,9,11,0.92)_0%,rgba(9,9,11,0.58)_42%,rgba(9,9,11,0.12)_100%)]" />
+              <motion.div
+                :animate="{ backgroundPosition: ['-40% 0', '140% 0'] }"
+                :transition="{ duration: 5.5, repeat: Infinity, ease: 'easeInOut' }"
+                class="featured-poster-shimmer absolute inset-0 opacity-70"
+              />
+              <motion.div
+                :animate="{ x: [0, -10, 0], y: [0, 14, 0], rotate: [8, 14, 8] }"
+                :transition="{ duration: 7, repeat: Infinity, ease: 'easeInOut' }"
+                class="absolute right-[10%] top-[12%] h-32 w-32 rounded-full border border-white/20 bg-white/10 blur-sm"
+              />
+
+              <div class="relative flex min-h-[36rem] flex-col justify-between gap-10 p-6 sm:p-8 lg:p-10">
+                <div class="flex flex-wrap items-center gap-2 text-[11px] font-medium uppercase tracking-[0.18em] text-white/82">
+                  <span class="rounded-full border border-white/16 bg-white/12 px-3 py-1.5 backdrop-blur-xl">
                     {{ $t('home.big_event') }}
                   </span>
-                  <span class="rounded-full border border-white/14 bg-zinc-950/34 px-3 py-1.5 backdrop-blur-xl">
+                  <span class="rounded-full border border-white/16 bg-zinc-950/34 px-3 py-1.5 backdrop-blur-xl">
                     {{ heroDropDate }}
                   </span>
+                  <span class="inline-flex items-center gap-2 rounded-full border border-white/16 bg-zinc-950/34 px-3 py-1.5 backdrop-blur-xl">
+                    <MapPin class="size-3.5" />
+                    {{ heroPreviewEvent.venue?.city || $t('home.live_soon') }}
+                  </span>
                 </div>
-              </div>
 
-              <div class="flex flex-col justify-between gap-10 p-6 md:p-8 lg:p-10">
-                <div class="space-y-6">
-                  <div class="space-y-3">
-                    <p class="flex items-center gap-2 text-xs font-medium uppercase tracking-[0.22em] text-muted-foreground">
-                      <MapPin class="size-4" />
-                      {{ heroPreviewEvent.venue?.city || $t('home.live_soon') }}
-                    </p>
-                    <h3 class="text-balance text-4xl font-semibold leading-[1.02] tracking-[-0.06em] md:text-5xl">
+                <div class="grid gap-8 lg:grid-cols-[minmax(0,0.92fr)_minmax(18rem,0.42fr)] lg:items-end">
+                  <div class="flex max-w-3xl flex-col gap-5">
+                    <h3 class="text-balance text-5xl font-semibold leading-[0.92] tracking-[-0.075em] sm:text-6xl lg:text-7xl">
                       {{ heroPreviewEvent.title }}
                     </h3>
-                    <p class="text-sm leading-6 text-muted-foreground md:text-base md:leading-7">
+                    <p class="max-w-2xl text-base leading-7 text-white/76 md:text-lg md:leading-8">
                       {{ heroPreviewEvent.subtitle || $t('home.default_event_subtitle') }}
                     </p>
+                    <div class="flex flex-col gap-3 sm:flex-row">
+                      <Button
+                        as-child
+                        size="lg"
+                        class="rounded-full bg-white text-zinc-950 transition-all duration-300 hover:-translate-y-0.5 hover:bg-white/90"
+                      >
+                        <NuxtLink :to="`/events/${heroPreviewEvent.slug}`">
+                          {{ $t('home.view_event') }}
+                          <ArrowRight class="size-4" />
+                        </NuxtLink>
+                      </Button>
+                      <Button
+                        as-child
+                        variant="outline"
+                        size="lg"
+                        class="rounded-full border-white/18 bg-white/8 text-white backdrop-blur-xl transition-all duration-300 hover:-translate-y-0.5 hover:bg-white/14 hover:text-white"
+                      >
+                        <NuxtLink to="/events">
+                          {{ $t('home.browse_events_btn') }}
+                        </NuxtLink>
+                      </Button>
+                    </div>
                   </div>
 
-                  <div class="grid gap-3 sm:grid-cols-3 lg:grid-cols-1 xl:grid-cols-3">
+                  <div class="grid gap-3 rounded-[2rem] border border-white/14 bg-zinc-950/38 p-4 backdrop-blur-xl sm:grid-cols-3 lg:grid-cols-1">
                     <div
                       v-for="item in quickStatItems"
                       :key="item.key"
-                      class="rounded-[1.5rem] border bg-background/70 p-4"
+                      class="flex items-center gap-3 rounded-[1.35rem] bg-white/8 p-3"
                     >
-                      <div class="mb-3 flex size-9 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+                      <div class="flex size-10 shrink-0 items-center justify-center rounded-full bg-white/12 text-white">
                         <component
                           :is="item.icon"
                           class="size-4"
                         />
                       </div>
-                      <p class="font-mono text-2xl font-semibold tracking-[-0.06em]">
-                        {{ item.value || 0 }}
-                      </p>
-                      <p class="mt-1 text-xs text-muted-foreground">
-                        {{ item.title }}
-                      </p>
+                      <div>
+                        <p class="font-mono text-xl font-semibold tracking-[-0.06em]">
+                          {{ item.value || 0 }}
+                        </p>
+                        <p class="text-xs text-white/58">
+                          {{ item.title }}
+                        </p>
+                      </div>
                     </div>
                   </div>
-                </div>
-
-                <div class="flex flex-col gap-3 sm:flex-row">
-                  <Button
-                    as-child
-                    size="lg"
-                    class="rounded-full"
-                  >
-                    <NuxtLink :to="`/events/${heroPreviewEvent.slug}`">
-                      {{ $t('home.view_event') }}
-                      <ArrowRight class="size-4" />
-                    </NuxtLink>
-                  </Button>
-                  <Button
-                    as-child
-                    variant="outline"
-                    size="lg"
-                    class="rounded-full"
-                  >
-                    <NuxtLink to="/events">
-                      {{ $t('home.browse_events_btn') }}
-                    </NuxtLink>
-                  </Button>
                 </div>
               </div>
             </Motion>
@@ -505,5 +510,10 @@ watch(upcomingEvents, async () => {
   to {
     transform: scale(1.11) translate3d(-1.4rem, -0.8rem, 0);
   }
+}
+
+.featured-poster-shimmer {
+  background: linear-gradient(105deg, transparent 0%, rgb(255 255 255 / 0.1) 42%, transparent 58%);
+  background-size: 220% 100%;
 }
 </style>
