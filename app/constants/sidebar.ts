@@ -43,7 +43,6 @@ export const SIDEBAR_CONTEXTS: SidebarContext[] = [
         items: [
           { title: 'nav.tasks', url: '/admin/tasks', icon: ListChecksIcon },
           { title: 'nav.waiting_room', url: '/admin/waiting-room', icon: ShieldCheck },
-          { title: 'nav.feature_flags', url: '/admin/feature-flags', icon: FlagIcon },
         ],
       },
     ],
