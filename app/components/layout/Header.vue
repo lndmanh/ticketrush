@@ -85,5 +85,5 @@ import CtIcon from '@/components/content/CtIcon.vue'
 import { SunIcon, MoonIcon } from '@lucide/vue'
 
 const config = useConfig()
-const { enable: i18nEnabled, triggerType, dropdownType } = useConfig().value.header.languageSwitcher
+const { enable: i18nEnabled, triggerType, dropdownType } = useConfig().header.languageSwitcher
 </script>

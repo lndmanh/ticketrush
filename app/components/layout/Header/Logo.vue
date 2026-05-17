@@ -24,5 +24,5 @@
 </template>
 
 <script setup lang="ts">
-const { logo, title, showTitle } = useConfig().value.header
+const { logo, title, showTitle } = useConfig().header
 </script>

@@ -104,7 +104,7 @@ import { CheckIcon, SunIcon, MoonIcon, MonitorIcon } from '@lucide/vue'
 import type { Color } from '~~/types'
 
 const { setClassTheme, theme, radius, setTheme, setRadius, allColors } = useThemes()
-const { darkModeToggle } = useConfig().value.header
+const { darkModeToggle } = useConfig().header
 
 const RADII = [0, 0.25, 0.5, 0.75, 1]
 

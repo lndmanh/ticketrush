@@ -33,5 +33,5 @@
 <script setup lang="ts">
 import CtIcon from '@/components/content/CtIcon.vue'
 
-const { footer } = useConfig().value
+const { footer } = useConfig()
 </script>
