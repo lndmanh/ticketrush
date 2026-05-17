@@ -17,6 +17,7 @@ import { AgeBracket, OrderPaymentMethod, OrderStatus, SavedAttendeeGender, SeatP
 
 const route = useRoute()
 const { locale, t } = useI18n()
+const { formatCurrency: formatPreferredCurrency } = useCurrencyPreference()
 const orderId = computed(() => route.params.orderId.toString())
 const holdPublicId = computed(() => typeof route.query.hold === 'string' ? route.query.hold : '')
 const isSubmitting = ref(false)
@@ -151,8 +152,8 @@ const formInitializedOrderId = ref<number | null>(null)
 const paymentInitializedOrderId = ref<number | null>(null)
 const billingDefaultedFromSelfOrderId = ref<number | null>(null)
 
-function formatCurrency(cents: number) {
-  return `${Intl.NumberFormat(getDisplayDateLocale(locale.value)).format(cents / 100)} VND`
+function formatOrderCurrency(cents: number) {
+  return formatPreferredCurrency(cents, checkout.value?.order.currency ?? 'VND', getDisplayDateLocale(locale.value))
 }
 
 function formatSeatLocation(parts: Array<string | null | undefined>) {
@@ -1567,7 +1568,7 @@ definePageMeta({
                   <ItemTitle>x{{ section.quantity }} {{ section.sectionLabel }}</ItemTitle>
                   <ItemDescription>
                     <span>
-                      {{ $t('checkout.section_subtotal') }} · {{ formatCurrency(section.subtotalCents) }}
+                      {{ $t('checkout.section_subtotal') }} · {{ formatOrderCurrency(section.subtotalCents) }}
                     </span>
 
                     <div
@@ -1588,7 +1589,7 @@ definePageMeta({
                           </p>
                         </div>
                         <p class="shrink-0 font-mono text-xs font-semibold text-foreground">
-                          {{ formatCurrency(seat.unitPriceCents) }}
+                          {{ formatOrderCurrency(seat.unitPriceCents) }}
                         </p>
                       </div>
                     </div>
@@ -1601,7 +1602,7 @@ definePageMeta({
                       {{ $t('checkout.section_subtotal') }}
                     </p>
                     <p class="mt-1 font-mono text-sm font-semibold text-foreground">
-                      {{ formatCurrency(section.subtotalCents) }}
+                      {{ formatOrderCurrency(section.subtotalCents) }}
                     </p>
                   </div>
                 </ItemActions>
@@ -1618,7 +1619,7 @@ definePageMeta({
                 {{ $t('checkout.order_total') }}
               </p>
               <p class="mt-2 text-3xl font-semibold tracking-[-0.05em]">
-                {{ formatCurrency(checkout.order.amountCents) }}
+                {{ formatOrderCurrency(checkout.order.amountCents) }}
               </p>
             </div>
 

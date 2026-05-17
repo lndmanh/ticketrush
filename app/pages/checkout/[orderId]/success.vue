@@ -10,6 +10,7 @@ import confetti from 'canvas-confetti'
 
 const route = useRoute()
 const { locale, t } = useI18n()
+const { formatCurrency: formatPreferredCurrency } = useCurrencyPreference()
 const orderId = computed(() => route.params.orderId.toString())
 const hasCelebrated = ref(false)
 
@@ -23,8 +24,8 @@ if (checkout.value && routeState.value === 'checkout') {
   await navigateTo(getCheckoutRoutePath(orderId.value), { replace: true })
 }
 
-function formatCurrency(cents: number) {
-  return `${Intl.NumberFormat(getDisplayDateLocale(locale.value)).format(cents / 100)} VND`
+function formatOrderCurrency(cents: number) {
+  return formatPreferredCurrency(cents, checkout.value?.order.currency ?? 'VND', getDisplayDateLocale(locale.value))
 }
 
 function formatDateTime(value: string | Date) {
@@ -158,7 +159,7 @@ definePageMeta({
               {{ $t('checkout.order_total') }}
             </p>
             <p class="mt-2 text-5xl font-semibold leading-none tracking-[-0.08em] tabular-nums sm:text-6xl">
-              {{ formatCurrency(checkout.order.amountCents) }}
+              {{ formatOrderCurrency(checkout.order.amountCents) }}
             </p>
           </div>
 
