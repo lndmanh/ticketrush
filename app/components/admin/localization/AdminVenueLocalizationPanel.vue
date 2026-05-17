@@ -20,6 +20,7 @@ const translatableLocales = locales.filter(localeCode => localeCode !== sourceLo
 const initialLocale = translatableLocales[0] ?? sourceLocale
 const selectedLocale = ref(initialLocale)
 const isSaving = ref(false)
+const { t } = useI18n()
 const cityOptions = computed(() => getVietnamProvinceCityOptions(selectedLocale.value))
 
 const { data: translationResponse, refresh } = await useAPI<ApiResponse<AdminVenueTranslationData>>(() => apiRoutes.adminVenueTranslations(props.venueId))
@@ -82,10 +83,10 @@ const onSubmit = handleSubmit(async (values) => {
     }
 
     await refresh()
-    toast.success('Localized venue copy saved')
+    toast.success(t('admin_localization.venue_saved'))
   }
   catch (error) {
-    toast.error(parseApiError(error, 'Failed to save localized venue copy').message)
+    toast.error(t(parseApiError(error, 'admin_localization.venue_save_failed').message))
   }
   finally {
     isSaving.value = false
@@ -110,10 +111,10 @@ watch([translationData, selectedLocale], resetSelectedLocaleForm, { immediate: t
       <div>
         <CardTitle class="flex items-center gap-2">
           <Globe2 class="size-4 text-muted-foreground" />
-          Localized venue information
+          {{ $t('admin_localization.venue_title') }}
         </CardTitle>
         <CardDescription>
-          Vietnamese is the source copy. Add translated venue copy for each public locale.
+          {{ $t('admin_localization.venue_desc') }}
         </CardDescription>
       </div>
 
@@ -123,7 +124,7 @@ watch([translationData, selectedLocale], resetSelectedLocaleForm, { immediate: t
         @update:model-value="selectLocale"
       >
         <SelectTrigger class="w-full sm:w-48">
-          <SelectValue placeholder="Choose locale" />
+          <SelectValue :placeholder="$t('admin_localization.choose_locale')" />
         </SelectTrigger>
         <SelectContent>
           <SelectItem
@@ -139,7 +140,7 @@ watch([translationData, selectedLocale], resetSelectedLocaleForm, { immediate: t
 
     <CardContent v-if="translatableLocales.length === 0">
       <p class="text-sm text-muted-foreground">
-        Add another locale in i18n constants before creating translations.
+        {{ $t('admin_localization.no_locales') }}
       </p>
     </CardContent>
 
@@ -147,7 +148,7 @@ watch([translationData, selectedLocale], resetSelectedLocaleForm, { immediate: t
       <div class="space-y-6">
         <div class="rounded-2xl border bg-muted/30 p-4 text-sm text-muted-foreground">
           <p class="font-medium text-foreground">
-            Source: {{ translationData?.venue.name || 'Untitled venue' }}
+            {{ $t('admin_localization.source', { name: translationData?.venue.name || $t('admin_localization.untitled_venue') }) }}
           </p>
           <p class="mt-2">
             {{ translationData?.venue.address }} · {{ translationData?.venue.city }}
@@ -161,13 +162,13 @@ watch([translationData, selectedLocale], resetSelectedLocaleForm, { immediate: t
           >
             <Field :data-invalid="!!errors.length">
               <FieldLabel for="venue-translation-name">
-                Name
+                {{ $t('admin.columns.name') }}
               </FieldLabel>
               <Input
                 id="venue-translation-name"
                 :model-value="field.value ?? ''"
                 :aria-invalid="!!errors.length"
-                placeholder="Localized venue name"
+                :placeholder="$t('admin_localization.venue_name_placeholder')"
                 @update:model-value="field.onChange"
                 @blur="field.onBlur"
               />
@@ -185,13 +186,13 @@ watch([translationData, selectedLocale], resetSelectedLocaleForm, { immediate: t
           >
             <Field :data-invalid="!!errors.length">
               <FieldLabel for="venue-translation-description">
-                Description
+                {{ $t('admin_localization.field_description') }}
               </FieldLabel>
               <Textarea
                 id="venue-translation-description"
                 :model-value="field.value ?? ''"
                 :aria-invalid="!!errors.length"
-                placeholder="Localized venue description"
+                :placeholder="$t('admin_localization.venue_description_placeholder')"
                 class="min-h-28"
                 @update:model-value="field.onChange"
                 @blur="field.onBlur"
@@ -213,7 +214,7 @@ watch([translationData, selectedLocale], resetSelectedLocaleForm, { immediate: t
                 <div class="flex items-end gap-2">
                   <div class="flex-1 space-y-2">
                     <FieldLabel for="venue-translation-city">
-                      City
+                      {{ $t('admin.venues.city') }}
                     </FieldLabel>
                     <Select
                       :model-value="field.value ?? ''"
@@ -224,7 +225,7 @@ watch([translationData, selectedLocale], resetSelectedLocaleForm, { immediate: t
                         :aria-invalid="!!errors.length"
                         @blur="field.onBlur"
                       >
-                        <SelectValue placeholder="Localized city" />
+                        <SelectValue :placeholder="$t('admin_localization.localized_city')" />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem
@@ -244,7 +245,7 @@ watch([translationData, selectedLocale], resetSelectedLocaleForm, { immediate: t
                     class="shrink-0"
                     @click="setFieldValue('city', '')"
                   >
-                    Clear
+                    {{ $t('admin_localization.clear') }}
                   </Button>
                 </div>
                 <FieldDescription>{{ translationData?.venue.city }}</FieldDescription>
@@ -261,13 +262,13 @@ watch([translationData, selectedLocale], resetSelectedLocaleForm, { immediate: t
             >
               <Field :data-invalid="!!errors.length">
                 <FieldLabel for="venue-translation-address">
-                  Address
+                  {{ $t('admin.venues.address') }}
                 </FieldLabel>
                 <Input
                   id="venue-translation-address"
                   :model-value="field.value ?? ''"
                   :aria-invalid="!!errors.length"
-                  placeholder="Localized address"
+                  :placeholder="$t('admin_localization.localized_address')"
                   @update:model-value="field.onChange"
                   @blur="field.onBlur"
                 />
@@ -287,14 +288,14 @@ watch([translationData, selectedLocale], resetSelectedLocaleForm, { immediate: t
             variant="outline"
             @click="resetSelectedLocaleForm"
           >
-            Reset
+            {{ $t('common.reset') }}
           </Button>
           <Button
             type="button"
             :is-loading="isSaving"
             @click="() => onSubmit()"
           >
-            Save {{ languageNames[selectedLocale] }} copy
+            {{ $t('admin_localization.save_locale_copy', { locale: languageNames[selectedLocale] }) }}
           </Button>
         </div>
       </div>
