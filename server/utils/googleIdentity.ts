@@ -150,7 +150,7 @@ function decodeSignature(encodedSignature: string) {
     const normalized = encodedSignature.replace(/-/g, '+').replace(/_/g, '/')
     const padding = (4 - (normalized.length % 4)) % 4
     const withPadding = `${normalized}${'='.repeat(padding)}`
-    return Uint8Array.from(atob(withPadding), (char) => char.charCodeAt(0))
+    return Uint8Array.from(atob(withPadding), char => char.charCodeAt(0))
   }
   catch {
     throw new GoogleIdTokenVerificationError('Invalid Google ID token signature encoding')
@@ -198,7 +198,7 @@ function readClaims(input: unknown): GoogleIdTokenClaims {
 
 export async function verifyGoogleIdToken(input: VerifyGoogleIdTokenInput): Promise<GoogleIdTokenPayload> {
   const parts = input.token.split('.')
-  if (parts.length !== 3 || parts.some((part) => part.length === 0)) {
+  if (parts.length !== 3 || parts.some(part => part.length === 0)) {
     throw new GoogleIdTokenVerificationError('Invalid Google ID token format')
   }
 
@@ -211,7 +211,7 @@ export async function verifyGoogleIdToken(input: VerifyGoogleIdTokenInput): Prom
     throw new GoogleIdTokenVerificationError('Google JWKS did not contain any usable keys')
   }
 
-  const jwk = jwks.find((key) => key.kid === header.kid)
+  const jwk = jwks.find(key => key.kid === header.kid)
   if (!jwk) {
     throw new GoogleIdTokenVerificationError('Unknown Google ID token signing key')
   }
