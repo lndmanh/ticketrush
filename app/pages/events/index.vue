@@ -226,10 +226,10 @@ definePageMeta({
         @submit.prevent="applySearch"
       >
         <div class="sr-only">
-          <Label for="event-location">{{ t('events.search_location_label') }}</Label>
-          <Label for="event-date">{{ t('events.search_date_label') }}</Label>
-          <Label for="event-keyword">{{ t('events.search_keyword_label') }}</Label>
-          <Label for="event-sort-filter">{{ t('events.sort_label') }}</Label>
+          <Label for="event-location">{{ $t('events.search_location_label') }}</Label>
+          <Label for="event-date">{{ $t('events.search_date_label') }}</Label>
+          <Label for="event-keyword">{{ $t('events.search_keyword_label') }}</Label>
+          <Label for="event-sort-filter">{{ $t('events.sort_label') }}</Label>
         </div>
 
         <ButtonGroup class="w-full flex-col gap-2 md:flex-row md:gap-0 [&>*]:max-md:rounded-full [&>*]:max-md:border-l">
@@ -238,11 +238,11 @@ definePageMeta({
           >
             <SelectTrigger
               id="event-location"
-              :aria-label="t('events.search_location_label')"
+              :aria-label="$t('events.search_location_label')"
               class="h-12 bg-background/80 px-4 text-left font-normal data-[size=default]:h-12 md:flex-[1.1] md:rounded-none md:border-r-0"
             >
               <MapPin class="mr-2 size-4 shrink-0 text-muted-foreground" />
-              <SelectValue :placeholder="t('events.search_location_placeholder')" />
+              <SelectValue :placeholder="$t('events.search_location_placeholder')" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem
@@ -263,11 +263,11 @@ definePageMeta({
                 variant="outline"
                 class="h-12 w-full justify-start bg-background/80 px-4 text-left font-normal md:flex-1 md:rounded-none md:border-r-0"
                 :class="!selectedDate && 'text-muted-foreground'"
-                :aria-label="t('events.search_date_label')"
+                :aria-label="$t('events.search_date_label')"
               >
                 <CalendarIcon class="mr-2 size-4 shrink-0" />
                 <span class="truncate">
-                  {{ calendarValue ? dateFormatter.format(calendarValue.toDate(getLocalTimeZone())) : t('events.search_date_placeholder') }}
+                  {{ calendarValue ? dateFormatter.format(calendarValue.toDate(getLocalTimeZone())) : $t('events.search_date_placeholder') }}
                 </span>
               </Button>
             </PopoverTrigger>
@@ -289,7 +289,7 @@ definePageMeta({
                   class="h-9 w-full rounded-full text-xs"
                   @click="selectedDate = ''"
                 >
-                  {{ t('events.clear_date') }}
+                  {{ $t('events.clear_date') }}
                 </Button>
               </div>
             </PopoverContent>
@@ -303,8 +303,8 @@ definePageMeta({
               id="event-keyword"
               v-model="keywordInput"
               class="h-12 text-sm"
-              :aria-label="t('events.search_keyword_label')"
-              :placeholder="t('events.search_keyword_placeholder')"
+              :aria-label="$t('events.search_keyword_label')"
+              :placeholder="$t('events.search_keyword_placeholder')"
             />
           </InputGroup>
 
@@ -336,7 +336,7 @@ definePageMeta({
             class="h-12 px-5 md:rounded-none"
           >
             <Search class="size-4" />
-            {{ t('events.search_btn') }}
+            {{ $t('events.search_btn') }}
           </Button>
           <Button
             type="button"
@@ -346,7 +346,7 @@ definePageMeta({
             @click="resetFilters"
           >
             <X class="size-4" />
-            {{ t('events.reset_btn') }}
+            {{ $t('events.reset_btn') }}
           </Button>
         </ButtonGroup>
       </form>
@@ -356,7 +356,7 @@ definePageMeta({
         class="flex flex-wrap items-center gap-2 rounded-lg border bg-background/70 p-3"
       >
         <span class="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
-          {{ t('events.active_filters_label') }}
+          {{ $t('events.active_filters_label') }}
         </span>
         <button
           v-for="chip in activeFilterChips"
