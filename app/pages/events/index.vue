@@ -177,6 +177,7 @@ const activeFilterCount = computed(() => {
   if (activeKeyword.value) count += 1
   if (activeLocation.value) count += 1
   if (activeDate.value) count += 1
+  if (activeSort.value !== EventCatalogSort.Soonest) count += 1
   return count
 })
 
@@ -232,70 +233,74 @@ definePageMeta({
           <Label for="event-sort-filter">{{ $t('events.sort_label') }}</Label>
         </div>
 
-        <ButtonGroup class="w-full flex-col gap-2 md:flex-row md:gap-0 [&>*]:max-md:rounded-full [&>*]:max-md:border-l">
-          <Select
-            v-model="locationInput"
-          >
-            <SelectTrigger
-              id="event-location"
-              :aria-label="$t('events.search_location_label')"
-              class="h-12 bg-background/80 px-4 text-left font-normal data-[size=default]:h-12 md:flex-[1.1] md:rounded-none md:border-r-0"
+        <div class="grid w-full grid-cols-1 gap-2 sm:grid-cols-2 lg:flex lg:items-stretch lg:gap-0">
+          <div class="min-w-0 lg:flex-[1.1]">
+            <Select
+              v-model="locationInput"
             >
-              <MapPin class="mr-2 size-4 shrink-0 text-muted-foreground" />
-              <SelectValue :placeholder="$t('events.search_location_placeholder')" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem
-                v-for="option in cityOptions"
-                :key="option.value"
-                :value="option.value"
+              <SelectTrigger
+                id="event-location"
+                :aria-label="$t('events.search_location_label')"
+                class="h-12 w-full rounded-full bg-background/80 px-4 text-left font-normal data-[size=default]:h-12 lg:rounded-l-md lg:rounded-r-none lg:border-r-0"
               >
-                {{ option.label }}
-              </SelectItem>
-            </SelectContent>
-          </Select>
-
-          <Popover>
-            <PopoverTrigger as-child>
-              <Button
-                id="event-date"
-                type="button"
-                variant="outline"
-                class="h-12 w-full justify-start bg-background/80 px-4 text-left font-normal md:flex-1 md:rounded-none md:border-r-0"
-                :class="!selectedDate && 'text-muted-foreground'"
-                :aria-label="$t('events.search_date_label')"
-              >
-                <CalendarIcon class="mr-2 size-4 shrink-0" />
-                <span class="truncate">
-                  {{ calendarValue ? dateFormatter.format(calendarValue.toDate(getLocalTimeZone())) : $t('events.search_date_placeholder') }}
-                </span>
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent
-              class="w-auto rounded-[1.5rem] p-0"
-              align="start"
-            >
-              <Calendar
-                v-model="calendarValue"
-                initial-focus
-              />
-              <div
-                v-if="selectedDate"
-                class="border-t p-3"
-              >
-                <Button
-                  type="button"
-                  variant="ghost"
-                  class="h-9 w-full rounded-full text-xs"
-                  @click="selectedDate = ''"
+                <MapPin class="mr-2 size-4 shrink-0 text-muted-foreground" />
+                <SelectValue :placeholder="$t('events.search_location_placeholder')" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem
+                  v-for="option in cityOptions"
+                  :key="option.value"
+                  :value="option.value"
                 >
-                  {{ $t('events.clear_date') }}
-                </Button>
-              </div>
-            </PopoverContent>
-          </Popover>
+                  {{ option.label }}
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
 
-          <InputGroup class="h-12 bg-background/80 md:flex-[1.45] md:rounded-none md:border-r-0">
+          <div class="min-w-0 lg:flex-1">
+            <Popover>
+              <PopoverTrigger as-child>
+                <Button
+                  id="event-date"
+                  type="button"
+                  variant="outline"
+                  class="h-12 w-full justify-start rounded-full bg-background/80 px-4 text-left font-normal lg:rounded-none lg:border-r-0"
+                  :class="!selectedDate && 'text-muted-foreground'"
+                  :aria-label="$t('events.search_date_label')"
+                >
+                  <CalendarIcon class="mr-2 size-4 shrink-0" />
+                  <span class="truncate">
+                    {{ calendarValue ? dateFormatter.format(calendarValue.toDate(getLocalTimeZone())) : $t('events.search_date_placeholder') }}
+                  </span>
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent
+                class="w-auto rounded-[1.5rem] p-0"
+                align="start"
+              >
+                <Calendar
+                  v-model="calendarValue"
+                  initial-focus
+                />
+                <div
+                  v-if="selectedDate"
+                  class="border-t p-3"
+                >
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    class="h-9 w-full rounded-full text-xs"
+                    @click="selectedDate = ''"
+                  >
+                    {{ $t('events.clear_date') }}
+                  </Button>
+                </div>
+              </PopoverContent>
+            </Popover>
+          </div>
+
+          <InputGroup class="h-12 w-full rounded-full bg-background/80 lg:flex-[1.45] lg:rounded-none lg:border-r-0">
             <InputGroupAddon>
               <Search class="size-4 text-muted-foreground" />
             </InputGroupAddon>
@@ -308,32 +313,34 @@ definePageMeta({
             />
           </InputGroup>
 
-          <Select
-            v-model="activeSort"
-            @update:model-value="replaceCatalogQuery(1)"
-          >
-            <SelectTrigger
-              id="event-sort-filter"
-              :aria-label="$t('events.sort_label')"
-              class="h-12 bg-background/80 px-4 text-left font-normal data-[size=default]:h-12 md:flex-[0.85] md:rounded-none md:border-r-0"
+          <div class="min-w-0 lg:flex-[0.85]">
+            <Select
+              v-model="activeSort"
+              @update:model-value="replaceCatalogQuery(1)"
             >
-              <SlidersHorizontal class="mr-2 size-4 shrink-0 text-muted-foreground" />
-              <SelectValue :placeholder="$t('events.sort_soonest')" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem
-                v-for="option in sortOptions"
-                :key="option.value"
-                :value="option.value"
+              <SelectTrigger
+                id="event-sort-filter"
+                :aria-label="$t('events.sort_label')"
+                class="h-12 w-full rounded-full bg-background/80 px-4 text-left font-normal data-[size=default]:h-12 lg:rounded-none lg:border-r-0"
               >
-                {{ option.label }}
-              </SelectItem>
-            </SelectContent>
-          </Select>
+                <SlidersHorizontal class="mr-2 size-4 shrink-0 text-muted-foreground" />
+                <SelectValue :placeholder="$t('events.sort_soonest')" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem
+                  v-for="option in sortOptions"
+                  :key="option.value"
+                  :value="option.value"
+                >
+                  {{ option.label }}
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
 
           <Button
             type="submit"
-            class="h-12 px-5 md:rounded-none"
+            class="h-12 w-full rounded-full px-5 lg:w-auto lg:shrink-0 lg:rounded-none"
           >
             <Search class="size-4" />
             {{ $t('events.search_btn') }}
@@ -341,14 +348,14 @@ definePageMeta({
           <Button
             type="button"
             variant="outline"
-            class="h-12 px-5 md:rounded-l-none"
+            class="h-12 w-full rounded-full px-5 lg:w-auto lg:shrink-0 lg:rounded-l-none lg:rounded-r-md"
             :disabled="activeFilterCount === 0"
             @click="resetFilters"
           >
             <X class="size-4" />
             {{ $t('events.reset_btn') }}
           </Button>
-        </ButtonGroup>
+        </div>
       </form>
 
       <div

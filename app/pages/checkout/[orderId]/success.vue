@@ -85,7 +85,7 @@ definePageMeta({
     class="relative flex min-h-[100dvh] items-center justify-center overflow-hidden bg-background px-4 py-10 text-foreground sm:px-6 lg:px-8"
   >
     <Card class="overflow-hidden rounded-[2rem] border-border/70 bg-card py-0 shadow-2xl shadow-primary/5">
-      <CardHeader class="flex flex-col gap-6 p-6 text-center sm:p-8">
+      <CardHeader class="flex flex-col gap-6 p-6 text-center pb-0">
         <div
           class="mx-auto flex size-12 items-center justify-center rounded-2xl"
           :class="isConfirmed ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'"
@@ -189,7 +189,7 @@ definePageMeta({
         </section>
       </CardContent>
 
-      <CardFooter class="flex flex-col gap-3 border-t p-6 sm:flex-row sm:items-center sm:justify-between sm:p-8">
+      <CardFooter class="flex flex-col gap-3 border-t p-6 sm:flex-row sm:items-center sm:justify-between">
         <Button
           v-if="isConfirmed"
           as-child
