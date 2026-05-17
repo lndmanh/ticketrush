@@ -6,6 +6,7 @@ import type { ApiResponse } from '~~/types/api'
 import type { CheckoutDetailData } from '~~/types/ticketing'
 
 const { data: activeCheckoutResponse, refresh: refreshActiveCheckout } = await useAPI<ApiResponse<CheckoutDetailData | null>>(() => '/api/checkout/active')
+const { t } = useI18n()
 
 const checkout = computed<CheckoutDetailData | null>(() => {
   const response = activeCheckoutResponse.value
@@ -20,7 +21,7 @@ const checkout = computed<CheckoutDetailData | null>(() => {
 const isCancelling = ref(false)
 const cancelError = ref('')
 
-const eventTitle = computed(() => checkout.value?.event?.title?.trim() || 'your selected event')
+const eventTitle = computed(() => checkout.value?.event?.title?.trim() || t('checkout.recovery_event_fallback'))
 const checkoutPath = computed(() => checkout.value ? `/checkout/${checkout.value.order.publicId}` : '/checkout')
 
 async function cancelCheckout() {
@@ -41,7 +42,7 @@ async function cancelCheckout() {
     }
   }
   catch (error) {
-    cancelError.value = parseApiError(error, 'Failed to cancel checkout. Please try again.').message
+    cancelError.value = t(parseApiError(error, 'checkout.cancel_failed').message)
     isCancelling.value = false
     return
   }
@@ -50,7 +51,7 @@ async function cancelCheckout() {
     await refreshActiveCheckout()
   }
   catch {
-    cancelError.value = 'Checkout cancelled. Refresh the page if this banner remains.'
+    cancelError.value = t('checkout.cancelled_refresh_notice')
   }
   finally {
     isCancelling.value = false
@@ -68,10 +69,10 @@ async function cancelCheckout() {
     <AlertBoxContent class="gap-4 sm:flex-row sm:items-center sm:justify-between">
       <div class="min-w-0 space-y-1">
         <h2 class="font-medium leading-snug tracking-tight">
-          You have an unfinished checkout.
+          {{ $t('checkout.recovery_title') }}
         </h2>
         <p class="text-sm leading-relaxed text-muted-foreground">
-          Continue checkout for {{ eventTitle }}, or cancel it before choosing another ticket.
+          {{ $t('checkout.recovery_desc', { event: eventTitle }) }}
         </p>
         <p
           v-if="cancelError"
@@ -88,7 +89,7 @@ async function cancelCheckout() {
           size="sm"
         >
           <NuxtLink :to="checkoutPath">
-            Continue
+            {{ $t('checkout.recovery_continue') }}
             <ArrowRight class="size-4" />
           </NuxtLink>
         </Button>
@@ -103,7 +104,7 @@ async function cancelCheckout() {
           <X
             class="size-4"
           />
-          Cancel
+          {{ $t('checkout.recovery_cancel') }}
         </Button>
       </AlertBoxActions>
     </AlertBoxContent>
