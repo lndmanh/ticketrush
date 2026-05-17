@@ -4,10 +4,11 @@ import { ArrowUpDown } from '@lucide/vue'
 import type { AdminTransactionRow } from '~~/types/admin-transactions'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { formatCurrency, formatRelativeTime } from '@/lib/utils'
+import { formatRelativeTime } from '@/lib/utils'
 
 export function createColumns(locale: string): ColumnDef<AdminTransactionRow>[] {
   const { t } = useI18n()
+  const { formatCurrency: formatPreferredCurrency } = useCurrencyPreference()
 
   return [
     {
@@ -56,7 +57,7 @@ export function createColumns(locale: string): ColumnDef<AdminTransactionRow>[] 
         variant: 'ghost',
         onClick: () => column.toggleSorting(column.getIsSorted() === 'asc'),
       }, () => [t('admin.transactions.total_amount'), h(ArrowUpDown, { class: 'ml-2 h-4 w-4' })]),
-      cell: ({ row }) => h('div', { class: 'whitespace-nowrap font-semibold text-foreground' }, formatCurrency(row.original.totalAmountCents, row.original.currency, locale)),
+      cell: ({ row }) => h('div', { class: 'whitespace-nowrap font-semibold text-foreground' }, formatPreferredCurrency(row.original.totalAmountCents, row.original.currency, locale)),
     },
     {
       accessorKey: 'paymentTime',

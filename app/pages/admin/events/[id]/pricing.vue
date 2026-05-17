@@ -573,7 +573,7 @@ definePageMeta({
                   v-model="customPriceInput"
                   inputmode="decimal"
                   class="h-9"
-                  :placeholder="formatCurrency(50000000, 'VND', getDisplayDateLocale(locale))"
+                  :placeholder="formatCurrency(50000000, currentSession?.currency ?? 'VND', getDisplayDateLocale(locale))"
                   :disabled="areOverrideActionsDisabled"
                 />
               </div>
