@@ -23,6 +23,7 @@ export const apiRoutes = {
   AUTH_FORGOT_PASSWORD: '/auth/forgot-password',
   AUTH_RESET_PASSWORD: '/auth/reset-password',
   AUTH_GOOGLE: '/api/auth/google',
+  AUTH_GOOGLE_ONE_TAP: '/api/auth/google-one-tap',
   AUTH_OAUTH_URL: '/api/auth/oauth/url',
   AUTH_OAUTH_UNLINK: '/api/auth/oauth/unlink',
   AUTH_ACCOUNT_STATUS: '/api/auth/account-status',

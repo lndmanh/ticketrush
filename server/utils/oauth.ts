@@ -1,4 +1,5 @@
 import type { H3Event } from 'h3'
+import type { GoogleOneTapStatus } from '~~/types/auth'
 import userService from '~~/server/utils/database/user'
 import oauthAccountService from '~~/server/utils/database/oauthAccount'
 
@@ -7,6 +8,13 @@ export interface OAuthProfile {
   email: string
   name: string
   avatarUrl?: string
+}
+
+export type OAuthLoginCompletionResult = {
+  status: GoogleOneTapStatus
+  userId: number
+} | {
+  status: 'missing-user'
 }
 
 function safeRedirectPath(value: string, origin: string) {
@@ -77,6 +85,60 @@ async function generateUniqueUsername(email: string): Promise<string> {
   return `${base}-${Date.now().toString(36)}`.slice(0, 50)
 }
 
+export async function completeOAuthLogin(event: H3Event, provider: string, profile: OAuthProfile): Promise<OAuthLoginCompletionResult> {
+  const linked = await oauthAccountService.getByProviderAccount(provider, profile.id)
+
+  if (linked) {
+    const dbUser = await userService.getById(linked.userId)
+    if (!dbUser) {
+      return { status: 'missing-user' }
+    }
+
+    await userService.update({ id: dbUser.id, lastLoginAt: new Date() })
+    await setUserSession(event, {
+      user: {
+        id: dbUser.id,
+        username: dbUser.username,
+        name: dbUser.name,
+        isAdmin: dbUser.isAdmin,
+      },
+    })
+
+    return { status: 'signed-in', userId: dbUser.id }
+  }
+
+  const username = await generateUniqueUsername(profile.email)
+
+  const newUser = await userService.create({
+    username,
+    name: profile.name || username,
+    email: profile.email,
+    password: '',
+    emailVerified: true,
+    isAdmin: false,
+  })
+
+  await oauthAccountService.link({
+    userId: newUser.id,
+    provider,
+    providerAccountId: profile.id,
+    email: profile.email,
+    name: profile.name,
+    avatarUrl: profile.avatarUrl ?? null,
+  })
+
+  await setUserSession(event, {
+    user: {
+      id: newUser.id,
+      username: newUser.username,
+      name: newUser.name,
+      isAdmin: newUser.isAdmin,
+    },
+  })
+
+  return { status: 'created', userId: newUser.id }
+}
+
 /**
  * Handle successful authentication from an OAuth provider.
  * Manages account linking, sign-in, and account creation safely.
@@ -111,7 +173,7 @@ export async function handleOAuthSuccess(event: H3Event, provider: string, profi
       providerAccountId: profile.id,
       email: profile.email,
       name: profile.name,
-      avatarUrl: profile.avatarUrl,
+      avatarUrl: profile.avatarUrl ?? null,
     })
 
     return sendOAuthRedirect(event, `/settings/security?success=oauth-linked&provider=${provider}`)
@@ -119,58 +181,10 @@ export async function handleOAuthSuccess(event: H3Event, provider: string, profi
 
   // ── MODE 2: Sign in or sign up (user is NOT logged in) ──
 
-  // Check if this provider account is already linked to a user
-  const linked = await oauthAccountService.getByProviderAccount(provider, profile.id)
-
-  if (linked) {
-    // User already exists, sign them in
-    const dbUser = await userService.getById(linked.userId)
-    if (!dbUser) {
-      return sendOAuthRedirect(event, '/auth/login?error=unknown')
-    }
-
-    await userService.update({ id: dbUser.id, lastLoginAt: new Date() })
-    await setUserSession(event, {
-      user: {
-        id: dbUser.id,
-        username: dbUser.username,
-        name: dbUser.name,
-        isAdmin: dbUser.isAdmin,
-      },
-    })
-
-    return sendOAuthRedirect(event, '/')
+  const completion = await completeOAuthLogin(event, provider, profile)
+  if (completion.status === 'missing-user') {
+    return sendOAuthRedirect(event, '/auth/login?error=unknown')
   }
-
-  // Sign up: Create new user account + link provider
-  const username = await generateUniqueUsername(profile.email)
-
-  const newUser = await userService.create({
-    username,
-    name: profile.name || username,
-    email: profile.email,
-    password: '',
-    emailVerified: true, // OAuth providers verify email ownership
-    isAdmin: false,
-  })
-
-  await oauthAccountService.link({
-    userId: newUser.id,
-    provider,
-    providerAccountId: profile.id,
-    email: profile.email,
-    name: profile.name,
-    avatarUrl: profile.avatarUrl,
-  })
-
-  await setUserSession(event, {
-    user: {
-      id: newUser.id,
-      username: newUser.username,
-      name: newUser.name,
-      isAdmin: newUser.isAdmin,
-    },
-  })
 
   return sendOAuthRedirect(event, '/')
 }
