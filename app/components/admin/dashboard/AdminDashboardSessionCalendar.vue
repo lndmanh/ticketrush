@@ -17,7 +17,7 @@ import {
   CalendarPrev,
   CalendarRoot,
 } from 'reka-ui'
-import { cn, formatCurrency, formatDate, formatTime } from '@/lib/utils'
+import { cn, formatDate, formatTime } from '@/lib/utils'
 import { getDisplayDateLocale } from '@/lib/localizedEvents'
 
 const props = defineProps<{
@@ -31,6 +31,7 @@ const emit = defineEmits<{
 }>()
 
 const { t, locale } = useI18n()
+const { formatCurrency: formatPreferredCurrency } = useCurrencyPreference()
 const dateLocale = computed(() => getDisplayDateLocale(locale.value))
 
 function parseIsoDate(value: string) {
@@ -248,7 +249,7 @@ function getVenueLabel(session: AdminDashboardCalendarSession) {
               <div class="flex items-center gap-2">
                 <Ticket class="size-3.5 shrink-0" />
                 <span>{{ getSeatSummary(session) }}</span>
-                <span class="ml-auto font-mono text-xs text-foreground">{{ formatCurrency(session.revenueCents, 'USD', dateLocale) }}</span>
+                <span class="ml-auto font-mono text-xs text-foreground">{{ formatPreferredCurrency(session.revenueCents, 'VND', dateLocale) }}</span>
               </div>
             </div>
 

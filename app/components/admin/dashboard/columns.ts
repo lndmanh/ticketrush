@@ -5,7 +5,7 @@ import type { AdminDashboardEventRow } from '~~/types/admin-dashboard'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { getDisplayDateLocale } from '@/lib/localizedEvents'
-import { formatCurrency, formatDateTime, formatNumber } from '@/lib/utils'
+import { formatDateTime, formatNumber } from '@/lib/utils'
 import { EventStatus } from '#shared/commonEnums'
 
 function getStatusVariant(status: string): 'default' | 'outline' {
@@ -14,6 +14,7 @@ function getStatusVariant(status: string): 'default' | 'outline' {
 
 export function createAdminDashboardColumns(): ColumnDef<AdminDashboardEventRow>[] {
   const { t, locale } = useI18n()
+  const { formatCurrency: formatPreferredCurrency } = useCurrencyPreference()
   const NuxtLink = resolveComponent('NuxtLink')
 
   function getDisplayLocale() {
@@ -51,10 +52,12 @@ export function createAdminDashboardColumns(): ColumnDef<AdminDashboardEventRow>
         h(NuxtLink, {
           to: `/admin/events/${row.original.id}`,
           class: 'group inline-flex max-w-full items-center gap-2 font-medium text-foreground hover:text-primary',
-        }, () => [
-          h('span', { class: 'truncate' }, row.original.title),
-          h(ExternalLink, { class: 'size-3.5 shrink-0 opacity-0 transition-opacity group-hover:opacity-100' }),
-        ]),
+        }, {
+          default: () => [
+            h('span', { class: 'truncate' }, row.original.title),
+            h(ExternalLink, { class: 'size-3.5 shrink-0 opacity-0 transition-opacity group-hover:opacity-100' }),
+          ],
+        }),
         h('p', { class: 'truncate text-sm text-muted-foreground' }, getVenueLabel(row.original)),
       ]),
     },
@@ -80,7 +83,7 @@ export function createAdminDashboardColumns(): ColumnDef<AdminDashboardEventRow>
       cell: ({ row }) => h(
         'span',
         { class: 'font-mono text-sm font-semibold' },
-        formatCurrency(row.original.revenueCents, 'USD', getDisplayLocale()),
+        formatPreferredCurrency(row.original.revenueCents, 'VND', getDisplayLocale()),
       ),
     },
     {
