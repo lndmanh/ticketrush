@@ -4,11 +4,12 @@ import { CalendarRange, Mail, MapPin, Ticket, UserRound } from '@lucide/vue'
 import type { ApiResponse } from '~~/types/api'
 import type { TicketDetailData } from '~~/types/ticketing'
 import { getDisplayDateLocale } from '@/lib/localizedEvents'
-import { formatCurrency, formatDate, formatDateTime } from '@/lib/utils'
+import { formatDate, formatDateTime } from '@/lib/utils'
 
 const route = useRoute()
 const ticketId = computed(() => route.params.id.toString())
 const { locale, t } = useI18n()
+const { formatCurrency: formatPreferredCurrency } = useCurrencyPreference()
 const localePath = useLocalePath()
 const { data: ticketResponse } = await useAPI<ApiResponse<TicketDetailData>>(() => `/api/tickets/${ticketId.value}`, {
   query: computed(() => ({ locale: locale.value })),
@@ -51,7 +52,7 @@ const orderTotalLabel = computed(() => {
     return t('tickets.detail_unknown')
   }
 
-  return formatCurrency(amountCents, 'VND', getDisplayDateLocale(locale.value))
+  return formatPreferredCurrency(amountCents, ticketBundle.value?.order?.currency ?? 'VND', getDisplayDateLocale(locale.value))
 })
 
 const statusLabel = computed(() => {

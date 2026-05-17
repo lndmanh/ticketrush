@@ -5,7 +5,7 @@ import NumberFlow from '@number-flow/vue'
 import { parseApiError } from '@/utils/apiError'
 import { getEventSessionGateFetchKey, getEventSessionSeatmapFetchKey } from '@/utils/eventSessionAccessData'
 import { getDisplayDateLocale } from '@/lib/localizedEvents'
-import { formatCurrency, formatDateTime } from '@/lib/utils'
+import { formatDateTime } from '@/lib/utils'
 import { apiRoutes } from '#shared/apiRoutes'
 import { parseSeatmapRealtimeMessage } from '~~/types/seatmap-realtime'
 import type { SeatStatusDeltaChange } from '~~/types/seatmap-realtime'
@@ -28,6 +28,7 @@ const sessionPublicId = computed(() => typeof route.params.sessionId === 'string
 const passToken = computed(() => typeof route.query.pass === 'string' ? route.query.pass : undefined)
 const requestUrl = useRequestURL()
 const { locale, t } = useI18n()
+const { formatCurrency: formatPreferredCurrency } = useCurrencyPreference()
 const gateFetchKey = computed(() => getEventSessionGateFetchKey(sessionPublicId.value, passToken.value))
 const seatMapFetchKey = computed(() => getEventSessionSeatmapFetchKey(sessionPublicId.value, locale.value))
 
@@ -936,7 +937,7 @@ definePageMeta({
                       </ItemContent>
                       <div class="relative ml-auto text-right">
                         <p class="font-mono text-sm font-semibold text-foreground">
-                          {{ formatCurrency(previewSeat.priceCents, previewSeat.currency, getDisplayDateLocale(locale)) }}
+                          {{ formatPreferredCurrency(previewSeat.priceCents, previewSeat.currency, getDisplayDateLocale(locale)) }}
                         </p>
                         <p class="text-xs text-muted-foreground">
                           Expected add-on
@@ -1026,7 +1027,7 @@ definePageMeta({
                           </ItemContent>
                           <div class="ml-auto text-right">
                             <p class="font-mono text-sm font-semibold text-foreground">
-                              {{ formatCurrency(seat.priceCents, seat.currency, getDisplayDateLocale(locale)) }}
+                              {{ formatPreferredCurrency(seat.priceCents, seat.currency, getDisplayDateLocale(locale)) }}
                             </p>
                           </div>
                           <ItemActions class="w-full justify-end sm:w-auto">
