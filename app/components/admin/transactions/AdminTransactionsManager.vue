@@ -41,6 +41,7 @@
       :search-placeholder="$t('admin.transactions.search')"
       :empty-title="$t('admin.transactions.empty_title')"
       :empty-description="$t('admin.transactions.empty_desc')"
+      :column-labels="columnLabels"
       @update:data="fetchTransactions"
     />
   </div>
@@ -65,6 +66,14 @@ const loading = ref(false)
 const selectedRange = ref(DEFAULT_ADMIN_ANALYTICS_TIME_RANGE)
 
 const columns = computed(() => createColumns(getDisplayDateLocale(locale.value)))
+const columnLabels = computed(() => ({
+  orderId: t('admin.transactions.order_id'),
+  buyer: t('admin.transactions.buyer_info'),
+  seats: t('admin.transactions.seat_info'),
+  totalAmountCents: t('admin.transactions.total_amount'),
+  paymentTime: t('admin.transactions.payment_time'),
+  status: t('admin.transactions.status'),
+}))
 
 async function fetchTransactions() {
   try {
