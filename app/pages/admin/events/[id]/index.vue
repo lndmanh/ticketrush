@@ -7,7 +7,8 @@ import AdminDashboardKpiCard from '@/components/admin/dashboard/AdminDashboardKp
 import { apiRequest } from '@/utils/apiRequest'
 import { parseApiError } from '@/utils/apiError'
 import { getDisplayDateLocale } from '@/lib/localizedEvents'
-import { formatCurrency, formatDateTime } from '@/lib/utils'
+import { formatDateTime } from '@/lib/utils'
+import { formatMoney } from '@/lib/money'
 import { apiRoutes } from '#shared/apiRoutes'
 import { EventStatus, SeatStatus } from '#shared/commonEnums'
 import { toast } from 'vue-sonner'
@@ -16,6 +17,7 @@ import type { AdminEventWorkspaceSession } from '~~/types/admin-events'
 const route = useRoute()
 const eventId = computed(() => Number(route.params.id))
 const { t, locale } = useI18n()
+const { displayCurrency, formatCurrency: formatPreferredCurrency } = useCurrencyPreference()
 
 const { detail, dashboard, refreshAll, fetchVenueLayoutSyncPreview, applyVenueLayoutSync } = await useAdminEventWorkspace(eventId, {
   poll: true,
@@ -120,11 +122,17 @@ const launchChecklist = computed(() => {
 })
 
 const revenueBySectionOption = computed(() => {
+  const selectedDisplayCurrency = displayCurrency.value
+
   return createBarChartOption({
     data: topSections.value.map(([section, row]) => ({
       label: section,
       value: Math.round(row.revenueCents / 100),
     })),
+    valueFormatter: value => formatMoney(value * 100, 'VND', selectedDisplayCurrency, getDisplayDateLocale(locale.value), {
+      notation: 'compact',
+      maximumFractionDigits: 1,
+    }),
   })
 })
 
@@ -318,7 +326,7 @@ definePageMeta({
     <section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4 xl:auto-rows-fr">
       <AdminDashboardKpiCard
         :label="$t('admin.event_stat_revenue')"
-        :value="formatCurrency(dashboard.revenueCents || 0, 'VND', getDisplayDateLocale(locale))"
+        :value="formatPreferredCurrency(dashboard.revenueCents || 0, 'VND', getDisplayDateLocale(locale))"
         :description="$t('admin_event_overview.revenue_summary_desc', { count: dashboard.soldSeatsCount })"
       >
         <template #icon>
@@ -395,7 +403,7 @@ definePageMeta({
               </ItemDescription>
             </ItemContent>
             <p class="shrink-0 text-sm text-muted-foreground">
-              {{ formatCurrency(order.amountCents, 'VND', getDisplayDateLocale(locale)) }}
+              {{ formatPreferredCurrency(order.amountCents, 'VND', getDisplayDateLocale(locale)) }}
             </p>
           </Item>
           <p
