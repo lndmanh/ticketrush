@@ -15,7 +15,7 @@ const links = computed(() => [
     icon: LayoutGrid,
   },
   {
-    label: 'Pricing',
+    label: t('admin.event_nav_pricing'),
     to: `/admin/events/${props.eventId}/pricing`,
     icon: Settings2,
   },
@@ -51,7 +51,7 @@ function isActive(target: string) {
             {{ $t('admin.event_workspace') }}
           </p>
           <p class="text-sm font-semibold leading-tight text-foreground">
-            Overview, pricing, sales, and ops
+            {{ $t('admin.event_workspace_title') }}
           </p>
           <p class="text-xs text-muted-foreground">
             {{ $t('admin.event_workspace_desc') }}

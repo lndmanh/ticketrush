@@ -21,7 +21,7 @@ const props = defineProps<{
   metrics: AdminEventWorkspaceMetric[]
 }>()
 
-const { locale } = useI18n()
+const { locale, t } = useI18n()
 const formattedStartsAt = computed(() => formatDateTime(props.startsAt, getDisplayDateLocale(locale.value)))
 const formattedStatus = computed(() => props.eventStatus.replaceAll('_', ' '))
 </script>
@@ -66,10 +66,10 @@ const formattedStatus = computed(() => props.eventStatus.replaceAll('_', ' '))
 
             <div class="rounded-[1.75rem] border border-white/10 bg-black/20 p-4 text-white/82 backdrop-blur-sm">
               <p class="text-[11px] uppercase tracking-[0.2em] text-white/60">
-                Workspace note
+                {{ t('admin.event_workspace_note_title') }}
               </p>
               <p class="mt-2 text-sm leading-6">
-                This view stays live against the current event snapshot so launch, pricing, map, sales, and ops can be reviewed from one visual system.
+                {{ t('admin.event_workspace_note_desc') }}
               </p>
               <div class="mt-4 flex flex-wrap gap-2">
                 <slot name="actions" />
