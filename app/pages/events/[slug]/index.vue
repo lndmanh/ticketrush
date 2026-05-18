@@ -58,7 +58,7 @@ const recommendedEventsQuery = computed(() => ({
   sort: EventCatalogSort.Soonest,
 }))
 
-const { data: recommendedEventsResponse } = await useAPI<PaginatedApiResponse<EventCatalogItem[]>>(() => '/api/events', {
+const { data: recommendedEventsResponse } = await useAPI<PaginatedApiResponse<EventCatalogItem[]>>(() => apiRoutes.EVENTS, {
   query: recommendedEventsQuery,
 })
 
@@ -419,7 +419,7 @@ definePageMeta({
           <div class="space-y-6">
             <Badge
               variant="outline"
-              class="w-fit border-primary/20 bg-primary/10 font-mono text-[10px] uppercase tracking-[0.18em] text-primary"
+              class="w-fit border-primary/20 bg-primary/10 font-semibold text-[10px] uppercase tracking-[0.18em] text-primary"
             >
               {{ getEventStatusLabel(event.status) }}
             </Badge>

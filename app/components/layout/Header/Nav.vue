@@ -75,5 +75,5 @@ import { navigationMenuTriggerStyle, NavigationMenu, NavigationMenuContent, Navi
 
 import CtIcon from '@/components/content/CtIcon.vue'
 
-const { nav } = useConfig().value.header
+const { nav } = useConfig().header
 </script>

@@ -269,8 +269,6 @@ function formatCompactNumber(value: number) {
         :label="$t('admin.dashboard_total_revenue')"
         :value="formatPreferredCurrency(summary.totalRevenueCents, 'VND', getDisplayDateLocale(locale))"
         :description="$t('admin.dashboard_total_revenue_desc')"
-        :trend-label="$t('admin.dashboard_confirmed')"
-        trend-direction="up"
       >
         <template #icon>
           <LineChart class="size-4" />
@@ -281,8 +279,6 @@ function formatCompactNumber(value: number) {
         :label="$t('admin.dashboard_seats_listed')"
         :value="formatCompactNumber(summary.totalSeatsListed)"
         :description="$t('admin.dashboard_seats_listed_desc')"
-        :trend-label="$t('admin.dashboard_sold_count', { count: summary.soldSeatsCount })"
-        trend-direction="neutral"
       >
         <template #icon>
           <Users class="size-4" />
@@ -293,8 +289,6 @@ function formatCompactNumber(value: number) {
         :label="$t('admin.dashboard_tickets_issued')"
         :value="formatCompactNumber(summary.ticketsIssuedCount)"
         :description="$t('admin.dashboard_tickets_issued_desc')"
-        :trend-label="occupancyLabel"
-        trend-direction="up"
       >
         <template #icon>
           <Ticket class="size-4" />
@@ -305,8 +299,6 @@ function formatCompactNumber(value: number) {
         :label="$t('admin.dashboard_total_views')"
         :value="formatCompactNumber(summary.totalViews)"
         :description="$t('admin.dashboard_total_views_desc')"
-        :trend-label="$t('admin.dashboard_tracking_pending')"
-        trend-direction="neutral"
       >
         <template #icon>
           <Eye class="size-4" />
@@ -315,7 +307,7 @@ function formatCompactNumber(value: number) {
     </section>
 
     <section class="grid gap-6 xl:grid-cols-12 xl:items-start">
-      <div class="space-y-6 xl:col-span-8">
+      <div class="space-y-6 col-span-12">
         <div class="grid gap-6 lg:grid-cols-[minmax(0,1.45fr)_minmax(18rem,0.75fr)]">
           <AdminChartCard
             :title="$t('admin.dashboard_performance')"
@@ -338,42 +330,41 @@ function formatCompactNumber(value: number) {
           />
         </div>
 
-        <Card class="overflow-hidden border-border/70 bg-card/90 shadow-sm">
-          <CardHeader class="flex flex-col gap-3 border-b pb-4 lg:flex-row lg:items-center lg:justify-between">
-            <div>
-              <CardTitle>{{ $t('admin.dashboard_active_listing') }}</CardTitle>
-              <CardDescription>
-                {{ $t('admin.dashboard_active_listing_desc') }}
-              </CardDescription>
-            </div>
-            <Badge
-              variant="outline"
-              class="w-fit rounded-full"
-            >
-              {{ $t('admin.dashboard_event_count', { count: dashboard.events.length }) }}
-            </Badge>
-          </CardHeader>
-          <CardContent class="space-y-4">
-            <DataTable
-              :columns="columns"
-              :data="dashboard.events"
-              :loading="isRefreshing"
-              :search-placeholder="$t('admin.dashboard_search_placeholder')"
-              :empty-title="$t('admin.dashboard_empty_title')"
-              :empty-description="$t('admin.dashboard_empty_desc')"
-              @update:data="refreshDashboard"
-            />
-          </CardContent>
-        </Card>
+        <div class="grid gap-6 lg:grid-cols-[minmax(0,1.45fr)_minmax(18rem,0.75fr)]">
+          <Card class="overflow-hidden border-border/70 bg-card/90 shadow-sm">
+            <CardHeader class="flex flex-col gap-3 border-b pb-4 lg:flex-row lg:items-center lg:justify-between">
+              <div>
+                <CardTitle>{{ $t('admin.dashboard_active_listing') }}</CardTitle>
+                <CardDescription>
+                  {{ $t('admin.dashboard_active_listing_desc') }}
+                </CardDescription>
+              </div>
+              <Badge
+                variant="outline"
+                class="w-fit rounded-full"
+              >
+                {{ $t('admin.dashboard_event_count', { count: dashboard.events.length }) }}
+              </Badge>
+            </CardHeader>
+            <CardContent class="space-y-4">
+              <DataTable
+                :columns="columns"
+                :data="dashboard.events"
+                :loading="isRefreshing"
+                :search-placeholder="$t('admin.dashboard_search_placeholder')"
+                :empty-title="$t('admin.dashboard_empty_title')"
+                :empty-description="$t('admin.dashboard_empty_desc')"
+                @update:data="refreshDashboard"
+              />
+            </CardContent>
+          </Card>
+          <AdminDashboardSessionCalendar
+            v-model:selected-date="selectedDate"
+            :session-counts="sessionCountsByDate"
+            :sessions="selectedDaySessions"
+          />
+        </div>
       </div>
-
-      <aside class="space-y-6 xl:sticky xl:top-6 xl:col-span-4">
-        <AdminDashboardSessionCalendar
-          v-model:selected-date="selectedDate"
-          :session-counts="sessionCountsByDate"
-          :sessions="selectedDaySessions"
-        />
-      </aside>
     </section>
   </div>
 </template>

@@ -1,11 +1,12 @@
 import userService from '~~/server/utils/database/user'
 import { apiError } from '~~/server/utils/apiResponse'
+import { apiRoutes } from '#shared/apiRoutes'
 
 export default defineEventHandler(async (event) => {
   const path = getRequestURL(event).pathname
-  if (path === '/api/admin/tasks/seed-admin') return
+  if (path === apiRoutes.ADMIN_TASKS_SEED_ADMIN) return
 
-  if (path.startsWith('/api/admin')) {
+  if (path.startsWith(apiRoutes.ADMIN_API_PREFIX)) {
     const session = await requireUserSession(event)
     const user = await userService.getById(session.user.id)
     if (!user) {

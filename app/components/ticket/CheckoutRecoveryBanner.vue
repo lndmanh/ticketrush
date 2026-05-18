@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { AlertTriangle, ArrowRight, Loader2, X } from '@lucide/vue'
+import { apiRoutes } from '#shared/apiRoutes'
 import { apiRequest } from '@/utils/apiRequest'
 import { parseApiError } from '@/utils/apiError'
 import type { ApiResponse } from '~~/types/api'
 import type { CheckoutDetailData } from '~~/types/ticketing'
 
-const { data: activeCheckoutResponse, refresh: refreshActiveCheckout } = await useAPI<ApiResponse<CheckoutDetailData | null>>(() => '/api/checkout/active')
-const { t } = useI18n()
+  const { t } = useI18n()
+const { data: activeCheckoutResponse, refresh: refreshActiveCheckout } = await useAPI<ApiResponse<CheckoutDetailData | null>>(() => apiRoutes.CHECKOUT_ACTIVE)
 
 const checkout = computed<CheckoutDetailData | null>(() => {
   const response = activeCheckoutResponse.value
@@ -33,7 +34,7 @@ async function cancelCheckout() {
   cancelError.value = ''
 
   try {
-    const response = await apiRequest<ApiResponse<unknown>>(`/api/checkout/${checkout.value.order.publicId}`, {
+    const response = await apiRequest<ApiResponse<unknown>>(apiRoutes.checkout(checkout.value.order.publicId), {
       method: 'DELETE',
     })
 

@@ -2,6 +2,7 @@
 import { KeyRound, Mail } from '@lucide/vue'
 import { Field as VeeField, useForm } from 'vee-validate'
 import { z } from 'zod'
+import { apiRoutes } from '#shared/apiRoutes'
 import { apiRequest } from '@/utils/apiRequest'
 import { parseApiError } from '@/utils/apiError'
 
@@ -25,7 +26,7 @@ const onSubmit = handleSubmit(async (values) => {
   error.value = ''
 
   try {
-    const response = await apiRequest('/api/auth/forgot-password', {
+    const response = await apiRequest(apiRoutes.AUTH_FORGOT_PASSWORD_REQUEST, {
       method: 'POST',
       body: {
         'email': values.email,

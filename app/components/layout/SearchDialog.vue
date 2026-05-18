@@ -180,7 +180,7 @@ const open = computed({
 const { setOpen } = store
 const colorMode = useColorMode()
 const { locale, t } = useI18n()
-const { placeholderDetailed } = useConfig().value.search
+const { placeholderDetailed } = useConfig().search
 
 const input = ref('')
 const activeSelect = ref(0)

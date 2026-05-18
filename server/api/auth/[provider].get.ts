@@ -1,4 +1,5 @@
 import type { H3Event } from 'h3'
+import { apiRoutes } from '#shared/apiRoutes'
 import { handleOAuthSuccess, sendOAuthRedirect } from '~~/server/utils/oauth'
 
 function getQueryString(value: string | string[] | undefined) {
@@ -68,7 +69,7 @@ const googleHandler = defineOAuthGoogleEventHandler({
   },
   onError(event, error) {
     console.error('[Google OAuth] Error:', error)
-    return sendOAuthRedirect(event, '/auth/login?error=oauth-error')
+    return sendOAuthRedirect(event, `${apiRoutes.AUTH_LOGIN}?error=oauth-error`)
   },
 })
 
@@ -86,7 +87,7 @@ const githubHandler = defineOAuthGitHubEventHandler({
   },
   onError(event, error) {
     console.error('[GitHub OAuth] Error:', error)
-    return sendOAuthRedirect(event, '/auth/login?error=oauth-error')
+    return sendOAuthRedirect(event, `${apiRoutes.AUTH_LOGIN}?error=oauth-error`)
   },
 })
 

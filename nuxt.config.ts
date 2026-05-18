@@ -1,7 +1,6 @@
 import { APP_MANIFEST, SEO_CONFIG } from './shared/constants/manifest'
 import { routeRules } from './shared/apiRoutes'
 import { defaultLocale, browserFallbackLocale, fallbackLocales, languageNames, locales } from './i18n-constants'
-import { DOCS_CONFIG } from './docs.config'
 
 export default defineNuxtConfig({
   modules: [
@@ -74,7 +73,6 @@ export default defineNuxtConfig({
       },
       url: process.env.NUXT_PUBLIC_SITE_URL || 'http://localhost:3000',
       googleOneTapClientId: process.env.NUXT_PUBLIC_GOOGLE_ONE_TAP_CLIENT_ID || '',
-      docs: DOCS_CONFIG,
     },
     turnstile: {
       secretKey: '',

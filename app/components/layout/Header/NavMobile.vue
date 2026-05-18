@@ -10,5 +10,5 @@
 </template>
 
 <script setup lang="ts">
-const { nav } = useConfig().value.header
+const { nav } = useConfig().header
 </script>

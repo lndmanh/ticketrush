@@ -133,3 +133,8 @@ export interface SessionSeatMapResponse {
   seatOverrides: SeatMapSeatOverrideSummary[]
   ticketTypes?: SessionSeatMapTicketType[]
 }
+
+export interface SessionSeatMapVersionResponse {
+  sessionPublicId: string
+  version: number
+}

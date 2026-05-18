@@ -110,7 +110,7 @@ const { handleSubmit, values } = useForm({
 
 const onSubmit = handleSubmit(async () => {
   // Native form submission for server-side auth
-  const formEl = document.querySelector('form[action="/api/auth/login-password"]')
+  const formEl = document.querySelector(`form[action="${apiRoutes.AUTH_LOGIN_PASSWORD}"]`)
   if (formEl instanceof HTMLFormElement) formEl.submit()
 })
 
@@ -268,7 +268,7 @@ onBeforeUnmount(() => {
     </Alert>
 
     <form
-      action="/api/auth/login-password"
+      :action="apiRoutes.AUTH_LOGIN_PASSWORD"
       method="POST"
       class="space-y-4"
       @submit.prevent="onSubmit"

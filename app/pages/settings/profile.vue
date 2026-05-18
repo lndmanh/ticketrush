@@ -37,7 +37,7 @@ function confirmDeleteAccount() {
 async function deleteAccount() {
   showDeleteAccountDialog.value = false
   try {
-    const res = await apiRequest('/api/users/me', { method: 'DELETE' })
+    const res = await apiRequest(apiRoutes.MY_PROFILE, { method: 'DELETE' })
     if (!res.success) {
       throw res
     }
@@ -100,7 +100,7 @@ const onSaveProfile = handleProfileSubmit(async (formValues) => {
   isSaving.value = true
 
   try {
-    const response = await apiRequest<ApiResponse<ProfileUpdateData>>(`/api/users/${profile.value.id}/profile`, {
+    const response = await apiRequest<ApiResponse<ProfileUpdateData>>(apiRoutes.userProfile(profile.value.id), {
       method: 'PATCH',
       body: getProfilePayload(formValues),
     })

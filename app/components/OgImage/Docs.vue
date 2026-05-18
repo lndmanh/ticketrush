@@ -47,9 +47,9 @@ const props = defineProps<{
   description: string
 }>()
 
-const { logo, title: siteTitle, showTitle } = useConfig().value.header
+const { logo, title: siteTitle, showTitle } = useConfig().header
 
 const colorMode = computed(() => {
-  return props.colorMode || useConfig().value.site.ogImageColor || 'light'
+  return props.colorMode || useConfig().site.ogImageColor || 'light'
 })
 </script>

@@ -1,5 +1,6 @@
 import userService from '~~/server/utils/database/user'
 import { apiError } from '~~/server/utils/apiResponse'
+import { apiRoutes } from '#shared/apiRoutes'
 
 /**
  * Middleware that blocks any authenticated API call from locked user accounts.
@@ -13,11 +14,11 @@ import { apiError } from '~~/server/utils/apiResponse'
  */
 export default defineEventHandler(async (event) => {
   const path = getRequestURL(event).pathname
-  if (!path.startsWith('/api/')) return
+  if (!path.startsWith(apiRoutes.API_PREFIX)) return
 
   // Allow the lock-status endpoint through so the client banner can render
   // even when the account is locked.
-  if (path === '/api/auth/account-status') return
+  if (path === apiRoutes.AUTH_ACCOUNT_STATUS) return
 
   // Only inspect authenticated sessions — anonymous API calls are ignored.
   const session = await getUserSession(event)

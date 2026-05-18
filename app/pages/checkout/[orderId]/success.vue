@@ -3,6 +3,7 @@ import { CalendarClock, Check, CreditCard, TicketCheck } from '@lucide/vue'
 import { Motion } from 'motion-v'
 import type { ApiResponse } from '~~/types/api'
 import type { CheckoutDetailData } from '~~/types/ticketing'
+import { apiRoutes } from '#shared/apiRoutes'
 import { OrderPaymentMethod } from '#shared/commonEnums'
 import { getDisplayDateLocale } from '@/lib/localizedEvents'
 import { getCheckoutEventPath, getCheckoutRoutePath, getCheckoutSuccessRouteState, getCheckoutTicketCount } from '@/utils/checkoutSuccess'
@@ -14,7 +15,7 @@ const { formatCurrency: formatPreferredCurrency } = useCurrencyPreference()
 const orderId = computed(() => route.params.orderId.toString())
 const hasCelebrated = ref(false)
 
-const { data: checkoutResponse } = await useAPI<ApiResponse<CheckoutDetailData>>(() => `/api/checkout/${orderId.value}`, {
+const { data: checkoutResponse } = await useAPI<ApiResponse<CheckoutDetailData>>(() => apiRoutes.checkout(orderId.value), {
   query: computed(() => ({ locale: locale.value })),
 })
 const checkout = computed(() => checkoutResponse.value?.success ? checkoutResponse.value.data : null)

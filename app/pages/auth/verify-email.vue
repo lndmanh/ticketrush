@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { MailCheck } from '@lucide/vue'
+import { apiRoutes } from '#shared/apiRoutes'
 import { parseApiError } from '@/utils/apiError'
 
 const route = useRoute()
@@ -55,7 +56,7 @@ async function resendVerification() {
   resendError.value = ''
 
   try {
-    const response = await apiRequest('/api/auth/resend-verification', {
+    const response = await apiRequest(apiRoutes.AUTH_RESEND_VERIFICATION, {
       method: 'POST',
       body: { email: email.value },
     })

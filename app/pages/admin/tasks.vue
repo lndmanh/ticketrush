@@ -3,6 +3,7 @@ import { toast } from 'vue-sonner'
 import { Clock, Database, Loader2, Play, Users } from '@lucide/vue'
 import type { ApiResponse } from '~~/types/api'
 import type { AdminTaskData, AdminTaskResult } from '~~/types/admin-tasks'
+import { apiRoutes } from '#shared/apiRoutes'
 import { apiRequest } from '@/utils/apiRequest'
 import { parseApiError } from '@/utils/apiError'
 import { getDisplayDateLocale } from '@/lib/localizedEvents'
@@ -22,7 +23,7 @@ const tasks: TaskDefinition[] = [
     id: 'release-holds',
     titleKey: 'admin.tasks.release_holds_title',
     descriptionKey: 'admin.tasks.release_holds_desc',
-    endpoint: '/api/admin/tasks/release-holds',
+    endpoint: apiRoutes.ADMIN_TASKS_RELEASE_HOLDS,
     icon: Clock,
     variant: 'default',
   },
@@ -30,7 +31,7 @@ const tasks: TaskDefinition[] = [
     id: 'admit-queue',
     titleKey: 'admin.tasks.admit_queue_title',
     descriptionKey: 'admin.tasks.admit_queue_desc',
-    endpoint: '/api/admin/tasks/admit-queue',
+    endpoint: apiRoutes.ADMIN_TASKS_ADMIT_QUEUE,
     icon: Users,
     variant: 'default',
   },
@@ -38,7 +39,7 @@ const tasks: TaskDefinition[] = [
     id: 'seed-admin',
     titleKey: 'admin.tasks.seed_admin_title',
     descriptionKey: 'admin.tasks.seed_admin_desc',
-    endpoint: '/api/admin/tasks/seed-admin',
+    endpoint: apiRoutes.ADMIN_TASKS_SEED_ADMIN,
     icon: Database,
     variant: 'secondary',
   },

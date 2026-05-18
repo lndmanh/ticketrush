@@ -61,6 +61,17 @@ class EventSessionService extends IDatabaseService<typeof tables.eventSessions.$
     return this.db.select().from(tables.eventSessions).where(eq(tables.eventSessions.publicId, publicId)).get()
   }
 
+  async getSeatmapVersionState(id: number) {
+    return this.db
+      .select({
+        status: tables.eventSessions.status,
+        seatmapVersion: tables.eventSessions.seatmapVersion,
+      })
+      .from(tables.eventSessions)
+      .where(eq(tables.eventSessions.id, id))
+      .get()
+  }
+
   async getList() {
     return this.db
       .select()

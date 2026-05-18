@@ -11,7 +11,7 @@ export function useThemes() {
   const { value: color } = useColorMode()
   const isDark = color === 'dark'
 
-  const defaultTheme = useConfig().value.theme
+  const defaultTheme = useConfig().theme
   const config = useCookie<Config>('theme', {
     default: () => ({
       theme: defaultTheme.color as Color,

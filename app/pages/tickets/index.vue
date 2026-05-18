@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ArrowRight, CalendarRange, ChevronLeft, ChevronRight, MapPin, Search, SlidersHorizontal, Ticket, UserRound, X } from '@lucide/vue'
+import { apiRoutes } from '#shared/apiRoutes'
 import type { TicketStatus } from '#shared/commonEnums'
 import type { ApiResponse } from '~~/types/api'
 import type { TicketListItem } from '~~/types/ticketing'
@@ -44,7 +45,7 @@ useSeo({
   type: 'website',
 })
 
-const { data: ticketsResponse } = await useAPI<ApiResponse<TicketListItem[]>>(() => '/api/tickets', {
+const { data: ticketsResponse } = await useAPI<ApiResponse<TicketListItem[]>>(() => apiRoutes.TICKETS, {
   query: computed(() => ({ locale: locale.value })),
 })
 

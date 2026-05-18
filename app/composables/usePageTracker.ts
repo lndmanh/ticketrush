@@ -1,7 +1,9 @@
 import { useCookie, useRequestURL } from '#app'
+import { apiRoutes } from '#shared/apiRoutes'
 
 const PWA_LAST_PAGE_KEY = 'pwa_last_page'
-const SKIP_PAGES = ['/auth/', '/api/', '/pwa', '/proxy/', '/~offline']
+
+const SKIP_PAGES = ['/auth/', apiRoutes.API_PREFIX, '/pwa', '/proxy/', '/~offline']
 
 const shouldSkip = (p: string) => SKIP_PAGES.some(x => p.startsWith(x))
 

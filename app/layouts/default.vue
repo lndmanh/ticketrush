@@ -465,8 +465,8 @@ import LockedAccountBanner from '@/components/LockedAccountBanner.vue'
 
 const config = useConfig()
 
-const headerNav = computed(() => config.value.header.nav)
-const headerSearch = computed(() => config.value.search)
+const headerNav = computed(() => config.header.nav)
+const headerSearch = computed(() => config.search)
 
 const activeSubmenu = ref<number | null>(null)
 
@@ -478,7 +478,7 @@ function closeSubmenu() {
   activeSubmenu.value = null
 }
 
-const { enable: i18nEnabled, triggerType, dropdownType } = useConfig().value.header.languageSwitcher
+const { enable: i18nEnabled, triggerType, dropdownType } = useConfig().header.languageSwitcher
 const { loggedIn } = useUserSession()
 const isMobileMenuOpen = ref(false)
 
