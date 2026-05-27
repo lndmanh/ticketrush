@@ -1,88 +1,85 @@
-# Nuxt SaaS Starter Kit
+# TicketRush
 
-https://nnsvn.me/products/nuxt-starter-kit
+TicketRush is a full-stack event ticketing platform built with Nuxt 4.
+It helps organizers publish events, configure venues and seat maps, handle high-demand sales with a waiting room, and manage check-in workflows from a modern admin console.
 
-Fully equipped Technical Starter Pack for busy Nuxters.
-
-A comprehensive, production-ready SaaS starter kit built with Nuxt 4, featuring authentication, admin dashboard, AI integration, and modern UI components. This project is designed to kickstart your web development journey using a modern stack of technologies, making it easier to create powerful and feature-rich applications.
+![TicketRush preview placeholder](./public/readme-placeholder.svg)
 
 ![Nuxt](https://img.shields.io/badge/Nuxt-4.x-00DC82?style=flat&logo=nuxt.js&logoColor=white)
 ![Vue](https://img.shields.io/badge/Vue-3.x-4FC08D?style=flat&logo=vue.js&logoColor=white)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?style=flat&logo=typescript&logoColor=white)
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4.x-38B2AC?style=flat&logo=tailwind-css&logoColor=white)
 
-## ✨ Features
+## What this project does
 
-### 🔐 Authentication & User Management
+TicketRush provides two core experiences:
 
-- **nuxt-auth-utils** - Modern authentication system
-- Google OAuth integration
-- Session management with database persistence
-- User profile management
-- Passwordless authentication with WebAuthn/Passkeys
+- **Customer experience**: discover events, enter waiting room, select seats, and complete checkout.
+- **Organizer/admin experience**: create and publish events, manage sessions, venues, pricing, users, transactions, and operational tasks.
 
-### 🎨 Modern UI/UX
+It includes built-in authentication, role-based admin protections, localization, media uploads, and production-oriented deployment support.
 
-- **Tailwind CSS v4** - Latest utility-first styling
-- **shadcn/ui** components - Accessible, customizable
-- **Reka UI** primitives - Unstyled, accessible components
-- Dark/light theme support with smooth transitions
-- Responsive design with mobile-first approach
-- Loading skeletons and optimistic UI updates
+## Core capabilities
 
-### 🗄️ Database & Storage
+- **Event discovery and ticket purchase**
+  - Event listing, search, location/city filters
+  - Session-specific seat maps and seat holds
+  - Checkout lifecycle with success/recovery flows
+- **Waiting room and queue control**
+  - Queue join/leave/status endpoints
+  - Admin controls to admit queue members and release holds
+- **Organizer tooling**
+  - Event CRUD, publish/unpublish, translations, autosave drafts
+  - Session pricing and seat override management
+  - Venue management with translation support
+- **Admin operations**
+  - Dashboard metrics, user management, transactions
+  - Task endpoints for operational maintenance
+- **Security and account management**
+  - Password auth, OAuth, email verification/reset
+  - Passkey/WebAuthn support
+  - Admin middleware checks for protected routes
+- **Platform features**
+  - i18n support (Vietnamese and English)
+  - PWA assets and offline route
+  - Sentry integration and Nuxt Security headers
 
-- **Drizzle ORM** - Type-safe database toolkit
-- **Cloudflare R2** - Scalable file storage with zero egress fees
-- Database migrations with Drizzle Kit
+## Tech stack
 
-### 🎯 SEO
+- **Frontend**: Nuxt 4, Vue 3, Tailwind CSS v4, shadcn-vue, Reka UI
+- **Backend**: Nuxt server routes (Nitro), TypeScript
+- **Data layer**: Drizzle ORM with SQLite (NuxtHub D1)
+- **Storage**: Cloudflare R2 (NuxtHub blob)
+- **State and UX**: Pinia, VueUse
+- **Quality**: ESLint, Vitest, TypeScript checks
 
-- Manual SEO defaults with Nuxt head composables
-- Dynamic meta tags and Open Graph support
-- Canonical links and JSON-LD through the local `useSeo` composable
+## Project structure
 
-### 📱 PWA Features
+```text
+ticketrush/
+├── app/                 # Nuxt app (pages, components, layouts, composables)
+├── server/              # API routes, middleware, DB access, server utilities
+├── shared/              # Shared constants and route definitions
+├── public/              # Static assets and generated PWA assets
+├── test/                # Vitest test suites
+├── types/               # Project type definitions
+└── nuxt.config.ts       # Runtime/build/module configuration
+```
 
-- Auto-update service worker
-- Offline caching with Workbox
-- App manifest with shortcuts
-- Install prompts
-- Asset generation via `@vite-pwa/assets-generator`
-
-### Content
-
-- Blog and documentation system with `@nuxt/content`
-- Markdown support with custom components
-- SEO-friendly content structure
-- Multi-language support with locale-based content
-
-## 📦 Tech Stack
-
-- **Framework**: Nuxt 4 with Vue 3
-- **Language**: TypeScript with strict mode
-- **Styling**: Tailwind CSS v4 + shadcn-vue
-- **Database**: Sqlite + Drizzle ORM
-- **Authentication**: nuxt-auth-utils + SimpleWebAuthn
-- **Payments**: dodopayment
-- **Storage**: Cloudflare R2
-- **Analytics**: Sentry
-- **Deployment**: Nuxthub -> Cloudflare (recommended) / Vercel / Netlify ...
-
-## 🚀 Getting Started
+## Getting started
 
 ### Prerequisites
 
-- Node.js 18.x or higher
-- npm, pnpm, yarn or bun
+- Node.js 18+
+- npm (or compatible package manager)
 
-### Installation
+### Setup
 
 1. Clone the repository:
 
 ```bash
-git clone https://github.com/No-Name-Studio-VN/nuxt-template.git
-cd nuxt-template
+git clone https://github.com/lndmanh/ticketrush.git
+cd ticketrush
 ```
 
 2. Install dependencies:
@@ -91,67 +88,51 @@ cd nuxt-template
 npm install
 ```
 
-3. Set up environment variables:
+3. Create environment file:
 
 ```bash
 cp .env.example .env
 ```
 
-Fill in the required environment variables in the `.env` file.
-
-4. Generate database migrations:
+4. Generate database artifacts (if needed):
 
 ```bash
 npm run db:generate
 ```
 
-5. Start the development server:
+5. Start development server:
 
 ```bash
 npm run dev
 ```
 
-The app will be available at `http://localhost:3000`.
+App runs at `http://localhost:3000` by default.
 
-## 📁 Project Structure
+## Available scripts
 
-```
-nuxt-template/
-├── app/
-│   ├── assets/css/        # style sheets and Tailwind config
-│   ├── components/        # Vue components
-│   ├── composables/       # Vue composables
-│   ├── constants/         # App constants and configurations
-│   ├── layouts/           # Page layouts (default, dashboard, empty)
-│   ├── lib/               # Utility functions
-│   ├── middleware/        # Route middleware
-│   ├── pages/             # File-based routing
-│   └── plugins/           # Nuxt plugins
-├── public/                # Static assets
-├── server/
-│   ├── api/               # API routes
-│   ├── database/          # Database schema and migrations
-│   └── utils/             # Server utilities
-├── types/                 # TypeScript type definitions
-├── nuxt.config.ts         # Nuxt configuration
-├── pwa.config.ts          # PWA configuration
+- `npm run dev` — start local development server
+- `npm run build` — create production build
+- `npm run preview` — preview production output
+- `npm run lint` — run ESLint
+- `npm run test` — run Vitest test suite
+- `npm run typecheck` — run TypeScript checks
+- `npm run db:generate` — generate DB migrations
+- `npm run db:seed` — run admin creation seed task
+
+## Deployment
+
+This project is configured for **NuxtHub + Cloudflare** by default, and can be adapted for other Nuxt-compatible deployment targets.
+
+A default deploy script is available:
+
+```bash
+npm run deploy
 ```
 
-## ☁️ Deployment
+## Contributing
 
-This template uses [NuxtHub](https://hub.nuxt.com/) version 0.10x, which allows deploying to multiple providers. We recommend deploying to Cloudflare for best performance and zero egress fees, but you can also deploy to Vercel or Netlify.
+Contributions are welcome. Please open an issue to discuss significant changes before submitting a pull request.
 
-Follow the [NuxtHub deployment guide](https://hub.nuxt.com/docs/getting-started/deploy) to host a full-stack Nuxt application with minimal configuration.
+## License
 
-## 📄 License
-
-This project is open source and available under the [MIT License](LICENSE).
-
-## 🚀 Contributing
-
-We welcome contributions from the community! If you encounter any issues or have suggestions for improvements, feel free to open an issue or submit a pull request on the repository.
-
-## 👥 Author
-
-**No Name Studio**
-📧 contact@nnsvn.me
+Distributed under the MIT License. See [LICENSE](./LICENSE).
