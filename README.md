@@ -3,7 +3,9 @@
 TicketRush is a full-stack event ticketing platform built with Nuxt 4.
 It helps organizers publish events, configure venues and seat maps, handle high-demand sales with a waiting room, and manage check-in workflows from a modern admin console.
 
-![TicketRush preview placeholder](./public/readme-placeholder.svg)
+![Event listings](./public/images/1.png)
+![Seatmap customization](./public/images/2.png)
+![Sales analytics](./public/images/3.png)
 
 ![Nuxt](https://img.shields.io/badge/Nuxt-4.x-00DC82?style=flat&logo=nuxt.js&logoColor=white)
 ![Vue](https://img.shields.io/badge/Vue-3.x-4FC08D?style=flat&logo=vue.js&logoColor=white)
